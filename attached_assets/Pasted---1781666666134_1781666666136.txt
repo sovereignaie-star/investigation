@@ -1,0 +1,538 @@
+تمام. إليك الرسالة الكاملة الجاهزة للإرسال. انسخها كلها وأرسلها للإيجنت دفعة واحدة:
+
+---
+
+```
+أريدك أن تبني لي مشروعاً كاملاً من الصفر. لا تستخدم أي قوالب جاهزة. ابنِ كل ملف بنفسك.
+
+اسم المشروع: investigation-room
+الوصف: غرفة تحقيق ذكية للبحث والتحقيق في أكثر من 700 نوع من المعرفات.
+
+التقنيات:
+- Next.js 14 مع App Router
+- TypeScript
+- Tailwind CSS
+- React Flow (لللوحة اللانهائية)
+- Zustand (إدارة الحالة)
+- Framer Motion (الحركات)
+- Dexie.js (IndexedDB)
+- Fuse.js (بحث غامض)
+- Zod (تحقق من الأنماط)
+- Lucide React (أيقونات)
+
+----------------------------------------
+هيكل المشروع الكامل:
+----------------------------------------
+
+investigation-room/
+├── package.json
+├── tsconfig.json
+├── next.config.js
+├── tailwind.config.ts
+├── postcss.config.js
+├── .env.local.example
+└── src/
+    ├── app/
+    │   ├── layout.tsx
+    │   ├── page.tsx
+    │   └── globals.css
+    ├── components/
+    │   ├── SearchBar.tsx
+    │   ├── FileUploader.tsx
+    │   ├── InfiniteCanvas.tsx
+    │   ├── IdentifierSelector.tsx
+    │   ├── InvestigationStats.tsx
+    │   ├── ApiKeySettings.tsx
+    │   ├── SavedInvestigations.tsx
+    │   ├── InvestigationGraph.tsx
+    │   ├── ExportMenu.tsx
+    │   ├── NodeDetailPanel.tsx
+    │   └── ResultNodes/
+    │       ├── VideoNode.tsx
+    │       ├── MapNode.tsx
+    │       ├── ImageNode.tsx
+    │       ├── FileNode.tsx
+    │       ├── LinkNode.tsx
+    │       ├── LocationNode.tsx
+    │       ├── TextNode.tsx
+    │       └── DefaultNode.tsx
+    ├── store/
+    │   └── investigationStore.ts
+    ├── utils/
+    │   ├── identifierList.ts
+    │   ├── resultFetcher.ts
+    │   ├── smartInvestigator.ts
+    │   ├── apiKeyManager.ts
+    │   └── investigationDatabase.ts
+    └── types/
+        └── index.ts
+
+----------------------------------------
+الخطوة 1: أنشئ هيكل المشروع
+----------------------------------------
+
+شغّل هذه الأوامر:
+npx create-next-app@latest investigation-room --typescript --tailwind --eslint --app --src-dir --no-import-alias
+cd investigation-room
+npm install reactflow zustand framer-motion dexie fuse.js zod lucide-react
+
+----------------------------------------
+الخطوة 2: انسخ الملفات الجاهزة التالية كما هي بالضبط
+----------------------------------------
+
+الملف 1: src/types/index.ts
+```typescript
+export type IdentifierCategory =
+  | 'session' | 'web' | 'mobile' | 'hardware' | 'cellular'
+  | 'network' | 'email-messaging' | 'application' | 'database'
+  | 'crypto' | 'blockchain' | 'social' | 'cloud' | 'business'
+  | 'shipping' | 'biometric' | 'vehicle' | 'document'
+  | 'government' | 'gaming' | 'iot' | 'multimedia';
+
+export type ResultNodeType =
+  | 'video' | 'map' | 'image' | 'file' | 'link'
+  | 'location' | 'text' | 'audio' | 'default';
+
+export interface IdentifierDefinition {
+  id: string;
+  name: string;
+  nameAr: string;
+  category: IdentifierCategory;
+  pattern: RegExp;
+  icon: string;
+  priority: number;
+  resultNodeType: ResultNodeType;
+}
+
+export interface DetectionResult {
+  identifierId: string;
+  identifierName: string;
+  identifierNameAr: string;
+  icon: string;
+  value: string;
+  confidence: 'high' | 'medium' | 'low';
+  multipleMatches: boolean;
+  alternativeMatches: Array<{
+    identifierId: string;
+    identifierName: string;
+    icon: string;
+  }>;
+  suggestedNodeType: ResultNodeType;
+}
+
+export interface InvestigationNodeData {
+  id: string;
+  searchTerm: string;
+  detectedType: string;
+  detectedTypeName: string;
+  detectedTypeIcon: string;
+  timestamp: number;
+  rawResult: any;
+  metadata: Record<string, any>;
+}
+
+export interface InvestigationNode {
+  id: string;
+  type: ResultNodeType;
+  identifierType: string;
+  identifierTypeName: string;
+  identifierTypeIcon: string;
+  identifierValue: string;
+  data: InvestigationNodeData;
+  position: { x: number; y: number };
+}
+
+export interface InvestigationLink {
+  sourceId: string;
+  targetId: string;
+  relationType: string;
+  confidence: number;
+  metadata: any;
+}
+
+export interface InvestigationGraph {
+  nodes: Map<string, any>;
+  links: InvestigationLink[];
+  rootNodeId: string;
+  startTime: number;
+  lastUpdateTime: number;
+  totalFetched: number;
+  totalErrors: number;
+  maxDepth: number;
+}
+
+export interface InvestigationConfig {
+  maxDepth: number;
+  maxNodes: number;
+  maxConcurrentFetches: number;
+  timeoutPerFetch: number;
+  cacheResults: boolean;
+  includeLowConfidence: boolean;
+  confidenceThreshold: number;
+  allowedCategories: string[];
+  excludedCategories: string[];
+  apiKeys: Record<string, string>;
+  onProgress?: (graph: InvestigationGraph) => void;
+  onNodeFetched?: (node: any) => void;
+  onComplete?: (graph: InvestigationGraph) => void;
+  onError?: (nodeId: string, error: Error) => void;
+}
+
+export interface FetchResult {
+  success: boolean;
+  data: any;
+  source: string;
+  cached: boolean;
+  timestamp: number;
+  errors?: string[];
+  warnings?: string[];
+}
+
+export interface FetchStrategy {
+  identifierId: string;
+  type: 'local-decode' | 'local-lookup' | 'osint-free' | 'osint-rate-limited' | 'platform-api' | 'internal-db' | 'browser-leak' | 'dns-lookup' | 'whois-lookup' | 'regex-extract' | 'ai-infer';
+  handler: (value: string, apiKeys: Record<string, string>) => Promise<FetchResult>;
+  apiKeyRequired?: string;
+  isFree: boolean;
+  rateLimit?: { maxRequests: number; perTimeWindow: string };
+  cacheTimeSeconds: number;
+  fallbackStrategy?: string;
+}
+```
+
+الملف 2: src/store/investigationStore.ts
+
+```typescript
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface InvestigationStoreState {
+  sessionId: string;
+  nodes: any[];
+  links: any[];
+  lastSearches: Array<{ type: string; typeName: string; value: string; timestamp: number }>;
+  isInvestigating: boolean;
+  progress: number;
+  totalNodes: number;
+  fetchedNodes: number;
+  errorNodes: number;
+  maxDepth: number;
+  startTime: number | null;
+  apiKeys: Record<string, string>;
+  currentGraph: any | null;
+
+  setInvestigating: (value: boolean) => void;
+  setProgress: (progress: number) => void;
+  addNode: (node: any) => void;
+  addLink: (link: any) => void;
+  updateNode: (nodeId: string, updates: any) => void;
+  removeNode: (nodeId: string) => void;
+  updateStats: (stats: any) => void;
+  setApiKey: (name: string, value: string) => void;
+  removeApiKey: (name: string) => void;
+  clearInvestigation: () => void;
+  setGraph: (graph: any) => void;
+}
+
+export const useInvestigationStore = create<InvestigationStoreState>()(
+  persist(
+    (set, get) => ({
+      sessionId: `inv-${Date.now()}`,
+      nodes: [],
+      links: [],
+      lastSearches: [],
+      isInvestigating: false,
+      progress: 0,
+      totalNodes: 0,
+      fetchedNodes: 0,
+      errorNodes: 0,
+      maxDepth: 0,
+      startTime: null,
+      apiKeys: {},
+      currentGraph: null,
+
+      setInvestigating: (value) => set({ isInvestigating: value, startTime: value ? Date.now() : null }),
+      setProgress: (progress) => set({ progress }),
+      addNode: (node) => set((state) => ({ nodes: [...state.nodes, node] })),
+      addLink: (link) => set((state) => ({ links: [...state.links, link] })),
+      updateNode: (nodeId, updates) => set((state) => ({
+        nodes: state.nodes.map((n) => n.id === nodeId ? { ...n, ...updates } : n),
+      })),
+      removeNode: (nodeId) => set((state) => ({
+        nodes: state.nodes.filter((n) => n.id !== nodeId),
+        links: state.links.filter((l) => l.sourceId !== nodeId && l.targetId !== nodeId),
+      })),
+      updateStats: (stats) => set({
+        totalNodes: stats.totalNodes || 0,
+        fetchedNodes: stats.fetchedNodes || 0,
+        errorNodes: stats.errorNodes || 0,
+        maxDepth: stats.maxDepth || 0,
+      }),
+      setApiKey: (name, value) => set((state) => ({
+        apiKeys: { ...state.apiKeys, [name]: value },
+      })),
+      removeApiKey: (name) => set((state) => {
+        const newKeys = { ...state.apiKeys };
+        delete newKeys[name];
+        return { apiKeys: newKeys };
+      }),
+      clearInvestigation: () => set({
+        sessionId: `inv-${Date.now()}`,
+        nodes: [],
+        links: [],
+        isInvestigating: false,
+        progress: 0,
+        totalNodes: 0,
+        fetchedNodes: 0,
+        errorNodes: 0,
+        maxDepth: 0,
+        startTime: null,
+        currentGraph: null,
+      }),
+      setGraph: (graph) => set({ currentGraph: graph }),
+    }),
+    {
+      name: 'investigation-room-storage',
+      partialize: (state) => ({
+        apiKeys: state.apiKeys,
+        lastSearches: state.lastSearches,
+      }),
+    }
+  )
+);
+```
+
+الملف 3: utils/identifierList.ts
+[هنا تضع كود identifierList.ts الكامل - 700 معرف]
+
+الملف 4: utils/resultFetcher.ts
+[هنا تضع كود resultFetcher.ts الكامل]
+
+الملف 5: utils/smartInvestigator.ts
+[هنا تضع كود smartInvestigator.ts الكامل]
+
+الملف 6: utils/apiKeyManager.ts
+[هنا تضع كود apiKeyManager.ts الكامل]
+
+الملف 7: utils/investigationDatabase.ts
+[هنا تضع كود investigationDatabase.ts الكامل]
+
+الملف 8: package.json
+
+```json
+{
+  "name": "investigation-room",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "reactflow": "^11.10.0",
+    "zustand": "^4.5.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.350.0",
+    "zod": "^3.22.0",
+    "fuse.js": "^7.0.0",
+    "dexie": "^3.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/react": "^18.0.0",
+    "@types/node": "^20.0.0",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.0.0",
+    "postcss": "^8.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0"
+  }
+}
+```
+
+---
+
+الخطوة 3: ابنِ المكونات
+
+---
+
+الآن ابنِ كل هذه المكونات. كل مكون يجب أن يكون 'use client'.
+
+[1] src/app/globals.css:
+
+· استخدم tailwind directives فقط
+· أضف body خلفية zinc-950 ونص white
+
+[2] src/app/layout.tsx:
+
+· تخطيط بسيط مع metadata title="غرفة التحقيق"
+· يستورد globals.css
+
+[3] src/app/page.tsx (الصفحة الرئيسية - غرفة التحقيق):
+هذه الصفحة هي كل شيء. تحتوي على:
+
+· شريط علوي فيه SearchBar + FileUploader + IdentifierSelector
+· اللوحة اللانهائية (InfiniteCanvas) في المنتصف
+· شريط جانبي يمين: InvestigationStats + ExportMenu
+· نافذة ApiKeySettings (Modal)
+· نافذة SavedInvestigations (Modal)
+· NodeDetailPanel تنزلق من اليمين عند الضغط على عقدة
+· حالة isInvestigating تظهر شريط تقدم في الأعلى
+
+التصميم:
+
+· داكن (zinc-950, zinc-900, zinc-800)
+· النصوص: white, zinc-400, zinc-500
+· التمييز: blue-500, emerald-500, amber-500
+· الخط: system font
+· الأيقونات: lucide-react
+
+استخدم useInvestigationStore لإدارة الحالة.
+استخدم smartInvestigator للتحقيق.
+استخدم Framer Motion للانتقالات.
+
+[4] SearchBar.tsx:
+
+· حقل إدخال نصي كبير
+· يتعرف تلقائياً على نوع المعرف ويعرضه
+· زر "بدء التحقيق"
+· أيقونة 📎 لفتح FileUploader
+· دعم Ctrl+V للصق
+· Drag & Drop للملفات
+
+[5] FileUploader.tsx:
+
+· نافذة منبثقة لرفع الملفات
+· يقبل أي نوع ملفات
+· يعرض اسم الملف وحجمه
+· لا يوجد حد أقصى للحجم
+· يستخرج النص من الصور (OCR - يمكن استخدام Tesseract.js)
+· يحلل metadata
+
+[6] IdentifierSelector.tsx:
+
+· قائمة منسدلة للبحث عن نوع معرف
+· شريط بحث عن الـ 700 معرف (Fuse.js)
+· يعرض: أيقونة + اسم + فئة
+
+[7] InfiniteCanvas.tsx:
+
+· يستخدم ReactFlow
+· يعرض العقد والروابط
+· العقد قابلة للسحب
+· دعم التكبير والتصغير
+· Minimap
+· خلفية بنقاط
+· عند الضغط على عقدة يفتح NodeDetailPanel
+
+[8] NodeDetailPanel.tsx:
+
+· لوحة تنزلق من اليمين
+· تعرض تفاصيل العقدة كاملة
+· البيانات المجلوبة
+· أزرار: تحميل، نسخ، مشاركة
+· للملفات غير القابلة للمعاينة: أيقونة + حجم + metadata + زر تحميل
+· للصور: معاينة كاملة
+· للفيديو: مشغل
+· للخرائط: خريطة تفاعلية
+
+[9] InvestigationStats.tsx:
+
+· عدد العقد
+· عدد الروابط
+· وقت التحقيق
+· أقصى عمق
+· أنواع المعرفات المكتشفة
+· شريط تقدم
+
+[10] ExportMenu.tsx:
+
+· تصدير JSON
+· تصدير PNG/SVG
+· حفظ في IndexedDB
+· تحميل من IndexedDB
+· تحقيق جديد
+
+[11] ApiKeySettings.tsx:
+
+· Modal فيه قائمة 15 مفتاح
+· حالة كل مفتاح
+· حقل إدخال type=password
+· زر إظهار/إخفاء
+· حفظ في localStorage
+
+[12] SavedInvestigations.tsx:
+
+· Modal فيه قائمة التحقيقات المحفوظة
+· اسم، تاريخ، عدد عقد
+· تحميل، حذف، إعادة تسمية
+
+[13 إلى 20] ResultNodes/:
+
+· VideoNode.tsx: مشغل فيديو
+· MapNode.tsx: خريطة
+· ImageNode.tsx: صورة
+· FileNode.tsx: ملف
+· LinkNode.tsx: رابط
+· LocationNode.tsx: موقع
+· TextNode.tsx: نص
+· DefaultNode.tsx: افتراضي
+
+كل عقدة فيها:
+
+· رأس: أيقونة + اسم النوع
+· جسم: محتوى مناسب
+· Handle للربط
+· أزرار تحميل ونسخ
+
+---
+
+الخطوة 4: اجعل كل شيء يعمل معاً
+
+---
+
+· عند كتابة معرف والضغط على "بدء التحقيق":
+  1. useInvestigationStore.setInvestigating(true)
+  2. استخدم smartInvestigator.investigate(value)
+  3. في callback onNodeFetched: أضف العقدة إلى React Flow
+  4. في callback onProgress: حدث الإحصائيات
+  5. في callback onComplete: أوقف حالة التقدم
+· عند الضغط على عقدة:
+  افتح NodeDetailPanel مع بيانات العقدة
+· عند الضغط على 📎:
+  افتح FileUploader
+· عند الضغط على ⚙️:
+  افتح ApiKeySettings
+· عند الضغط على 📂:
+  افتح SavedInvestigations
+
+---
+
+ملاحظات مهمة جداً:
+
+---
+
+· كل المكونات 'use client'
+· لا تكتب CSS منفصل، استخدم Tailwind فقط
+· استخدم AnimatePresence و motion.div من Framer Motion
+· تعامل مع الأخطاء بهدوء
+· كل نتيجة يجب أن يكون لها زر تحميل ونسخ
+· لا توجد قيود على حجم الملفات أو أنواعها
+· الملفات غير القابلة للمعاينة: أيقونة + metadata + زر تحميل
+· احفظ مفاتيح API في localStorage
+· احفظ التحقيقات في IndexedDB
+
+---
+
+ابدأ الآن. نفّذ خطوة خطوة. أي سؤال اسألني.
+
+```
+
+---
+
+هذه الرسالة الكاملة. تنسخها، تضع محتوى الملفات الجاهزة (1 إلى 7) في أماكنها، وترسلها للإيجنت.
