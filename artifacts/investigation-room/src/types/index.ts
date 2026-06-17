@@ -1,174 +1,113 @@
-import { z } from 'zod';
-
-export type IdentifierCategory =
-  | 'session'
-  | 'web'
-  | 'mobile'
-  | 'hardware'
-  | 'cellular'
-  | 'network'
-  | 'email'
-  | 'application'
-  | 'database'
-  | 'crypto'
-  | 'blockchain'
-  | 'social'
-  | 'cloud'
-  | 'business'
-  | 'shipping'
-  | 'biometric'
-  | 'vehicle'
-  | 'document'
-  | 'government'
-  | 'gaming'
-  | 'iot'
-  | 'multimedia'
-  | 'finance'
-  | 'other';
-
-export type ResultNodeType =
+export type NodeType =
+  | 'default'
+  | 'text'
+  | 'link'
+  | 'image'
   | 'video'
   | 'map'
-  | 'image'
   | 'file'
-  | 'link'
-  | 'location'
-  | 'text'
-  | 'audio'
-  | 'default';
+  | 'location';
 
-export type ConfidenceLevel = 'high' | 'medium' | 'low';
-
-export interface IdentifierDefinition {
+export interface IdentifierType {
   id: string;
   name: string;
   nameAr: string;
-  category: IdentifierCategory;
-  pattern: RegExp;
+  category: string;
+  categoryAr: string;
   icon: string;
-  priority: number;
-  resultNodeType: ResultNodeType;
-  description?: string;
-}
-
-export interface DetectionResult {
-  identifierId: string;
-  identifierName: string;
-  identifierNameAr: string;
-  icon: string;
-  value: string;
-  confidence: ConfidenceLevel;
-  multipleMatches: boolean;
-  alternativeMatches: Array<{
-    identifierId: string;
-    identifierName: string;
-    icon: string;
-  }>;
-  suggestedNodeType: ResultNodeType;
-}
-
-export interface FetchResult {
-  success: boolean;
-  data: Record<string, unknown>;
-  source: string;
-  cached: boolean;
-  timestamp: number;
-  errors?: string[];
-  warnings?: string[];
-}
-
-export interface InvestigationNodeData {
-  id: string;
-  searchTerm: string;
-  detectedType: string;
-  detectedTypeName: string;
-  detectedTypeNameAr: string;
-  detectedTypeIcon: string;
-  timestamp: number;
-  rawResult: FetchResult | null;
-  metadata: Record<string, unknown>;
+  color: string;
+  description: string;
+  regex: RegExp;
+  examples?: string[];
+  apiSupport?: string[];
 }
 
 export interface InvestigationNode {
   id: string;
-  type: ResultNodeType;
+  type: NodeType;
+  identifier: string;
   identifierType: string;
-  identifierTypeName: string;
-  identifierTypeNameAr: string;
-  identifierTypeIcon: string;
-  identifierValue: string;
-  data: InvestigationNodeData;
+  value: string;
+  label: string;
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  status: 'pending' | 'fetching' | 'done' | 'error';
+  error?: string;
   position: { x: number; y: number };
   depth: number;
-  parentId: string | null;
-  childrenIds: string[];
-  status: 'pending' | 'fetched' | 'error' | 'skipped';
+  parentId?: string;
+  timestamp: number;
 }
 
-export interface InvestigationLink {
+export interface InvestigationEdge {
   id: string;
-  sourceId: string;
-  targetId: string;
-  relationType: string;
-  confidence: number;
+  source: string;
+  target: string;
+  label?: string;
+  type?: string;
+  animated?: boolean;
 }
 
-export interface InvestigationGraph {
-  nodes: Map<string, InvestigationNode>;
-  links: InvestigationLink[];
-  rootNodeId: string;
-  startTime: number;
-  lastUpdateTime: number;
-  totalFetched: number;
-  totalErrors: number;
+export interface InvestigationStats {
+  nodeCount: number;
+  edgeCount: number;
   maxDepth: number;
+  errorCount: number;
+  elapsed: number;
+  identifierTypes: Record<string, number>;
+  status: 'idle' | 'investigating' | 'done' | 'stopped';
+}
+
+export interface ApiKeys {
+  shodan: string;
+  virustotal: string;
+  ipinfo: string;
+  abuseipdb: string;
+  hunter: string;
+  haveibeenpwned: string;
+  numverify: string;
+  ipgeolocation: string;
+  clearbit: string;
+  fullcontact: string;
+  censys: string;
+  binaryedge: string;
+  greynoise: string;
+  securitytrails: string;
+  whoisxml: string;
 }
 
 export interface SavedInvestigation {
   id: string;
   name: string;
-  rootValue: string;
-  graphJson: string;
   createdAt: number;
   updatedAt: number;
   nodeCount: number;
+  edgeCount: number;
+  nodes: InvestigationNode[];
+  edges: InvestigationEdge[];
+  stats: InvestigationStats;
 }
 
-export interface CachedNode {
-  id: string;
-  identifierType: string;
-  identifierValue: string;
-  data: FetchResult;
-  timestamp: number;
+export interface DetectionResult {
+  identifierType: IdentifierType;
+  confidence: number;
+  value: string;
 }
 
-export interface ApiKeyInfo {
-  key: string;
-  name: string;
-  url: string;
-  envVar: string;
-  configured: boolean;
-  maskedValue: string;
+export interface FetchResult {
+  nodeType: NodeType;
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  childIdentifiers?: Array<{ value: string; type: string }>;
+  label?: string;
+  error?: string;
 }
 
-export interface InvestigationConfig {
-  maxDepth: number;
-  maxNodes: number;
-  maxConcurrentFetches: number;
-  timeoutPerFetch: number;
-  cacheResults: boolean;
-  confidenceThreshold: number;
-  apiKeys: Record<string, string>;
-}
-
-export type InvestigationStatus = 'idle' | 'running' | 'paused' | 'completed' | 'error';
-
-export interface InvestigationStats {
-  nodeCount: number;
-  linkCount: number;
-  depth: number;
-  elapsedSeconds: number;
-  errorCount: number;
-  byCategory: Record<string, number>;
-  status: InvestigationStatus;
+export interface SmartInvestigatorCallbacks {
+  onNodeFetched: (node: InvestigationNode) => void;
+  onEdgeAdded: (edge: InvestigationEdge) => void;
+  onProgress: (stats: InvestigationStats) => void;
+  onComplete: (stats: InvestigationStats) => void;
+  onError: (nodeId: string, error: string) => void;
+  shouldStop: () => boolean;
 }

@@ -1,92 +1,145 @@
 import { create } from 'zustand';
-import type { InvestigationNode, InvestigationLink, InvestigationStatus, InvestigationStats } from '../types';
+import { persist } from 'zustand/middleware';
+import type { InvestigationNode, InvestigationEdge, InvestigationStats } from '../types';
 
-interface InvestigationState {
+interface InvestigationStore {
   nodes: InvestigationNode[];
-  links: InvestigationLink[];
-  rootId: string | null;
+  edges: InvestigationEdge[];
+  stats: InvestigationStats;
+  isInvestigating: boolean;
   selectedNodeId: string | null;
-  status: InvestigationStatus;
-  startTime: number | null;
-  elapsedSeconds: number;
-  searchValue: string;
-  stopSignal: { stop: boolean };
+  showApiKeys: boolean;
+  showSaved: boolean;
+  showFileUploader: boolean;
+  showIdentifierSelector: boolean;
 
-  // Derived stats
-  getStats: () => InvestigationStats;
-
-  // Actions
-  setSearchValue: (v: string) => void;
-  startInvestigation: () => void;
-  stopInvestigation: () => void;
-  resetInvestigation: () => void;
-  setStatus: (s: InvestigationStatus) => void;
   addNode: (node: InvestigationNode) => void;
-  updateNode: (node: InvestigationNode) => void;
-  addLink: (link: InvestigationLink) => void;
-  setRootId: (id: string) => void;
-  selectNode: (id: string | null) => void;
-  setElapsed: (s: number) => void;
-  loadGraph: (nodes: InvestigationNode[], links: InvestigationLink[], rootId: string) => void;
+  updateNode: (id: string, updates: Partial<InvestigationNode>) => void;
+  addEdge: (edge: InvestigationEdge) => void;
+  setInvestigating: (value: boolean) => void;
+  updateStats: (stats: Partial<InvestigationStats>) => void;
+  setSelectedNode: (id: string | null) => void;
+  clearInvestigation: () => void;
+  loadInvestigation: (nodes: InvestigationNode[], edges: InvestigationEdge[], stats: InvestigationStats) => void;
+  setShowApiKeys: (value: boolean) => void;
+  setShowSaved: (value: boolean) => void;
+  setShowFileUploader: (value: boolean) => void;
+  setShowIdentifierSelector: (value: boolean) => void;
+  incrementError: () => void;
 }
 
-export const useInvestigationStore = create<InvestigationState>((set, get) => ({
-  nodes: [],
-  links: [],
-  rootId: null,
-  selectedNodeId: null,
+const defaultStats: InvestigationStats = {
+  nodeCount: 0,
+  edgeCount: 0,
+  maxDepth: 0,
+  errorCount: 0,
+  elapsed: 0,
+  identifierTypes: {},
   status: 'idle',
-  startTime: null,
-  elapsedSeconds: 0,
-  searchValue: '',
-  stopSignal: { stop: false },
+};
 
-  getStats(): InvestigationStats {
-    const { nodes, links, status, elapsedSeconds } = get();
-    const byCategory: Record<string, number> = {};
-    let maxDepth = 0;
-    let errorCount = 0;
-    for (const n of nodes) {
-      byCategory[n.identifierType] = (byCategory[n.identifierType] || 0) + 1;
-      if (n.depth > maxDepth) maxDepth = n.depth;
-      if (n.status === 'error') errorCount++;
+export const useInvestigationStore = create<InvestigationStore>()(
+  persist(
+    (set, get) => ({
+      nodes: [],
+      edges: [],
+      stats: { ...defaultStats },
+      isInvestigating: false,
+      selectedNodeId: null,
+      showApiKeys: false,
+      showSaved: false,
+      showFileUploader: false,
+      showIdentifierSelector: false,
+
+      addNode: (node) => {
+        set((state) => {
+          const exists = state.nodes.find((n) => n.id === node.id);
+          if (exists) return state;
+          const identifierTypes = { ...state.stats.identifierTypes };
+          identifierTypes[node.identifierType] = (identifierTypes[node.identifierType] || 0) + 1;
+          const maxDepth = Math.max(state.stats.maxDepth, node.depth);
+          return {
+            nodes: [...state.nodes, node],
+            stats: {
+              ...state.stats,
+              nodeCount: state.nodes.length + 1,
+              identifierTypes,
+              maxDepth,
+            },
+          };
+        });
+      },
+
+      updateNode: (id, updates) => {
+        set((state) => ({
+          nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...updates } : n)),
+        }));
+      },
+
+      addEdge: (edge) => {
+        set((state) => {
+          const exists = state.edges.find((e) => e.id === edge.id);
+          if (exists) return state;
+          return {
+            edges: [...state.edges, edge],
+            stats: {
+              ...state.stats,
+              edgeCount: state.edges.length + 1,
+            },
+          };
+        });
+      },
+
+      setInvestigating: (value) => {
+        set((state) => ({
+          isInvestigating: value,
+          stats: {
+            ...state.stats,
+            status: value ? 'investigating' : (state.stats.status === 'investigating' ? 'done' : state.stats.status),
+          },
+        }));
+      },
+
+      updateStats: (updates) => {
+        set((state) => ({
+          stats: { ...state.stats, ...updates },
+        }));
+      },
+
+      setSelectedNode: (id) => set({ selectedNodeId: id }),
+
+      clearInvestigation: () => {
+        set({
+          nodes: [],
+          edges: [],
+          stats: { ...defaultStats },
+          isInvestigating: false,
+          selectedNodeId: null,
+        });
+      },
+
+      loadInvestigation: (nodes, edges, stats) => {
+        set({ nodes, edges, stats, isInvestigating: false, selectedNodeId: null });
+      },
+
+      setShowApiKeys: (value) => set({ showApiKeys: value }),
+      setShowSaved: (value) => set({ showSaved: value }),
+      setShowFileUploader: (value) => set({ showFileUploader: value }),
+      setShowIdentifierSelector: (value) => set({ showIdentifierSelector: value }),
+
+      incrementError: () => {
+        set((state) => ({
+          stats: { ...state.stats, errorCount: state.stats.errorCount + 1 },
+        }));
+      },
+    }),
+    {
+      name: 'investigation-store',
+      partialize: (state) => ({
+        nodes: state.nodes,
+        edges: state.edges,
+        stats: state.stats,
+      }),
     }
-    return {
-      nodeCount: nodes.length,
-      linkCount: links.length,
-      depth: maxDepth,
-      elapsedSeconds,
-      errorCount,
-      byCategory,
-      status,
-    };
-  },
-
-  setSearchValue: v => set({ searchValue: v }),
-
-  startInvestigation: () => set({ status: 'running', startTime: Date.now(), stopSignal: { stop: false }, nodes: [], links: [], rootId: null, selectedNodeId: null, elapsedSeconds: 0 }),
-
-  stopInvestigation: () => {
-    const { stopSignal } = get();
-    stopSignal.stop = true;
-    set({ status: 'paused' });
-  },
-
-  resetInvestigation: () => set({ nodes: [], links: [], rootId: null, selectedNodeId: null, status: 'idle', startTime: null, elapsedSeconds: 0, searchValue: '', stopSignal: { stop: false } }),
-
-  setStatus: s => set({ status: s }),
-
-  addNode: node => set(state => ({ nodes: [...state.nodes, node] })),
-
-  updateNode: node => set(state => ({ nodes: state.nodes.map(n => n.id === node.id ? node : n) })),
-
-  addLink: link => set(state => ({ links: [...state.links, link] })),
-
-  setRootId: id => set({ rootId: id }),
-
-  selectNode: id => set({ selectedNodeId: id }),
-
-  setElapsed: s => set({ elapsedSeconds: s }),
-
-  loadGraph: (nodes, links, rootId) => set({ nodes, links, rootId, status: 'completed' }),
-}));
+  )
+);

@@ -1,75 +1,102 @@
-import Dexie, { Table } from 'dexie';
-import type { CachedNode, SavedInvestigation } from '../types';
+import Dexie, { type Table } from 'dexie';
+import type { SavedInvestigation, InvestigationNode, InvestigationEdge, InvestigationStats } from '../types';
 
-class InvestigationDatabase extends Dexie {
-  cachedNodes!: Table<CachedNode, string>;
-  investigations!: Table<SavedInvestigation, string>;
+class InvestigationDB extends Dexie {
+  investigations!: Table<SavedInvestigation>;
+  nodeCache!: Table<InvestigationNode & { cacheKey: string }>;
 
   constructor() {
     super('InvestigationRoomDB');
     this.version(1).stores({
-      cachedNodes: 'id, identifierType, identifierValue, timestamp',
-      investigations: 'id, name, rootValue, createdAt, updatedAt',
+      investigations: '++id, name, createdAt, updatedAt',
+      nodeCache: '++id, cacheKey, timestamp',
     });
-  }
-
-  async cacheNode(node: CachedNode): Promise<void> {
-    await this.cachedNodes.put(node);
-  }
-
-  async getCachedNode(identifierType: string, value: string): Promise<CachedNode | undefined> {
-    return this.cachedNodes
-      .where('identifierType').equals(identifierType)
-      .and(n => n.identifierValue === value)
-      .first();
-  }
-
-  async cleanOldCache(maxAgeDays = 7): Promise<number> {
-    const cutoff = Date.now() - maxAgeDays * 86400000;
-    const old = await this.cachedNodes.where('timestamp').below(cutoff).toArray();
-    for (const n of old) await this.cachedNodes.delete(n.id);
-    return old.length;
-  }
-
-  async saveInvestigation(graphJson: string, name?: string, rootValue = '', nodeCount = 0): Promise<string> {
-    const id = `inv-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const now = Date.now();
-    await this.investigations.put({
-      id,
-      name: name || `Investigation — ${new Date(now).toLocaleString()}`,
-      rootValue,
-      graphJson,
-      createdAt: now,
-      updatedAt: now,
-      nodeCount,
-    });
-    return id;
-  }
-
-  async updateInvestigation(id: string, patch: Partial<SavedInvestigation>): Promise<void> {
-    await this.investigations.update(id, { ...patch, updatedAt: Date.now() });
-  }
-
-  async getInvestigation(id: string): Promise<SavedInvestigation | undefined> {
-    return this.investigations.get(id);
-  }
-
-  async listInvestigations(): Promise<SavedInvestigation[]> {
-    return this.investigations.orderBy('updatedAt').reverse().toArray();
-  }
-
-  async deleteInvestigation(id: string): Promise<void> {
-    await this.investigations.delete(id);
-  }
-
-  async getStats() {
-    const cachedCount = await this.cachedNodes.count();
-    const invCount = await this.investigations.count();
-    const allNodes = await this.cachedNodes.toArray();
-    const allInvs = await this.investigations.toArray();
-    const totalBytes = JSON.stringify(allNodes).length + JSON.stringify(allInvs).length;
-    return { totalCachedNodes: cachedCount, totalInvestigations: invCount, totalStorageBytes: totalBytes };
   }
 }
 
-export const investigationDB = new InvestigationDatabase();
+const db = new InvestigationDB();
+
+export const investigationDatabase = {
+  async saveInvestigation(
+    name: string,
+    nodes: InvestigationNode[],
+    edges: InvestigationEdge[],
+    stats: InvestigationStats
+  ): Promise<string> {
+    const id = `inv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const now = Date.now();
+    await db.investigations.add({
+      id,
+      name,
+      createdAt: now,
+      updatedAt: now,
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      nodes,
+      edges,
+      stats,
+    });
+    return id;
+  },
+
+  async loadInvestigation(id: string): Promise<SavedInvestigation | undefined> {
+    return db.investigations.get(id);
+  },
+
+  async listInvestigations(): Promise<SavedInvestigation[]> {
+    return db.investigations.orderBy('updatedAt').reverse().toArray();
+  },
+
+  async deleteInvestigation(id: string): Promise<void> {
+    await db.investigations.delete(id);
+  },
+
+  async renameInvestigation(id: string, name: string): Promise<void> {
+    await db.investigations.update(id, { name, updatedAt: Date.now() });
+  },
+
+  async updateInvestigation(
+    id: string,
+    nodes: InvestigationNode[],
+    edges: InvestigationEdge[],
+    stats: InvestigationStats
+  ): Promise<void> {
+    await db.investigations.update(id, {
+      nodes,
+      edges,
+      stats,
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      updatedAt: Date.now(),
+    });
+  },
+
+  async cacheNode(cacheKey: string, node: InvestigationNode): Promise<void> {
+    const existing = await db.nodeCache.where('cacheKey').equals(cacheKey).first();
+    if (existing) {
+      await db.nodeCache.update(existing.id as number, { ...node, cacheKey, timestamp: Date.now() });
+    } else {
+      await db.nodeCache.add({ ...node, cacheKey, timestamp: Date.now() });
+    }
+  },
+
+  async getCachedNode(cacheKey: string): Promise<InvestigationNode | undefined> {
+    const cached = await db.nodeCache.where('cacheKey').equals(cacheKey).first();
+    if (!cached) return undefined;
+    const age = Date.now() - (cached.timestamp || 0);
+    if (age > 1000 * 60 * 60) return undefined;
+    return cached;
+  },
+
+  async clearCache(): Promise<void> {
+    await db.nodeCache.clear();
+  },
+
+  async getStats(): Promise<{ investigations: number; cachedNodes: number }> {
+    const [investigations, cachedNodes] = await Promise.all([
+      db.investigations.count(),
+      db.nodeCache.count(),
+    ]);
+    return { investigations, cachedNodes };
+  },
+};

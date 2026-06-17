@@ -1,80 +1,196 @@
-import type { ApiKeyInfo } from '../types';
+import type { ApiKeys } from '../types';
 
-const STORAGE_KEY = 'ir_api_keys';
+const STORAGE_KEY = 'investigation_api_keys';
 
-class ApiKeyManager {
-  private keys: Record<string, string> = {};
+export const API_KEY_DEFINITIONS: Array<{
+  key: keyof ApiKeys;
+  label: string;
+  labelAr: string;
+  description: string;
+  link: string;
+  placeholder: string;
+}> = [
+  {
+    key: 'shodan',
+    label: 'Shodan API Key',
+    labelAr: 'مفتاح Shodan',
+    description: 'بحث في الأجهزة المتصلة بالإنترنت، الكاميرات، الخوادم، IoT',
+    link: 'https://account.shodan.io/',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'virustotal',
+    label: 'VirusTotal API Key',
+    labelAr: 'مفتاح VirusTotal',
+    description: 'فحص الروابط والملفات والعناوين بحثاً عن البرمجيات الخبيثة',
+    link: 'https://www.virustotal.com/gui/my-apikey',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'ipinfo',
+    label: 'IPInfo API Key',
+    labelAr: 'مفتاح IPInfo',
+    description: 'معلومات تفصيلية عن عناوين IP: المدينة، الدولة، مزود الخدمة، ASN',
+    link: 'https://ipinfo.io/account',
+    placeholder: 'xxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'abuseipdb',
+    label: 'AbuseIPDB API Key',
+    labelAr: 'مفتاح AbuseIPDB',
+    description: 'فحص سمعة عناوين IP وتقارير الإساءة',
+    link: 'https://www.abuseipdb.com/account/api',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'hunter',
+    label: 'Hunter.io API Key',
+    labelAr: 'مفتاح Hunter.io',
+    description: 'البحث عن عناوين البريد الإلكتروني المرتبطة بنطاق معين',
+    link: 'https://hunter.io/api-keys',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'haveibeenpwned',
+    label: 'HaveIBeenPwned API Key',
+    labelAr: 'مفتاح HaveIBeenPwned',
+    description: 'فحص تسريب البريد الإلكتروني في قواعد البيانات المخترقة',
+    link: 'https://haveibeenpwned.com/API/Key',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'numverify',
+    label: 'Numverify API Key',
+    labelAr: 'مفتاح Numverify',
+    description: 'التحقق من أرقام الهاتف وتحديد الدولة والمزود والنوع',
+    link: 'https://numverify.com/dashboard',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'ipgeolocation',
+    label: 'IPGeolocation API Key',
+    labelAr: 'مفتاح IPGeolocation',
+    description: 'تحديد الموقع الجغرافي لعناوين IP بدقة عالية',
+    link: 'https://app.ipgeolocation.io/',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'clearbit',
+    label: 'Clearbit API Key',
+    labelAr: 'مفتاح Clearbit',
+    description: 'معلومات الشركات والأشخاص من عناوين البريد الإلكتروني',
+    link: 'https://clearbit.com/keys',
+    placeholder: 'sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'fullcontact',
+    label: 'FullContact API Key',
+    labelAr: 'مفتاح FullContact',
+    description: 'إثراء بيانات الاتصال والملفات الشخصية',
+    link: 'https://app.fullcontact.com/settings/api',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'censys',
+    label: 'Censys API Key',
+    labelAr: 'مفتاح Censys',
+    description: 'استكشاف الأصول الرقمية، الشهادات، المنافذ المفتوحة',
+    link: 'https://search.censys.io/account/api',
+    placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  },
+  {
+    key: 'binaryedge',
+    label: 'BinaryEdge API Key',
+    labelAr: 'مفتاح BinaryEdge',
+    description: 'مسح الإنترنت للبحث عن نقاط الضعف والخدمات المكشوفة',
+    link: 'https://app.binaryedge.io/account/api',
+    placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  },
+  {
+    key: 'greynoise',
+    label: 'GreyNoise API Key',
+    labelAr: 'مفتاح GreyNoise',
+    description: 'تحليل سلوك عناوين IP وتصنيفها كبوت أو مهاجم أو طبيعي',
+    link: 'https://viz.greynoise.io/account/api-key',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'securitytrails',
+    label: 'SecurityTrails API Key',
+    labelAr: 'مفتاح SecurityTrails',
+    description: 'السجلات التاريخية للنطاقات وعناوين IP والـ DNS',
+    link: 'https://securitytrails.com/app/account/credentials',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+  {
+    key: 'whoisxml',
+    label: 'WhoisXML API Key',
+    labelAr: 'مفتاح WhoisXML',
+    description: 'بيانات WHOIS التفصيلية للنطاقات وعناوين IP',
+    link: 'https://user.whoisxmlapi.com/products',
+    placeholder: 'at_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  },
+];
 
-  constructor() {
-    this.loadFromStorage();
-  }
-
-  private loadFromStorage(): void {
+export const apiKeyManager = {
+  getAll(): ApiKeys {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        this.keys = JSON.parse(stored);
+      if (!stored) return {} as ApiKeys;
+      return JSON.parse(stored) as ApiKeys;
+    } catch {
+      return {} as ApiKeys;
+    }
+  },
+
+  get(key: keyof ApiKeys): string {
+    const all = this.getAll();
+    return all[key] || '';
+  },
+
+  set(key: keyof ApiKeys, value: string): void {
+    const all = this.getAll();
+    all[key] = value;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  },
+
+  setAll(keys: Partial<ApiKeys>): void {
+    const all = this.getAll();
+    Object.assign(all, keys);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  },
+
+  delete(key: keyof ApiKeys): void {
+    const all = this.getAll();
+    delete all[key];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  },
+
+  has(key: keyof ApiKeys): boolean {
+    return Boolean(this.get(key));
+  },
+
+  async test(key: keyof ApiKeys): Promise<{ success: boolean; message: string }> {
+    const value = this.get(key);
+    if (!value) return { success: false, message: 'المفتاح غير موجود' };
+
+    try {
+      switch (key) {
+        case 'ipinfo': {
+          const res = await fetch(`https://ipinfo.io/8.8.8.8?token=${value}`);
+          return res.ok ? { success: true, message: 'المفتاح صحيح ✓' } : { success: false, message: 'المفتاح غير صحيح' };
+        }
+        case 'virustotal': {
+          const res = await fetch('https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8', {
+            headers: { 'x-apikey': value },
+          });
+          return res.ok ? { success: true, message: 'المفتاح صحيح ✓' } : { success: false, message: 'المفتاح غير صحيح' };
+        }
+        default:
+          return { success: true, message: 'تم الحفظ (لم يتم الاختبار)' };
       }
     } catch {
-      // ignore
+      return { success: false, message: 'خطأ في الاتصال' };
     }
-  }
-
-  saveToStorage(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.keys));
-  }
-
-  setKey(name: string, value: string): void {
-    this.keys[name] = value;
-    this.saveToStorage();
-  }
-
-  getKey(name: string): string | undefined {
-    return this.keys[name];
-  }
-
-  getAllKeys(): Record<string, string> {
-    return { ...this.keys };
-  }
-
-  removeKey(name: string): void {
-    delete this.keys[name];
-    this.saveToStorage();
-  }
-
-  getStatus(): ApiKeyInfo[] {
-    const requiredKeys: Array<{ key: string; name: string; url: string; envVar: string }> = [
-      { key: 'telegram', name: 'Telegram Bot Token', url: 'https://t.me/BotFather', envVar: 'TELEGRAM_BOT_TOKEN' },
-      { key: 'twitter', name: 'Twitter/X Bearer Token', url: 'https://developer.twitter.com/', envVar: 'TWITTER_BEARER_TOKEN' },
-      { key: 'google', name: 'Google API Key', url: 'https://console.cloud.google.com/', envVar: 'GOOGLE_API_KEY' },
-      { key: 'google_cx', name: 'Google CSE CX', url: 'https://cse.google.com/', envVar: 'GOOGLE_CSE_CX' },
-      { key: 'github', name: 'GitHub Token', url: 'https://github.com/settings/tokens', envVar: 'GITHUB_TOKEN' },
-      { key: 'discord', name: 'Discord Bot Token', url: 'https://discord.com/developers/', envVar: 'DISCORD_BOT_TOKEN' },
-      { key: 'shodan', name: 'Shodan API Key', url: 'https://account.shodan.io/', envVar: 'SHODAN_API_KEY' },
-      { key: 'hunter', name: 'Hunter.io API Key', url: 'https://hunter.io/api-keys', envVar: 'HUNTER_API_KEY' },
-      { key: 'numverify', name: 'Numverify API Key', url: 'https://numverify.com/', envVar: 'NUMVERIFY_API_KEY' },
-      { key: 'hibp', name: 'HaveIBeenPwned API Key', url: 'https://haveibeenpwned.com/API/Key', envVar: 'HIBP_API_KEY' },
-      { key: 'virustotal', name: 'VirusTotal API Key', url: 'https://www.virustotal.com/gui/my-apikey', envVar: 'VIRUSTOTAL_API_KEY' },
-      { key: 'ipinfo', name: 'IPInfo Token', url: 'https://ipinfo.io/account/token', envVar: 'IPINFO_TOKEN' },
-      { key: 'etherscan', name: 'Etherscan API Key', url: 'https://etherscan.io/myapikey', envVar: 'ETHERSCAN_API_KEY' },
-      { key: 'aws_access', name: 'AWS Access Key ID', url: 'https://console.aws.amazon.com/iam/', envVar: 'AWS_ACCESS_KEY_ID' },
-      { key: 'azure', name: 'Azure API Key', url: 'https://portal.azure.com/', envVar: 'AZURE_API_KEY' },
-    ];
-
-    return requiredKeys.map(k => {
-      const value = this.keys[k.key];
-      return {
-        key: k.key,
-        name: k.name,
-        url: k.url,
-        envVar: k.envVar,
-        configured: !!value && value.length > 0,
-        maskedValue: value
-          ? `${value.substring(0, 4)}${'*'.repeat(Math.max(4, value.length - 8))}${value.slice(-4)}`
-          : '',
-      };
-    });
-  }
-}
-
-export const apiKeyManager = new ApiKeyManager();
+  },
+};
