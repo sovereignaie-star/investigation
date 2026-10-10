@@ -68,5 +68,5 @@ describe("canonicalKey collision test (P1-007 acceptance)", () => {
     }
     expect(inputs.size).toBe(N);
     expect(keys.size).toBe(N); // zero collisions
-  });
+  }, 30_000); // D-053: explicit timeout for a heavy test (ceiling 30 s)
 });

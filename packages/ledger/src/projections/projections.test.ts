@@ -5,6 +5,12 @@ import { project, projectionHash, Projector, view } from "./index.ts";
 
 const T0 = "2026-10-10T08:00:00.000Z";
 
+/**
+ * D-053: heavy tests carry an explicit timeout. 30 s is the ceiling (owner directive); the slowest CI run measured
+ * 7.4 s, so a failure here means a real slowdown, not a busy runner hitting Vitest's 5 s default.
+ */
+const HEAVY_MS = 30_000;
+
 function fixture(seed = 1) {
   const clock = manualClock(T0);
   const id = ulidFactory(clock, seededRandom(seed));
@@ -177,43 +183,48 @@ describe("projections (P1-016)", () => {
     expect(() => new Projector().apply(e1 as Entry).apply(e0 as Entry)).toThrow(/out of order/);
   });
 
-  it("acceptance: a live projection equals a rebuild from the chain after every one of 600 random events", () => {
-    const f = fixture(42);
-    const rnd = seededRandom(7);
-    const r = (n: number) => (rnd(new Uint8Array(4)).reduce((a, b) => a * 256 + b, 0) >>> 0) % n;
-    const ents: string[] = [],
-      claims: string[] = [],
-      evs: string[] = [],
-      merges: string[] = [];
-    const live = new Projector();
-    let checked = 0;
-    const pickE = () => ents[r(ents.length)] as string;
-    const actions: (() => void)[] = [
-      () => void ents.push(f.entity(["email", "domain", "ipv4", "username"][r(4)] as string, `v${r(40)}`)),
-      () => void claims.push(f.claim(pickE(), "rel", r(3) ? { objectId: pickE() } : { value: r(100) })),
-      () => void evs.push(f.evidence(`tr-${r(4)}`)),
-      () => {
-        if (!evs.length) return void evs.push(f.evidence());
-        const t = claims.length && r(4) === 0 ? { claimId: claims[r(claims.length)] as string } : { entityId: pickE() };
-        f.observe(t, (["positive", "negative", "error"] as const)[r(3)] ?? "positive", evs[r(evs.length)] as string, `tr-${r(4)}`);
-      },
-      () => {
-        const [x, y] = [pickE(), pickE()];
-        if (x !== y) merges.push(f.merge([x, y], x));
-      },
-      () => (merges.length ? void f.add("merge.reverted", { mergeId: merges[r(merges.length)] }) : void f.add("note.added", { text: "n" })),
-    ];
-    const weights = [0, 0, 0, 1, 1, 2, 3, 3, 4, 5]; // entity 30%, claim 20%, evidence 10%, observation 20%, merge 10%, revert 10%
-    for (let i = 0; i < 600; i++) {
-      const before = f.ledger.length;
-      (actions[ents.length < 2 ? 0 : (weights[r(10)] ?? 0)] as () => void)();
-      for (const e of f.ledger.entries().slice(before)) live.apply(e);
-      expect(projectionHash(view(live))).toBe(projectionHash(project(f.ledger.entries())));
-      checked++;
-    }
-    expect(checked).toBe(600);
-    expect(view(live).counts.merges).toBeGreaterThan(0);
-  });
+  it(
+    "acceptance: a live projection equals a rebuild from the chain after every one of 600 random events",
+    () => {
+      const f = fixture(42);
+      const rnd = seededRandom(7);
+      const r = (n: number) => (rnd(new Uint8Array(4)).reduce((a, b) => a * 256 + b, 0) >>> 0) % n;
+      const ents: string[] = [],
+        claims: string[] = [],
+        evs: string[] = [],
+        merges: string[] = [];
+      const live = new Projector();
+      let checked = 0;
+      const pickE = () => ents[r(ents.length)] as string;
+      const actions: (() => void)[] = [
+        () => void ents.push(f.entity(["email", "domain", "ipv4", "username"][r(4)] as string, `v${r(40)}`)),
+        () => void claims.push(f.claim(pickE(), "rel", r(3) ? { objectId: pickE() } : { value: r(100) })),
+        () => void evs.push(f.evidence(`tr-${r(4)}`)),
+        () => {
+          if (!evs.length) return void evs.push(f.evidence());
+          const t = claims.length && r(4) === 0 ? { claimId: claims[r(claims.length)] as string } : { entityId: pickE() };
+          f.observe(t, (["positive", "negative", "error"] as const)[r(3)] ?? "positive", evs[r(evs.length)] as string, `tr-${r(4)}`);
+        },
+        () => {
+          const [x, y] = [pickE(), pickE()];
+          if (x !== y) merges.push(f.merge([x, y], x));
+        },
+        () =>
+          merges.length ? void f.add("merge.reverted", { mergeId: merges[r(merges.length)] }) : void f.add("note.added", { text: "n" }),
+      ];
+      const weights = [0, 0, 0, 1, 1, 2, 3, 3, 4, 5]; // entity 30%, claim 20%, evidence 10%, observation 20%, merge 10%, revert 10%
+      for (let i = 0; i < 600; i++) {
+        const before = f.ledger.length;
+        (actions[ents.length < 2 ? 0 : (weights[r(10)] ?? 0)] as () => void)();
+        for (const e of f.ledger.entries().slice(before)) live.apply(e);
+        expect(projectionHash(view(live))).toBe(projectionHash(project(f.ledger.entries())));
+        checked++;
+      }
+      expect(checked).toBe(600);
+      expect(view(live).counts.merges).toBeGreaterThan(0);
+    },
+    HEAVY_MS,
+  );
 
   it("D-051: a merge that names an entity before it is added stays equal to a rebuild after a mid-way view", () => {
     const f = fixture();
@@ -231,71 +242,79 @@ describe("projections (P1-016)", () => {
     expect(rebuilt.graph.nodes).toEqual([expect.objectContaining({ id: b, aliases: [a, late].sort() })]);
   });
 
-  it("D-051: live equals rebuild after every one of 600 random events when merges name ids before they exist", () => {
-    const f = fixture(9);
-    const rnd = seededRandom(11);
-    const r = (n: number) => (rnd(new Uint8Array(4)).reduce((x, y) => x * 256 + y, 0) >>> 0) % n;
-    const pool = Array.from({ length: 120 }, () => f.id());
-    let next = 0;
-    const merges: string[] = [];
-    const live = new Projector();
-    for (let i = 0; i < 600; i++) {
-      const before = f.ledger.length;
-      const k = r(10);
-      if (k < 4 && next < pool.length) {
-        const key = `username:u${r(15)}`; // few keys: many later ids become aliases
-        f.add("entity.added", { id: pool[next++], type: "username", canonicalKey: key, labels: { en: key }, props: {} });
-      } else if (k < 8) {
-        const [x, y] = [pool[r(pool.length)] as string, pool[r(pool.length)] as string]; // may not exist yet
-        if (x !== y) merges.push(f.merge([x, y], r(2) ? x : y));
-      } else if (merges.length) f.add("merge.reverted", { mergeId: merges[r(merges.length)] });
-      for (const e of f.ledger.entries().slice(before)) live.apply(e);
-      if (r(3) === 0) view(live); // views in between must not change what later entries mean
-      expect(projectionHash(view(live))).toBe(projectionHash(project(f.ledger.entries())));
-    }
-    expect(view(live).counts.merges).toBeGreaterThan(0);
-  });
+  it(
+    "D-051: live equals rebuild after every one of 600 random events when merges name ids before they exist",
+    () => {
+      const f = fixture(9);
+      const rnd = seededRandom(11);
+      const r = (n: number) => (rnd(new Uint8Array(4)).reduce((x, y) => x * 256 + y, 0) >>> 0) % n;
+      const pool = Array.from({ length: 120 }, () => f.id());
+      let next = 0;
+      const merges: string[] = [];
+      const live = new Projector();
+      for (let i = 0; i < 600; i++) {
+        const before = f.ledger.length;
+        const k = r(10);
+        if (k < 4 && next < pool.length) {
+          const key = `username:u${r(15)}`; // few keys: many later ids become aliases
+          f.add("entity.added", { id: pool[next++], type: "username", canonicalKey: key, labels: { en: key }, props: {} });
+        } else if (k < 8) {
+          const [x, y] = [pool[r(pool.length)] as string, pool[r(pool.length)] as string]; // may not exist yet
+          if (x !== y) merges.push(f.merge([x, y], r(2) ? x : y));
+        } else if (merges.length) f.add("merge.reverted", { mergeId: merges[r(merges.length)] });
+        for (const e of f.ledger.entries().slice(before)) live.apply(e);
+        if (r(3) === 0) view(live); // views in between must not change what later entries mean
+        expect(projectionHash(view(live))).toBe(projectionHash(project(f.ledger.entries())));
+      }
+      expect(view(live).counts.merges).toBeGreaterThan(0);
+    },
+    HEAVY_MS,
+  );
 
-  it("acceptance P1-022: 100,000 nodes project in under 2 s, and 5,000 chained merges stay near linear", () => {
-    const clock = manualClock(T0);
-    const id = ulidFactory(clock, seededRandom(5));
-    const entries: Entry[] = [];
-    const add = (kind: Entry["kind"], payload: unknown) => entries.push({ seq: entries.length, kind, payload } as unknown as Entry); // projections read seq, kind and payload only
-    const ids: string[] = [];
-    for (let i = 0; i < 100_000; i++) {
-      ids.push(id());
-      add("entity.added", { id: ids[i], type: "email", canonicalKey: `email:u${i}@example.com`, labels: { en: `u${i}` }, props: {} });
-    }
-    let t = performance.now();
-    const p = new Projector().applyAll(entries);
-    const v = view(p);
-    const nodesMs = performance.now() - t;
-    expect(v.counts.nodes).toBe(100_000);
-    expect(p.issues).toEqual([]);
-    expect(nodesMs).toBeLessThan(2000);
+  it(
+    "acceptance P1-022: 100,000 nodes project in under 2 s, and 5,000 chained merges stay near linear",
+    () => {
+      const clock = manualClock(T0);
+      const id = ulidFactory(clock, seededRandom(5));
+      const entries: Entry[] = [];
+      const add = (kind: Entry["kind"], payload: unknown) => entries.push({ seq: entries.length, kind, payload } as unknown as Entry); // projections read seq, kind and payload only
+      const ids: string[] = [];
+      for (let i = 0; i < 100_000; i++) {
+        ids.push(id());
+        add("entity.added", { id: ids[i], type: "email", canonicalKey: `email:u${i}@example.com`, labels: { en: `u${i}` }, props: {} });
+      }
+      let t = performance.now();
+      const p = new Projector().applyAll(entries);
+      const v = view(p);
+      const nodesMs = performance.now() - t;
+      expect(v.counts.nodes).toBe(100_000);
+      expect(p.issues).toEqual([]);
+      expect(nodesMs).toBeLessThan(2000);
 
-    // each merge joins the previous survivor into a new one: a chain 5,000 deep, resolved after every merge
-    const from = entries.length;
-    for (let i = 1; i <= 5000; i++)
-      add("merge.decided", {
-        id: id(),
-        entityIds: [ids[i - 1], ids[i]],
-        survivorId: ids[i],
-        reasons: ["chain"],
-        decidedBy: "t",
-        decidedAt: T0,
-        reverted: false,
-      });
-    t = performance.now();
-    for (const e of entries.slice(from)) {
-      p.apply(e);
-      p.resolve(ids[0] as string);
-    }
-    const mergeMs = performance.now() - t;
-    expect(p.resolve(ids[0] as string)).toBe(ids[5000]);
-    expect(mergeMs).toBeLessThan(2000);
-    expect(projectionHash(view(p))).toBe(projectionHash(project(entries)));
-  }, 30_000);
+      // each merge joins the previous survivor into a new one: a chain 5,000 deep, resolved after every merge
+      const from = entries.length;
+      for (let i = 1; i <= 5000; i++)
+        add("merge.decided", {
+          id: id(),
+          entityIds: [ids[i - 1], ids[i]],
+          survivorId: ids[i],
+          reasons: ["chain"],
+          decidedBy: "t",
+          decidedAt: T0,
+          reverted: false,
+        });
+      t = performance.now();
+      for (const e of entries.slice(from)) {
+        p.apply(e);
+        p.resolve(ids[0] as string);
+      }
+      const mergeMs = performance.now() - t;
+      expect(p.resolve(ids[0] as string)).toBe(ids[5000]);
+      expect(mergeMs).toBeLessThan(2000);
+      expect(projectionHash(view(p))).toBe(projectionHash(project(entries)));
+    },
+    HEAVY_MS,
+  );
 
   it("is deterministic: the same chain always hashes the same", () => {
     const build = () => {
