@@ -217,23 +217,29 @@ const EXACT: Record<string, Normalizer> = {
 
 /** Families by type-id pattern, checked in order after EXACT. */
 const FAMILIES: Array<[RegExp, Normalizer]> = [
-  [/(^|_)(email|mail)$|^email_|^(gmail|protonmail|tutanota|outlook)$/, email],
-  [/^phone_|_number$/, phone],
-  [/(^|_)url$|^url_|^(ftp_url|ssh_url|git_repo|api_endpoint|websocket_url|rtmp_url|url_shortener)$/, url],
+  [/(?:^|_)(?:email|mail)$/, email],
+  [/^email_/, email],
+  [/^(?:gmail|protonmail|tutanota|outlook)$/, email],
+  [/^phone_/, phone],
+  [/_number$/, phone],
+  [/(?:^|_)url$/, url],
+  [/^url_/, url],
+  [/^(?:ftp_url|ssh_url|git_repo|api_endpoint|websocket_url|rtmp_url|url_shortener)$/, url],
   [
-    /_hash$|^(md[45]_hash|sha\d+_hash|sha3_256|keccak256|crc32|tlsh|ripemd160|ntlm_hash|eth_tx_hash|crypto_tx_hash|bitcoin_block_hash|torrent_info_hash|file_hash_generic)$/,
+    /^(?:md[45]_hash|sha\d+_hash|sha3_256|keccak256|crc32|tlsh|ripemd160|ntlm_hash|eth_tx_hash|crypto_tx_hash|bitcoin_block_hash|torrent_info_hash|file_hash_generic)$/,
     lowerHex,
   ],
-  [/_(username|handle|user|tag)$/, handle],
+  [/_hash$/, lowerHex],
+  [/_(?:username|handle|user|tag)$/, handle],
+  [/^(?:passport_|national_id_|driving_license_|tax_id_)/, upperCompact],
   [
-    /^(passport_|national_id_|driving_license_|tax_id_)|^(iqama_sa|ssn_us|sin_ca|nino_uk|nif_es|cpf_br|cnpj_br|curp_mx|rfc_mx|aadhar_in|pan_in|nric_sg|mykad_my|ktp_id|snils_ru|inn_ru|iin_kz|my_number_jp|resident_reg_kr|medicare_au|tfn_au|visa_number)$/,
+    /^(?:iqama_sa|ssn_us|sin_ca|nino_uk|nif_es|cpf_br|cnpj_br|curp_mx|rfc_mx|aadhar_in|pan_in|nric_sg|mykad_my|ktp_id|snils_ru|inn_ru|iin_kz|my_number_jp|resident_reg_kr|medicare_au|tfn_au|visa_number)$/,
     upperCompact,
   ],
-  [
-    /(_token|_key|_secret|_sk|_pk|_sid)$|^(jwt_token|bearer_token|hmac_signature|ssh_public_key|ssl_private_key|pgp_private_key|crypto_seed)$/,
-    exact,
-  ],
-  [/_(address|xpub)$|^bitcoin_address/, exact], // base58 and similar encodings are case-sensitive
+  [/^(?:jwt_token|bearer_token|hmac_signature|ssh_public_key|ssl_private_key|pgp_private_key|crypto_seed)$/, exact],
+  [/(?:_token|_key|_secret|_sk|_pk|_sid)$/, exact],
+  [/_(?:address|xpub)$/, exact],
+  [/^bitcoin_address/, exact], // base58 and similar encodings are case-sensitive
 ];
 
 const TYPE_ID = /^[a-z][a-z0-9_.-]*$/;
