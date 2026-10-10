@@ -17,6 +17,7 @@ This file applies to every automated agent working in this repository (Claude, R
 6. Label claims about the project or the outside world with the epistemic tags used in the roadmap: [مُقاس] measured, [مُلاحظ] observed by reading, [مُتحقَّق] externally verified, [مقترح] proposed, [للتحقق] to verify.
 7. Never add secrets, `.env` files, offensive tooling (exploitation, phishing, stalkerware, DDoS), or data from breaches. Respect ethics rules E-01..E-10 (roadmap 3.5).
 8. New data sources/tools enter code only through the integration pipeline in roadmap section 7.2.
+9. `docs/MASTER_PLAN.md` is the vision/strategy layer, not a tracker (GR-16): never add checkboxes to it, only reference task ids that exist in the roadmap, and map any new requirement to a roadmap task in the same commit. On conflict, follow the precedence rule in roadmap section 14.1 (governance and ethics > ADRs > ROADMAP > MASTER_PLAN).
 
 ## Before you finish any change
 
@@ -32,6 +33,7 @@ node scripts/governance/check.mjs --range origin/main..HEAD
 
 | Path | What |
 |---|---|
+| `docs/MASTER_PLAN.md` | Master plan: vision, strategy, long-term horizons, mapped to roadmap tasks |
 | `docs/ROADMAP.md` | Scope, design, all tasks (Arabic) |
 | `docs/STATUS.md` | Live status — the only place for task state |
 | `docs/WORKLOG.md` | Append-only log of what was done, with evidence |

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Governance guard for Investigation Room. Enforces GOVERNANCE.md rules GR-01..GR-05, GR-09.
+// Governance guard for Investigation Room. Enforces GOVERNANCE.md rules GR-01..GR-05, GR-09, GR-16.
 //
 //   node scripts/governance/check.mjs --commit-msg <file>   # used by .githooks/commit-msg (staged changes)
 //   node scripts/governance/check.mjs --range <base>..<head> # used by CI on every commit of a PR / push
-//   node scripts/governance/check.mjs --consistency          # ROADMAP tasks <-> STATUS rows
+//   node scripts/governance/check.mjs --consistency          # ROADMAP tasks <-> STATUS rows, MASTER_PLAN references (GR-16)
 //   node scripts/governance/check.mjs --last                 # check HEAD commit only
 //
 // No dependencies; Node >= 20.
@@ -16,8 +16,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 export const STATUS = "docs/STATUS.md";
 export const WORKLOG = "docs/WORKLOG.md";
 export const ROADMAP = "docs/ROADMAP.md";
+export const MASTER_PLAN = "docs/MASTER_PLAN.md";
 export const VALID_STATES = new Set(["todo", "in_progress", "blocked", "done", "dropped"]);
-const TASK_RE = /\[(P[0-7]-\d{3})\]/g;
+const TASK_RE = /\[(P[0-9]-\d{3})\]/g;
 const BOT_AUTHORS = new Set(["dependabot[bot]", "renovate[bot]", "github-actions[bot]"]);
 
 function git(args, opts = {}) {
@@ -26,13 +27,13 @@ function git(args, opts = {}) {
 
 export function roadmapTaskIds(text) {
   const ids = new Set();
-  for (const m of text.matchAll(/^\|\s*(P[0-7]-\d{3})\s*\|/gm)) ids.add(m[1]);
+  for (const m of text.matchAll(/^\|\s*(P[0-9]-\d{3})\s*\|/gm)) ids.add(m[1]);
   return ids;
 }
 
 export function statusRows(text) {
   const rows = new Map();
-  for (const m of text.matchAll(/^\|\s*(P[0-7]-\d{3})\s*\|([^\n]*)$/gm)) {
+  for (const m of text.matchAll(/^\|\s*(P[0-9]-\d{3})\s*\|([^\n]*)$/gm)) {
     const cells = m[2].split("|").map((c) => c.trim());
     // Row format: | ID | task | state | evidence | ...  -> state is the 2nd cell after the id.
     const state = (cells[1] || "").replace(/`/g, "");
@@ -130,6 +131,25 @@ export function consistency(roadmapText, statusText) {
   return errors;
 }
 
+/**
+ * GR-16: the master plan is the strategic layer. It must not carry its own status (no checkboxes)
+ * and every task id it references must exist in the ROADMAP.
+ */
+export function masterPlanChecks(masterPlanText, roadmapIds) {
+  const errors = [];
+  const lines = masterPlanText.split("\n");
+  let fenced = false;
+  lines.forEach((line, i) => {
+    if (/^\s*```/.test(line)) fenced = !fenced;
+    if (!fenced && /^\s*[-*] \[[ xX]\]/.test(line)) {
+      errors.push(`GR-16: ${MASTER_PLAN}:${i + 1} has a checkbox; status lives only in ${STATUS}.`);
+    }
+  });
+  const referenced = new Set([...masterPlanText.matchAll(/\b(P[0-9]-\d{3})\b/g)].map((m) => m[1]));
+  for (const id of referenced) if (!roadmapIds.has(id)) errors.push(`GR-16: ${MASTER_PLAN} references ${id}, which is not in ${ROADMAP}.`);
+  return errors;
+}
+
 function main(argv) {
   const [mode, arg] = argv;
   let errors = [];
@@ -137,8 +157,12 @@ function main(argv) {
   else if (mode === "--range") return process.exit(checkRange(arg) ? 1 : 0);
   else if (mode === "--last") errors = checkCommit("HEAD").errors || [];
   else if (mode === "--consistency") {
-    errors = consistency(readFileSync(path.join(ROOT, ROADMAP), "utf8"), readFileSync(path.join(ROOT, STATUS), "utf8"));
-    if (!errors.length) console.log("ROADMAP and STATUS are consistent.");
+    const roadmapText = readFileSync(path.join(ROOT, ROADMAP), "utf8");
+    errors = consistency(roadmapText, readFileSync(path.join(ROOT, STATUS), "utf8"));
+    if (existsSync(path.join(ROOT, MASTER_PLAN))) {
+      errors.push(...masterPlanChecks(readFileSync(path.join(ROOT, MASTER_PLAN), "utf8"), roadmapTaskIds(roadmapText)));
+    }
+    if (!errors.length) console.log("ROADMAP, STATUS and MASTER_PLAN are consistent.");
   } else {
     console.error("usage: check.mjs --commit-msg <file> | --range <a>..<b> | --last | --consistency");
     process.exit(2);

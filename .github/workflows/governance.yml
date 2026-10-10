@@ -1,5 +1,5 @@
 name: governance
-# GR-01..GR-05, GR-09, GR-13, GR-15: every commit must update docs/STATUS.md + docs/WORKLOG.md and cite a task id.
+# GR-01..GR-05, GR-09, GR-13, GR-15, GR-16: every commit must update docs/STATUS.md + docs/WORKLOG.md and cite a task id.
 on:
   pull_request:
   push:
@@ -18,7 +18,7 @@ jobs:
           node-version: 24
       - name: Guard unit tests
         run: node --test scripts/governance/check.test.mjs
-      - name: ROADMAP <-> STATUS consistency
+      - name: ROADMAP <-> STATUS <-> MASTER_PLAN consistency
         run: node scripts/governance/check.mjs --consistency
       - name: Every commit updates the docs
         env:

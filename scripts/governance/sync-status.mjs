@@ -10,7 +10,7 @@ const roadmap = readFileSync(path.join(ROOT, ROADMAP), "utf8");
 const status = readFileSync(path.join(ROOT, STATUS), "utf8");
 const rows = statusRows(status);
 const titles = new Map();
-for (const m of roadmap.matchAll(/^\|\s*(P[0-7]-\d{3})\s*\|\s*([^|]+)\|/gm)) titles.set(m[1], m[2].trim());
+for (const m of roadmap.matchAll(/^\|\s*(P[0-9]-\d{3})\s*\|\s*([^|]+)\|/gm)) titles.set(m[1], m[2].trim());
 const missing = [...roadmapTaskIds(roadmap)].filter((id) => !rows.has(id));
 if (!missing.length) { console.log("STATUS already lists every ROADMAP task."); process.exit(0); }
 const lines = missing.map((id) => `| ${id} | ${titles.get(id) ?? ""} | todo | — |`);
