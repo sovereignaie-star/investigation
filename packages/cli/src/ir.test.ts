@@ -167,3 +167,24 @@ describe("ir project (P1-016)", () => {
     expect(run(["project", "/nonexistent-case-dir"]).code).toBe(2);
   });
 });
+
+describe("ir project on an encrypted case", () => {
+  it("needs the passphrase file, and gives the same hash on every run", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-project-enc-"));
+    dirs.push(dir);
+    openCase(dir, {
+      actor: "analyst",
+      passphrase: "long passphrase",
+      kdf: { memoryKiB: 256, passes: 1, parallelism: 1 },
+      create: { title: "t", purpose: "مراجعة بنية تحتية", legalBasis: "security_incident" },
+    }).close();
+    const pf = path.join(dir, "..", `${path.basename(dir)}.pass`);
+    writeFileSync(pf, "long passphrase\n");
+    dirs.push(pf);
+    expect(run(["project", dir]).code).toBe(2); // locked: payloads are sealed
+    const a = run(["project", dir, "--passphrase-file", pf]);
+    expect(a.code).toBe(0);
+    const hash = /sha256 ([0-9a-f]{64})/.exec(a.text)?.[1] ?? "";
+    expect(run(["project", dir, "--passphrase-file", pf, "--expect", hash]).code).toBe(0);
+  });
+});
