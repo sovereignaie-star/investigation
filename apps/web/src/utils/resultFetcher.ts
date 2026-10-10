@@ -1,6 +1,5 @@
-import type { InvestigationNode, FetchResult, ApiKeys } from "../types";
+import type { InvestigationNode, FetchResult } from "../types";
 import { IDENTIFIER_LIST } from "./identifierList";
-import { apiKeyManager } from "./apiKeyManager";
 
 function detectType(value: string): string {
   for (const id of IDENTIFIER_LIST) {
@@ -35,11 +34,10 @@ function buildNode(
   };
 }
 
-async function fetchIP(value: string, apiKeys: Partial<ApiKeys>): Promise<FetchResult> {
+// P1-015: keyed providers are called by the server, which holds the keys; the browser never sees them.
+async function fetchIP(value: string): Promise<FetchResult> {
   try {
-    const token = apiKeys.ipinfo || apiKeyManager.get("ipinfo");
-    const url = token ? `https://ipinfo.io/${value}?token=${token}` : `https://ipinfo.io/${value}/json`;
-    const res = await fetch(url);
+    const res = await fetch(`/api/lookup/ip/${encodeURIComponent(value)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const children: Array<{ value: string; type: string }> = [];
@@ -90,7 +88,7 @@ async function fetchDomain(value: string): Promise<FetchResult> {
   }
 }
 
-async function fetchEmail(value: string, apiKeys: Partial<ApiKeys>): Promise<FetchResult> {
+async function fetchEmail(value: string): Promise<FetchResult> {
   const results: Record<string, unknown> = { email: value };
   const children: Array<{ value: string; type: string }> = [];
 
@@ -98,19 +96,11 @@ async function fetchEmail(value: string, apiKeys: Partial<ApiKeys>): Promise<Fet
   if (domain) children.push({ value: domain, type: "domain" });
 
   try {
-    const hibpKey = apiKeys.haveibeenpwned || apiKeyManager.get("haveibeenpwned");
-    if (hibpKey) {
-      const res = await fetch(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(value)}`, {
-        headers: { "hibp-api-key": hibpKey, "user-agent": "InvestigationRoom/1.0" },
-      });
-      if (res.ok) {
-        const breaches = await res.json();
-        results.breaches = breaches;
-        results.breachCount = breaches.length;
-      } else if (res.status === 404) {
-        results.breaches = [];
-        results.breachCount = 0;
-      }
+    const res = await fetch(`/api/lookup/breaches/${encodeURIComponent(value)}`);
+    if (res.ok) {
+      const { breaches } = (await res.json()) as { breaches: unknown[] };
+      results.breaches = breaches;
+      results.breachCount = breaches.length;
     }
   } catch {
     // Legacy behaviour kept until P2 adapters replace this file: a failed breach lookup leaves results unchanged.
@@ -274,11 +264,11 @@ async function fetchGeneric(value: string, identifierType: string): Promise<Fetc
   };
 }
 
-export async function fetchIdentifier(value: string, identifierTypeId: string, apiKeys: Partial<ApiKeys> = {}): Promise<FetchResult> {
+export async function fetchIdentifier(value: string, identifierTypeId: string): Promise<FetchResult> {
   const trimmed = value.trim();
 
   if (identifierTypeId === "ipv4" || identifierTypeId === "ipv6") {
-    return fetchIP(trimmed, apiKeys);
+    return fetchIP(trimmed);
   }
   if (["domain", "subdomain", "hostname", "smtp_server"].includes(identifierTypeId)) {
     return fetchDomain(trimmed);
@@ -297,7 +287,7 @@ export async function fetchIdentifier(value: string, identifierTypeId: string, a
       "email_disposable",
     ].includes(identifierTypeId)
   ) {
-    return fetchEmail(trimmed, apiKeys);
+    return fetchEmail(trimmed);
   }
   if (["github_username", "github_token_classic", "github_token_fine"].includes(identifierTypeId)) {
     return fetchGitHub(trimmed);

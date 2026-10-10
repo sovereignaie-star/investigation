@@ -9,6 +9,9 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Behind Render/Railway (one proxy hop) set TRUST_PROXY=1 so rate limits key on the real client address.
+if (process.env["TRUST_PROXY"]) app.set("trust proxy", Number(process.env["TRUST_PROXY"]));
+
 app.use(
   pinoHttp({
     logger,

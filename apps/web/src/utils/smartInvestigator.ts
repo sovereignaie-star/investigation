@@ -1,4 +1,4 @@
-import type { InvestigationEdge, InvestigationStats, SmartInvestigatorCallbacks, ApiKeys } from "../types";
+import type { InvestigationEdge, InvestigationStats, SmartInvestigatorCallbacks } from "../types";
 import { IDENTIFIER_LIST } from "./identifierList";
 import { fetchIdentifier, buildNode } from "./resultFetcher";
 import { canonicalKey, NormalizeError } from "@ir/core";
@@ -42,7 +42,7 @@ export const smartInvestigator = {
     stopFlag = true;
   },
 
-  async investigate(rootValue: string, apiKeys: Partial<ApiKeys> = {}, callbacks: SmartInvestigatorCallbacks, maxDepth = 3, maxNodes = 50) {
+  async investigate(rootValue: string, callbacks: SmartInvestigatorCallbacks, maxDepth = 3, maxNodes = 50) {
     stopFlag = false;
     const visited = new Set<string>();
     const stats: InvestigationStats = {
@@ -76,7 +76,7 @@ export const smartInvestigator = {
       visited.add(nodeId);
 
       try {
-        const result = await fetchIdentifier(value, identifierTypeId, apiKeys);
+        const result = await fetchIdentifier(value, identifierTypeId);
         const node = buildNode(nodeId, value, identifierTypeId, result, depth, parentId);
 
         callbacks.onNodeFetched(node);

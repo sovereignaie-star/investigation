@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 14 | 0 |
+| 1 | النواة والسجل | 25 | 15 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -82,7 +82,7 @@
 | P1-012 | أمر `ir verify` (M) | done | packages/cli (ir verify, bundled dist/ir.mjs, in Docker image) + @ir/store verifyCase/formatReport: chain, evidence re-hash, embedded and published checkpoints, exit 0/1/2, --json; 4 tests |
 | P1-013 | تخزين القضية SQLite + ترحيلات (M) | done | packages/store: node:sqlite case dir (case.sqlite + blobs), 3 checksummed migrations (user_version, drift/newer/gap refused, failed step rolled back), append-only triggers, SqliteLedgerStore, openCase; 6 tests (empty->latest, every vN->latest equals fresh) |
 | P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | done | packages/store crypto.ts: Argon2id (RFC 9106 vector) wrapped per-case key, AES-256-GCM sealed payloads and HMAC-addressed blobs; reading without key fails; ir verify --passphrase-file; 8 tests; no check-then-read on case.key.json (CodeQL js/file-system-race fixed in code) |
-| P1-015 | خزنة المفاتيح في الخادم (M) | todo | — |
+| P1-015 | خزنة المفاتيح في الخادم (M) | done | packages/store vault.ts (AES-256-GCM per entry, name as AAD; master from IR_VAULT_KEY / IR_VAULT_PASSPHRASE / generated 0600 key file); /api/vault never returns a secret; keyed lookups server-side; IR_ADMIN_TOKEN or loopback; web off localStorage; 7 tests and docker CI check |
 | P1-016 | الإسقاطات: رسم، جدول، تغطية (M) | todo | — |
 | P1-017 | سجل التدقيق (M) | todo | — |
 | P1-018 | غرض القضية والأساس المشروع (M) | todo | — |
@@ -373,7 +373,7 @@
 | D-027 | منخفض | مفتوح | — |
 | D-028 | متوسط | مفتوح | — |
 | D-029 | متوسط | مفتوح جزئياً | P1-005: الأنواع الأربعة تمر بمدقق EVM صريح (EIP-55) بدل معاملتها كإيثيريوم؛ التمييز بين السلاسل يحتاج استعلام السلسلة (P2-010) |
-| D-030 | حرج | مفتوح | — |
+| D-030 | حرج | مغلق | P1-015: المفاتيح في خزنة الخادم المختومة، والواجهة لا تخزنها ولا تستلمها؛ نقل تلقائي لمرة واحدة من localStorage ثم حذفها |
 | D-031 | متوسط | مفتوح | — |
 | D-032 | منخفض | مفتوح | — |
 | D-033 | عالٍ | مفتوح | — |

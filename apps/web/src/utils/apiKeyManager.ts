@@ -1,6 +1,7 @@
 import type { ApiKeys } from "../types";
 
-const STORAGE_KEY = "investigation_api_keys";
+/** Pre-P1-015 browsers kept keys here in clear text; migrateLegacyKeys() moves them to the server vault once. */
+const LEGACY_STORAGE_KEY = "investigation_api_keys";
 
 export const API_KEY_DEFINITIONS: Array<{
   key: keyof ApiKeys;
@@ -132,64 +133,79 @@ export const API_KEY_DEFINITIONS: Array<{
   },
 ];
 
+export type KeyStatus = { name: string; configured: boolean; updatedAt: string | null };
+
+/**
+ * Client for the server key vault (P1-015, D-030). Keys are sent to the server once and never come back: the browser
+ * only sees whether a provider is configured. On a hosted deployment the admin token (IR_ADMIN_TOKEN) is kept in
+ * memory for the session only, never in storage.
+ */
+let adminToken: string | null = null;
+const headers = (json = false): HeadersInit => ({
+  ...(json ? { "content-type": "application/json" } : {}),
+  ...(adminToken ? { authorization: `Bearer ${adminToken}` } : {}),
+});
+const vaultUrl = (key?: keyof ApiKeys, suffix = "") => `/api/vault${key ? `/${encodeURIComponent(key)}` : ""}${suffix}`;
+
+async function failure(res: Response): Promise<Error> {
+  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  return new Error(body.error ?? `HTTP ${res.status}`);
+}
+
 export const apiKeyManager = {
-  getAll(): ApiKeys {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return {} as ApiKeys;
-      return JSON.parse(stored) as ApiKeys;
-    } catch {
-      return {} as ApiKeys;
-    }
+  setAdminToken(token: string | null): void {
+    adminToken = token && token.length > 0 ? token : null;
   },
 
-  get(key: keyof ApiKeys): string {
-    const all = this.getAll();
-    return all[key] || "";
+  async status(): Promise<KeyStatus[]> {
+    const res = await fetch(vaultUrl(), { headers: headers() });
+    if (!res.ok) throw await failure(res);
+    return ((await res.json()) as { entries: KeyStatus[] }).entries;
   },
 
-  set(key: keyof ApiKeys, value: string): void {
-    const all = this.getAll();
-    all[key] = value;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  async has(key: keyof ApiKeys): Promise<boolean> {
+    return (await this.status()).some((s) => s.name === key && s.configured);
   },
 
-  setAll(keys: Partial<ApiKeys>): void {
-    const all = this.getAll();
-    Object.assign(all, keys);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  async set(key: keyof ApiKeys, value: string): Promise<void> {
+    const res = await fetch(vaultUrl(key), { method: "PUT", headers: headers(true), body: JSON.stringify({ secret: value }) });
+    if (!res.ok) throw await failure(res);
   },
 
-  delete(key: keyof ApiKeys): void {
-    const { [key]: _removed, ...all } = this.getAll();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  async setAll(keys: Partial<ApiKeys>): Promise<void> {
+    for (const [k, v] of Object.entries(keys)) if (v) await this.set(k as keyof ApiKeys, v);
   },
 
-  has(key: keyof ApiKeys): boolean {
-    return Boolean(this.get(key));
+  async delete(key: keyof ApiKeys): Promise<void> {
+    const res = await fetch(vaultUrl(key), { method: "DELETE", headers: headers() });
+    if (!res.ok && res.status !== 404) throw await failure(res);
   },
 
   async test(key: keyof ApiKeys): Promise<{ success: boolean; message: string }> {
-    const value = this.get(key);
-    if (!value) return { success: false, message: "المفتاح غير موجود" };
-
     try {
-      switch (key) {
-        case "ipinfo": {
-          const res = await fetch(`https://ipinfo.io/8.8.8.8?token=${value}`);
-          return res.ok ? { success: true, message: "المفتاح صحيح ✓" } : { success: false, message: "المفتاح غير صحيح" };
-        }
-        case "virustotal": {
-          const res = await fetch("https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8", {
-            headers: { "x-apikey": value },
-          });
-          return res.ok ? { success: true, message: "المفتاح صحيح ✓" } : { success: false, message: "المفتاح غير صحيح" };
-        }
-        default:
-          return { success: true, message: "تم الحفظ (لم يتم الاختبار)" };
-      }
+      const res = await fetch(vaultUrl(key, "/test"), { method: "POST", headers: headers() });
+      const r = (await res.json()) as { ok: boolean; tested: boolean };
+      if (!r.tested)
+        return r.ok ? { success: true, message: "تم الحفظ (لم يتم الاختبار)" } : { success: false, message: "المفتاح غير موجود" };
+      return r.ok ? { success: true, message: "المفتاح صحيح" } : { success: false, message: "المفتاح غير صحيح" };
     } catch {
       return { success: false, message: "خطأ في الاتصال" };
     }
+  },
+
+  /** Moves keys left in localStorage by older builds to the vault, then deletes the local copy. */
+  async migrateLegacyKeys(): Promise<number> {
+    const stored = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!stored) return 0;
+    let legacy: Partial<ApiKeys> = {};
+    try {
+      legacy = JSON.parse(stored) as Partial<ApiKeys>;
+    } catch {
+      // unreadable legacy data is dropped below
+    }
+    const entries = Object.entries(legacy).filter(([, v]) => typeof v === "string" && v.length > 0);
+    await this.setAll(Object.fromEntries(entries) as Partial<ApiKeys>);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    return entries.length;
   },
 };
