@@ -58,5 +58,5 @@ export function project(entries: Iterable<Entry>, opts: { upTo?: number } = {}):
   return view(p);
 }
 
-/** SHA-256 of the JCS form: two projections are the same exactly when their hashes are (T-LED-016). */
+/** SHA-256 of the JCS form: two projections are the same exactly when their hashes are (T-LED-020 with P2-018). */
 export const projectionHash = (p: Projection): string => sha256Hex(canonicalize(p));

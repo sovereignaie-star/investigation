@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { systemClock, ulidFactory, isoNow, type Clock } from "@ir/core";
@@ -93,6 +93,21 @@ export class NoCaseError extends Error {
   }
 }
 
+/**
+ * A writable open found a case directory whose chain does not start with `case.created` (D-052): an interrupted
+ * creation from builds before P1-028, or a database written outside @ir/store. Such a case has no stated purpose
+ * and is never used for new work (E-01); `ir verify` reports it.
+ */
+export class IncompleteCaseError extends Error {
+  constructor(dir: string) {
+    super(`E-01: ${dir} has no case.created entry (no stated purpose); it cannot be opened for writing`);
+    this.name = "IncompleteCaseError";
+  }
+}
+
+/** The chain of a complete case starts with its purpose record (P1-018, D-052). */
+export const startsWithPurpose = (entries: readonly Entry[]): boolean => entries[0]?.kind === "case.created";
+
 export class CaseLockedError extends Error {
   constructor() {
     super("case is encrypted: a passphrase is required to read or write its content");
@@ -115,31 +130,36 @@ function resolveKey(
   db: DatabaseSync,
   opts: OpenCaseOptions,
   clock: Clock,
-): { key: CaseKey | null; encrypted: boolean; caseId: string | null } {
+): { key: CaseKey | null; encrypted: boolean; caseId: string | null; meta: [string, string][]; keyFileCreated: boolean } {
   const keyFile = path.join(dir, CASE_KEY);
   const keyText = readIfExists(keyFile);
+  const none = { caseId: null, meta: [], keyFileCreated: false };
   if (keyText !== undefined) {
     const file = JSON.parse(keyText) as CaseKeyFile;
     const caseId = (db.prepare("SELECT value FROM meta WHERE key = 'case_id'").get() as { value: string } | undefined)?.value;
     if (caseId !== undefined && caseId !== file.caseId) throw new Error(`${CASE_KEY} belongs to case ${file.caseId}, not ${caseId}`);
-    return { key: opts.passphrase === undefined ? null : unlockCaseKey(file, opts.passphrase), encrypted: true, caseId: null };
+    return { key: opts.passphrase === undefined ? null : unlockCaseKey(file, opts.passphrase), encrypted: true, ...none };
   }
   const isNew = (db.prepare("SELECT count(*) n FROM meta").get() as { n: number }).n === 0;
   if (!isNew && opts.passphrase !== undefined) throw new Error("this case is not encrypted; open it without a passphrase");
-  if (!isNew || opts.readOnly) return { key: null, encrypted: false, caseId: null };
+  if (!isNew || opts.readOnly) return { key: null, encrypted: false, ...none };
   if (!opts.create) throw new NoCaseError(dir);
   const caseId = ulidFactory(clock)();
-  const insert = db.prepare("INSERT INTO meta (key, value) VALUES (?, ?)");
+  const createdAt = isoNow(clock);
   let key: CaseKey | null = null;
   if (opts.passphrase !== undefined) {
     const created = createCaseKey(caseId, opts.passphrase, opts.kdf);
+    // last step here: anything that fails after this point removes the file again (openCase)
     writeFileSync(keyFile, `${JSON.stringify(created.file, null, 2)}\n`, { flag: "wx", mode: 0o600 });
     key = created.key;
   }
-  insert.run("case_id", caseId);
-  insert.run("created_at", isoNow(clock));
-  insert.run("encryption", key ? "aes-256-gcm+argon2id" : "none");
-  return { key, encrypted: key !== null, caseId };
+  // D-052: the meta rows are written by openCase in the same transaction as case.created, never on their own
+  const meta: [string, string][] = [
+    ["case_id", caseId],
+    ["created_at", createdAt],
+    ["encryption", key ? "aes-256-gcm+argon2id" : "none"],
+  ];
+  return { key, encrypted: key !== null, caseId, meta, keyFileCreated: key !== null };
 }
 
 /** Opens case.sqlite; writable opens use WAL, full fsync and the latest migrations. */
@@ -158,13 +178,21 @@ function openDb(dir: string, readOnly: boolean, clock: Clock): DatabaseSync {
   }
 }
 
+/** Cleanup after a failed open: a new encrypted case that did not finish must not leave a key file (D-052). */
+function abandon(db: DatabaseSync, dir: string, createdKeyFile: boolean): void {
+  if (db.isOpen) db.close();
+  if (createdKeyFile) rmSync(path.join(dir, CASE_KEY), { force: true });
+}
+
 export function openCase(dir: string, opts: OpenCaseOptions): Case {
   const clock = opts.clock ?? systemClock;
   const db = openDb(dir, opts.readOnly ?? false, clock);
+  let createdKeyFile = false;
   try {
     // Validate the purpose before anything is written, so a rejected case leaves no files behind.
     const init = opts.create && !opts.readOnly ? CaseInit.parse(opts.create) : undefined;
-    const { key, encrypted, caseId: createdId } = resolveKey(dir, db, opts, clock);
+    const { key, encrypted, caseId: createdId, meta: newMeta, keyFileCreated } = resolveKey(dir, db, opts, clock);
+    createdKeyFile = keyFileCreated;
     const locked = encrypted && key === null;
     const ledger = new Ledger({ store: sqliteLedgerStore(db), clock, actor: opts.actor, skipVerify: opts.skipChainCheck ?? false });
     const plainBlobs = fsBlobStore(dir);
@@ -327,26 +355,35 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
       },
       close: () => db.close(),
     };
-    if (createdId && init) {
-      const record = CaseRecord.parse({
-        retention: { mode: "indefinite", reason: "not set" },
-        sensitivity: "standard",
-        tags: [],
-        ownerId: opts.actor,
-        ...init,
-        id: createdId,
-        createdAt: isoNow(clock),
-      });
-      transaction(() => {
-        append("case.created", record);
-        self.audit("case.created", record.id, { legalBasis: record.legalBasis });
-      });
-    } else if (key && !opts.readOnly) {
-      self.audit("case.unlocked", caseIdOf());
-    }
+    // P1-018/D-052: a new case gets its identity and purpose in one transaction; an existing one must have a purpose
+    const settle = (): void => {
+      if (createdId && init) {
+        // D-052: identity (meta), purpose (case.created) and its audit event commit together or not at all
+        const insertMeta = db.prepare("INSERT INTO meta (key, value) VALUES (?, ?)");
+        const record = CaseRecord.parse({
+          retention: { mode: "indefinite", reason: "not set" },
+          sensitivity: "standard",
+          tags: [],
+          ownerId: opts.actor,
+          ...init,
+          id: createdId,
+          createdAt: isoNow(clock),
+        });
+        transaction(() => {
+          for (const [k, v] of newMeta) insertMeta.run(k, v);
+          append("case.created", record);
+          self.audit("case.created", record.id, { legalBasis: record.legalBasis });
+        });
+      } else if (!opts.readOnly && !startsWithPurpose(ledger.entries())) {
+        throw new IncompleteCaseError(dir);
+      } else if (key && !opts.readOnly) {
+        self.audit("case.unlocked", caseIdOf());
+      }
+    };
+    settle();
     return self;
   } catch (x) {
-    db.close();
+    abandon(db, dir, createdKeyFile);
     throw x;
   }
 }
