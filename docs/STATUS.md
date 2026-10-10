@@ -16,7 +16,7 @@
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
-| 0 | التثبيت والتأسيس | 20 | 9 | 0 |
+| 0 | التثبيت والتأسيس | 20 | 11 | 0 |
 | 1 | النواة والسجل | 22 | 0 | 0 |
 | 2 | المحرّك والمحوّلات | 22 | 0 | 0 |
 | 3 | محطة العمل | 20 | 0 | 0 |
@@ -39,9 +39,9 @@
 | P0-004 | إصلاح `identifierList.ts` المعطوب (M) | done | PR #2: حُذف المثال المعطوب (79.8KB من الحرف w) وأغلقت المصفوفة؛ 370 نوعاً + onion_v3 سليم |
 | P0-005 | إصلاح خطأ `TS2352` ومفتاح الكاش (M) | done | PR #2: جدول كاش جديد بمفتاح أساسي cacheKey (Dexie v2) و`put` بدل التحويل string→number؛ `pnpm run typecheck` => exit 0 |
 | P0-006 | نقطة دخول دنيا للواجهة (`main.tsx`، `App.tsx`) بواجهة عربية RTL (M) | done | PR #3: `main.tsx` + `App.tsx` + `index.css`؛ `PORT=22124 BASE_PATH=/ pnpm run build` => نجاح (30 وحدة، 82KB gzip) |
-| P0-007 | نظافة الأسرار: `.gitignore` للبيئة و`.env.example` (M) | todo | — |
+| P0-007 | نظافة الأسرار: `.gitignore` للبيئة و`.env.example` (M) | done | PR #3: `.gitignore` يحظر `.env` و`.env.*` مع استثناء `.env.example`؛ `git check-ignore .env` => مطابق |
 | P0-008 | ملفات المشروع: README، LICENSE، SECURITY، CONTRIBUTING، CODE_OF_CONDUCT (M) | todo | — |
-| P0-009 | تثبيت بيئة التشغيل: `engines` و`.nvmrc` و`packageManager` (M) | todo | — |
+| P0-009 | تثبيت بيئة التشغيل: `engines` و`.nvmrc` و`packageManager` (M) | done | PR #3: `engines` (node>=24، pnpm>=10) و`packageManager: pnpm@10.34.6` و`.nvmrc`=24 |
 | P0-010 | إطار الاختبار Vitest وأول اختبارات (سلامة قائمة المعرّفات) (M) | todo | — |
 | P0-011 | خط CI للبناء: تثبيت، فحص أنواع، بناء، اختبار (M) | todo | — |
 | P0-012 | تنظيف نصوص القالب: `replit.md` و`index.html` (`lang="ar" dir="rtl"`) (M) | done | PR #1 (`replit.md`) + PR #3 (`index.html`: `lang=ar dir=rtl`، وصف حقيقي، `noindex`، إزالة خطوط Google الخارجية) |
@@ -308,7 +308,7 @@
 | D-036 | متوسط | مفتوح | — |
 | D-037 | عالٍ | مفتوح | — |
 | D-038 | متوسط | مفتوح | — |
-| D-039 | متوسط | مفتوح | — |
+| D-039 | متوسط | مُصلح | P0-007 |
 | D-040 | عالٍ | مفتوح | — |
 | D-041 | منخفض | مُصلح | P0-012 |
 | D-042 | متوسط | مفتوح | — |
