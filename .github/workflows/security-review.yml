@@ -3,14 +3,17 @@ name: security-review
 # designated reviewer on its current head. Policy and paths: scripts/gates/security-review-gate.mjs and
 # docs/security/REVIEW_SCOPE.md.
 #
-# pull_request_target runs this file and the gate script as they are on the base branch, so a pull request cannot
-# change the check that judges it. pull_request_review re-evaluates on a review; it, too, checks out only the base
-# commit. Neither ever checks out, builds or runs code from the pull request, and the script only reads the API.
+# ADVISORY ONLY. This check must not be made required on main: GitHub attributes it to the github-actions app, and
+# any workflow in a same-repository pull request can request checks: write and publish a result under the same app
+# and name. The tamper-resistant options (a separate GitHub App, or native code-owner review) are compared in
+# docs/security/D8_ENFORCEMENT_OPTIONS.md and await the owner's choice.
+#
+# pull_request_target runs this file and the gate script as they are on the default branch, so a pull request cannot
+# change this run. There is deliberately no pull_request_review trigger: that event runs the workflow file from the
+# pull request. After a review, re-run this job; the script reads the reviews live from the API.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
 permissions:
   contents: read
   pull-requests: read
@@ -18,7 +21,7 @@ concurrency:
   group: security-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  security-review-gate:
+  security-review-advisory:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -29,6 +32,7 @@ jobs:
           sparse-checkout: |
             scripts/gates
             .github/CODEOWNERS
+            .github/workflows/security-review.yml
           sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v7
         with:

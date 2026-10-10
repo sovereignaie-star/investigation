@@ -136,3 +136,14 @@ test("CODEOWNERS gives the reviewer nothing beyond the D-8 paths", () => {
     .map(([pat]) => pat.replace(/^\//, ""));
   assert.deepEqual([...owned].sort(), [...D8_PATHS].sort());
 });
+
+test("the Actions check stays advisory: no trigger that runs the workflow file from the pull request", () => {
+  const root = path.resolve(import.meta.dirname, "..", "..");
+  const wf = readFileSync(path.join(root, ".github", "workflows", "security-review.yml"), "utf8");
+  const on = wf.slice(wf.indexOf("\non:"), wf.indexOf("\npermissions:"));
+  // pull_request, pull_request_review and pull_request_review_comment run the workflow file from the pull request,
+  // which can rewrite it (docs/security/D8_ENFORCEMENT_OPTIONS.md).
+  assert.doesNotMatch(on, /^\s{2}pull_request(_review(_comment)?)?:/m);
+  assert.match(on, /^\s{2}pull_request_target:/m);
+  assert.match(wf, /^\s{2}security-review-advisory:/m, "the job must not take the name a required check would use");
+});
