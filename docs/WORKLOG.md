@@ -302,3 +302,10 @@
 - الأدلة: `packages/schema/src/schema.test.ts` (19 اختباراً): تسلسل وفك تسلسل ثابت لكل نموذج، ورفض الحالات المخالفة أعلاه، وتطابق ملفات JSON Schema المولّدة مع المخططات. `pnpm test` = 33 ناجحاً؛ lint وtypecheck وbuild ناجحة.
 - ما لم يتم: D-036 (حفظ الاستجابة الخام ومصدرها) يكتمل بالتخزين في P1-009 وP1-010؛ النموذج `Evidence` جاهز له.
 - التالي: P1-007 (التطبيع والمفتاح القانوني) وP1-009 (السجل).
+
+### 2026-10-10 — [P1-023] إصلاح تنبيهات CodeQL الموروثة
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: بعد النقل في P1-001 أظهر CodeQL تنبيهين قديمين كأنهما جديدان (تغيّر المسار): (1) `js/incomplete-url-substring-sanitization` (متوسط) في `VideoNode.tsx`: كان يقبل أي رابط يحتوي `youtube.com` فيضمّن إطاراً لمضيف آخر. صار `apps/web/src/utils/youtube.ts` يحلل الرابط ويقبل مضيفات YouTube المعروفة وبروتوكول http/https ومعرّفاً بصيغة صحيحة فقط. (2) `js/bad-code-sanitization` (عالٍ) في `apps/sandbox/mockupPreviewPlugin.ts`: المسارات المكتشفة تُكتب في وحدة مولّدة بـ `JSON.stringify`؛ صارت تمر بدالة `literal()` تهرّب `<>/\` وفواصل الأسطر و`U+2028/2029`.
+- الأدلة: `apps/web/src/utils/youtube.test.ts` (2): يقبل `www.youtube.com/watch?v=` و`youtu.be/`، ويرفض `youtube.com.evil.example` و`?u=youtube.com` و`javascript:` ومعرّفاً فيه `<script>`. `literal()` يعيد بالتقييم القيمة الأصلية نفسها لمسار عادي ولنص فيه `"</script>\` وسطر جديد و`U+2028`. بناء `apps/sandbox` ناجح؛ `pnpm test` = 35.
+- ما لم يتم: —
+- التالي: دمج طلب المرحلة 1، ثم P1-007 وP1-009.
