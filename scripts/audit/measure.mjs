@@ -33,7 +33,7 @@ function walk(dir, filter, out = []) {
 
 // Load identifierList.ts without a TS runtime: transpile with the workspace's TypeScript.
 async function loadIdentifierList() {
-  const src = rel("artifacts/investigation-room/src/utils/identifierList.ts");
+  const src = rel("apps/web/src/utils/identifierList.ts");
   const require = createRequire(rel("package.json"));
   const ts = require("typescript");
   const code = readFileSync(src, "utf8");
@@ -52,7 +52,7 @@ async function loadIdentifierList() {
 
 // Type ids routed to a real fetcher in resultFetcher.fetchIdentifier (everything else falls to fetchGeneric).
 function fetcherTypeIds() {
-  const f = rel("artifacts/investigation-room/src/utils/resultFetcher.ts");
+  const f = rel("apps/web/src/utils/resultFetcher.ts");
   if (!existsSync(f)) return new Set();
   const body = readFileSync(f, "utf8").split("export async function fetchIdentifier")[1] ?? "";
   const routed = body.split("fetchGeneric(")[0];
@@ -91,7 +91,7 @@ m.workspaceProjects = projects;
 const store = rel("node_modules/.pnpm");
 m.installedPackages = existsSync(store) ? readdirSync(store).filter((d) => d !== "node_modules" && !d.startsWith("lock")).length : null;
 
-const ui = walk(rel("artifacts/investigation-room/src"), (p) => /\.(ts|tsx)$/.test(p) && !/\.test\.tsx?$/.test(p));
+const ui = walk(rel("apps/web/src"), (p) => /\.(ts|tsx)$/.test(p) && !/\.test\.tsx?$/.test(p));
 const uiNoList = ui.filter((p) => !p.endsWith("identifierList.ts"));
 const lines = (ps) => ps.reduce((n, p) => n + (readFileSync(p, "utf8").match(/\n/g) ?? []).length, 0); // same as wc -l
 m.uiTsLines = { all: lines(ui), excludingIdentifierList: lines(uiNoList) };
@@ -127,7 +127,7 @@ m.ciWorkflows = files.filter((f) => /^\.github\/workflows\/.+\.ya?ml$/.test(f)).
 m.projectFiles = Object.fromEntries(
   ["README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"].map((f) => [f, files.includes(f)]),
 );
-const routes = walk(rel("artifacts/api-server/src"), (p) => /\.ts$/.test(p)).flatMap((p) =>
+const routes = walk(rel("apps/server/src"), (p) => /\.ts$/.test(p)).flatMap((p) =>
   [...readFileSync(p, "utf8").matchAll(/\brouter\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)/g)].map(
     (x) => `${x[1].toUpperCase()} ${x[2]}`,
   ),

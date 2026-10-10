@@ -818,8 +818,9 @@ flowchart LR
 
 | المسار | الحزمة | المسؤولية | يأتي من |
 |---|---|---|---|
-| `apps/web` | `@ir/web` | الواجهة | `artifacts/investigation-room` (بعد النقل في P1) |
-| `apps/server` | `@ir/server` | الخادم والمحرك | `artifacts/api-server` |
+| `apps/web` | `@ir/web` | الواجهة | `artifacts/investigation-room` (نُقل في P1-001) |
+| `apps/server` | `@ir/server` | الخادم والمحرك | `artifacts/api-server` (نُقل في P1-001) |
+| `apps/sandbox` | `@ir/sandbox` | معاينة المكونات حتى P3-001 | `artifacts/mockup-sandbox` (نُقل في P1-001) |
 | `packages/schema` | `@ir/schema` | مخططات Zod وأنواع المجال | جديد |
 | `packages/core` | `@ir/core` | الكشف، التطبيع، الثقة، الدمج، الزمن | جديد + بيانات `identifierList` |
 | `packages/ledger` | `@ir/ledger` | سلسلة التجزئة والأدلة والتحقق | جديد |

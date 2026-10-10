@@ -41,6 +41,8 @@ node scripts/governance/check.mjs --range origin/main..HEAD
 | `docs/tools/` | Tool catalog (10,881 real tools from 19 curated lists + owner-curated additions) |
 | `docs/adr/` | Architecture decision records |
 | `scripts/governance/` | The governance guard |
-| `artifacts/investigation-room` | Web app (Vite + React 19) |
-| `artifacts/api-server` | API server (Express 5) |
+| `apps/web` | Web app (Vite + React 19) |
+| `apps/server` | API server (Express 5) |
+| `apps/sandbox` | Component preview (shadcn), moves to `packages/ui` in P3-001 |
+| `packages/*` | New domain packages (`@ir/schema`, `@ir/core`, `@ir/ledger`, …), see ROADMAP 5.3 |
 | `lib/*` | OpenAPI spec, generated Zod and React Query client, DB |

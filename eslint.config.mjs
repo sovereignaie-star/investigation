@@ -38,16 +38,16 @@ export default tseslint.config(
     // Legacy debt, tracked: these files are replaced by core/detect (P1-004..P1-006) and P2 adapters.
     // Remove each entry when its replacement lands; do not add new files here.
     files: [
-      "artifacts/investigation-room/src/utils/identifierList.ts",
-      "artifacts/investigation-room/src/utils/resultFetcher.ts",
-      "artifacts/investigation-room/src/utils/smartInvestigator.ts",
+      "apps/web/src/utils/identifierList.ts",
+      "apps/web/src/utils/resultFetcher.ts",
+      "apps/web/src/utils/smartInvestigator.ts",
       "lib/api-client-react/src/custom-fetch.ts",
     ],
     rules: { "no-useless-escape": "off", "no-control-regex": "off", complexity: "off" },
   },
   {
     // Vendored shadcn/ui primitives in the preview sandbox (not product code).
-    files: ["artifacts/mockup-sandbox/src/components/ui/**", "artifacts/mockup-sandbox/src/hooks/**"],
+    files: ["apps/sandbox/src/components/ui/**", "apps/sandbox/src/hooks/**"],
     rules: { complexity: "off", "@typescript-eslint/no-unused-vars": "off" },
   },
   {

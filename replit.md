@@ -17,7 +17,7 @@
 - `pnpm run typecheck` — فحص الأنواع
 - `pnpm run build` — فحص الأنواع + البناء
 - `pnpm run governance` — فحص الحوكمة لآخر إيداع واتساق الخارطة والحالة
-- `pnpm --filter @workspace/api-server run dev` — الخادم
+- `pnpm --filter @ir/server run dev` — الخادم
 - `pnpm --filter @workspace/api-spec run codegen` — توليد العميل والمخططات من OpenAPI
 
 ## Where things live
@@ -28,8 +28,10 @@
 | `docs/STATUS.md` | الحالة الحية |
 | `docs/WORKLOG.md` | سجل العمل (إضافة فقط) |
 | `docs/tools/` | كتالوج الأدوات (10,881 أداة) |
-| `artifacts/investigation-room` | الواجهة (Vite + React 19 + Tailwind 4) |
-| `artifacts/api-server` | الخادم (Express 5) |
+| `apps/web` | الواجهة (Vite + React 19 + Tailwind 4) |
+| `apps/server` | الخادم (Express 5) |
+| `apps/sandbox` | معاينة المكونات (تُنقل إلى `packages/ui` في P3-001) |
+| `packages/*` | حزم المجال الجديدة (ROADMAP 5.3) |
 | `lib/` | OpenAPI، Zod، عميل React Query، قاعدة البيانات |
 
 ## Stack
