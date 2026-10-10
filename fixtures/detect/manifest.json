@@ -1,0 +1,64 @@
+{
+  "name": "detect-golden",
+  "task": "P1-020",
+  "version": 1,
+  "seed": 1908768,
+  "snippets": 5000,
+  "entities": {
+    "deterministic": 6533,
+    "other": 3025
+  },
+  "nearMisses": 800,
+  "families": {
+    "deterministic": {
+      "ipv4_public": 291,
+      "amex_card": 291,
+      "ip_private": 283,
+      "multicast_ip": 290,
+      "ipv4_apipa": 274,
+      "bitcoin_address_p2sh": 282,
+      "iban": 291,
+      "ipv6": 297,
+      "visa_card": 294,
+      "bitcoin_address_bech32": 268,
+      "subdomain": 293,
+      "isin": 290,
+      "samsung_imei": 267,
+      "bitcoin_address": 289,
+      "ipv4_loopback": 269,
+      "smtp_server": 285,
+      "litecoin_address": 262,
+      "tron_address": 282,
+      "ethereum_address": 296,
+      "mastercard": 283,
+      "imei": 294,
+      "dogecoin_address": 293,
+      "domain": 269
+    },
+    "other": {
+      "email": 134,
+      "mac_address": 725,
+      "phone_us": 710,
+      "sha256_hash": 698,
+      "phone_uk": 135,
+      "url": 159,
+      "gmail": 152,
+      "md5_hash": 152,
+      "sha1_hash": 160
+    },
+    "near": {
+      "bech32": 89,
+      "eth": 89,
+      "ipv4": 89,
+      "iban": 89,
+      "card": 89,
+      "isin": 89,
+      "imei": 89,
+      "btc": 89,
+      "tron": 88
+    }
+  },
+  "sha256": "dce640f17818c1557bc390209085b850b095b7c783309d2c082ccf4a56ceb057",
+  "generator": "packages/core/scripts/gen-golden.mjs",
+  "review": "second review = packages/core/src/identifiers/golden.test.ts (independent core validators must agree with every label)"
+}

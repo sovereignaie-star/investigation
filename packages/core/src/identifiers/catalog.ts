@@ -2232,6 +2232,7 @@ export const IDENTIFIER_SPECS: readonly IdentifierSpecData[] = [
     patterns: ["^[A-Z]{1,5}(\\.[A-Z]{1,2})?$"],
     validator: null,
     examples: { positive: ["AAPL", "BRK.B"], negative: ["AAPL#"] },
+    context: { keywords: ["ticker", "stock", "shares", "nasdaq", "nyse", "tadawul", "سهم", "أسهم", "تداول", "رمز السهم"], required: true },
     sensitivity: "normal",
   },
   {
@@ -3295,7 +3296,9 @@ export const IDENTIFIER_SPECS: readonly IdentifierSpecData[] = [
     description: "Canada phone number",
     icon: "🇨🇦",
     color: "red",
-    patterns: ["^(\\+?1[-.\\s]?)?[2-9]\\d{2}[-.\\s]?\\d{3}[-.\\s]?\\d{4}$"],
+    patterns: [
+      "^(\\+?1[-.\\s]?)?\\(?(204|226|236|249|250|257|263|289|306|343|354|365|367|368|382|403|416|418|428|431|437|438|450|468|474|506|514|519|548|579|581|584|587|604|613|639|647|672|683|705|709|742|753|778|780|782|807|819|825|867|873|879|902|905)\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}$",
+    ],
     validator: null,
     examples: { positive: ["+16041234567"], negative: ["+16041234567#"] },
     sensitivity: "normal",

@@ -6,3 +6,4 @@ attached_assets/
 docs/
 tools/catalog/.cache/
 *.md
+fixtures/detect/
