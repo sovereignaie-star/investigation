@@ -1,5 +1,5 @@
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, type KeyObject } from "node:crypto";
-import { closeSync, fchmodSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
+import { closeSync, constants, fchmodSync, fstatSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import path from "node:path";
 import { isoNow, systemClock, type Clock } from "@ir/core";
 import { canonicalize } from "./jcs.ts";
@@ -67,27 +67,18 @@ export function installationKeyFromPem(privateKeyPem: string): InstallationKey {
 export function loadOrCreateInstallationKey(dir: string): InstallationKey {
   const keyFile = path.join(dir, "installation.key");
   mkdirSync(dir, { recursive: true, mode: 0o700 });
-  const k = generateInstallationKey();
-  let fd: number;
-  try {
-    fd = openSync(keyFile, "wx", 0o600); // atomic create: no check-then-write race
-  } catch (x) {
-    if ((x as NodeJS.ErrnoException).code !== "EEXIST") throw x;
-    const existing = openSync(keyFile, "r"); // read through the descriptor, not the path
-    try {
-      return installationKeyFromPem(readFileSync(existing, "utf8"));
-    } finally {
-      closeSync(existing);
-    }
-  }
+  // One open of the path (create if absent, mode 0600); everything after goes through the descriptor.
+  const fd = openSync(keyFile, constants.O_RDWR | constants.O_CREAT, 0o600);
   try {
     fchmodSync(fd, 0o600);
+    if (fstatSync(fd).size > 0) return installationKeyFromPem(readFileSync(fd, "utf8"));
+    const k = generateInstallationKey();
     writeSync(fd, k.privateKeyPem);
+    writeFileSync(path.join(dir, "installation.pub"), k.publicKeyPem);
+    return installationKeyFromPem(k.privateKeyPem);
   } finally {
     closeSync(fd);
   }
-  writeFileSync(path.join(dir, "installation.pub"), k.publicKeyPem);
-  return installationKeyFromPem(k.privateKeyPem);
 }
 
 const bytesOf = (p: CheckpointPayload) => new TextEncoder().encode(canonicalize(p));
