@@ -1,0 +1,40 @@
+{
+  "$id": "https://github.com/sovereignaie-star/investigation/schema/ViewState.schema.json",
+  "title": "ViewState",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "positions": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": ["x", "y"]
+      }
+    },
+    "layout": {
+      "default": "force",
+      "type": "string",
+      "enum": ["force", "hierarchy", "radial", "timeline", "geo"]
+    },
+    "filters": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  }
+}

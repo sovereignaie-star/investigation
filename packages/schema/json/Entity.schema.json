@@ -1,0 +1,42 @@
+{
+  "$id": "https://github.com/sovereignaie-star/investigation/schema/Entity.schema.json",
+  "title": "Entity",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "canonicalKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*:.+$"
+    },
+    "labels": {
+      "type": "object",
+      "properties": {
+        "ar": {
+          "type": "string",
+          "minLength": 1
+        },
+        "en": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "props": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": ["id", "type", "canonicalKey", "labels"]
+}

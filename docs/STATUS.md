@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 22 | 2 | 0 |
+| 1 | النواة والسجل | 22 | 3 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -69,7 +69,7 @@
 | المعرّف | المهمة | الحالة | الدليل / الإيداع |
 |---|---|---|---|
 | P1-001 | إعادة هيكلة مساحة العمل إلى `apps/*` و`packages/*` (M) | done | artifacts/* -> apps/{web,server,sandbox} renamed @ir/*; packages/* opened; lint/typecheck/build/test/audit green; /api/healthz ok |
-| P1-002 | `@ir/schema`: مخططات Zod لنموذج 5.4 (M) | todo | — |
+| P1-002 | `@ir/schema`: مخططات Zod لنموذج 5.4 (M) | done | packages/schema: Zod v4 models for all 11 entities of 5.4 + JSON Schema 2020-12 in packages/schema/json; 19 tests |
 | P1-003 | نقل بيانات المعرّفات إلى YAML بالمخطط الجديد (M) | todo | — |
 | P1-004 | إصلاح الأنماط والأمثلة غير المتطابقة (M) | todo | — |
 | P1-005 | المدققات: Luhn، IBAN، EIP-55، Base58Check، Bech32، IP، PSL (M) | todo | — |
@@ -365,7 +365,7 @@
 | D-022 | متوسط | مفتوح | — |
 | D-023 | عالٍ | مفتوح | — |
 | D-024 | متوسط | مفتوح | — |
-| D-025 | عالٍ | مفتوح | — |
+| D-025 | عالٍ | مُصلح | P1-002: Claim.predicate typed edge (packages/schema/src/graph.ts) |
 | D-026 | منخفض | مفتوح | — |
 | D-027 | منخفض | مفتوح | — |
 | D-028 | متوسط | مفتوح | — |
