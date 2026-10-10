@@ -34,6 +34,7 @@ pnpm start                         # بعد البناء: خدمة واحدة ع
 
 ```sh
 pnpm ir verify path/to/case --key installation.pub --checkpoint checkpoint.json   # أو --json
+pnpm ir project path/to/case [--at seq] [--expect sha256]   # إعادة بناء الرسم والجدول والتغطية من السجل دون شبكة
 node packages/cli/dist/ir.mjs verify path/to/case                                # بعد البناء، بلا node_modules
 ```
 

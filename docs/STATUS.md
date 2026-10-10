@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 22 | 0 |
+| 1 | النواة والسجل | 25 | 23 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -83,7 +83,7 @@
 | P1-013 | تخزين القضية SQLite + ترحيلات (M) | done | packages/store: node:sqlite case dir (case.sqlite + blobs), 3 checksummed migrations (user_version, drift/newer/gap refused, failed step rolled back), append-only triggers, SqliteLedgerStore, openCase; 6 tests (empty->latest, every vN->latest equals fresh) |
 | P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | done | packages/store crypto.ts: Argon2id (RFC 9106 vector) wrapped per-case key, AES-256-GCM sealed payloads and HMAC-addressed blobs; reading without key fails; ir verify --passphrase-file; 8 tests; no check-then-read on case.key.json (CodeQL js/file-system-race fixed in code) |
 | P1-015 | خزنة المفاتيح في الخادم (M) | done | packages/store vault.ts (AES-256-GCM per entry, name as AAD; master from IR_VAULT_KEY / IR_VAULT_PASSPHRASE / generated 0600 key file); /api/vault never returns a secret; keyed lookups server-side; IR_ADMIN_TOKEN or loopback; web off localStorage; 7 tests and docker CI check |
-| P1-016 | الإسقاطات: رسم، جدول، تغطية (M) | todo | — |
+| P1-016 | الإسقاطات: رسم، جدول، تغطية (M) | done | packages/ledger/src/projections: pure Projector reducer -> graph/table/coverage views, snapshot(upTo), projectionHash (JCS SHA-256); Case.projection() live on append, reset on rollback; ir project [--at] [--expect]; live == rebuild after each of 600 random events, plain+encrypted reopen equal; 10k nodes/20k edges in ~0.15 s |
 | P1-017 | سجل التدقيق (M) | done | Case.audit(): AuditEvent (purposeRef = case id) appended as audit.event in the chain and indexed in audit_events in one transaction; created, updated, evidence.stored, unlocked, passphrase_changed audited; detail sealed in encrypted cases; ir verify cross-checks index vs chain |
 | P1-018 | غرض القضية والأساس المشروع (M) | done | openCase requires create (CaseInit: purpose >= 10 chars, closed legalBasis) else NoCaseError; case.created is the first entry; info()/update(changes, reason) via case.updated; refused case writes nothing; tests in audit-purpose.test.ts |
 | P1-019 | ساعة ومولّد قابلان للحقن (S) | done | packages/core: Clock (system/manual), Random (crypto/seeded), monotonic ULID factory; 6 tests; ESLint bans Date.now/new Date()/Math.random in core, schema, ledger |

@@ -1,11 +1,15 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { formatReport, readCheckpointFile, verifyCase } from "@ir/store";
+import { project, projectionHash, type Projection } from "@ir/ledger/projections";
+import { formatReport, openCase, readCheckpointFile, verifyCase } from "@ir/store";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
+       ir project <case-dir> [--at seq] [--expect sha256] [--passphrase-file file] [--json]
 
-  Recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
+  verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
+  project: rebuilds the graph, table and coverage views from the chain, offline (optionally as of seq --at),
+           and prints their counts and projection hash; --expect fails (exit 1) unless the hash matches.
   Encrypted cases: the passphrase is read from --passphrase-file or IR_CASE_PASSPHRASE, never from the command line.
   Exit codes: 0 intact, 1 integrity failure, 2 usage or I/O error.`;
 
@@ -30,6 +34,8 @@ export function main(argv: string[], out: (s: string) => void = stdout, err: (s:
         checkpoint: { type: "string" },
         "passphrase-file": { type: "string" },
         json: { type: "boolean" },
+        at: { type: "string" },
+        expect: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -38,20 +44,78 @@ export function main(argv: string[], out: (s: string) => void = stdout, err: (s:
     return 2;
   }
   const [cmd, dir, ...rest] = parsed.positionals;
+  if (!parsed.values.help && cmd === "project" && dir && rest.length === 0) return runProject(dir, parsed.values, out, err);
   if (parsed.values.help || cmd !== "verify" || !dir || rest.length > 0) {
     (parsed.values.help ? out : err)(USAGE);
     return parsed.values.help ? 0 : 2;
   }
+  return runVerify(dir, parsed.values, out, err);
+}
+
+type Values = {
+  key?: string | undefined;
+  checkpoint?: string | undefined;
+  json?: boolean | undefined;
+  "passphrase-file"?: string | undefined;
+};
+
+function runVerify(dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
   try {
     const report = verifyCase(dir, {
-      ...(parsed.values.key ? { publicKeyPem: readFileSync(parsed.values.key, "utf8") } : {}),
-      ...(parsed.values.checkpoint ? { checkpoint: readCheckpointFile(parsed.values.checkpoint) } : {}),
-      ...passphraseFrom(parsed.values["passphrase-file"]),
+      ...(v.key ? { publicKeyPem: readFileSync(v.key, "utf8") } : {}),
+      ...(v.checkpoint ? { checkpoint: readCheckpointFile(v.checkpoint) } : {}),
+      ...passphraseFrom(v["passphrase-file"]),
     });
-    out(parsed.values.json ? JSON.stringify(report, null, 2) : formatReport(report));
+    out(v.json ? JSON.stringify(report, null, 2) : formatReport(report));
     return report.ok ? 0 : 1;
   } catch (x) {
     err(`ir verify: ${(x as Error).message}`);
+    return 2;
+  }
+}
+
+function summary(p: Projection, hash: string): string {
+  const c = p.counts;
+  return [
+    `projection at seq ${p.seq}`,
+    `  nodes ${c.nodes} (entities ${c.entities}), edges ${c.edges} (claims ${c.claims}), observations ${c.observations}, evidence ${c.evidence}, active merges ${c.merges}`,
+    `  coverage: ${p.coverage.cells.length} cells over ${p.coverage.transforms.length} transforms, ${p.coverage.untouched.length} untouched nodes`,
+    `  issues: ${p.issues.length}${p.issues
+      .slice(0, 5)
+      .map((i) => `\n    #${i.seq} ${i.code}: ${i.message}`)
+      .join("")}`,
+    `  sha256 ${hash}`,
+  ].join("\n");
+}
+
+/** `ir project` (P1-016, T-LED-016): offline rebuild of the views from the chain. */
+function runProject(
+  dir: string,
+  v: { at?: string | undefined; expect?: string | undefined; json?: boolean | undefined; "passphrase-file"?: string | undefined },
+  out: (s: string) => void,
+  err: (s: string) => void,
+): number {
+  const at = v.at === undefined ? undefined : Number(v.at);
+  if (at !== undefined && !Number.isInteger(at)) {
+    err(`ir project: --at must be an integer seq\n${USAGE}`);
+    return 2;
+  }
+  try {
+    const c = openCase(dir, { actor: "ir-cli", readOnly: true, ...passphraseFrom(v["passphrase-file"]) });
+    try {
+      const p = project(c.entries(), at === undefined ? {} : { upTo: at });
+      const hash = projectionHash(p);
+      out(v.json ? JSON.stringify({ ...p, sha256: hash }, null, 2) : summary(p, hash));
+      if (v.expect && v.expect !== hash) {
+        err(`ir project: hash ${hash} does not match --expect ${v.expect}`);
+        return 1;
+      }
+      return 0;
+    } finally {
+      c.close();
+    }
+  } catch (x) {
+    err(`ir project: ${(x as Error).message}`);
     return 2;
   }
 }

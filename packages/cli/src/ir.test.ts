@@ -148,3 +148,22 @@ describe("ir verify (P1-012)", () => {
     expect(run(["verify", dir, "--passphrase-file", pf]).code).toBe(2);
   });
 });
+
+describe("ir project (P1-016)", () => {
+  it("rebuilds the views offline, prints a stable hash, and checks --expect", () => {
+    const { dir } = makeCase();
+    const a = run(["project", dir]);
+    expect(a.code).toBe(0);
+    expect(a.text).toMatch(/projection at seq \d+/);
+    const hash = /sha256 ([0-9a-f]{64})/.exec(a.text)?.[1] ?? "";
+    expect(hash).toHaveLength(64);
+    expect(run(["project", dir]).text).toContain(hash);
+    expect(run(["project", dir, "--expect", hash]).code).toBe(0);
+    expect(run(["project", dir, "--expect", "0".repeat(64)]).code).toBe(1);
+    const json = JSON.parse(run(["project", dir, "--json", "--at", "0"]).text) as { seq: number; sha256: string };
+    expect(json.seq).toBe(0);
+    expect(json.sha256).not.toBe(hash);
+    expect(run(["project", dir, "--at", "x"]).code).toBe(2);
+    expect(run(["project", "/nonexistent-case-dir"]).code).toBe(2);
+  });
+});

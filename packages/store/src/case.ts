@@ -2,7 +2,17 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { systemClock, ulidFactory, isoNow, type Clock } from "@ir/core";
-import { fsBlobStore, Ledger, storeEvidence, type BlobStore, type Entry, type Kind, type StoreEvidenceInput } from "@ir/ledger";
+import {
+  canonicalize,
+  fsBlobStore,
+  Ledger,
+  storeEvidence,
+  type BlobStore,
+  type Entry,
+  type Kind,
+  type StoreEvidenceInput,
+} from "@ir/ledger";
+import { Projector, view, type Projection } from "@ir/ledger/projections";
 import { AuditEvent, Case as CaseRecord, CaseInit } from "@ir/schema";
 import type { Evidence } from "@ir/schema";
 import {
@@ -49,6 +59,11 @@ export interface Case {
   auditTrail(): AuditEvent[];
   /** Re-wraps the case key under a new passphrase (encrypted cases) and audits it. */
   changePassphrase(oldPassphrase: string, newPassphrase: string): void;
+  /**
+   * Graph, table and coverage views (P1-016). Built from the chain on first use, then kept live on every append;
+   * always equal to a rebuild from the stored chain (projectionHash). Throws if the case is locked.
+   */
+  projection(): Projection;
   meta(key: string): string | null;
   close(): void;
 }
@@ -167,6 +182,7 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
       "INSERT INTO evidence (id, sha256, mime, size, fetched_at, transform_id, ledger_seq) VALUES (?, ?, ?, ?, ?, ?, ?)",
     );
     const getMeta = db.prepare("SELECT value FROM meta WHERE key = ?");
+    let projector: Projector | null = null;
     const transaction = <T>(fn: () => T): T => {
       db.exec("BEGIN IMMEDIATE");
       try {
@@ -175,14 +191,21 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
         return r;
       } catch (x) {
         db.exec("ROLLBACK");
+        projector = null; // entries applied inside the rolled-back transaction are gone: rebuild on next use
         throw x;
       }
     };
     const sealed = (kind: Kind) => encrypted && kind !== "checkpoint";
-    const append = (kind: Kind, payload: unknown): Entry => {
+    const rawAppend = (kind: Kind, payload: unknown): Entry => {
       if (!sealed(kind)) return ledger.append(kind, payload);
       if (!key) throw new CaseLockedError();
       return ledger.append(kind, key.sealPayload(kind, payload));
+    };
+    const append = (kind: Kind, payload: unknown): Entry => {
+      const entry = rawAppend(kind, payload);
+      // the live projection sees exactly what a reader of the chain will see: the JCS form of the plain payload
+      projector?.apply({ ...entry, payload: JSON.parse(canonicalize(payload)) as unknown });
+      return entry;
     };
     const insertAudit = db.prepare(
       "INSERT INTO audit_events (id, at, actor, action, target, purpose_ref, detail) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -238,6 +261,11 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
           db.exec("ROLLBACK");
           throw x;
         }
+      },
+      projection() {
+        if (locked) throw new CaseLockedError();
+        projector ??= new Projector().applyAll(self.entries());
+        return view(projector);
       },
       meta: (k) => (getMeta.get(k) as { value: string } | undefined)?.value ?? null,
       info() {
