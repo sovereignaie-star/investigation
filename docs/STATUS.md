@@ -90,7 +90,7 @@
 | P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | todo | — |
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | todo | — |
 | P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | todo | — |
-| P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode: hostname-based YouTube check (utils/youtube.ts + 2 tests); sandbox preview plugin: escaped literals in generated module |
+| P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
 
 ### المرحلة 2: المحرّك والمحوّلات
 
