@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 23 | 6 | 0 |
+| 1 | النواة والسجل | 24 | 7 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -39,13 +39,13 @@
 | P0-003 | كتالوج الأدوات (أكثر من 5,000 أداة حقيقية) وخط بنائه (M) | done | إيداع الحوكمة الأول: 10,814 أداة في `docs/tools/` |
 | P0-004 | إصلاح `identifierList.ts` المعطوب (M) | done | PR #2: حُذف المثال المعطوب (79.8KB من الحرف w) وأغلقت المصفوفة؛ 370 نوعاً + onion_v3 سليم |
 | P0-005 | إصلاح خطأ `TS2352` ومفتاح الكاش (M) | done | PR #2: جدول كاش جديد بمفتاح أساسي cacheKey (Dexie v2) و`put` بدل التحويل string→number؛ `pnpm run typecheck` => exit 0 |
-| P0-006 | نقطة دخول دنيا للواجهة (`main.tsx`، `App.tsx`) بواجهة عربية RTL (M) | done | PR #3: `main.tsx` + `App.tsx` + `index.css`؛ `PORT=22124 BASE_PATH=/ pnpm run build` => نجاح (30 وحدة، 82KB gzip) |
+| P0-006 | نقطة دخول دنيا للواجهة (`main.tsx`، `App.tsx`) بواجهة عربية RTL (M) | done | PR #3: `main.tsx` + `App.tsx` + `index.css`؛ `BASE_PATH=/ pnpm run build` => نجاح (30 وحدة، 82KB gzip) |
 | P0-007 | نظافة الأسرار: `.gitignore` للبيئة و`.env.example` (M) | done | PR #3: `.gitignore` يحظر `.env` و`.env.*` مع استثناء `.env.example`؛ `git check-ignore .env` => مطابق |
 | P0-008 | ملفات المشروع: README، LICENSE، SECURITY، CONTRIBUTING، CODE_OF_CONDUCT (M) | done | PR (هذا الفرع): README وLICENSE (نص AGPL-3.0 الرسمي، 661 سطراً) وSECURITY وCONTRIBUTING وCODE_OF_CONDUCT في الجذر ومترابطة؛ package.json => AGPL-3.0-or-later؛ الإبلاغ الخاص عن الثغرات مفعّل |
 | P0-009 | تثبيت بيئة التشغيل: `engines` و`.nvmrc` و`packageManager` (M) | done | PR #3: `engines` (node>=24، pnpm>=10) و`packageManager: pnpm@10.34.6` و`.nvmrc`=24 |
 | P0-010 | إطار الاختبار Vitest وأول اختبارات (سلامة قائمة المعرّفات) (M) | done | PR #3: Vitest 3 + `vitest.config.ts`؛ `pnpm test` => 2 ملفات، 8 اختبارات ناجحة (T-IDL-001..006 واستيراد `@workspace/db`) |
 | P0-011 | خط CI للبناء: تثبيت، فحص أنواع، بناء، اختبار (M) | done | PR #3 دمج `ci.yml`؛ أول تشغيل: build ✓ (20 ث)، test ✓ (17 ث)؛ ثم صارت `governance` و`build` و`test` فحوصاً مطلوبة لحماية `main` |
-| P0-012 | تنظيف نصوص القالب: `replit.md` و`index.html` (`lang="ar" dir="rtl"`) (M) | done | PR #1 (`replit.md`) + PR #3 (`index.html`: `lang=ar dir=rtl`، وصف حقيقي، `noindex`، إزالة خطوط Google الخارجية) |
+| P0-012 | تنظيف نصوص القالب: ملف وصف القالب و`index.html` (`lang="ar" dir="rtl"`) (M) | done | PR #1 (ملف وصف القالب) + PR #3 (`index.html`: `lang=ar dir=rtl`، وصف حقيقي، `noindex`، إزالة خطوط Google الخارجية) |
 | P0-013 | إصلاح `post-merge.sh` (اسم الحزمة) (S) | done | PR #3: اسم الحزمة صريح، وتخطي `drizzle push` بلا `DATABASE_URL` |
 | P0-014 | جعل `lib/db` كسولاً (لا يرمي خطأ عند الاستيراد) (S) | done | PR #3: `getDb()`/`getPool()` كسولان؛ لا خطأ عند الاستيراد (اختبار في P0-010) |
 | P0-015 | سجلات القرار الأولى ADR-01/02/03/10/11/13/19/20 (M) | done | PR (هذا الفرع): docs/adr/ بـ 12 ملفاً للقرارات المقررة (01، 02، 03، 10، 11، 13، 14، 19، 20، 21، 22، 23) بالصيغة المعتمدة + فهرس README |
@@ -91,6 +91,7 @@
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | todo | — |
 | P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | todo | — |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
+| P1-024 | إزالة الاعتماد على Replit وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | Replit files/plugins removed; Dockerfile + render.yaml + railway.json; server serves web build; CI docker job |
 
 ### المرحلة 2: المحرّك والمحوّلات
 

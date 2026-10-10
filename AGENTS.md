@@ -1,6 +1,6 @@
 # تعليمات للوكلاء الآليين (AI agents) — Instructions for AI coding agents
 
-This file applies to every automated agent working in this repository (Claude, Replit Agent, Copilot, Cursor, Codex, Devin, etc.). The rules are binding; see `GOVERNANCE.md`.
+This file applies to every automated agent working in this repository (Claude, Copilot, Cursor, Codex, Devin, etc.). The rules are binding; see `GOVERNANCE.md`.
 
 ## Mandatory rules
 

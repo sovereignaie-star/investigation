@@ -21,11 +21,14 @@ cd investigation
 pnpm install --frozen-lockfile      # يفعّل خطافات الحوكمة (core.hooksPath=.githooks)
 pnpm run lint
 pnpm run typecheck
-PORT=22124 BASE_PATH=/ pnpm run build
+pnpm run build
 pnpm test
-PORT=5173 BASE_PATH=/ pnpm --filter @ir/web run dev   # الواجهة: http://localhost:5173
-PORT=8080 pnpm --filter @ir/server run dev                         # الخادم: http://localhost:8080/api/healthz
+pnpm --filter @ir/server run dev   # الخادم: http://localhost:8080/api/healthz
+pnpm --filter @ir/web run dev      # الواجهة: http://localhost:5173 (تحوّل /api إلى الخادم)
+pnpm start                         # بعد البناء: خدمة واحدة على http://localhost:8080
 ```
+
+النشر (Docker، Render، Railway، جهاز محلي) موثق في `README.md` قسم «النشر».
 
 انسخ `.env.example` إلى `.env` إن احتجت متغيرات (لا تُودِع `.env` أبداً، GR-12). مفاتيح مزودي البيانات لا توضع في `.env` بل في خزنة المفاتيح المشفرة (P1-015).
 

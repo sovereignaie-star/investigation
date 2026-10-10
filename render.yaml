@@ -1,0 +1,11 @@
+# Render Blueprint (P1-024): one web service from the Dockerfile.
+services:
+  - type: web
+    name: investigation-room
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/healthz
+    autoDeployTrigger: checksPass # deploy only after CI passes
+    envVars:
+      - key: NODE_ENV
+        value: production

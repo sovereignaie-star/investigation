@@ -25,9 +25,6 @@ jobs:
       - run: pnpm run typecheck
       - name: Build all packages
         run: pnpm -r --if-present run build
-        env:
-          PORT: "22124"
-          BASE_PATH: /
   test:
     runs-on: ubuntu-latest
     steps:
@@ -39,3 +36,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+  docker:
+    # P1-024: the single-service image must build and answer its health check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t investigation-room .
+      - run: |
+          docker run -d --name ir -p 8080:8080 investigation-room
+          for i in $(seq 1 30); do curl -fsS http://localhost:8080/api/healthz && break; sleep 1; done
+          curl -fsS http://localhost:8080/api/healthz
+          curl -fsS http://localhost:8080/ | grep -q '<html lang="ar" dir="rtl">'
+          docker logs ir

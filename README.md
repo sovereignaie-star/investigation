@@ -31,9 +31,22 @@ pnpm install --frozen-lockfile   # يفعّل خطافات الحوكمة تلق
 pnpm run lint
 pnpm run typecheck
 pnpm test
-PORT=22124 BASE_PATH=/ pnpm run build
-PORT=5173 BASE_PATH=/ pnpm --filter @ir/web run dev
+pnpm run build                   # يبني الواجهة والخادم
+pnpm start                       # خدمة واحدة: الواجهة والواجهة البرمجية على http://localhost:8080
 ```
+
+للتطوير: `pnpm --filter @ir/server run dev` (المنفذ 8080) و`pnpm --filter @ir/web run dev` (المنفذ 5173، ويحوّل `/api` إلى الخادم).
+
+## النشر
+
+خدمة واحدة: الخادم يقدّم الواجهة المبنية والواجهة البرمجية معاً، ويقرأ `PORT` من المنصة.
+
+| المنصة | الطريقة |
+|---|---|
+| Docker / أي خادم | `docker build -t investigation-room . && docker run -p 8080:8080 investigation-room` |
+| Render | ملف [`render.yaml`](render.yaml) (Blueprint)، فحص الصحة `/api/healthz` |
+| Railway | ملف [`railway.json`](railway.json) يبني من `Dockerfile` |
+| جهاز محلي | `pnpm run build && pnpm start` |
 
 متغيرات البيئة موثقة في [`.env.example`](.env.example). قاعدة البيانات اختيارية في هذه المرحلة؛ بدون `DATABASE_URL` يعمل كل شيء عدا مسارات الخادم التي تحتاجها.
 
