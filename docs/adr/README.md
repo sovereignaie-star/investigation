@@ -7,7 +7,7 @@
 | [ADR-01](ADR-01-vite-react.md) | البقاء على Vite + React 19 بدل Next.js | مُقرّر بتفويض |
 | [ADR-02](ADR-02-pnpm-workspace.md) | pnpm workspace مع `minimumReleaseAge` | مُقرّر بتفويض |
 | [ADR-03](ADR-03-node-24.md) | Node 24 LTS هدفاً للتشغيل وCI | مُقرّر بتفويض |
-| [ADR-06](ADR-06-evidence-ledger.md) | سجل أدلة بسلسلة SHA-256 + JCS + Ed25519 | مُقرّر بتفويض (السلسلة مُنفّذة) |
+| [ADR-06](ADR-06-evidence-ledger.md) | سجل أدلة بسلسلة SHA-256 + JCS + Ed25519 | مُقرّر بتفويض ومُنفّذ (P1-009، P1-010، P1-011) |
 | [ADR-10](ADR-10-license-agpl.md) | الترخيص: AGPL-3.0-or-later | مُقرّر بتفويض |
 | [ADR-11](ADR-11-no-saas-before-ga.md) | لا SaaS متعدد المستأجرين قبل GA | مُقرّر بتفويض |
 | [ADR-13](ADR-13-test-stack.md) | Vitest للوحدة، Playwright للـ E2E، fast-check للخصائص، Stryker للطفرات | مُقرّر بتفويض |
