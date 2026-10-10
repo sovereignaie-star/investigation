@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 20 | 0 |
+| 1 | النواة والسجل | 25 | 21 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -73,7 +73,7 @@
 | P1-003 | نقل بيانات المعرّفات إلى YAML بالمخطط الجديد (M) | done | packages/core/identifiers/*.yaml (371 types, 13 categories incl. new Messaging) -> generated src/identifiers/catalog.ts; IdentifierSpec schema; web identifierList.ts is now a 40-line adapter; catalog.test.ts T-IDL-001..004 + sync; PEM header example is a template too |
 | P1-004 | إصلاح الأنماط والأمثلة غير المتطابقة (M) | done | 78 failing examples/patterns fixed (truncated samples, scheme-less social URLs, phone ranges, ipv6, mx_record); 100% of positives accepted by pattern+validator; one negative per type rejected (templated for secret-shaped types); wickr_id context-required |
 | P1-005 | المدققات: Luhn، IBAN، EIP-55، Base58Check، Bech32، IP، PSL (M) | done | @ir/core/validate + @ir/core/psl: Luhn, IBAN (SWIFT registry, 89 countries), ISIN, EIP-55 (pure Keccak-256), Base58Check, Bech32/Bech32m, Bitcoin addresses, IPv4/IPv6, PSL; official vectors (BIP-173/350, EIP-55, Bitcoin Core key_io/base58, test_psl.txt); 62 core tests |
-| P1-006 | محرك الكشف متعدد المرشحين بدرجات وسياق (M) | todo | — |
+| P1-006 | محرك الكشف متعدد المرشحين بدرجات وسياق (M) | done | packages/core/src/identifiers/detect.ts: detect(value,{context,limit,minScore}) ranked candidates (validator veto+weight, data-measured specificity, context keywords/labels, context.required); recall 100%, validated types 33/33 first/tied/behind-narrower; web uses detectBest/detect |
 | P1-007 | التطبيع والمفتاح القانوني (M) | done | packages/core/src/normalize.ts: normalize()/canonicalKey() for 371 type ids by family; 100,000 distinct inputs -> 100,000 keys, all variants map back; smartInvestigator uses it |
 | P1-008 | تصنيف الحساسية لكل نوع (M) | done | sensitivity on every type: 52 identity-document types natural_person_gate, cnpj_br (legal entity) normal; test D-011 |
 | P1-009 | `@ir/ledger`: سلسلة تجزئة + JCS (M) | done | packages/ledger: RFC 8785 JCS, SHA-256 hash chain (ADR-06), append-only Ledger, verify(); T-LED-001..010 green (28 tests, 993 single-char edits all detected) |
@@ -348,9 +348,9 @@
 | D-002 | حاجز | مُصلح جزئياً | P0-006 نقطة دخول دنيا؛ محطة العمل في P3-002 |
 | D-003 | حاجز | مفتوح | — |
 | D-004 | حرج | مُصلح | P0-005 |
-| D-005 | عالٍ | مفتوح | — |
+| D-005 | عالٍ | مغلق جزئياً | P1-006: الأفضل يطابق النوع المعلن في 224 من 377 (59.4%) بلا سياق مقابل 14.1% لأول تطابق، و314 (83.3%) بكلمة التسمية؛ المجموعة الذهبية في P1-020 |
 | D-006 | عالٍ | مغلق | P1-004: الأمثلة الإيجابية مقبولة 100% بنمط نوعها ومدققه (377 من 377 بالقياس) |
-| D-007 | عالٍ | مفتوح | — |
+| D-007 | عالٍ | مغلق | P1-006: الأنواع المتطابقة النمط مرشحون منفصلون بدرجات متساوية، والسياق يحسم بينها |
 | D-008 | متوسط | مغلق | P1-003: العدد الحقيقي 371 نوعاً في 13 تصنيفاً مقاس وموثّق، والتوسعة عبر YAML بمثال إيجابي وسلبي إلزامي |
 | D-009 | عالٍ | مغلق | P1-004: wickr_id بطول 5..20 ولا يُقترح إلا بكلمة سياق (context.required) |
 | D-010 | متوسط | مغلق | P1-003: تصنيف Messaging مستقل للأنواع الخمسة |
@@ -370,7 +370,7 @@
 | D-024 | متوسط | مفتوح | — |
 | D-025 | عالٍ | مُصلح | P1-002: Claim.predicate typed edge (packages/schema/src/graph.ts) |
 | D-026 | منخفض | مفتوح | — |
-| D-027 | منخفض | مفتوح | — |
+| D-027 | منخفض | مغلق | P1-006: كاشف واحد detect/detectBest في الواجهة بدل detectType وdetectIdentifier |
 | D-028 | متوسط | مفتوح | — |
 | D-029 | متوسط | مفتوح جزئياً | P1-005: الأنواع الأربعة تمر بمدقق EVM صريح (EIP-55) بدل معاملتها كإيثيريوم؛ التمييز بين السلاسل يحتاج استعلام السلسلة (P2-010) |
 | D-030 | حرج | مغلق | P1-015: المفاتيح في خزنة الخادم المختومة، والواجهة لا تخزنها ولا تستلمها؛ نقل تلقائي لمرة واحدة من localStorage ثم حذفها |

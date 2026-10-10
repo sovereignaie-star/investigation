@@ -32,7 +32,13 @@ export function matchesSpec(spec: IdentifierSpecData, raw: string): { pattern: b
   const text = raw.trim();
   const pattern = patternsOf(spec).some((re) => re.test(text));
   if (!pattern || !spec.validator) return { pattern, valid: null };
-  const v = validate(spec.id, normalize(spec.id, text));
+  let normalized: string;
+  try {
+    normalized = normalize(spec.id, text);
+  } catch {
+    return { pattern, valid: false }; // e.g. an address offered to the hostname type: not normalizable, so not valid
+  }
+  const v = validate(spec.id, normalized);
   return { pattern, valid: v ? v.valid : null };
 }
 
@@ -40,3 +46,4 @@ export const accepts = (spec: IdentifierSpecData, raw: string): boolean => {
   const m = matchesSpec(spec, raw);
   return m.pattern && m.valid !== false;
 };
+export { detect, detectBest, type Candidate, type DetectOptions } from "./detect.ts";

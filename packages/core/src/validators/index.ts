@@ -1,4 +1,4 @@
-import { isRegistrableHost } from "../psl/index.ts";
+import { isRegistrableHost, registrableDomain } from "../psl/index.ts";
 import { base58CheckDecode } from "./base58.ts";
 import { decodeBitcoinAddress } from "./bitcoin.ts";
 import { checkEip55 } from "./eip55.ts";
@@ -103,8 +103,12 @@ const VALIDATORS: Record<string, [string, Check]> = {
   ip_private: ["ip", ipv4In("private", ([a = -1, b = -1]) => a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168))],
   ipv4_loopback: ["ip", ipv4In("loopback", ([a]) => a === 127)],
   ipv4_apipa: ["ip", ipv4In("link-local", ([a, b]) => a === 169 && b === 254)],
-  domain: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
-  subdomain: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
+  // PSL: a "domain" is the registrable domain itself (eTLD+1); anything below it is a subdomain (P1-006)
+  domain: ["psl", (v) => (!isRegistrableHost(v) ? bad("not registrable") : registrableDomain(v) === v ? ok() : bad("subdomain"))],
+  subdomain: [
+    "psl",
+    (v) => (!isRegistrableHost(v) ? bad("not registrable") : registrableDomain(v) !== v ? ok() : bad("registrable domain")),
+  ],
   hostname: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
   mx_record: [
     "psl",

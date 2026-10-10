@@ -1,11 +1,9 @@
 import type { InvestigationNode, FetchResult } from "../types";
-import { IDENTIFIER_LIST } from "./identifierList";
+import { detectBest } from "@ir/core/identifiers";
 
+/** Best-ranked type from the multi-candidate engine (P1-006), or "text"; one detector for the whole app (D-027). */
 function detectType(value: string): string {
-  for (const id of IDENTIFIER_LIST) {
-    if (id.regex.test(value.trim())) return id.id;
-  }
-  return "text";
+  return detectBest(value)?.type ?? "text";
 }
 
 function buildNode(
