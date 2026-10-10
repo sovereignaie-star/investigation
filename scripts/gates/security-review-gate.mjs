@@ -115,13 +115,6 @@ async function main() {
   console.log(`security-review-gate: PR #${number} head ${headSha.slice(0, 7)}: ${result.pass ? "PASS" : "FAIL"}`);
   console.log(`  ${result.reason}`);
   for (const f of result.touched) console.log(`  D-8 path: ${f}`);
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    const { appendFileSync } = await import("node:fs");
-    appendFileSync(
-      process.env.GITHUB_STEP_SUMMARY,
-      `### security-review-gate: ${result.pass ? "PASS" : "FAIL"}\n\n${result.reason}\n\n${result.touched.map((f) => `- \`${f}\``).join("\n")}\n`,
-    );
-  }
   process.exit(result.pass ? 0 : 1);
 }
 
