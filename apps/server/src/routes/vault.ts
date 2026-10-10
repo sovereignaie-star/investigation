@@ -13,6 +13,20 @@ const bodyString = (req: Request, key: "email" | "ip"): string => {
 };
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,253}$/;
 
+/**
+ * P1-030 (owner decision D-2, D-049, D-016): the lookup routes send an investigation identifier (an IP address, an
+ * email) to a third party, with no case, purpose, consent or network log yet. Until the egress gateway (P2-003),
+ * the natural-person gate (P2-013) and the per-case network log (P2-014) exist, they are off unless the operator
+ * sets IR_ENABLE_LOOKUPS=1 exactly; IR_OFFLINE=1 turns them off whatever else is set. Fail closed: any other value,
+ * including "true", leaves them off.
+ */
+export function lookupsEnabled(env: NodeJS.ProcessEnv): boolean {
+  return env["IR_OFFLINE"] !== "1" && env["IR_ENABLE_LOOKUPS"] === "1";
+}
+export const LOOKUPS_DISABLED = {
+  error: "external lookups are disabled on this server (set IR_ENABLE_LOOKUPS=1 to allow them; see .env.example)",
+} as const;
+
 /** Key vault and keyed lookups (P1-015). No route ever responds with a secret. */
 export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; env?: NodeJS.ProcessEnv } = {}): IRouter {
   const f: FetchLike = opts.fetch ?? ((url, init) => fetch(url, init));
@@ -23,6 +37,11 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
   // Vault writes and provider-funded lookups are not browser-public APIs. Parsing, throttling and authentication are
   // applied as one boundary so an unauthenticated request cannot reach a provider.
   router.use(["/vault", "/lookup"], express.json({ limit: "8kb" }), limiter, admin);
+  // checked on every request, after authentication and before the vault or any input is read
+  router.use("/lookup", (_req, res, next) => {
+    if (lookupsEnabled(opts.env ?? process.env)) next();
+    else res.status(403).json(LOOKUPS_DISABLED);
+  });
 
   router.get("/vault", (_req, res) => {
     const configured = new Map(

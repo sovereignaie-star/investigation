@@ -12,6 +12,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus, platform, release, tmpdir } from "node:os";
 import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import {
   IDENTIFIER_SPECS,
   detect,
@@ -69,12 +70,28 @@ function env() {
 
 // ---------------------------------------------------------------------------------------------------------------
 // One Vitest run with coverage feeds G-10, G-11, G-12, G-13, the determinism checks and the performance tests.
+type TestRow = { file: string; name: string; status: string; ms: number; failure?: string };
 interface VitestJson {
   numTotalTests: number;
   numFailedTests: number;
-  testResults: { name: string; assertionResults: { fullName: string; title: string; status: string; duration?: number }[] }[];
+  testResults: {
+    name: string;
+    status?: string;
+    message?: string;
+    assertionResults: { fullName: string; title: string; status: string; duration?: number; failureMessages?: string[] }[];
+  }[];
 }
-function runVitest(): { tests: { file: string; name: string; status: string; ms: number }[]; total: number; failed: number } {
+/** First lines of a failure, without ANSI colours: enough to tell a timeout from a wrong value (R-10, D-053). */
+const firstLines = (m: string | undefined, n = 6): string | undefined =>
+  m === undefined
+    ? undefined
+    : stripVTControlCharacters(m)
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(0, n)
+        .join("\n");
+
+function runVitest(): { tests: TestRow[]; total: number; failed: number; fileErrors: { file: string; failure: string }[] } {
   // outside coverage/: Vitest cleans that directory before it writes the coverage report
   const out = path.join(mkdtempSync(path.join(tmpdir(), "ir-gate-vitest-")), "results.json");
   const r = spawnSync(BIN("vitest"), ["run", "--coverage", "--reporter=json", `--outputFile=${out}`], {
@@ -84,15 +101,20 @@ function runVitest(): { tests: { file: string; name: string; status: string; ms:
   });
   if (r.error) throw r.error;
   const j = JSON.parse(readFileSync(out, "utf8")) as VitestJson;
-  const tests = j.testResults.flatMap((f) =>
+  const tests: TestRow[] = j.testResults.flatMap((f) =>
     f.assertionResults.map((a) => ({
       file: path.relative(ROOT, f.name),
       name: a.fullName,
       status: a.status,
       ms: Math.round(a.duration ?? 0),
+      ...(a.failureMessages?.length ? { failure: firstLines(a.failureMessages.join("\n")) } : {}),
     })),
   );
-  return { tests, total: j.numTotalTests, failed: j.numFailedTests };
+  // a file that fails to load has no assertion results, only a message
+  const fileErrors = j.testResults
+    .filter((f) => f.status === "failed" && f.assertionResults.every((a) => a.status === "passed"))
+    .map((f) => ({ file: path.relative(ROOT, f.name), failure: firstLines(f.message) ?? "failed without a message" }));
+  return { tests, total: j.numTotalTests, failed: j.numFailedTests + fileErrors.length, fileErrors };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -363,19 +385,170 @@ function browserCheck(): { ok: boolean; measured: Record<string, unknown> } {
   return { ok: bundleOk, measured: browser };
 }
 
+/** Finds a Chrome or Chromium binary: CHROME_PATH, then the usual names on PATH (GitHub's Ubuntu runners ship Chrome). */
+function findChrome(): string | undefined {
+  const fromEnv = process.env["CHROME_PATH"];
+  if (fromEnv && existsSync(fromEnv)) return fromEnv;
+  for (const name of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
+    const r = spawnSync("which", [name], { encoding: "utf8" });
+    if (r.status === 0 && r.stdout.trim()) return r.stdout.trim();
+  }
+  return undefined;
+}
+
+/** Opens url in the page target of a running Chrome and records what the page requested and reported. */
+async function cdpVisit(
+  devtools: string,
+  url: string,
+): Promise<{ loaded: boolean; rendered: number; requests: string[]; problems: string[] }> {
+  const http = devtools.replace(/^ws:\/\/([^/]+)\/.*$/, "http://$1");
+  const pages = (await (await fetch(`${http}/json/list`)).json()) as { type: string; webSocketDebuggerUrl: string }[];
+  const page = pages.find((p) => p.type === "page");
+  if (!page) throw new Error("no page target");
+  const ws = new WebSocket(page.webSocketDebuggerUrl);
+  await new Promise((r, j) => ((ws.onopen = r), (ws.onerror = j)));
+  let id = 0;
+  const pending = new Map<number, (v: unknown) => void>();
+  const requests: string[] = [];
+  const problems: string[] = [];
+  let loaded = false;
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(String(ev.data)) as { id?: number; method?: string; params?: Record<string, unknown>; result?: unknown };
+    if (m.id !== undefined) pending.get(m.id)?.(m.result);
+    if (m.method === "Network.requestWillBeSent") requests.push(String((m.params?.["request"] as { url: string }).url));
+    if (m.method === "Page.loadEventFired") loaded = true;
+    if (m.method === "Runtime.exceptionThrown") problems.push(JSON.stringify(m.params).slice(0, 300));
+    if (m.method === "Runtime.consoleAPICalled" && ["error", "warning"].includes(String(m.params?.["type"])))
+      problems.push(JSON.stringify(m.params?.["args"]).slice(0, 300));
+  };
+  const send = (method: string, params: Record<string, unknown> = {}) =>
+    new Promise<unknown>((resolve) => {
+      const n = ++id;
+      pending.set(n, resolve);
+      ws.send(JSON.stringify({ id: n, method, params }));
+    });
+  await send("Network.enable");
+  await send("Page.enable");
+  await send("Runtime.enable");
+  await send("Page.navigate", { url });
+  for (let i = 0; i < 100 && !loaded; i++) await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 2000)); // late requests after load (timers, lazy chunks)
+  const evaluated = (await send("Runtime.evaluate", {
+    expression: "document.getElementById('root')?.innerText.length ?? 0",
+    returnByValue: true,
+  })) as {
+    result?: { value?: number };
+  };
+  const rendered = evaluated.result?.value ?? 0;
+  ws.close();
+  return { loaded, rendered, requests, problems };
+}
+
+/**
+ * R-10: the browser check by observation, not by reading source. The built server is started, the shipped app is
+ * opened in headless Chrome through the DevTools protocol, and every request the page makes is recorded. Pass: the
+ * page rendered, made at least one request, and every request went to the server's own origin.
+ */
+async function browserNetwork(): Promise<{ ok: boolean; measured: Record<string, unknown> }> {
+  const chrome = findChrome();
+  const serverJs = path.join(ROOT, "apps", "server", "dist", "index.mjs");
+  if (!chrome) return { ok: false, measured: { error: "no Chrome/Chromium found (set CHROME_PATH)" } };
+  if (!existsSync(serverJs)) return { ok: false, measured: { error: `${serverJs} missing (run pnpm run build first)` } };
+  const data = mkdtempSync(path.join(tmpdir(), "ir-gate-web-"));
+  const profile = mkdtempSync(path.join(tmpdir(), "ir-gate-chrome-"));
+  const port = 19_000 + (process.pid % 1000);
+  const origin = `http://127.0.0.1:${port}`;
+  const server = spawn(process.execPath, [serverJs], {
+    cwd: ROOT,
+    env: {
+      PATH: process.env["PATH"] ?? "",
+      IR_DATA_DIR: data,
+      IR_ADMIN_TOKEN: `gate-${process.pid}`,
+      PORT: String(port),
+      HOST: "127.0.0.1",
+      NODE_ENV: "production",
+    },
+    stdio: "ignore",
+  });
+  const browser = spawn(
+    chrome,
+    [
+      "--headless=new",
+      "--no-sandbox",
+      "--disable-gpu",
+      "--no-first-run",
+      "--disable-background-networking",
+      "--disable-component-update",
+      "--disable-sync",
+      "--disable-default-apps",
+      "--remote-debugging-port=0",
+      `--user-data-dir=${profile}`,
+      "about:blank",
+    ],
+    { stdio: ["ignore", "ignore", "pipe"] },
+  );
+  const stop = async () => {
+    browser.kill("SIGKILL");
+    server.kill("SIGTERM");
+    await Promise.all([new Promise((r) => browser.once("exit", r)), new Promise((r) => server.once("exit", r))]);
+    rmSync(data, { recursive: true, force: true });
+    rmSync(profile, { recursive: true, force: true });
+  };
+  try {
+    const devtools = await new Promise<string>((resolve, reject) => {
+      let err = "";
+      const t = setTimeout(() => reject(new Error(`Chrome did not start: ${err.slice(0, 300)}`)), 15_000);
+      browser.stderr.on("data", (b: Buffer) => {
+        err += b.toString();
+        const m = /DevTools listening on (ws:\/\/\S+)/.exec(err);
+        if (m?.[1]) {
+          clearTimeout(t);
+          resolve(m[1]);
+        }
+      });
+    });
+    for (let i = 0; i < 50; i++) {
+      try {
+        if ((await fetch(`${origin}/api/healthz`)).ok) break;
+      } catch {
+        /* not up yet */
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const { loaded, rendered, requests, problems } = await cdpVisit(devtools, `${origin}/`);
+    const foreign = requests.filter((u) => !u.startsWith(`${origin}/`) && !u.startsWith("data:"));
+    return {
+      ok: loaded && rendered > 0 && requests.length > 0 && foreign.length === 0 && problems.length === 0,
+      measured: {
+        browser: path.basename(chrome),
+        loaded,
+        renderedChars: rendered,
+        requests: requests.length,
+        foreignRequests: foreign,
+        consoleProblems: problems,
+      },
+    };
+  } catch (x) {
+    return { ok: false, measured: { error: String(x) } };
+  } finally {
+    await stop();
+  }
+}
+
 async function g11(tests: { file: string; status: string }[]) {
   const unit = tests.filter((t) => t.file.endsWith("routes/vault.test.ts") || t.file.endsWith("store/src/vault.test.ts"));
   const unitOk = unit.length > 0 && unit.every((t) => t.status === "passed");
 
   const { ok: e2eOk, measured: e2e } = await e2eServer();
   const { ok: bundleOk, measured: browser } = browserCheck();
+  const { ok: netOk, measured: network } = await browserNetwork();
   results.push({
     id: "G-11",
     title: "keys never leave the server",
     criterion:
-      "vault unit tests pass; on the built server no stored key appears in any response, header, server log or the vault file in clear; the browser never calls a keyed provider, never puts a key in a URL, cannot read a secret back, and the bundle writes no browser storage",
-    pass: unitOk && e2eOk && bundleOk,
-    measured: { unitTests: unit.length, unitOk, e2e, browser },
+      "vault unit tests pass; on the built server no stored key appears in any response, header, server log or the vault file in clear; the browser never calls a keyed provider, never puts a key in a URL, cannot read a secret back, and the bundle writes no browser storage; in headless Chrome the shipped app renders and every request it makes goes to the server's own origin",
+    pass: unitOk && e2eOk && bundleOk && netOk,
+    measured: { unitTests: unit.length, unitOk, e2e, browser, network },
   });
 }
 
@@ -384,13 +557,19 @@ function g12(tests: { file: string; name: string; status: string }[]) {
   const purpose = tests.filter((t) => t.file.endsWith("store/src/audit-purpose.test.ts"));
   const ok = purpose.length > 0 && purpose.every((t) => t.status === "passed");
   const d052 = purpose.filter((t) => t.name.includes("D-052"));
-  // No code outside @ir/store's case module opens a case database on its own.
-  const offenders = ["apps", "packages", "lib"]
-    .flatMap((d) => listFiles(path.join(ROOT, d), SOURCE))
-    .filter((f) => /new DatabaseSync\(/.test(readFileSync(f, "utf8")))
-    .map((f) => path.relative(ROOT, f));
-  const allowed = ["packages/store/src/case.ts"];
-  const outside = offenders.filter((f) => !allowed.includes(f));
+  // No code outside @ir/store's case module opens a case database on its own: nothing outside packages/store/src
+  // touches node:sqlite at all (or another SQLite driver), and inside it only case.ts constructs a database.
+  const sources = ["apps", "packages", "lib"].flatMap((d) => listFiles(path.join(ROOT, d), SOURCE));
+  const rel = (f: string) => path.relative(ROOT, f);
+  const sqliteOutsideStore = sources
+    .filter((f) => !rel(f).startsWith("packages/store/src/"))
+    .filter((f) => /["'](node:sqlite|better-sqlite3|sqlite3|sql\.js)["']|DatabaseSync\b/.test(readFileSync(f, "utf8")))
+    .map(rel);
+  const constructsInStore = sources
+    .filter((f) => rel(f).startsWith("packages/store/src/") && rel(f) !== "packages/store/src/case.ts")
+    .filter((f) => /new DatabaseSync\s*\(/.test(readFileSync(f, "utf8")))
+    .map(rel);
+  const outside = [...sqliteOutsideStore, ...constructsInStore];
   results.push({
     id: "G-12",
     title: "no case without a purpose",
@@ -453,7 +632,13 @@ g13();
 const pick = (re: RegExp) => run.tests.filter((t) => re.test(t.name)).map((t) => ({ test: t.name, status: t.status, ms: t.ms }));
 const report = {
   environment: env(),
-  suite: { total: run.total, failed: run.failed },
+  suite: { total: run.total, failed: run.failed, fileErrors: run.fileErrors },
+  failures: run.tests.filter((t) => t.failure).map((t) => ({ file: t.file, test: t.name, ms: t.ms, failure: t.failure })),
+  // the margin to each heavy test's explicit timeout (D-053) is read from here across CI runs
+  slowest: [...run.tests]
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 5)
+    .map((t) => ({ test: t.name, ms: t.ms })),
   gates: results,
   determinism: pick(
     /live projection equals a rebuild|D-051|revert cleanly|chained merges|live projection equals a rebuild from case\.sqlite|is deterministic/,
@@ -466,7 +651,8 @@ const lines = [
   `suite              ${run.total - run.failed}/${run.total} tests passed`,
   ...run.tests
     .filter((t) => !["passed", "skipped", "pending", "todo"].includes(t.status))
-    .map((t) => `        FAILED ${t.file} > ${t.name} (${t.ms} ms)`),
+    .map((t) => `        FAILED ${t.file} > ${t.name} (${t.ms} ms)${t.failure ? `\n${t.failure.replace(/^/gm, "          | ")}` : ""}`),
+  ...run.fileErrors.map((f) => `        FAILED ${f.file} (file)\n${f.failure.replace(/^/gm, "          | ")}`),
   ...results.map(
     (r) =>
       `${r.id}  ${r.pass ? (r.partial ? "PASS*" : "PASS ") : "FAIL "}  ${r.title}\n        ${JSON.stringify(r.measured)}${r.partial && r.blocker ? `\n        * ${r.blocker}` : ""}`,
@@ -475,6 +661,8 @@ const lines = [
   ...report.determinism.map((d) => `        ${d.status === "passed" ? "PASS" : "FAIL"} ${d.test} (${d.ms} ms)`),
   "performance",
   ...report.performance.map((d) => `        ${d.status === "passed" ? "PASS" : "FAIL"} ${d.test} (${d.ms} ms)`),
+  "slowest tests",
+  ...report.slowest.map((d) => `        ${d.ms} ms  ${d.test}`),
 ];
 process.stdout.write(`${lines.join("\n")}\n`);
 const failed =

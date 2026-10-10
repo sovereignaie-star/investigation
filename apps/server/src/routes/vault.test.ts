@@ -6,10 +6,11 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { openVault } from "@ir/store";
 import { createApp } from "../app";
-import { vaultRouter } from "./vault";
+import { LOOKUPS_DISABLED, lookupsEnabled, vaultRouter } from "./vault";
 
 const SECRET = "ipinfo_token_9c1e_never_returned";
 const ADMIN_TOKEN = "admin-token-123";
+const ENABLED = { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_ENABLE_LOOKUPS: "1" };
 const servers: Server[] = [];
 const dirs: string[] = [];
 afterEach(() => {
@@ -39,7 +40,7 @@ function lookup(body: Record<string, string>): RequestInit {
   });
 }
 
-async function start(env: NodeJS.ProcessEnv = { IR_ADMIN_TOKEN: ADMIN_TOKEN }) {
+async function start(env: NodeJS.ProcessEnv = ENABLED) {
   const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-"));
   dirs.push(dir);
   const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
@@ -61,7 +62,7 @@ async function start(env: NodeJS.ProcessEnv = { IR_ADMIN_TOKEN: ADMIN_TOKEN }) {
     all.push(text, JSON.stringify([...res.headers]));
     return { status: res.status, text, headers: res.headers };
   };
-  return { call, upstream, all };
+  return { call, upstream, all, vault };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {
@@ -101,6 +102,62 @@ describe("vault routes (P1-015, P1-026)", () => {
     expect((await unconfigured.call("/vault")).status).toBe(503);
     expect((await unconfigured.call("/lookup/ip", { method: "POST", body: JSON.stringify({ ip: "8.8.8.8" }) })).status).toBe(503);
     expect(unconfigured.upstream).toHaveLength(0);
+  });
+
+  describe("P1-030 (D-2): external lookups are off unless IR_ENABLE_LOOKUPS=1", () => {
+    it("only the exact value 1 enables them, and IR_OFFLINE=1 always wins", () => {
+      expect(lookupsEnabled({})).toBe(false);
+      for (const v of ["", "0", "true", "yes", "1 ", " 1", "on", "TRUE"]) expect(lookupsEnabled({ IR_ENABLE_LOOKUPS: v })).toBe(false);
+      expect(lookupsEnabled({ IR_ENABLE_LOOKUPS: "1" })).toBe(true);
+      expect(lookupsEnabled({ IR_ENABLE_LOOKUPS: "1", IR_OFFLINE: "1" })).toBe(false);
+    });
+
+    for (const [label, env] of [
+      ["unset", { IR_ADMIN_TOKEN: ADMIN_TOKEN }],
+      ["IR_ENABLE_LOOKUPS=true", { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_ENABLE_LOOKUPS: "true" }],
+      ["IR_OFFLINE=1", { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_ENABLE_LOOKUPS: "1", IR_OFFLINE: "1" }],
+    ] as const)
+      it(`${label}: every lookup answers 403 and no connection is attempted, with a key stored`, async () => {
+        // Two independent witnesses: the injected fetch, and the process-wide fetch, which would throw if reached.
+        const realFetch = globalThis.fetch;
+        let globalCalls = 0;
+        const s = await start(env);
+        s.vault.set("ipinfo", SECRET);
+        s.vault.set("haveibeenpwned", SECRET);
+        const local = (u: string) => u.startsWith("http://127.0.0.1:");
+        globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+          const u = String(input instanceof Request ? input.url : input);
+          if (!local(u)) {
+            globalCalls++;
+            throw new Error(`unexpected external connection to ${u}`);
+          }
+          return realFetch(input, init);
+        }) as typeof fetch;
+        try {
+          for (const [p, body] of [
+            ["/lookup/ip", { ip: "8.8.8.8" }],
+            ["/lookup/ip", { ip: "999.1.1.1" }],
+            ["/lookup/breaches", { email: "a@example.com" }],
+            ["/lookup/anything", {}],
+          ] as const) {
+            const r = await s.call(p, lookup(body));
+            expect(r.status, p).toBe(403);
+            expect(JSON.parse(r.text)).toEqual(LOOKUPS_DISABLED);
+          }
+        } finally {
+          globalThis.fetch = realFetch;
+        }
+        expect(s.upstream).toHaveLength(0);
+        expect(globalCalls).toBe(0);
+        // the vault routes are unaffected
+        expect((await s.call("/vault", withAdmin())).status).toBe(200);
+      });
+
+    it("authentication is still checked first: without the token the answer is 401, not 403", async () => {
+      const s = await start({ IR_ADMIN_TOKEN: ADMIN_TOKEN });
+      expect((await s.call("/lookup/ip", { method: "POST", body: JSON.stringify({ ip: "8.8.8.8" }) })).status).toBe(401);
+      expect(s.upstream).toHaveLength(0);
+    });
   });
 
   it("does not grant a hostile origin CORS access to the vault", async () => {
