@@ -288,3 +288,10 @@
 - إصلاح في الخطاف: `lint-staged` كان يعيد تنسيق الملفات المنقولة فيحوّل النقل إلى حذف وإضافة (153 ملفاً بدل إعادة تسمية). صار `.githooks/pre-commit` يمرر `--diff-filter=ACM` فلا تُلمس ملفات النقل (R)، ويبقى تاريخها متصلاً (`git log --follow`).
 - ما لم يتم: معرّف عنصر الواجهة في Replit (`id = "artifacts/investigation-room"`) أُبقي كما هو لأنه مفتاح ثابت؛ [للتحقق] أن Replit يكتشف `.replit-artifact` خارج `artifacts/` عند فتح المستودع فيه. D-043 يبقى مفتوحاً حتى P3-001.
 - التالي: P1-002 (`@ir/schema`) وP1-019 (الساعة والمولّد القابلان للحقن).
+
+### 2026-10-10 — [P1-019] ساعة ومولّد قابلان للحقن
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: أول حزمة نواة `packages/core` (`@ir/core`): واجهة `Clock` (`systemClock`، `manualClock` لا يرجع إلى الوراء) و`Random` (`cryptoRandom`، `seededRandom` حتمي لعالم المحاكاة والاختبارات) و`ulidFactory(clock, random)` وفق مواصفة ULID، رتيب داخل الملّي ثانية نفسها وعند رجوع الساعة، و`ulidTime()`. قاعدة ESLint تمنع `Date.now()` و`new Date()` و`Math.random()` في `packages/core` و`packages/schema` و`packages/ledger` (عدا `clock.ts` والاختبارات)، فلا يدخل وقت أو عشوائية غير محقونة إلى النواة (5.2، D1، D11).
+- الأدلة: `packages/core/src/clock.test.ts` (6 اختبارات): حتمية بالحقن، 1,000 معرّف فريد مرتب في الملّي ثانية نفسها، بادئة الوقت `01ARYZ6S41` لمثال المواصفة (1469918176385)، الرتابة عند رجوع الساعة. ملف تجريبي يستدعي `Date.now()` و`Math.random()` يُرفض برسالتي P1-019.
+- ما لم يتم: —
+- التالي: P1-002.
