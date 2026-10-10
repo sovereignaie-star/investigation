@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -75,8 +75,9 @@ describe("content-addressed blob store (P1-010)", () => {
     const dir = path.join(root, "blobs", r1.sha256.slice(0, 2));
     expect(readdirSync(dir)).toEqual([r1.sha256]); // no temp files left behind
     const file = path.join(dir, r1.sha256);
-    expect(statSync(file).size).toBeLessThan(1000);
-    expect([...readFileSync(file).subarray(0, 4)]).toEqual([0x28, 0xb5, 0x2f, 0xfd]); // zstd frame magic
+    const onDisk = readFileSync(file);
+    expect(onDisk.length).toBeLessThan(1000);
+    expect([...onDisk.subarray(0, 4)]).toEqual([0x28, 0xb5, 0x2f, 0xfd]); // zstd frame magic
     writeFileSync(file, "damaged");
     store.put(body); // a damaged copy is rewritten
     expect(store.get(r1.sha256)).toEqual(body);

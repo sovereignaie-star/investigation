@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import * as zlib from "node:zlib";
 
@@ -59,7 +59,14 @@ function ref(bytes: Uint8Array): BlobRef {
 /** Files under `<root>/blobs/`. Writes are atomic (temp file + rename) and idempotent; a damaged copy is replaced. */
 export function fsBlobStore(root: string): BlobStore {
   const file = (sha: string) => path.join(root, ...blobPath(sha).split("/"));
-  const read = (sha: string) => (existsSync(file(sha)) ? new Uint8Array(readFileSync(file(sha))) : undefined);
+  const read = (sha: string): Uint8Array | undefined => {
+    try {
+      return new Uint8Array(readFileSync(file(sha)));
+    } catch (x) {
+      if ((x as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw x;
+    }
+  };
   const store: BlobStore = {
     put(bytes) {
       const r = ref(bytes);
