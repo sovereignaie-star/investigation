@@ -362,3 +362,25 @@
 - الأدلة: البحث عن الاسم في ملفات المشروع الحية (غير WORKLOG والأرشيف) لا يعيد شيئاً.
 - ما لم يتم: —
 - التالي: P1-005.
+
+### 2026-10-10 — [P1-005] المدققات بمتجهات رسمية
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: مدققات بنيوية للمعرّفات في `@ir/core` دون أي اعتماد خارجي، تعمل كما هي في المتصفح والخادم:
+  - `hash.ts`: SHA-256 وKeccak-256 وSHA3-256 مكتوبة بلغة TS صرفة. Keccak ضروري لـ EIP-55، وSHA3 يشاركه دالة التبديل نفسها فيتيح مقارنته بـ node:crypto.
+  - `luhn`، و`checkIban` (سجل SWIFT لـ 89 دولة: الطول وبنية BBAN وmod-97، مع سبب الرفض)، و`isValidIsin` (ISO 6166).
+  - `checkEip55` و`toChecksumAddress` (يُقبل العنوان كله بأحرف صغيرة أو كله بأحرف كبيرة بلا checksum، ويُرفض المختلط إن خالف الـ checksum).
+  - `base58`/`base58CheckDecode`، و`bech32Decode` (Bech32 وBech32m)، و`decodeSegwitAddress` (قواعد BIP-350 وBIP-141)، و`decodeBitcoinAddress` (يعيد scriptPubKey والشبكة).
+  - `isIPv4` و`isIPv6` بصرامة: لا أصفار بادئة، ولا معرّف zone.
+  - `@ir/core/psl`: قائمة اللواحق العامة (10,018 قاعدة و310 wildcard و8 استثناءات) مع `publicSuffix` و`registrableDomain` و`isRegistrableHost`. هي مسار فرعي مستقل حتى لا تُحمَّل 150 KB إلا حيث تلزم.
+  - `validate(type, normalized)` و`validatorFor(type)` تربط 33 نوعاً من الكتالوج بمدققاتها، وتميّز بين «صالح» و«غير صالح» و«لا مدقق له» (null). الاسم المعاد يُخزَّن في `Identifier.validator`.
+  - البيانات مأخوذة من مصادرها في `packages/core/data` (iban.dat من python-stdnum عن سجل SWIFT، وpublic_suffix_list.dat)، وتُولَّد منها الوحدات بـ `pnpm --filter @ir/core run gen:data`.
+- الأدلة: 62 اختباراً في `packages/core` (منها 19 جديدة؛ المجموع في المستودع 122) بمتجهات من مصادرها كما هي:
+  - BIP-173 وBIP-350: سلاسل checksum صالحة وغير صالحة، وعناوين segwit مع scriptPubKey. عناوين v1+ المكتوبة بـ Bech32 في BIP-173 تُرفض كما يقتضي BIP-350.
+  - EIP-55 بحالاته الثلاث، مع قلب حالة كل حرف.
+  - Bitcoin Core: `key_io_valid.json` (54 عنواناً تطابق scriptPubKey) و`key_io_invalid.json` (70 مرفوضة) و`base58_encode_decode.json`.
+  - ملف `test_psl.txt` الرسمي كاملاً.
+  - Luhn وmod-97: كل استبدال لرقم واحد يُكتشف.
+  - IP: مطابقة مع `node:net` على 20,000 مدخل مولّد.
+  - مفاتيح WIF الخاصة في متجهات Bitcoin Core استُبعدت من الملفات المحفوظة.
+- ما لم يتم: الهواتف (libphonenumber) خارج نطاق هذه المهمة وتأتي مع P5-005. وربط `validate()` بالكشف يأتي في P1-006. وD-029 مفتوح جزئياً: الأنواع EVM الأربعة تمر الآن بمدقق EIP-55 صريح، لكن التمييز بين السلاسل يحتاج P2-010.
+- التالي: P1-006 (محرك الكشف متعدد المرشحين)، P1-010، P1-011.

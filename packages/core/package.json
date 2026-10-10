@@ -4,10 +4,13 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./validate": "./src/validators/index.ts",
+    "./psl": "./src/psl/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "gen:data": "node scripts/gen-data.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:"

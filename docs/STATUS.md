@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 24 | 7 | 0 |
+| 1 | النواة والسجل | 24 | 8 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -72,7 +72,7 @@
 | P1-002 | `@ir/schema`: مخططات Zod لنموذج 5.4 (M) | done | packages/schema: Zod v4 models for all 11 entities of 5.4 + JSON Schema 2020-12 in packages/schema/json; 19 tests |
 | P1-003 | نقل بيانات المعرّفات إلى YAML بالمخطط الجديد (M) | todo | — |
 | P1-004 | إصلاح الأنماط والأمثلة غير المتطابقة (M) | todo | — |
-| P1-005 | المدققات: Luhn، IBAN، EIP-55، Base58Check، Bech32، IP، PSL (M) | todo | — |
+| P1-005 | المدققات: Luhn، IBAN، EIP-55، Base58Check، Bech32، IP، PSL (M) | done | @ir/core/validate + @ir/core/psl: Luhn, IBAN (SWIFT registry, 89 countries), ISIN, EIP-55 (pure Keccak-256), Base58Check, Bech32/Bech32m, Bitcoin addresses, IPv4/IPv6, PSL; official vectors (BIP-173/350, EIP-55, Bitcoin Core key_io/base58, test_psl.txt); 62 core tests |
 | P1-006 | محرك الكشف متعدد المرشحين بدرجات وسياق (M) | todo | — |
 | P1-007 | التطبيع والمفتاح القانوني (M) | done | packages/core/src/normalize.ts: normalize()/canonicalKey() for 371 type ids by family; 100,000 distinct inputs -> 100,000 keys, all variants map back; smartInvestigator uses it |
 | P1-008 | تصنيف الحساسية لكل نوع (M) | todo | — |
@@ -371,7 +371,7 @@
 | D-026 | منخفض | مفتوح | — |
 | D-027 | منخفض | مفتوح | — |
 | D-028 | متوسط | مفتوح | — |
-| D-029 | متوسط | مفتوح | — |
+| D-029 | متوسط | مفتوح جزئياً | P1-005: الأنواع الأربعة تمر بمدقق EVM صريح (EIP-55) بدل معاملتها كإيثيريوم؛ التمييز بين السلاسل يحتاج استعلام السلسلة (P2-010) |
 | D-030 | حرج | مفتوح | — |
 | D-031 | متوسط | مفتوح | — |
 | D-032 | منخفض | مفتوح | — |
