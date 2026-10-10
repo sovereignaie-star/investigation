@@ -1,0 +1,8 @@
+# P0-024 — review ownership. One maintainer today; split per area as the team grows (ROADMAP 10).
+*                         @sovereignaie-star
+/docs/ROADMAP.md          @sovereignaie-star
+/docs/STATUS.md           @sovereignaie-star
+/GOVERNANCE.md            @sovereignaie-star
+/scripts/governance/      @sovereignaie-star
+/.github/                 @sovereignaie-star
+/SECURITY.md              @sovereignaie-star

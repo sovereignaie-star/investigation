@@ -1,0 +1,31 @@
+# P0-024 — label taxonomy. Applied with: gh label create <name> --color <c> --description <d> --force
+# type
+- { name: "type:feat", color: "1d76db", description: "New capability" }
+- { name: "type:fix", color: "d73a4a", description: "Bug fix" }
+- { name: "type:docs", color: "0075ca", description: "Documentation" }
+- { name: "type:chore", color: "cfd3d7", description: "Tooling, deps, CI" }
+- { name: "type:security", color: "b60205", description: "Security issue or hardening" }
+# phase (ROADMAP 6)
+- { name: "phase:0", color: "c5def5", description: "Phase 0 - stabilise" }
+- { name: "phase:1", color: "c5def5", description: "Phase 1 - core" }
+- { name: "phase:2", color: "c5def5", description: "Phase 2 - adapters" }
+- { name: "phase:3", color: "c5def5", description: "Phase 3 - UI" }
+- { name: "phase:4", color: "c5def5", description: "Phase 4 - analysis" }
+- { name: "phase:5", color: "c5def5", description: "Phase 5 - Arabic, AI, reports" }
+- { name: "phase:6", color: "c5def5", description: "Phase 6 - hardening" }
+- { name: "phase:7", color: "c5def5", description: "Phase 7 - GA" }
+- { name: "phase:8", color: "c5def5", description: "Phase 8 - integrations" }
+# area
+- { name: "area:core", color: "5319e7", description: "Detection, ledger, graph, confidence" }
+- { name: "area:adapters", color: "5319e7", description: "Transforms TR-xxx and egress" }
+- { name: "area:web", color: "5319e7", description: "Web UI" }
+- { name: "area:api", color: "5319e7", description: "API server" }
+- { name: "area:governance", color: "5319e7", description: "ROADMAP, STATUS, WORKLOG, guard" }
+- { name: "area:catalog", color: "5319e7", description: "Tool catalog" }
+# priority (ROADMAP 6 M/S/C)
+- { name: "priority:M", color: "e99695", description: "Must for GA" }
+- { name: "priority:S", color: "f9d0c4", description: "Should for GA" }
+- { name: "priority:C", color: "fef2c0", description: "Could" }
+# state
+- { name: "blocked", color: "000000", description: "Waiting on a dependency or decision" }
+- { name: "natural-person-gate", color: "fbca04", description: "Touches people data; needs gate review (E-01..E-10)" }
