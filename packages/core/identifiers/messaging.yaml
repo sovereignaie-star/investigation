@@ -1,0 +1,92 @@
+# Identifier catalog: Messaging (5 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: telegram_username
+  category: Messaging
+  labels:
+    en: Telegram Username
+    ar: يوزرنيم تيليغرام
+  description: Telegram @username
+  icon: ✈️
+  color: blue
+  patterns:
+    - ^@[a-zA-Z][a-zA-Z0-9_]{4,31}$
+  validator: null
+  examples:
+    positive:
+      - "@username"
+    negative:
+      - "@username#"
+  sensitivity: normal
+- id: whatsapp_number
+  category: Messaging
+  labels:
+    en: WhatsApp Number
+    ar: رقم واتساب
+  description: WhatsApp phone number with country code
+  icon: 💬
+  color: green
+  patterns:
+    - ^\+\d{7,15}$
+  validator: null
+  examples:
+    positive:
+      - "+1234567890"
+    negative:
+      - +1234567890#
+  sensitivity: normal
+- id: signal_number
+  category: Messaging
+  labels:
+    en: Signal Number
+    ar: رقم سيغنال
+  description: Signal messenger phone number
+  icon: 🔵
+  color: blue
+  patterns:
+    - ^\+[1-9]\d{6,14}$
+  validator: null
+  examples:
+    positive:
+      - "+1234567890"
+    negative:
+      - +1234567890#
+  sensitivity: normal
+- id: wickr_id
+  category: Messaging
+  labels:
+    en: Wickr ID
+    ar: ويكر
+  description: Wickr secure messenger ID
+  icon: 🛡️
+  color: gray
+  patterns:
+    - ^[a-zA-Z0-9_]{5,20}$
+  validator: null
+  context:
+    keywords:
+      - wickr
+      - ويكر
+    required: true
+  examples:
+    positive:
+      - wickr_user
+    negative:
+      - wickr_user#
+  sensitivity: normal
+- id: skype_id
+  category: Messaging
+  labels:
+    en: Skype ID
+    ar: سكايب
+  description: Microsoft Skype username
+  icon: 💙
+  color: blue
+  patterns:
+    - ^(live:[a-zA-Z0-9._\-]+|[a-zA-Z][a-zA-Z0-9._\-]{5,31})$
+  validator: null
+  examples:
+    positive:
+      - live:username
+    negative:
+      - live:username#
+  sensitivity: normal

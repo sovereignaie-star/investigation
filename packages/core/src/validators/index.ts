@@ -106,7 +106,15 @@ const VALIDATORS: Record<string, [string, Check]> = {
   domain: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
   subdomain: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
   hostname: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
-  mx_record: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
+  mx_record: [
+    "psl",
+    (v) => {
+      const m = /^(?:(\d{1,5}) )?(\S+)$/.exec(v);
+      if (!m) return bad("format");
+      if (m[1] !== undefined && Number(m[1]) > 65535) return bad("preference");
+      return isRegistrableHost(m[2] ?? "") ? ok() : bad("not registrable");
+    },
+  ],
   smtp_server: ["psl", (v) => (isRegistrableHost(v) ? ok() : bad("not registrable"))],
 };
 

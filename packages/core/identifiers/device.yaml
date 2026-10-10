@@ -1,0 +1,427 @@
+# Identifier catalog: Device (25 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: imei
+  category: Device
+  labels:
+    en: IMEI Number
+    ar: رقم IMEI
+  description: International Mobile Equipment Identity
+  icon: 📱
+  color: blue
+  patterns:
+    - ^\d{15}$
+  validator: luhn
+  examples:
+    positive:
+      - "490154203237518"
+    negative:
+      - 490154203237518#
+  sensitivity: normal
+- id: imei2
+  category: Device
+  labels:
+    en: IMEI2 (Dual SIM)
+    ar: IMEI2 ثنائي الشريحة
+  description: Second IMEI for dual-SIM devices
+  icon: 📱
+  color: blue
+  patterns:
+    - ^\d{15}$
+  validator: luhn
+  examples:
+    positive:
+      - "490154203237518"
+    negative:
+      - 490154203237518#
+  sensitivity: normal
+- id: imsi
+  category: Device
+  labels:
+    en: IMSI Number
+    ar: رقم IMSI
+  description: International Mobile Subscriber Identity
+  icon: 📡
+  color: purple
+  patterns:
+    - ^\d{14,15}$
+  validator: null
+  examples:
+    positive:
+      - "310150123456789"
+    negative:
+      - 310150123456789#
+  sensitivity: normal
+- id: iccid
+  category: Device
+  labels:
+    en: ICCID (SIM Card)
+    ar: رقم ICCID شريحة SIM
+  description: Integrated Circuit Card Identifier (SIM card)
+  icon: 💳
+  color: green
+  patterns:
+    - ^89\d{17,19}$
+  validator: null
+  examples:
+    positive:
+      - "8988211000000000000"
+    negative:
+      - 8988211000000000000#
+  sensitivity: normal
+- id: msin
+  category: Device
+  labels:
+    en: MSIN Number
+    ar: رقم MSIN
+  description: Mobile Subscriber Identification Number
+  icon: 📡
+  color: purple
+  patterns:
+    - ^\d{9,10}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890"
+    negative:
+      - 1234567890#
+  sensitivity: normal
+- id: android_id
+  category: Device
+  labels:
+    en: Android ID
+    ar: معرف أندرويد
+  description: Android device unique identifier (64-bit hex)
+  icon: 🤖
+  color: green
+  patterns:
+    - ^[0-9a-fA-F]{16}$
+  validator: null
+  examples:
+    positive:
+      - 9774d56d682e549c
+    negative:
+      - 9774d56d682e549c#
+  sensitivity: normal
+- id: ios_device_token
+  category: Device
+  labels:
+    en: iOS APNs Device Token
+    ar: رمز جهاز iOS
+  description: Apple Push Notification Service device token
+  icon: 🍎
+  color: gray
+  patterns:
+    - ^[0-9a-fA-F]{64}$
+  validator: null
+  examples:
+    positive:
+      - 740f4707bebcf74f9b7c25d48e3358945f6aa01da5ddb387462c7eaf61bb78ad
+    negative:
+      - 740f4707bebcf74f9b7c25d48e3358945f6aa01da5ddb387462c7eaf61bb78ad#
+  sensitivity: normal
+- id: serial_number
+  category: Device
+  labels:
+    en: Device Serial Number
+    ar: الرقم التسلسلي للجهاز
+  description: Hardware device serial number
+  icon: 🔢
+  color: gray
+  patterns:
+    - ^[A-Z0-9]{8,20}$
+  validator: null
+  examples:
+    positive:
+      - SN123456789
+    negative:
+      - SN123456789#
+  sensitivity: normal
+- id: cpu_id
+  category: Device
+  labels:
+    en: CPU ID / Processor ID
+    ar: معرف المعالج CPU
+  description: Processor serial number or CPUID
+  icon: 🖥️
+  color: blue
+  patterns:
+    - ^[0-9A-F]{16,40}$
+  validator: null
+  examples:
+    positive:
+      - BFEBFBFF000906EA
+    negative:
+      - BFEBFBFF000906EA#
+  sensitivity: normal
+- id: hdd_serial
+  category: Device
+  labels:
+    en: Hard Drive Serial Number
+    ar: رقم تسلسلي لقرص صلب
+  description: Hard disk drive serial number
+  icon: 💾
+  color: gray
+  patterns:
+    - ^[A-Z0-9][A-Z0-9-]{7,19}$
+  validator: null
+  examples:
+    positive:
+      - WD-WMAYUR234567
+    negative:
+      - WD-WMAYUR234567#
+  sensitivity: normal
+- id: motherboard_serial
+  category: Device
+  labels:
+    en: Motherboard Serial Number
+    ar: رقم اللوحة الأم
+  description: Motherboard DMI serial number
+  icon: 🖥️
+  color: gray
+  patterns:
+    - ^[A-Z0-9\.\-]{8,20}$
+  validator: null
+  examples:
+    positive:
+      - MS7C91-SN123456
+    negative:
+      - MS7C91-SN123456#
+  sensitivity: normal
+- id: bluetooth_mac
+  category: Device
+  labels:
+    en: Bluetooth MAC Address
+    ar: عنوان MAC البلوتوث
+  description: Bluetooth device MAC address
+  icon: 📡
+  color: blue
+  patterns:
+    - ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$
+  validator: null
+  examples:
+    positive:
+      - 00:1B:44:11:3A:B7
+    negative:
+      - 00:1B:44:11:3A:B7#
+  sensitivity: normal
+- id: bluetooth_uuid
+  category: Device
+  labels:
+    en: Bluetooth Service UUID
+    ar: UUID خدمة البلوتوث
+  description: Bluetooth GATT service UUID
+  icon: 📡
+  color: blue
+  patterns:
+    - ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+  validator: null
+  examples:
+    positive:
+      - 00001800-0000-1000-8000-00805f9b34fb
+    negative:
+      - 00001800-0000-1000-8000-00805f9b34fb#
+  sensitivity: normal
+- id: vehicle_vin
+  category: Device
+  labels:
+    en: Vehicle VIN Number
+    ar: رقم هيكل السيارة VIN
+  description: Vehicle Identification Number (17 chars)
+  icon: 🚗
+  color: orange
+  patterns:
+    - ^[A-HJ-NPR-Z0-9]{17}$
+  validator: null
+  examples:
+    positive:
+      - 1HGCM82633A123456
+    negative:
+      - 1HGCM82633A123456#
+  sensitivity: normal
+- id: vehicle_plate
+  category: Device
+  labels:
+    en: Vehicle License Plate
+    ar: لوحة ترخيص السيارة
+  description: Vehicle license plate number
+  icon: 🚗
+  color: yellow
+  patterns:
+    - ^[A-Z0-9\s\-]{2,10}$
+  validator: null
+  examples:
+    positive:
+      - ABC-1234
+    negative:
+      - ABC-1234#
+  sensitivity: normal
+- id: engine_number
+  category: Device
+  labels:
+    en: Engine Number
+    ar: رقم المحرك
+  description: Vehicle engine identification number
+  icon: ⚙️
+  color: gray
+  patterns:
+    - ^[A-Z0-9]{8,17}$
+  validator: null
+  examples:
+    positive:
+      - B58B30A1234
+    negative:
+      - B58B30A1234#
+  sensitivity: normal
+- id: printer_serial
+  category: Device
+  labels:
+    en: Printer Serial Number
+    ar: رقم الطابعة
+  description: Printer device serial number
+  icon: 🖨️
+  color: gray
+  patterns:
+    - ^[A-Z0-9]{8,20}$
+  validator: null
+  examples:
+    positive:
+      - CN123456789
+    negative:
+      - CN123456789#
+  sensitivity: normal
+- id: camera_serial
+  category: Device
+  labels:
+    en: Camera Serial Number
+    ar: رقم الكاميرا
+  description: Digital camera serial number
+  icon: 📷
+  color: gray
+  patterns:
+    - ^[A-Z0-9]{8,20}$
+  validator: null
+  examples:
+    positive:
+      - SN1234567890
+    negative:
+      - SN1234567890#
+  sensitivity: normal
+- id: apple_serial
+  category: Device
+  labels:
+    en: Apple Device Serial
+    ar: رقم جهاز Apple
+  description: Apple device serial number
+  icon: 🍎
+  color: gray
+  patterns:
+    - ^[A-Z0-9]{11,12}$
+  validator: null
+  examples:
+    positive:
+      - C02XXXXXXDHG
+    negative:
+      - C02XXXXXXDHG#
+  sensitivity: normal
+- id: samsung_imei
+  category: Device
+  labels:
+    en: Samsung Device IMEI
+    ar: IMEI سامسونج
+  description: Samsung device IMEI number
+  icon: 📱
+  color: blue
+  patterns:
+    - ^35\d{13}$
+  validator: luhn
+  examples:
+    positive:
+      - "356938035643809"
+    negative:
+      - 356938035643809#
+  sensitivity: normal
+- id: google_ad_id
+  category: Device
+  labels:
+    en: Google Advertising ID
+    ar: معرف إعلانات Google
+  description: Android advertising identifier (GAID)
+  icon: 🤖
+  color: green
+  patterns:
+    - ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+  validator: null
+  examples:
+    positive:
+      - 38400000-8cf0-11bd-b23e-10b96e40000d
+    negative:
+      - 38400000-8cf0-11bd-b23e-10b96e40000d#
+  sensitivity: normal
+- id: ios_idfa
+  category: Device
+  labels:
+    en: iOS IDFA
+    ar: معرف IDFA لـ iOS
+  description: iOS Identifier for Advertisers (IDFA)
+  icon: 🍎
+  color: gray
+  patterns:
+    - ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+  validator: null
+  examples:
+    positive:
+      - A1B2C3D4-E5F6-7890-ABCD-EF1234567890
+    negative:
+      - A1B2C3D4-E5F6-7890-ABCD-EF1234567890#
+  sensitivity: normal
+- id: ios_idfv
+  category: Device
+  labels:
+    en: iOS IDFV
+    ar: معرف IDFV لـ iOS
+  description: iOS Identifier for Vendor (IDFV)
+  icon: 🍎
+  color: gray
+  patterns:
+    - ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+  validator: null
+  examples:
+    positive:
+      - A1B2C3D4-E5F6-7890-ABCD-EF1234567890
+    negative:
+      - A1B2C3D4-E5F6-7890-ABCD-EF1234567890#
+  sensitivity: normal
+- id: windows_machine_id
+  category: Device
+  labels:
+    en: Windows Machine GUID
+    ar: معرف ويندوز GUID
+  description: Windows machine GUID from registry
+  icon: 🪟
+  color: blue
+  patterns:
+    - ^\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}$
+  validator: null
+  examples:
+    positive:
+      - "{C0E717B2-5F72-4C45-B93F-7A67CFECC1A0}"
+    negative:
+      - "{C0E717B2-5F72-4C45-B93F-7A67CFECC1A0}#"
+  sensitivity: normal
+- id: iot_device_id
+  category: Device
+  labels:
+    en: IoT Device ID
+    ar: معرف جهاز IoT
+  description: IoT device unique identifier
+  icon: 💡
+  color: yellow
+  patterns:
+    - ^[A-Za-z0-9\-_:]{8,64}$
+  validator: null
+  examples:
+    positive:
+      - device:sensor:001:abc123
+    negative:
+      - device:sensor:001:abc123#
+  sensitivity: normal

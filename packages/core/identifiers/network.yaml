@@ -1,0 +1,437 @@
+# Identifier catalog: Network (25 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: ipv4
+  category: Network
+  labels:
+    en: IPv4 Address
+    ar: عنوان IPv4
+  description: IPv4 network address
+  icon: 🌐
+  color: cyan
+  patterns:
+    - ^(\d{1,3}\.){3}\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 192.168.1.1
+      - 8.8.8.8
+    negative:
+      - 192.168.1.1#
+  sensitivity: normal
+  transforms:
+    - ipinfo
+    - shodan
+    - virustotal
+    - abuseipdb
+- id: ipv6
+  category: Network
+  labels:
+    en: IPv6 Address
+    ar: عنوان IPv6
+  description: IPv6 network address
+  icon: 🌐
+  color: cyan
+  patterns:
+    - ^(?=[0-9A-Fa-f:.]*:)[0-9A-Fa-f:.]{2,45}$
+  validator: ip
+  examples:
+    positive:
+      - 2001:db8::1
+    negative:
+      - 2001:db8::1#
+  sensitivity: normal
+- id: cidr
+  category: Network
+  labels:
+    en: CIDR Block
+    ar: CIDR
+  description: IP network range in CIDR notation
+  icon: 🔗
+  color: cyan
+  patterns:
+    - ^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$
+  validator: null
+  examples:
+    positive:
+      - 192.168.0.0/24
+    negative:
+      - 192.168.0.0/24#
+  sensitivity: normal
+- id: mac_address
+  category: Network
+  labels:
+    en: MAC Address
+    ar: عنوان MAC
+  description: Hardware MAC address
+  icon: 💻
+  color: gray
+  patterns:
+    - ^([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$
+  validator: null
+  examples:
+    positive:
+      - 00:1A:2B:3C:4D:5E
+    negative:
+      - 00:1A:2B:3C:4D:5E#
+  sensitivity: normal
+- id: asn
+  category: Network
+  labels:
+    en: Autonomous System Number
+    ar: رقم النظام المستقل ASN
+  description: Internet Autonomous System Number
+  icon: 🔀
+  color: blue
+  patterns:
+    - ^AS\d{1,10}$
+  validator: null
+  examples:
+    positive:
+      - AS15169
+    negative:
+      - AS15169#
+  sensitivity: normal
+- id: bgp_prefix
+  category: Network
+  labels:
+    en: BGP Prefix
+    ar: بادئة BGP
+  description: BGP routing prefix
+  icon: 🛣️
+  color: blue
+  patterns:
+    - ^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$
+  validator: null
+  examples:
+    positive:
+      - 8.8.8.0/24
+    negative:
+      - 8.8.8.0/24#
+  sensitivity: normal
+- id: ssl_cert_hash
+  category: Network
+  labels:
+    en: SSL Certificate Hash
+    ar: هاش شهادة SSL
+  description: SSL/TLS certificate fingerprint hash
+  icon: 🔐
+  color: green
+  patterns:
+    - ^[0-9a-fA-F]{40}$|^[0-9a-fA-F]{64}$
+  validator: null
+  examples:
+    positive:
+      - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+    negative:
+      - a94a8fe5ccb19ba61c4c0873d391e987982fbbd3#
+  sensitivity: normal
+- id: port_service
+  category: Network
+  labels:
+    en: Port/Service
+    ar: منفذ/خدمة
+  description: Network port number
+  icon: 🚪
+  color: yellow
+  patterns:
+    - ^\d{1,5}$
+  validator: null
+  examples:
+    positive:
+      - "80"
+      - "443"
+      - "22"
+    negative:
+      - 80#
+  sensitivity: normal
+- id: hostname
+  category: Network
+  labels:
+    en: Hostname
+    ar: اسم المضيف
+  description: Network hostname
+  icon: 🖥️
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$
+  validator: psl
+  examples:
+    positive:
+      - server.example.com
+    negative:
+      - server.example.com#
+  sensitivity: normal
+- id: ip_private
+  category: Network
+  labels:
+    en: Private IP Address
+    ar: عنوان IP خاص
+  description: Private network IP address
+  icon: 🏠
+  color: gray
+  patterns:
+    - ^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)(\d{1,3}\.){0,2}\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 192.168.1.1
+    negative:
+      - 192.168.1.1#
+  sensitivity: normal
+- id: ip_tor_exit
+  category: Network
+  labels:
+    en: Tor Exit Node IP
+    ar: IP عقدة Tor
+  description: Known Tor exit node IP address
+  icon: 🧅
+  color: purple
+  patterns:
+    - ^(\d{1,3}\.){3}\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 185.220.101.1
+    negative:
+      - 185.220.101.1#
+  sensitivity: normal
+- id: vpn_ip
+  category: Network
+  labels:
+    en: VPN IP Range
+    ar: عنوان IP في VPN
+  description: VPN server IP address
+  icon: 🔒
+  color: purple
+  patterns:
+    - ^(\d{1,3}\.){3}\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 10.8.0.1
+    negative:
+      - 10.8.0.1#
+  sensitivity: normal
+- id: ipv4_loopback
+  category: Network
+  labels:
+    en: Loopback Address
+    ar: عنوان الاسترداد
+  description: IPv4 loopback address
+  icon: 🔄
+  color: gray
+  patterns:
+    - ^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 127.0.0.1
+    negative:
+      - 127.0.0.1#
+  sensitivity: normal
+- id: multicast_ip
+  category: Network
+  labels:
+    en: Multicast IP
+    ar: IP متعدد الإرسال
+  description: IP multicast address
+  icon: 📡
+  color: orange
+  patterns:
+    - ^2(2[4-9]|3\d)\.\d{1,3}\.\d{1,3}\.\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 224.0.0.1
+    negative:
+      - 224.0.0.1#
+  sensitivity: normal
+- id: ipv4_apipa
+  category: Network
+  labels:
+    en: APIPA Address
+    ar: عنوان APIPA
+  description: Automatic Private IP Addressing range
+  icon: ⚠️
+  color: yellow
+  patterns:
+    - ^169\.254\.\d{1,3}\.\d{1,3}$
+  validator: ip
+  examples:
+    positive:
+      - 169.254.1.1
+    negative:
+      - 169.254.1.1#
+  sensitivity: normal
+- id: netbios_name
+  category: Network
+  labels:
+    en: NetBIOS Name
+    ar: اسم NetBIOS
+  description: Windows NetBIOS computer name
+  icon: 🖥️
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9\-]{1,15}$
+  validator: null
+  examples:
+    positive:
+      - WORKSTATION01
+    negative:
+      - WORKSTATION01#
+  sensitivity: normal
+- id: snmp_community
+  category: Network
+  labels:
+    en: SNMP Community
+    ar: مجتمع SNMP
+  description: SNMP community string
+  icon: 📊
+  color: yellow
+  patterns:
+    - ^[a-zA-Z0-9@#$%^&*]{1,32}$
+  validator: null
+  examples:
+    positive:
+      - public
+      - private
+    negative:
+      - public public
+  sensitivity: normal
+- id: radius_nas
+  category: Network
+  labels:
+    en: RADIUS NAS ID
+    ar: معرف NAS في RADIUS
+  description: RADIUS Network Access Server ID
+  icon: 📶
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9._\-]{1,253}$
+  validator: null
+  examples:
+    positive:
+      - NAS-01
+    negative:
+      - NAS-01#
+  sensitivity: normal
+- id: wifi_bssid
+  category: Network
+  labels:
+    en: WiFi BSSID
+    ar: BSSID واي فاي
+  description: WiFi access point BSSID (MAC format)
+  icon: 📡
+  color: blue
+  patterns:
+    - ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$
+  validator: null
+  examples:
+    positive:
+      - 00:11:22:33:44:55
+    negative:
+      - 00:11:22:33:44:55#
+  sensitivity: normal
+- id: wifi_ssid
+  category: Network
+  labels:
+    en: WiFi SSID
+    ar: اسم شبكة واي فاي
+  description: WiFi network name (SSID)
+  icon: 📶
+  color: cyan
+  patterns:
+    - ^[^\x00-\x1F\x7F]{1,32}$
+  validator: null
+  examples:
+    positive:
+      - HomeNetwork
+      - Office_WiFi
+    negative:
+      - xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  sensitivity: normal
+- id: dns_record
+  category: Network
+  labels:
+    en: DNS Record
+    ar: سجل DNS
+  description: DNS resource record
+  icon: 📋
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9._\-]+\s+(IN\s+)?(A|AAAA|CNAME|MX|TXT|NS|SOA|PTR)\s+.+$
+  validator: null
+  examples:
+    positive:
+      - example.com IN A 93.184.216.34
+    negative:
+      - "#example.com IN A 93.184.216.34"
+  sensitivity: normal
+- id: dhcp_lease
+  category: Network
+  labels:
+    en: DHCP Lease
+    ar: عقد DHCP
+  description: DHCP lease record with MAC and IP
+  icon: 🏷️
+  color: yellow
+  patterns:
+    - ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$
+  validator: null
+  examples:
+    positive:
+      - 00:1A:2B:3C:4D:5E
+    negative:
+      - 00:1A:2B:3C:4D:5E#
+  sensitivity: normal
+- id: arp_entry
+  category: Network
+  labels:
+    en: ARP Entry
+    ar: سجل ARP
+  description: ARP table entry
+  icon: 🔍
+  color: gray
+  patterns:
+    - ^(\d{1,3}\.){3}\d{1,3}\s+([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$
+  validator: null
+  examples:
+    positive:
+      - 192.168.1.1 00:1A:2B:3C:4D:5E
+    negative:
+      - 192.168.1.1 00:1A:2B:3C:4D:5E#
+  sensitivity: normal
+- id: uuid_v4
+  category: Network
+  labels:
+    en: UUID v4
+    ar: معرف UUID النسخة 4
+  description: Universally Unique Identifier v4
+  icon: 🆔
+  color: purple
+  patterns:
+    - ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+  validator: null
+  examples:
+    positive:
+      - 550e8400-e29b-41d4-a716-446655440000
+    negative:
+      - 550e8400-e29b-41d4-a716-446655440000#
+  sensitivity: normal
+- id: uuid_v1
+  category: Network
+  labels:
+    en: UUID v1
+    ar: معرف UUID النسخة 1
+  description: Time-based UUID v1
+  icon: 🆔
+  color: purple
+  patterns:
+    - ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-1[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+  validator: null
+  examples:
+    positive:
+      - 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+    negative:
+      - 6ba7b810-9dad-11d1-80b4-00c04fd430c8#
+  sensitivity: normal

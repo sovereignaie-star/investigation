@@ -1,0 +1,1175 @@
+# Identifier catalog: Social (69 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: twitter_username
+  category: Social
+  labels:
+    en: Twitter/X Username
+    ar: يوزرنيم تويتر/X
+  description: Twitter/X username handle
+  icon: 🐦
+  color: blue
+  patterns:
+    - ^@?[a-zA-Z0-9_]{1,15}$
+  validator: null
+  examples:
+    positive:
+      - "@username"
+    negative:
+      - "@username#"
+  sensitivity: normal
+- id: twitter_tweet_id
+  category: Social
+  labels:
+    en: Twitter Tweet ID
+    ar: معرف تغريدة
+  description: Twitter tweet numeric ID
+  icon: 🐦
+  color: blue
+  patterns:
+    - ^\d{17,19}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890123456789"
+    negative:
+      - 1234567890123456789#
+  sensitivity: normal
+- id: facebook_profile
+  category: Social
+  labels:
+    en: Facebook Profile
+    ar: ملف فيسبوك
+  description: Facebook profile URL or username
+  icon: 📘
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?facebook\.com\/|fb\.com\/)?[a-zA-Z0-9.]{1,50}$
+  validator: null
+  examples:
+    positive:
+      - facebook.com/username
+    negative:
+      - facebook.com/username#
+  sensitivity: normal
+- id: facebook_id
+  category: Social
+  labels:
+    en: Facebook User ID
+    ar: معرف فيسبوك
+  description: Facebook numeric user ID
+  icon: 📘
+  color: blue
+  patterns:
+    - ^\d{14,17}$
+  validator: null
+  examples:
+    positive:
+      - "100004356040291"
+    negative:
+      - 100004356040291#
+  sensitivity: normal
+- id: instagram_username
+  category: Social
+  labels:
+    en: Instagram Username
+    ar: يوزرنيم إنستغرام
+  description: Instagram username handle
+  icon: 📸
+  color: pink
+  patterns:
+    - ^@?[a-zA-Z0-9._]{1,30}$
+  validator: null
+  examples:
+    positive:
+      - "@username"
+    negative:
+      - "@username#"
+  sensitivity: normal
+- id: instagram_url
+  category: Social
+  labels:
+    en: Instagram Profile URL
+    ar: رابط إنستغرام
+  description: Instagram profile URL
+  icon: 📸
+  color: pink
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?instagram\.com\/[a-zA-Z0-9._]{1,30}\/?$
+  validator: null
+  examples:
+    positive:
+      - https://instagram.com/username
+    negative:
+      - https://instagram.com/username#
+  sensitivity: normal
+- id: linkedin_profile
+  category: Social
+  labels:
+    en: LinkedIn Profile
+    ar: ملف لينكد إن
+  description: LinkedIn profile URL
+  icon: 💼
+  color: blue
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?linkedin\.com\/in\/[a-zA-Z0-9\-]{1,100}\/?$
+  validator: null
+  examples:
+    positive:
+      - https://linkedin.com/in/username
+    negative:
+      - https://linkedin.com/in/username#
+  sensitivity: normal
+- id: linkedin_company
+  category: Social
+  labels:
+    en: LinkedIn Company
+    ar: شركة لينكد إن
+  description: LinkedIn company page URL
+  icon: 🏢
+  color: blue
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?linkedin\.com\/company\/[a-zA-Z0-9\-]{1,100}\/?$
+  validator: null
+  examples:
+    positive:
+      - https://linkedin.com/company/company-name
+    negative:
+      - https://linkedin.com/company/company-name#
+  sensitivity: normal
+- id: youtube_channel
+  category: Social
+  labels:
+    en: YouTube Channel
+    ar: قناة يوتيوب
+  description: YouTube channel URL or username
+  icon: ▶️
+  color: red
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?youtube\.com\/(channel\/UC[a-zA-Z0-9\-_]{22}|@[a-zA-Z0-9._\-]{3,30}|user\/[a-zA-Z0-9_]{1,20})\/?$
+  validator: null
+  examples:
+    positive:
+      - https://youtube.com/@channel
+    negative:
+      - https://youtube.com/@channel#
+  sensitivity: normal
+- id: youtube_video
+  category: Social
+  labels:
+    en: YouTube Video
+    ar: فيديو يوتيوب
+  description: YouTube video URL or ID
+  icon: 🎬
+  color: red
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?youtube\.com\/watch\?v=|https?:\/\/youtu\.be\/)?[a-zA-Z0-9_\-]{11}$
+  validator: null
+  examples:
+    positive:
+      - https://youtube.com/watch?v=dQw4w9WgXcQ
+    negative:
+      - https://youtube.com/watch?v=dQw4w9WgXcQ#
+  sensitivity: normal
+- id: tiktok_username
+  category: Social
+  labels:
+    en: TikTok Username
+    ar: يوزرنيم تيك توك
+  description: TikTok account username
+  icon: 🎵
+  color: black
+  patterns:
+    - ^@?[a-zA-Z0-9._]{2,24}$
+  validator: null
+  examples:
+    positive:
+      - "@tiktoker"
+    negative:
+      - "@tiktoker#"
+  sensitivity: normal
+- id: tiktok_url
+  category: Social
+  labels:
+    en: TikTok Video URL
+    ar: رابط فيديو تيك توك
+  description: TikTok video URL
+  icon: 🎵
+  color: black
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?tiktok\.com\/@[a-zA-Z0-9._]+\/video\/\d+$
+  validator: null
+  examples:
+    positive:
+      - https://tiktok.com/@user/video/1234567890
+    negative:
+      - https://tiktok.com/@user/video/1234567890#
+  sensitivity: normal
+- id: reddit_username
+  category: Social
+  labels:
+    en: Reddit Username
+    ar: يوزرنيم ريديت
+  description: Reddit user account handle
+  icon: 🤖
+  color: orange
+  patterns:
+    - ^u\/[a-zA-Z0-9_\-]{3,20}$|^[a-zA-Z0-9_\-]{3,20}$
+  validator: null
+  examples:
+    positive:
+      - u/redditor
+    negative:
+      - u/redditor#
+  sensitivity: normal
+- id: reddit_subreddit
+  category: Social
+  labels:
+    en: Subreddit
+    ar: منتدى ريديت
+  description: Reddit subreddit name
+  icon: 🤖
+  color: orange
+  patterns:
+    - ^r\/[a-zA-Z0-9_]{2,21}$
+  validator: null
+  examples:
+    positive:
+      - r/programming
+    negative:
+      - r/programming#
+  sensitivity: normal
+- id: discord_username
+  category: Social
+  labels:
+    en: Discord Username
+    ar: يوزرنيم ديسكورد
+  description: Discord username with tag
+  icon: 🎮
+  color: indigo
+  patterns:
+    - ^[a-zA-Z0-9_\-]{2,32}(#\d{4})?$
+  validator: null
+  examples:
+    positive:
+      - user#1234
+    negative:
+      - user#1234#
+  sensitivity: normal
+- id: discord_id
+  category: Social
+  labels:
+    en: Discord User ID
+    ar: معرف ديسكورد
+  description: Discord snowflake user ID
+  icon: 🎮
+  color: indigo
+  patterns:
+    - ^\d{17,19}$
+  validator: null
+  examples:
+    positive:
+      - "123456789012345678"
+    negative:
+      - 123456789012345678#
+  sensitivity: normal
+- id: discord_server
+  category: Social
+  labels:
+    en: Discord Server ID
+    ar: معرف سيرفر ديسكورد
+  description: Discord guild/server ID
+  icon: 🎮
+  color: indigo
+  patterns:
+    - ^\d{17,19}$
+  validator: null
+  examples:
+    positive:
+      - "123456789012345678"
+    negative:
+      - 123456789012345678#
+  sensitivity: normal
+- id: discord_invite
+  category: Social
+  labels:
+    en: Discord Invite Link
+    ar: رابط دعوة ديسكورد
+  description: Discord server invite link
+  icon: 🎮
+  color: indigo
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?(discord\.gg|discord\.com\/invite)\/[a-zA-Z0-9\-]+$
+  validator: null
+  examples:
+    positive:
+      - https://discord.gg/abcdef
+    negative:
+      - https://discord.gg/abcdef#
+  sensitivity: normal
+- id: telegram_channel
+  category: Social
+  labels:
+    en: Telegram Channel
+    ar: قناة تيليغرام
+  description: Telegram channel link
+  icon: ✈️
+  color: blue
+  patterns:
+    - ^https?:\/\/t\.me\/[a-zA-Z0-9_]{5,32}$
+  validator: null
+  examples:
+    positive:
+      - https://t.me/channel
+    negative:
+      - https://t.me/channel#
+  sensitivity: normal
+- id: telegram_id
+  category: Social
+  labels:
+    en: Telegram User ID
+    ar: معرف مستخدم تيليغرام
+  description: Telegram numeric user/chat ID
+  icon: ✈️
+  color: blue
+  patterns:
+    - ^-?\d{6,13}$
+  validator: null
+  examples:
+    positive:
+      - "123456789"
+    negative:
+      - 123456789#
+  sensitivity: normal
+- id: snapchat_username
+  category: Social
+  labels:
+    en: Snapchat Username
+    ar: يوزرنيم سناب شات
+  description: Snapchat account username
+  icon: 👻
+  color: yellow
+  patterns:
+    - ^[a-zA-Z][a-zA-Z0-9._\-]{2,14}[a-zA-Z0-9]$
+  validator: null
+  examples:
+    positive:
+      - snapuser
+    negative:
+      - snapuser#
+  sensitivity: normal
+- id: pinterest_username
+  category: Social
+  labels:
+    en: Pinterest Username
+    ar: يوزرنيم بنترست
+  description: Pinterest account URL or username
+  icon: 📌
+  color: red
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?pinterest\.com\/)?[a-zA-Z0-9_]{3,30}\/?$
+  validator: null
+  examples:
+    positive:
+      - username
+    negative:
+      - username#
+  sensitivity: normal
+- id: tumblr_blog
+  category: Social
+  labels:
+    en: Tumblr Blog
+    ar: مدونة تمبلر
+  description: Tumblr blog URL
+  icon: 📝
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?)?[a-zA-Z0-9\-]{1,32}\.tumblr\.com\/?$
+  validator: null
+  examples:
+    positive:
+      - https://username.tumblr.com
+    negative:
+      - https://username.tumblr.com#
+  sensitivity: normal
+- id: twitch_username
+  category: Social
+  labels:
+    en: Twitch Username
+    ar: يوزرنيم تويتش
+  description: Twitch streamer username
+  icon: 🎮
+  color: purple
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?twitch\.tv\/)?[a-zA-Z0-9_]{4,25}$
+  validator: null
+  examples:
+    positive:
+      - twitchstreamer
+    negative:
+      - twitchstreamer#
+  sensitivity: normal
+- id: vk_profile
+  category: Social
+  labels:
+    en: VKontakte Profile
+    ar: ملف VK
+  description: Russian VK social network profile
+  icon: 🇷🇺
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?vk\.com\/)?[a-zA-Z0-9_.]{1,32}$
+  validator: null
+  examples:
+    positive:
+      - vk.com/username
+    negative:
+      - vk.com/username#
+  sensitivity: normal
+- id: vk_id
+  category: Social
+  labels:
+    en: VK User ID
+    ar: معرف VK
+  description: VKontakte numeric user ID
+  icon: 🇷🇺
+  color: blue
+  patterns:
+    - ^id\d{5,10}$
+  validator: null
+  examples:
+    positive:
+      - id123456789
+    negative:
+      - id123456789#
+  sensitivity: normal
+- id: ok_profile
+  category: Social
+  labels:
+    en: Odnoklassniki Profile
+    ar: ملف OK
+  description: Russian OK social network
+  icon: 🇷🇺
+  color: orange
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?ok\.ru\/)?[a-zA-Z0-9_.]{1,32}$
+  validator: null
+  examples:
+    positive:
+      - ok.ru/username
+    negative:
+      - ok.ru/username#
+  sensitivity: normal
+- id: github_username
+  category: Social
+  labels:
+    en: GitHub Username
+    ar: يوزرنيم GitHub
+  description: GitHub user or organization name
+  icon: 🐙
+  color: gray
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?github\.com\/)?[a-zA-Z0-9\-]{1,39}$
+  validator: null
+  examples:
+    positive:
+      - github.com/username
+    negative:
+      - github.com/username#
+  sensitivity: normal
+- id: gitlab_username
+  category: Social
+  labels:
+    en: GitLab Username
+    ar: يوزرنيم GitLab
+  description: GitLab user or group name
+  icon: 🦊
+  color: orange
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?gitlab\.com\/)?[a-zA-Z0-9_.\-]{1,255}$
+  validator: null
+  examples:
+    positive:
+      - gitlab.com/username
+    negative:
+      - gitlab.com/username#
+  sensitivity: normal
+- id: medium_username
+  category: Social
+  labels:
+    en: Medium Username
+    ar: يوزرنيم Medium
+  description: Medium blog author username
+  icon: 📖
+  color: black
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?medium\.com\/@)?[a-zA-Z0-9_\.]{3,50}$
+  validator: null
+  examples:
+    positive:
+      - medium.com/@author
+    negative:
+      - medium.com/@author#
+  sensitivity: normal
+- id: substack_url
+  category: Social
+  labels:
+    en: Substack Newsletter
+    ar: نشرة Substack
+  description: Substack newsletter URL
+  icon: 📰
+  color: orange
+  patterns:
+    - ^https?:\/\/[a-zA-Z0-9\-]+\.substack\.com\/?$
+  validator: null
+  examples:
+    positive:
+      - https://author.substack.com
+    negative:
+      - https://author.substack.com#
+  sensitivity: normal
+- id: devto_username
+  category: Social
+  labels:
+    en: DEV.to Username
+    ar: يوزرنيم DEV.to
+  description: DEV.to developer community username
+  icon: 💻
+  color: black
+  patterns:
+    - ^((?:https?:\/\/)?dev\.to\/)?[a-zA-Z0-9_]{1,50}$
+  validator: null
+  examples:
+    positive:
+      - dev.to/username
+    negative:
+      - dev.to/username#
+  sensitivity: normal
+- id: hashnode_username
+  category: Social
+  labels:
+    en: Hashnode Username
+    ar: يوزرنيم Hashnode
+  description: Hashnode developer blog username
+  icon: 📝
+  color: blue
+  patterns:
+    - ^@[a-zA-Z0-9_]{3,50}$
+  validator: null
+  examples:
+    positive:
+      - "@username"
+    negative:
+      - "@username#"
+  sensitivity: normal
+- id: producthunt_profile
+  category: Social
+  labels:
+    en: Product Hunt Profile
+    ar: ملف Product Hunt
+  description: Product Hunt user profile
+  icon: 🏆
+  color: orange
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?producthunt\.com\/@)?[a-zA-Z0-9_\-]{3,50}$
+  validator: null
+  examples:
+    positive:
+      - producthunt.com/@username
+    negative:
+      - producthunt.com/@username#
+  sensitivity: normal
+- id: hacker_news_id
+  category: Social
+  labels:
+    en: Hacker News Username
+    ar: يوزرنيم Hacker News
+  description: Y Combinator Hacker News account
+  icon: 🔶
+  color: orange
+  patterns:
+    - ^[a-zA-Z0-9_\-]{2,30}$
+  validator: null
+  examples:
+    positive:
+      - pg
+    negative:
+      - pg#
+  sensitivity: normal
+- id: stackoverflow_id
+  category: Social
+  labels:
+    en: Stack Overflow Profile
+    ar: ملف Stack Overflow
+  description: Stack Overflow user profile
+  icon: 📚
+  color: orange
+  patterns:
+    - ^https?:\/\/stackoverflow\.com\/users\/\d+\/[a-zA-Z0-9\-]+$
+  validator: null
+  examples:
+    positive:
+      - https://stackoverflow.com/users/1234/username
+    negative:
+      - https://stackoverflow.com/users/1234/username#
+  sensitivity: normal
+- id: quora_profile
+  category: Social
+  labels:
+    en: Quora Profile
+    ar: ملف كورا
+  description: Quora user profile
+  icon: ❓
+  color: red
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?quora\.com\/profile\/)?[a-zA-Z0-9\-]+$
+  validator: null
+  examples:
+    positive:
+      - quora.com/profile/Name
+    negative:
+      - quora.com/profile/Name#
+  sensitivity: normal
+- id: behance_profile
+  category: Social
+  labels:
+    en: Behance Profile
+    ar: ملف Behance
+  description: Adobe Behance creative portfolio
+  icon: 🎨
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?behance\.net\/)?[a-zA-Z0-9_\-]{3,30}$
+  validator: null
+  examples:
+    positive:
+      - behance.net/designer
+    negative:
+      - behance.net/designer#
+  sensitivity: normal
+- id: dribbble_profile
+  category: Social
+  labels:
+    en: Dribbble Profile
+    ar: ملف Dribbble
+  description: Dribbble design portfolio
+  icon: 🏀
+  color: pink
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?dribbble\.com\/)?[a-zA-Z0-9_\-]{3,30}$
+  validator: null
+  examples:
+    positive:
+      - dribbble.com/designer
+    negative:
+      - dribbble.com/designer#
+  sensitivity: normal
+- id: soundcloud_profile
+  category: Social
+  labels:
+    en: SoundCloud Profile
+    ar: ملف SoundCloud
+  description: SoundCloud artist/music profile
+  icon: 🎵
+  color: orange
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?soundcloud\.com\/)?[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - soundcloud.com/artist
+    negative:
+      - soundcloud.com/artist#
+  sensitivity: normal
+- id: spotify_profile
+  category: Social
+  labels:
+    en: Spotify Profile
+    ar: ملف Spotify
+  description: Spotify artist or user profile
+  icon: 🎧
+  color: green
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?open\.spotify\.com\/(user|artist)\/[a-zA-Z0-9]+$
+  validator: null
+  examples:
+    positive:
+      - https://open.spotify.com/user/spotify
+    negative:
+      - https://open.spotify.com/user/spotify#
+  sensitivity: normal
+- id: lastfm_username
+  category: Social
+  labels:
+    en: Last.fm Username
+    ar: يوزرنيم Last.fm
+  description: Last.fm music scrobbling profile
+  icon: 🎶
+  color: red
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?last\.fm\/user\/)?[a-zA-Z0-9_\-]{2,15}$
+  validator: null
+  examples:
+    positive:
+      - last.fm/user/username
+    negative:
+      - last.fm/user/username#
+  sensitivity: normal
+- id: flickr_username
+  category: Social
+  labels:
+    en: Flickr Username
+    ar: يوزرنيم فليكر
+  description: Flickr photo sharing profile
+  icon: 📷
+  color: pink
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?flickr\.com\/people\/)?[a-zA-Z0-9_@\-]+$
+  validator: null
+  examples:
+    positive:
+      - flickr.com/people/username
+    negative:
+      - flickr.com/people/username#
+  sensitivity: normal
+- id: vimeo_profile
+  category: Social
+  labels:
+    en: Vimeo Profile
+    ar: ملف Vimeo
+  description: Vimeo video creator profile
+  icon: 🎞️
+  color: teal
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?vimeo\.com\/)?[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - vimeo.com/username
+    negative:
+      - vimeo.com/username#
+  sensitivity: normal
+- id: dailymotion_username
+  category: Social
+  labels:
+    en: Dailymotion Username
+    ar: يوزرنيم Dailymotion
+  description: Dailymotion video platform username
+  icon: 📹
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?dailymotion\.com\/)?[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - dailymotion.com/user
+    negative:
+      - dailymotion.com/user#
+  sensitivity: normal
+- id: clubhouse_username
+  category: Social
+  labels:
+    en: Clubhouse Username
+    ar: يوزرنيم كلوب هاوس
+  description: Clubhouse audio social network
+  icon: 🎤
+  color: yellow
+  patterns:
+    - ^@[a-zA-Z0-9_]{1,30}$
+  validator: null
+  examples:
+    positive:
+      - "@username"
+    negative:
+      - "@username#"
+  sensitivity: normal
+- id: threads_username
+  category: Social
+  labels:
+    en: Threads Username
+    ar: يوزرنيم ثريدز
+  description: Meta Threads username
+  icon: 🧵
+  color: black
+  patterns:
+    - ^@?[a-zA-Z0-9._]{1,30}$
+  validator: null
+  examples:
+    positive:
+      - "@username"
+    negative:
+      - "@username#"
+  sensitivity: normal
+- id: bluesky_handle
+  category: Social
+  labels:
+    en: Bluesky Handle
+    ar: هاندل بلوسكاي
+  description: Bluesky social network handle
+  icon: 🦋
+  color: blue
+  patterns:
+    - ^@?[a-zA-Z0-9.\-]{3,50}$
+  validator: null
+  examples:
+    positive:
+      - user.bsky.social
+    negative:
+      - user.bsky.social#
+  sensitivity: normal
+- id: mastodon_handle
+  category: Social
+  labels:
+    en: Mastodon Handle
+    ar: هاندل ماستودون
+  description: Mastodon federated social handle
+  icon: 🐘
+  color: purple
+  patterns:
+    - ^@?[a-zA-Z0-9_\-]+@[a-zA-Z0-9.\-]+$
+  validator: null
+  examples:
+    positive:
+      - "@user@mastodon.social"
+    negative:
+      - "@user@mastodon.social#"
+  sensitivity: normal
+- id: lemmy_user
+  category: Social
+  labels:
+    en: Lemmy Username
+    ar: يوزرنيم Lemmy
+  description: Lemmy federated forum username
+  icon: 🐭
+  color: orange
+  patterns:
+    - ^@?[a-zA-Z0-9_\-]+@[a-zA-Z0-9.\-]+$
+  validator: null
+  examples:
+    positive:
+      - "@user@lemmy.ml"
+    negative:
+      - "@user@lemmy.ml#"
+  sensitivity: normal
+- id: kik_username
+  category: Social
+  labels:
+    en: Kik Messenger Username
+    ar: يوزرنيم Kik
+  description: Kik messenger username
+  icon: 💬
+  color: green
+  patterns:
+    - ^[a-zA-Z0-9._\-]{2,50}$
+  validator: null
+  examples:
+    positive:
+      - kikuser
+    negative:
+      - kikuser#
+  sensitivity: normal
+- id: line_id
+  category: Social
+  labels:
+    en: LINE ID
+    ar: معرف LINE
+  description: LINE messenger user ID
+  icon: 💬
+  color: green
+  patterns:
+    - ^[a-zA-Z0-9._\-]{4,20}$
+  validator: null
+  examples:
+    positive:
+      - line_user123
+    negative:
+      - line_user123#
+  sensitivity: normal
+- id: kakao_id
+  category: Social
+  labels:
+    en: KakaoTalk ID
+    ar: معرف كاكاو
+  description: KakaoTalk messenger account ID
+  icon: 💛
+  color: yellow
+  patterns:
+    - ^[a-zA-Z0-9._\-]{4,16}$
+  validator: null
+  examples:
+    positive:
+      - kakao_user
+    negative:
+      - kakao_user#
+  sensitivity: normal
+- id: wechat_id
+  category: Social
+  labels:
+    en: WeChat ID
+    ar: معرف ويشات
+  description: WeChat (Weixin) user ID
+  icon: 💬
+  color: green
+  patterns:
+    - ^[a-zA-Z][a-zA-Z0-9_\-]{5,19}$
+  validator: null
+  examples:
+    positive:
+      - wechat_user_123
+    negative:
+      - wechat_user_123#
+  sensitivity: normal
+- id: viber_number
+  category: Social
+  labels:
+    en: Viber Phone Number
+    ar: رقم Viber
+  description: Viber messenger phone number
+  icon: 📱
+  color: purple
+  patterns:
+    - ^\+[1-9]\d{6,14}$
+  validator: null
+  examples:
+    positive:
+      - "+1234567890"
+    negative:
+      - +1234567890#
+  sensitivity: normal
+- id: zalo_id
+  category: Social
+  labels:
+    en: Zalo ID
+    ar: معرف Zalo
+  description: Vietnamese Zalo messenger ID
+  icon: 💬
+  color: blue
+  patterns:
+    - ^\d{9,12}$
+  validator: null
+  examples:
+    positive:
+      - "0901234567"
+    negative:
+      - 0901234567#
+  sensitivity: normal
+- id: imo_id
+  category: Social
+  labels:
+    en: IMO ID
+    ar: معرف IMO
+  description: IMO messenger account ID
+  icon: 💬
+  color: green
+  patterns:
+    - ^\+?[1-9]\d{6,14}$
+  validator: null
+  examples:
+    positive:
+      - "+1234567890"
+    negative:
+      - +1234567890#
+  sensitivity: normal
+- id: xing_profile
+  category: Social
+  labels:
+    en: XING Profile
+    ar: ملف XING
+  description: XING professional network (Germany)
+  icon: 💼
+  color: green
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?xing\.com\/profile\/[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - xing.com/profile/user
+    negative:
+      - xing.com/profile/user#
+  sensitivity: normal
+- id: badoo_username
+  category: Social
+  labels:
+    en: Badoo Username
+    ar: يوزرنيم Badoo
+  description: Badoo dating social network
+  icon: 💕
+  color: purple
+  patterns:
+    - ^[a-zA-Z0-9_\-]{3,30}$
+  validator: null
+  examples:
+    positive:
+      - badoo_user
+    negative:
+      - badoo_user#
+  sensitivity: normal
+- id: ok_ru_id
+  category: Social
+  labels:
+    en: OK.ru User ID
+    ar: معرف OK.ru
+  description: Odnoklassniki numeric user ID
+  icon: 🇷🇺
+  color: orange
+  patterns:
+    - ^\d{9,15}$
+  validator: null
+  examples:
+    positive:
+      - "561234567890"
+    negative:
+      - 561234567890#
+  sensitivity: normal
+- id: steam_id64
+  category: Social
+  labels:
+    en: Steam ID64
+    ar: معرف Steam 64-bit
+  description: Steam 64-bit user identifier
+  icon: 🎮
+  color: blue
+  patterns:
+    - ^7656119\d{10}$
+  validator: null
+  examples:
+    positive:
+      - "76561198012345678"
+    negative:
+      - 76561198012345678#
+  sensitivity: normal
+- id: steam_vanity
+  category: Social
+  labels:
+    en: Steam Vanity URL
+    ar: يوزرنيم Steam
+  description: Steam custom profile URL name
+  icon: 🎮
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?steamcommunity\.com\/(id|profiles)\/)?[a-zA-Z0-9_\-]{2,32}$
+  validator: null
+  examples:
+    positive:
+      - steamcommunity.com/id/username
+    negative:
+      - steamcommunity.com/id/username#
+  sensitivity: normal
+- id: goodreads_user
+  category: Social
+  labels:
+    en: Goodreads User
+    ar: مستخدم Goodreads
+  description: Goodreads book community profile
+  icon: 📚
+  color: brown
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?goodreads\.com\/user\/show\/\d+
+  validator: null
+  examples:
+    positive:
+      - goodreads.com/user/show/1234
+    negative:
+      - "#goodreads.com/user/show/1234"
+  sensitivity: normal
+- id: letterboxd_username
+  category: Social
+  labels:
+    en: Letterboxd Username
+    ar: يوزرنيم Letterboxd
+  description: Letterboxd film social network
+  icon: 🎬
+  color: green
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?letterboxd\.com\/)?[a-zA-Z0-9_\-]{2,15}\/?$
+  validator: null
+  examples:
+    positive:
+      - letterboxd.com/username
+    negative:
+      - letterboxd.com/username#
+  sensitivity: normal
+- id: anilist_username
+  category: Social
+  labels:
+    en: AniList Username
+    ar: يوزرنيم AniList
+  description: AniList anime/manga tracking
+  icon: 🎌
+  color: teal
+  patterns:
+    - ^[a-zA-Z0-9_\-]{2,20}$
+  validator: null
+  examples:
+    positive:
+      - anime_user
+    negative:
+      - anime_user#
+  sensitivity: normal
+- id: myanimelist_username
+  category: Social
+  labels:
+    en: MyAnimeList Username
+    ar: يوزرنيم MAL
+  description: MyAnimeList anime tracking profile
+  icon: 🎌
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9_\-]{2,16}$
+  validator: null
+  examples:
+    positive:
+      - mal_user
+    negative:
+      - mal_user#
+  sensitivity: normal
+- id: patreon_username
+  category: Social
+  labels:
+    en: Patreon Username
+    ar: يوزرنيم Patreon
+  description: Patreon creator or patron page
+  icon: 💰
+  color: orange
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?patreon\.com\/)?[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - patreon.com/creator
+    negative:
+      - patreon.com/creator#
+  sensitivity: normal
+- id: onlyfans_username
+  category: Social
+  labels:
+    en: OnlyFans Username
+    ar: يوزرنيم OnlyFans
+  description: OnlyFans creator profile
+  icon: 💙
+  color: blue
+  patterns:
+    - ^((?:https?:\/\/)?(www\.)?onlyfans\.com\/)?[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - onlyfans.com/creator
+    negative:
+      - onlyfans.com/creator#
+  sensitivity: normal
+- id: ko_fi_username
+  category: Social
+  labels:
+    en: Ko-fi Username
+    ar: يوزرنيم Ko-fi
+  description: Ko-fi creator support page
+  icon: ☕
+  color: yellow
+  patterns:
+    - ^((?:https?:\/\/)?ko-fi\.com\/)?[a-zA-Z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - ko-fi.com/creator
+    negative:
+      - ko-fi.com/creator#
+  sensitivity: normal

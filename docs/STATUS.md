@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 17 | 0 |
+| 1 | النواة والسجل | 25 | 20 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -70,12 +70,12 @@
 |---|---|---|---|
 | P1-001 | إعادة هيكلة مساحة العمل إلى `apps/*` و`packages/*` (M) | done | artifacts/* -> apps/{web,server,sandbox} renamed @ir/*; packages/* opened; lint/typecheck/build/test/audit green; /api/healthz ok |
 | P1-002 | `@ir/schema`: مخططات Zod لنموذج 5.4 (M) | done | packages/schema: Zod v4 models for all 11 entities of 5.4 + JSON Schema 2020-12 in packages/schema/json; 19 tests |
-| P1-003 | نقل بيانات المعرّفات إلى YAML بالمخطط الجديد (M) | todo | — |
-| P1-004 | إصلاح الأنماط والأمثلة غير المتطابقة (M) | todo | — |
+| P1-003 | نقل بيانات المعرّفات إلى YAML بالمخطط الجديد (M) | done | packages/core/identifiers/*.yaml (371 types, 13 categories incl. new Messaging) -> generated src/identifiers/catalog.ts; IdentifierSpec schema; web identifierList.ts is now a 40-line adapter; catalog.test.ts T-IDL-001..004 + sync; PEM header example is a template too |
+| P1-004 | إصلاح الأنماط والأمثلة غير المتطابقة (M) | done | 78 failing examples/patterns fixed (truncated samples, scheme-less social URLs, phone ranges, ipv6, mx_record); 100% of positives accepted by pattern+validator; one negative per type rejected (templated for secret-shaped types); wickr_id context-required |
 | P1-005 | المدققات: Luhn، IBAN، EIP-55، Base58Check، Bech32، IP، PSL (M) | done | @ir/core/validate + @ir/core/psl: Luhn, IBAN (SWIFT registry, 89 countries), ISIN, EIP-55 (pure Keccak-256), Base58Check, Bech32/Bech32m, Bitcoin addresses, IPv4/IPv6, PSL; official vectors (BIP-173/350, EIP-55, Bitcoin Core key_io/base58, test_psl.txt); 62 core tests |
 | P1-006 | محرك الكشف متعدد المرشحين بدرجات وسياق (M) | todo | — |
 | P1-007 | التطبيع والمفتاح القانوني (M) | done | packages/core/src/normalize.ts: normalize()/canonicalKey() for 371 type ids by family; 100,000 distinct inputs -> 100,000 keys, all variants map back; smartInvestigator uses it |
-| P1-008 | تصنيف الحساسية لكل نوع (M) | todo | — |
+| P1-008 | تصنيف الحساسية لكل نوع (M) | done | sensitivity on every type: 52 identity-document types natural_person_gate, cnpj_br (legal entity) normal; test D-011 |
 | P1-009 | `@ir/ledger`: سلسلة تجزئة + JCS (M) | done | packages/ledger: RFC 8785 JCS, SHA-256 hash chain (ADR-06), append-only Ledger, verify(); T-LED-001..010 green (28 tests, 993 single-char edits all detected) |
 | P1-010 | مخزن الأدلة بعنونة المحتوى (M) | done | packages/ledger blobs.ts + evidence.ts: blobs/<sha[0:2]>/<sha> zstd, hash verified on every read, atomic idempotent put, request redaction, evidence.stored + verifyEvidence; T-LED-016..019 green |
 | P1-011 | التوقيع بـ Ed25519 ونقاط التثبيت (M) | done | packages/ledger signing.ts + merkle.ts: Ed25519 installation key (single open, 0600, fd-only I/O), ir-checkpoint/1 signed over JCS with RFC 9162 Merkle root, embedded + external verification, inclusion proofs; T-LED-011..015 green |
@@ -349,12 +349,12 @@
 | D-003 | حاجز | مفتوح | — |
 | D-004 | حرج | مُصلح | P0-005 |
 | D-005 | عالٍ | مفتوح | — |
-| D-006 | عالٍ | مفتوح | — |
+| D-006 | عالٍ | مغلق | P1-004: الأمثلة الإيجابية مقبولة 100% بنمط نوعها ومدققه (377 من 377 بالقياس) |
 | D-007 | عالٍ | مفتوح | — |
-| D-008 | متوسط | مفتوح | — |
-| D-009 | عالٍ | مفتوح | — |
-| D-010 | متوسط | مفتوح | — |
-| D-011 | عالٍ | مفتوح | — |
+| D-008 | متوسط | مغلق | P1-003: العدد الحقيقي 371 نوعاً في 13 تصنيفاً مقاس وموثّق، والتوسعة عبر YAML بمثال إيجابي وسلبي إلزامي |
+| D-009 | عالٍ | مغلق | P1-004: wickr_id بطول 5..20 ولا يُقترح إلا بكلمة سياق (context.required) |
+| D-010 | متوسط | مغلق | P1-003: تصنيف Messaging مستقل للأنواع الخمسة |
+| D-011 | عالٍ | مغلق | P1-008: 52 نوعاً موسومة natural_person_gate؛ الفرض في المحرك مع P2-013 |
 | D-012 | عالٍ | مفتوح | — |
 | D-013 | عالٍ | مُصلح | P0-022 |
 | D-014 | متوسط | مفتوح | — |

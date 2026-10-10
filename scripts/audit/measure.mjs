@@ -7,11 +7,10 @@
 // using the same definitions so the two tables can be compared row by row.
 import { execSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import os from "node:os";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = new Set(process.argv.slice(2));
@@ -31,23 +30,23 @@ function walk(dir, filter, out = []) {
   return out;
 }
 
-// Load identifierList.ts without a TS runtime: transpile with the workspace's TypeScript.
+// Load the identifier catalog (P1-003: packages/core/identifiers/*.yaml) in the legacy {id, regex, examples} shape.
 async function loadIdentifierList() {
-  const src = rel("apps/web/src/utils/identifierList.ts");
-  const require = createRequire(rel("package.json"));
-  const ts = require("typescript");
-  const code = readFileSync(src, "utf8");
-  const syntax = ts.createSourceFile("identifierList.ts", code, ts.ScriptTarget.Latest, true).parseDiagnostics ?? [];
-  if (syntax.length) return { error: `TS${syntax[0].code} ${ts.flattenDiagnosticMessageText(syntax[0].messageText, " ")}` };
-  const js = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const dir = mkdtempSync(path.join(os.tmpdir(), "ir-measure-"));
-  const file = path.join(dir, "identifierList.mjs");
-  writeFileSync(file, js);
-  try {
-    return { list: (await import(pathToFileURL(file).href)).IDENTIFIER_LIST };
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  const dir = rel("packages/core/identifiers");
+  if (!existsSync(dir)) return { error: "packages/core/identifiers not found" };
+  const { parse } = createRequire(rel("packages/core/package.json"))("yaml");
+  const expand = (s) => s.replace(/\{\{(\d{1,3}):(.)\}\}/gu, (_m, n, c) => c.repeat(Number(n)));
+  const specs = readdirSync(dir)
+    .filter((f) => f.endsWith(".yaml"))
+    .sort()
+    .flatMap((f) => parse(readFileSync(path.join(dir, f), "utf8")));
+  return {
+    list: specs.map((s) => ({
+      ...s,
+      regex: new RegExp(s.patterns.map((p) => `(?:${p})`).join("|"), s.flags ?? ""),
+      examples: s.examples.positive.map(expand),
+    })),
+  };
 }
 
 // Type ids routed to a real fetcher in resultFetcher.fetchIdentifier (everything else falls to fetchGeneric).
@@ -56,7 +55,7 @@ function fetcherTypeIds() {
   if (!existsSync(f)) return new Set();
   const body = readFileSync(f, "utf8").split("export async function fetchIdentifier")[1] ?? "";
   const routed = body.split("fetchGeneric(")[0];
-  return new Set([...routed.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]));
+  return new Set([...routed.matchAll(/["']([a-z0-9_]+)["']/g)].map((m) => m[1]));
 }
 
 function run(cmd) {

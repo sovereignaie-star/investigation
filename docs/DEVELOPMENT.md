@@ -74,3 +74,12 @@ node packages/cli/dist/ir.mjs verify path/to/case                               
 | **المجموع من الاستنساخ** | **158 ث** | أقل من 10 دقائق |
 
 يُعاد هذا القياس على Node 24 في CI (وظيفتا `build` و`test`).
+
+## فهرس المعرّفات (P1-003)
+
+- البيانات: `packages/core/identifiers/<category>.yaml`، نوع لكل مدخل بالمخطط `IdentifierSpec` (`@ir/schema`).
+- بعد أي تعديل: `pnpm --filter @ir/core run gen:data` لتوليد `packages/core/src/identifiers/catalog.ts`. الاختبار يفشل إن لم يطابق المولَّد ملفات YAML.
+- كل نوع يحتاج مثالاً إيجابياً يقبله نمطه ومدققه، ومثالاً سلبياً يرفضه.
+- أمثلة المفاتيح والرموز السرية تُكتب قوالب `{{N:c}}` (مثل `sk_test_{{24:x}}`)، ولا تُكتب نصاً حرفياً.
+- النوع الذي يطابق نمطه كلمات عامة يُضبط فيه `context.required: true` مع كلمات سياق.
+

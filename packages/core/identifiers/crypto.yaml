@@ -1,0 +1,496 @@
+# Identifier catalog: Crypto (29 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: bitcoin_address
+  category: Crypto
+  labels:
+    en: Bitcoin Address (Legacy)
+    ar: عنوان بيتكوين قديم
+  description: Legacy Bitcoin P2PKH address (starts with 1)
+  icon: ₿
+  color: yellow
+  patterns:
+    - ^1[a-km-zA-HJ-NP-Z1-9]{25,34}$
+  validator: bitcoin
+  examples:
+    positive:
+      - 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+    negative:
+      - 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa#
+  sensitivity: normal
+- id: bitcoin_address_p2sh
+  category: Crypto
+  labels:
+    en: Bitcoin Address (P2SH)
+    ar: عنوان بيتكوين P2SH
+  description: Bitcoin P2SH address (starts with 3)
+  icon: ₿
+  color: yellow
+  patterns:
+    - ^3[a-km-zA-HJ-NP-Z1-9]{25,34}$
+  validator: bitcoin
+  examples:
+    positive:
+      - 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy
+    negative:
+      - 3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy#
+  sensitivity: normal
+- id: bitcoin_address_bech32
+  category: Crypto
+  labels:
+    en: Bitcoin SegWit Address
+    ar: عنوان بيتكوين SegWit
+  description: Bitcoin Bech32 SegWit address (bc1...)
+  icon: ₿
+  color: orange
+  patterns:
+    - ^bc1[a-z0-9]{25,87}$
+  validator: bitcoin
+  examples:
+    positive:
+      - bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq
+    negative:
+      - bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq#
+  sensitivity: normal
+- id: ethereum_address
+  category: Crypto
+  labels:
+    en: Ethereum Address
+    ar: عنوان إيثريوم
+  description: Ethereum wallet address (0x...)
+  icon: ⟠
+  color: blue
+  patterns:
+    - ^0x[a-fA-F0-9]{40}$
+  validator: eip55
+  examples:
+    positive:
+      - "0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"
+    negative:
+      - 0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe#
+  sensitivity: normal
+- id: eth_tx_hash
+  category: Crypto
+  labels:
+    en: Ethereum Transaction Hash
+    ar: هاش معاملة إيثريوم
+  description: Ethereum transaction hash
+  icon: ⟠
+  color: blue
+  patterns:
+    - ^0x[a-fA-F0-9]{64}$
+  validator: null
+  examples:
+    positive:
+      - "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060"
+    negative:
+      - 0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060#
+  sensitivity: normal
+- id: monero_address
+  category: Crypto
+  labels:
+    en: Monero Address
+    ar: عنوان مونيرو
+  description: Monero (XMR) wallet address
+  icon: 🔴
+  color: orange
+  patterns:
+    - ^4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}$
+  validator: null
+  examples:
+    positive:
+      - 4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx3skxNgYeYTRj5UzqtReoS44qo9mtmXCqY45DJ852K5Jv2684Rge
+    negative:
+      - 4AdUndXHHZ6cfufTMvppY6JwXNouMBzSkbLYfpAV5Usx3skxNgYeYTRj5UzqtReoS44qo9mtmXCqY45DJ852K5Jv2684Rge#
+  sensitivity: normal
+- id: litecoin_address
+  category: Crypto
+  labels:
+    en: Litecoin Address
+    ar: عنوان لايتكوين
+  description: Litecoin (LTC) wallet address
+  icon: Ł
+  color: gray
+  patterns:
+    - ^[LM3][a-km-zA-HJ-NP-Z1-9]{25,34}$
+  validator: base58check
+  examples:
+    positive:
+      - LTdsVS8VDw6syvfQADdhf2PHAm3rMGJvPX
+    negative:
+      - LTdsVS8VDw6syvfQADdhf2PHAm3rMGJvPX#
+  sensitivity: normal
+- id: dogecoin_address
+  category: Crypto
+  labels:
+    en: Dogecoin Address
+    ar: عنوان دوجكوين
+  description: Dogecoin (DOGE) wallet address
+  icon: 🐕
+  color: yellow
+  patterns:
+    - ^D[a-zA-Z0-9]{33}$
+  validator: base58check
+  examples:
+    positive:
+      - DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L
+    negative:
+      - DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L#
+  sensitivity: normal
+- id: ripple_address
+  category: Crypto
+  labels:
+    en: XRP / Ripple Address
+    ar: عنوان ريبل
+  description: XRP Ripple wallet address
+  icon: 💧
+  color: blue
+  patterns:
+    - ^r[0-9a-zA-Z]{24,34}$
+  validator: null
+  examples:
+    positive:
+      - rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh
+    negative:
+      - rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh#
+  sensitivity: normal
+- id: tron_address
+  category: Crypto
+  labels:
+    en: TRON Address
+    ar: عنوان ترون
+  description: TRON (TRX) blockchain address
+  icon: 🔷
+  color: red
+  patterns:
+    - ^T[a-zA-Z0-9]{33}$
+  validator: base58check
+  examples:
+    positive:
+      - TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t
+    negative:
+      - TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t#
+  sensitivity: normal
+- id: solana_address
+  category: Crypto
+  labels:
+    en: Solana Address
+    ar: عنوان سولانا
+  description: Solana (SOL) wallet address
+  icon: ◎
+  color: purple
+  patterns:
+    - ^[1-9A-HJ-NP-Za-km-z]{32,44}$
+  validator: null
+  examples:
+    positive:
+      - DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+    negative:
+      - DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263#
+  sensitivity: normal
+- id: cardano_address
+  category: Crypto
+  labels:
+    en: Cardano Address
+    ar: عنوان كاردانو
+  description: Cardano (ADA) wallet address
+  icon: 🔵
+  color: blue
+  patterns:
+    - ^(addr1|Ae2|DdzFF)[a-zA-Z0-9]{44,}$
+  validator: null
+  examples:
+    positive:
+      - addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x
+    negative:
+      - addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x#
+  sensitivity: normal
+- id: stellar_address
+  category: Crypto
+  labels:
+    en: Stellar Address
+    ar: عنوان ستيلار
+  description: Stellar (XLM) wallet address
+  icon: ⭐
+  color: teal
+  patterns:
+    - ^G[a-zA-Z2-7]{55}$
+  validator: null
+  examples:
+    positive:
+      - GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H
+    negative:
+      - GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H#
+  sensitivity: normal
+- id: zcash_address
+  category: Crypto
+  labels:
+    en: Zcash Address
+    ar: عنوان زي كاش
+  description: Zcash (ZEC) wallet address
+  icon: Ⓩ
+  color: yellow
+  patterns:
+    - ^(t1|t3|zs)[a-zA-Z0-9]{33,87}$
+  validator: null
+  examples:
+    positive:
+      - t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU
+    negative:
+      - t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU#
+  sensitivity: normal
+- id: dash_address
+  category: Crypto
+  labels:
+    en: Dash Address
+    ar: عنوان داش
+  description: Dash (DASH) wallet address
+  icon: 🔵
+  color: blue
+  patterns:
+    - ^X[a-km-zA-HJ-NP-Z1-9]{25,34}$
+  validator: null
+  examples:
+    positive:
+      - XekiLaxnqpFb2m4NQAEcsKutZcZgcyfo6W
+    negative:
+      - XekiLaxnqpFb2m4NQAEcsKutZcZgcyfo6W#
+  sensitivity: normal
+- id: polkadot_address
+  category: Crypto
+  labels:
+    en: Polkadot Address
+    ar: عنوان بولكادوت
+  description: Polkadot (DOT) SS58 address
+  icon: ⚫
+  color: pink
+  patterns:
+    - ^1[a-zA-Z0-9]{47}$
+  validator: null
+  examples:
+    positive:
+      - 15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5
+    negative:
+      - 15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5#
+  sensitivity: normal
+- id: cosmos_address
+  category: Crypto
+  labels:
+    en: Cosmos Address
+    ar: عنوان كوزموس
+  description: Cosmos (ATOM) bech32 address
+  icon: 🌌
+  color: blue
+  patterns:
+    - ^cosmos1[a-z0-9]{38}$
+  validator: null
+  examples:
+    positive:
+      - cosmos1hsk6jryyqjfhp5dhc55tc9jtckygx0eph6dd02
+    negative:
+      - cosmos1hsk6jryyqjfhp5dhc55tc9jtckygx0eph6dd02#
+  sensitivity: normal
+- id: near_account
+  category: Crypto
+  labels:
+    en: NEAR Protocol Account
+    ar: حساب NEAR
+  description: NEAR Protocol account ID
+  icon: 🌈
+  color: green
+  patterns:
+    - ^[a-z0-9]([a-z0-9.\-]{0,62}[a-z0-9])?\.near$
+  validator: null
+  examples:
+    positive:
+      - alice.near
+    negative:
+      - alice.near#
+  sensitivity: normal
+- id: algorand_address
+  category: Crypto
+  labels:
+    en: Algorand Address
+    ar: عنوان ألغوراند
+  description: Algorand (ALGO) wallet address
+  icon: Ⓐ
+  color: blue
+  patterns:
+    - ^[A-Z2-7]{58}$
+  validator: null
+  examples:
+    positive:
+      - VCMJKWOY5P5P7SKMZFFOCEROPJCZOTIJMNIYNUCKH7LRO45JMJP6UYBIJA
+    negative:
+      - VCMJKWOY5P5P7SKMZFFOCEROPJCZOTIJMNIYNUCKH7LRO45JMJP6UYBIJA#
+  sensitivity: normal
+- id: avalanche_address
+  category: Crypto
+  labels:
+    en: Avalanche Address
+    ar: عنوان أفالانش
+  description: Avalanche (AVAX) address (C-chain)
+  icon: 🔺
+  color: red
+  patterns:
+    - ^0x[a-fA-F0-9]{40}$|^X-avax1[a-z0-9]{38}$
+  validator: null
+  examples:
+    positive:
+      - "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+    negative:
+      - 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed#
+  sensitivity: normal
+- id: bnb_address
+  category: Crypto
+  labels:
+    en: BNB / BSC Address
+    ar: عنوان BNB
+  description: Binance Smart Chain address (same format as ETH)
+  icon: 🟡
+  color: yellow
+  patterns:
+    - ^0x[a-fA-F0-9]{40}$
+  validator: eip55
+  examples:
+    positive:
+      - "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359"
+    negative:
+      - 0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359#
+  sensitivity: normal
+- id: crypto_tx_hash
+  category: Crypto
+  labels:
+    en: Crypto Transaction Hash
+    ar: هاش معاملة مشفرة
+  description: Generic cryptocurrency transaction hash
+  icon: 🔐
+  color: gray
+  patterns:
+    - ^(0x)?[a-fA-F0-9]{64}$
+  validator: null
+  examples:
+    positive:
+      - 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+    negative:
+      - 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b#
+  sensitivity: normal
+- id: bitcoin_block_hash
+  category: Crypto
+  labels:
+    en: Bitcoin Block Hash
+    ar: هاش كتلة بيتكوين
+  description: Bitcoin blockchain block hash
+  icon: ₿
+  color: yellow
+  patterns:
+    - ^0{8}[a-fA-F0-9]{56}$
+  validator: null
+  examples:
+    positive:
+      - 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f
+    negative:
+      - 000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f#
+  sensitivity: normal
+- id: ens_name
+  category: Crypto
+  labels:
+    en: ENS Domain Name
+    ar: نطاق ENS
+  description: Ethereum Name Service domain
+  icon: 🌐
+  color: blue
+  patterns:
+    - ^[a-z0-9\-]+\.eth$
+  validator: null
+  examples:
+    positive:
+      - vitalik.eth
+    negative:
+      - vitalik.eth#
+  sensitivity: normal
+- id: nft_contract
+  category: Crypto
+  labels:
+    en: NFT Contract Address
+    ar: عنوان عقد NFT
+  description: ERC-721 NFT smart contract address
+  icon: 🖼️
+  color: purple
+  patterns:
+    - ^0x[a-fA-F0-9]{40}$
+  validator: eip55
+  examples:
+    positive:
+      - "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"
+    negative:
+      - 0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D#
+  sensitivity: normal
+- id: defi_pool
+  category: Crypto
+  labels:
+    en: DeFi Pool Address
+    ar: عنوان مجمع DeFi
+  description: DeFi liquidity pool contract address
+  icon: 🏊
+  color: blue
+  patterns:
+    - ^0x[a-fA-F0-9]{40}$
+  validator: eip55
+  examples:
+    positive:
+      - "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
+    negative:
+      - 0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB#
+  sensitivity: normal
+- id: lightning_invoice
+  category: Crypto
+  labels:
+    en: Lightning Network Invoice
+    ar: فاتورة شبكة Lightning
+  description: Bitcoin Lightning Network payment invoice
+  icon: ⚡
+  color: yellow
+  patterns:
+    - ^lnbc[0-9a-z]+$
+  flags: i
+  validator: null
+  examples:
+    positive:
+      - lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w
+    negative:
+      - lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w#
+  sensitivity: normal
+- id: bitcoin_xpub
+  category: Crypto
+  labels:
+    en: Bitcoin Extended Public Key
+    ar: مفتاح بيتكوين العام الموسع
+  description: Bitcoin HD wallet extended public key
+  icon: ₿
+  color: yellow
+  patterns:
+    - ^(xpub|ypub|zpub)[A-Za-z0-9]{107,111}$
+  validator: null
+  examples:
+    positive:
+      - xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8
+    negative:
+      - xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8#
+  sensitivity: normal
+- id: crypto_seed
+  category: Crypto
+  labels:
+    en: Crypto Seed Phrase
+    ar: عبارة بذرة مشفرة
+  description: BIP39 mnemonic seed phrase (12-24 words)
+  icon: 🌱
+  color: red
+  patterns:
+    - ^([a-z]+ ){11,23}[a-z]+$
+  validator: null
+  examples:
+    positive:
+      - abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
+    negative:
+      - abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about#
+  sensitivity: normal

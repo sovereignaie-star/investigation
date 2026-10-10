@@ -1,0 +1,331 @@
+# Identifier catalog: Domain (19 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: domain
+  category: Domain
+  labels:
+    en: Domain Name
+    ar: اسم النطاق
+  description: Internet domain name
+  icon: 🌍
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$
+  validator: psl
+  examples:
+    positive:
+      - example.com
+    negative:
+      - example.com#
+  sensitivity: normal
+  transforms:
+    - whoisxml
+    - securitytrails
+    - virustotal
+- id: url
+  category: Domain
+  labels:
+    en: URL / Web Link
+    ar: رابط ويب
+  description: Full web URL
+  icon: 🔗
+  color: blue
+  patterns:
+    - ^(?:https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)$
+  validator: null
+  examples:
+    positive:
+      - https://example.com/page
+    negative:
+      - "#https://example.com/page"
+  sensitivity: normal
+  transforms:
+    - virustotal
+- id: url_http
+  category: Domain
+  labels:
+    en: HTTP URL
+    ar: رابط HTTP
+  description: Insecure HTTP URL
+  icon: 🌐
+  color: orange
+  patterns:
+    - ^http:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b
+  validator: null
+  examples:
+    positive:
+      - http://example.com
+    negative:
+      - "#http://example.com"
+  sensitivity: normal
+- id: url_https
+  category: Domain
+  labels:
+    en: HTTPS URL
+    ar: رابط HTTPS آمن
+  description: Secure HTTPS URL
+  icon: 🔒
+  color: green
+  patterns:
+    - ^https:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b
+  validator: null
+  examples:
+    positive:
+      - https://example.com
+    negative:
+      - "#https://example.com"
+  sensitivity: normal
+- id: subdomain
+  category: Domain
+  labels:
+    en: Subdomain
+    ar: نطاق فرعي
+  description: Domain subdomain
+  icon: 🌿
+  color: green
+  patterns:
+    - ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61})?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61})?){2,}$
+  validator: psl
+  examples:
+    positive:
+      - mail.example.com
+    negative:
+      - mail.example.com#
+  sensitivity: normal
+- id: ftp_url
+  category: Domain
+  labels:
+    en: FTP URL
+    ar: رابط FTP
+  description: FTP server URL
+  icon: 📁
+  color: yellow
+  patterns:
+    - ^ftps?:\/\/[a-zA-Z0-9.\-]+
+  validator: null
+  examples:
+    positive:
+      - ftp://ftp.example.com
+    negative:
+      - "#ftp://ftp.example.com"
+  sensitivity: normal
+- id: ssh_url
+  category: Domain
+  labels:
+    en: SSH URL
+    ar: رابط SSH
+  description: SSH connection URL
+  icon: 🔑
+  color: gray
+  patterns:
+    - ^ssh:\/\/[a-zA-Z0-9.\-]+|^[a-zA-Z0-9]+@[a-zA-Z0-9.\-]+$
+  validator: null
+  examples:
+    positive:
+      - ssh://user@server.com
+    negative:
+      - "#ssh://user@server.com"
+  sensitivity: normal
+- id: git_repo
+  category: Domain
+  labels:
+    en: Git Repository URL
+    ar: رابط مستودع Git
+  description: Git repository URL
+  icon: 📦
+  color: orange
+  patterns:
+    - ^(https?:\/\/(github|gitlab|bitbucket)\.com\/|git@(github|gitlab|bitbucket)\.com:)[a-zA-Z0-9.\-_]+\/[a-zA-Z0-9.\-_]+$
+  validator: null
+  examples:
+    positive:
+      - https://github.com/user/repo
+    negative:
+      - https://github.com/user/repo#
+  sensitivity: normal
+- id: magnet_link
+  category: Domain
+  labels:
+    en: Magnet Link
+    ar: رابط مغناطيسي
+  description: BitTorrent magnet link
+  icon: 🧲
+  color: red
+  patterns:
+    - ^magnet:\?xt=urn:[a-zA-Z0-9]+:[a-zA-Z0-9]+
+  validator: null
+  examples:
+    positive:
+      - magnet:?xt=urn:btih:c12fe1c06bba254a9dc9f519b335aa7c1367a88a
+    negative:
+      - "#magnet:?xt=urn:btih:c12fe1c06bba254a9dc9f519b335aa7c1367a88a"
+  sensitivity: normal
+- id: data_uri
+  category: Domain
+  labels:
+    en: Data URI
+    ar: معرف بيانات URI
+  description: Data URI scheme
+  icon: 📄
+  color: gray
+  patterns:
+    - ^data:[a-zA-Z0-9]+\/[a-zA-Z0-9.\-+]+;base64,[a-zA-Z0-9+/=]+
+  validator: null
+  examples:
+    positive:
+      - data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE=
+    negative:
+      - "#data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE="
+  sensitivity: normal
+- id: ipfs_hash
+  category: Domain
+  labels:
+    en: IPFS Hash/CID
+    ar: هاش IPFS
+  description: IPFS content identifier
+  icon: 🪐
+  color: teal
+  patterns:
+    - ^(Qm[1-9A-HJ-NP-Za-km-z]{44}|bafybeig[1-9A-HJ-NP-Za-km-z]{52})$
+  validator: null
+  examples:
+    positive:
+      - QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx
+    negative:
+      - QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx#
+  sensitivity: normal
+- id: arxiv_id
+  category: Domain
+  labels:
+    en: arXiv Paper ID
+    ar: معرف ورقة بحثية arXiv
+  description: arXiv research paper identifier
+  icon: 📚
+  color: red
+  patterns:
+    - ^\d{4}\.\d{4,5}(v\d+)?$
+  validator: null
+  examples:
+    positive:
+      - "2301.12345"
+    negative:
+      - 2301.12345#
+  sensitivity: normal
+- id: url_shortener
+  category: Domain
+  labels:
+    en: Short URL
+    ar: رابط مختصر
+  description: Shortened URL from bit.ly, tinyurl, etc.
+  icon: ✂️
+  color: purple
+  patterns:
+    - ^https?:\/\/(bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|buff\.ly|short\.io)\/[a-zA-Z0-9]+$
+  validator: null
+  examples:
+    positive:
+      - https://bit.ly/abc123
+    negative:
+      - https://bit.ly/abc123#
+  sensitivity: normal
+- id: api_endpoint
+  category: Domain
+  labels:
+    en: API Endpoint URL
+    ar: رابط API
+  description: REST API endpoint URL
+  icon: 🔌
+  color: cyan
+  patterns:
+    - ^https?:\/\/[a-zA-Z0-9.\-/]+\/(api|v\d+|graphql)[a-zA-Z0-9/\-_?=&]*$
+  validator: null
+  examples:
+    positive:
+      - https://api.example.com/v2/users
+    negative:
+      - https://api.example.com/v2/users#
+  sensitivity: normal
+- id: websocket_url
+  category: Domain
+  labels:
+    en: WebSocket URL
+    ar: رابط WebSocket
+  description: WebSocket connection URL
+  icon: 🔌
+  color: green
+  patterns:
+    - ^wss?:\/\/[a-zA-Z0-9.\-/]+
+  validator: null
+  examples:
+    positive:
+      - wss://example.com/ws
+    negative:
+      - "#wss://example.com/ws"
+  sensitivity: normal
+- id: rtmp_url
+  category: Domain
+  labels:
+    en: RTMP Stream URL
+    ar: رابط بث RTMP
+  description: RTMP live stream URL
+  icon: 📺
+  color: red
+  patterns:
+    - ^rtmps?:\/\/[a-zA-Z0-9.\-/]+
+  validator: null
+  examples:
+    positive:
+      - rtmp://live.example.com/stream
+    negative:
+      - "#rtmp://live.example.com/stream"
+  sensitivity: normal
+- id: smtp_server
+  category: Domain
+  labels:
+    en: SMTP Server
+    ar: خادم SMTP
+  description: SMTP mail server address
+  icon: 📤
+  color: blue
+  patterns:
+    - ^(smtp|mail)\.[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$
+  validator: psl
+  examples:
+    positive:
+      - smtp.gmail.com
+    negative:
+      - smtp.gmail.com#
+  sensitivity: normal
+- id: mx_record
+  category: Domain
+  labels:
+    en: MX Record
+    ar: سجل MX
+  description: Mail exchange DNS record
+  icon: 📬
+  color: blue
+  patterns:
+    - ^\d+\s+[a-zA-Z0-9.\-]+$
+  validator: psl
+  examples:
+    positive:
+      - 10 mail.example.com
+    negative:
+      - 10 mail.example.com#
+  sensitivity: normal
+- id: txt_record
+  category: Domain
+  labels:
+    en: TXT Record
+    ar: سجل TXT
+  description: DNS TXT record (SPF, DKIM, DMARC)
+  icon: 📝
+  color: yellow
+  patterns:
+    - ^"[^"]+"$
+  validator: null
+  examples:
+    positive:
+      - '"v=spf1 include:_spf.google.com ~all"'
+    negative:
+      - '"v=spf1 include:_spf.google.com ~all"#'
+  sensitivity: normal

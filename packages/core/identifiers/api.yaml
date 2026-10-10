@@ -1,0 +1,427 @@
+# Identifier catalog: API (25 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: jwt_token
+  category: API
+  labels:
+    en: JWT Token
+    ar: رمز JWT
+  description: JSON Web Token (Bearer token)
+  icon: 🔑
+  color: purple
+  patterns:
+    - ^eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - eyJ{{12:a}}.eyJ{{12:b}}.{{16:c}}
+    negative:
+      - eyJ{{12:a}}.eyJ{{12:b}}.{{16:c}}#
+  sensitivity: normal
+- id: github_token_classic
+  category: API
+  labels:
+    en: GitHub Personal Access Token
+    ar: رمز GitHub الشخصي
+  description: GitHub classic personal access token
+  icon: 🐙
+  color: gray
+  patterns:
+    - ^ghp_[A-Za-z0-9]{36}$
+  validator: null
+  examples:
+    positive:
+      - ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    negative:
+      - ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx#
+  sensitivity: normal
+- id: github_token_fine
+  category: API
+  labels:
+    en: GitHub Fine-grained Token
+    ar: رمز GitHub دقيق
+  description: GitHub fine-grained personal access token
+  icon: 🐙
+  color: gray
+  patterns:
+    - ^github_pat_[A-Za-z0-9_]{22,255}$
+  validator: null
+  examples:
+    positive:
+      - github_pat_{{22:A}}
+    negative:
+      - github_pat_{{22:A}}#
+  sensitivity: normal
+- id: aws_access_key
+  category: API
+  labels:
+    en: AWS Access Key ID
+    ar: مفتاح AWS
+  description: Amazon AWS access key identifier
+  icon: ☁️
+  color: orange
+  patterns:
+    - ^AKIA[A-Z0-9]{16}$
+  validator: null
+  examples:
+    positive:
+      - AKIAIOSFODNN7EXAMPLE
+    negative:
+      - AKIAIOSFODNN7EXAMPLE#
+  sensitivity: normal
+- id: gcp_api_key
+  category: API
+  labels:
+    en: Google Cloud API Key
+    ar: مفتاح Google Cloud
+  description: Google Cloud Platform API key
+  icon: ☁️
+  color: blue
+  patterns:
+    - ^AIza[A-Za-z0-9_\-]{35}$
+  validator: null
+  examples:
+    positive:
+      - AIza{{35:B}}
+    negative:
+      - AIza{{35:B}}#
+  sensitivity: normal
+- id: stripe_pk
+  category: API
+  labels:
+    en: Stripe Publishable Key
+    ar: مفتاح Stripe العام
+  description: Stripe payment publishable API key
+  icon: 💳
+  color: purple
+  patterns:
+    - ^pk_(test|live)_[a-zA-Z0-9]{24,}$
+  validator: null
+  examples:
+    positive:
+      - pk_test_{{24:x}}
+    negative:
+      - pk_test_{{24:x}}#
+  sensitivity: normal
+- id: stripe_sk
+  category: API
+  labels:
+    en: Stripe Secret Key
+    ar: مفتاح Stripe السري
+  description: Stripe payment secret API key (SENSITIVE)
+  icon: 💳
+  color: red
+  patterns:
+    - ^sk_(test|live)_[a-zA-Z0-9]{24,}$
+  validator: null
+  examples:
+    positive:
+      - sk_test_{{24:x}}
+    negative:
+      - sk_test_{{24:x}}#
+  sensitivity: normal
+- id: sendgrid_key
+  category: API
+  labels:
+    en: SendGrid API Key
+    ar: مفتاح SendGrid
+  description: SendGrid email service API key
+  icon: 📧
+  color: blue
+  patterns:
+    - ^SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}$
+  validator: null
+  examples:
+    positive:
+      - SG.{{22:a}}.{{43:b}}
+    negative:
+      - SG.{{22:a}}.{{43:b}}#
+  sensitivity: normal
+- id: twilio_sid
+  category: API
+  labels:
+    en: Twilio Account SID
+    ar: معرف Twilio
+  description: Twilio Account SID
+  icon: 📱
+  color: red
+  patterns:
+    - ^AC[a-f0-9]{32}$
+  validator: null
+  examples:
+    positive:
+      - AC{{32:f}}
+    negative:
+      - AC{{32:f}}#
+  sensitivity: normal
+- id: slack_token
+  category: API
+  labels:
+    en: Slack Token
+    ar: رمز Slack
+  description: Slack bot or user OAuth token
+  icon: 💬
+  color: purple
+  patterns:
+    - ^xox[baprs]-[0-9A-Za-z\-]+$
+  validator: null
+  examples:
+    positive:
+      - xoxb-{{12:0}}
+    negative:
+      - xoxb-{{12:0}}#
+  sensitivity: normal
+- id: discord_token
+  category: API
+  labels:
+    en: Discord Bot Token
+    ar: رمز Discord Bot
+  description: Discord bot authentication token
+  icon: 🎮
+  color: indigo
+  patterns:
+    - ^[A-Za-z0-9]{24}\.[A-Za-z0-9_\-]{6}\.[A-Za-z0-9_\-]{27,}$
+  validator: null
+  examples:
+    positive:
+      - "{{24:M}}.{{6:G}}.{{27:x}}"
+    negative:
+      - "{{24:M}}.{{6:G}}.{{27:x}}#"
+  sensitivity: normal
+- id: mailchimp_key
+  category: API
+  labels:
+    en: Mailchimp API Key
+    ar: مفتاح Mailchimp
+  description: Mailchimp marketing API key
+  icon: 🐒
+  color: yellow
+  patterns:
+    - ^[a-f0-9]{32}-us\d+$
+  validator: null
+  examples:
+    positive:
+      - "{{32:a}}-us1"
+    negative:
+      - "{{32:a}}-us1#"
+  sensitivity: normal
+- id: firebase_key
+  category: API
+  labels:
+    en: Firebase API Key
+    ar: مفتاح Firebase
+  description: Google Firebase project API key
+  icon: 🔥
+  color: orange
+  patterns:
+    - ^AIza[A-Za-z0-9_\-]{35}$
+  validator: null
+  examples:
+    positive:
+      - AIza{{35:C}}
+    negative:
+      - AIza{{35:C}}#
+  sensitivity: normal
+- id: mapbox_token
+  category: API
+  labels:
+    en: Mapbox Access Token
+    ar: رمز Mapbox
+  description: Mapbox maps API access token
+  icon: 🗺️
+  color: blue
+  patterns:
+    - ^pk\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$|^sk\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$
+  validator: null
+  examples:
+    positive:
+      - pk.{{12:e}}.{{12:f}}
+    negative:
+      - pk.{{12:e}}.{{12:f}}#
+  sensitivity: normal
+- id: openai_key
+  category: API
+  labels:
+    en: OpenAI API Key
+    ar: مفتاح OpenAI
+  description: OpenAI ChatGPT/GPT API key
+  icon: 🤖
+  color: green
+  patterns:
+    - ^sk-[a-zA-Z0-9]{48,}$
+  validator: null
+  examples:
+    positive:
+      - sk-{{48:a}}
+    negative:
+      - sk-{{48:a}}#
+  sensitivity: normal
+- id: anthropic_key
+  category: API
+  labels:
+    en: Anthropic API Key
+    ar: مفتاح Anthropic/Claude
+  description: Anthropic Claude API key
+  icon: 🤖
+  color: orange
+  patterns:
+    - ^sk-ant-[a-zA-Z0-9\-]{90,}$
+  validator: null
+  examples:
+    positive:
+      - sk-ant-{{90:a}}
+    negative:
+      - sk-ant-{{90:a}}#
+  sensitivity: normal
+- id: oauth_token
+  category: API
+  labels:
+    en: OAuth 2.0 Access Token
+    ar: رمز OAuth 2.0
+  description: OAuth 2.0 access token
+  icon: 🔑
+  color: blue
+  patterns:
+    - ^ya29\.[A-Za-z0-9_\-]+$|^Bearer\s[A-Za-z0-9_\-]+$
+  validator: null
+  examples:
+    positive:
+      - ya29.{{24:a}}
+    negative:
+      - ya29.{{24:a}}#
+  sensitivity: normal
+- id: ssh_public_key
+  category: API
+  labels:
+    en: SSH Public Key
+    ar: مفتاح SSH العام
+  description: SSH RSA/Ed25519 public key
+  icon: 🔑
+  color: green
+  patterns:
+    - ^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp256)\s+[A-Za-z0-9+/=]+(\s+.+)?$
+  validator: null
+  examples:
+    positive:
+      - ssh-ed25519 {{68:A}} user@host
+    negative:
+      - "#ssh-ed25519 {{68:A}} user@host"
+  sensitivity: normal
+- id: ssl_private_key
+  category: API
+  labels:
+    en: SSL Private Key (PEM)
+    ar: مفتاح SSL الخاص
+  description: SSL/TLS private key in PEM format (VERY SENSITIVE)
+  icon: 🔐
+  color: red
+  patterns:
+    - ^-{5}BEGIN (RSA |EC )?PRIVATE KEY-{5}
+  validator: null
+  examples:
+    positive:
+      - "-----BEGIN RSA PRIVATE{{1: }}KEY-----"
+    negative:
+      - "#-----BEGIN RSA PRIVATE{{1: }}KEY-----"
+  sensitivity: normal
+- id: pgp_private_key
+  category: API
+  labels:
+    en: PGP Private Key
+    ar: مفتاح PGP الخاص
+  description: OpenPGP private key block (VERY SENSITIVE)
+  icon: 🔐
+  color: red
+  patterns:
+    - ^-{5}BEGIN PGP PRIVATE KEY BLOCK-{5}
+  validator: null
+  examples:
+    positive:
+      - "-----BEGIN PGP PRIVATE{{1: }}KEY BLOCK-----"
+    negative:
+      - "#-----BEGIN PGP PRIVATE{{1: }}KEY BLOCK-----"
+  sensitivity: normal
+- id: api_key_generic
+  category: API
+  labels:
+    en: Generic API Key
+    ar: مفتاح API عام
+  description: Generic API key format
+  icon: 🗝️
+  color: gray
+  patterns:
+    - ^[A-Za-z0-9_\-]{20,64}$
+  validator: null
+  examples:
+    positive:
+      - abc123def456ghi789jkl0
+    negative:
+      - abc123def456ghi789jkl0#
+  sensitivity: normal
+- id: base64_encoded
+  category: API
+  labels:
+    en: Base64 Encoded String
+    ar: نص مشفر Base64
+  description: Base64 encoded data string
+  icon: 🔣
+  color: gray
+  patterns:
+    - ^[A-Za-z0-9+/]{16,}={0,3}$
+  validator: null
+  examples:
+    positive:
+      - SGVsbG8gV29ybGQhIQ==
+    negative:
+      - SGVsbG8gV29ybGQhIQ==#
+  sensitivity: normal
+- id: bearer_token
+  category: API
+  labels:
+    en: Bearer Token
+    ar: رمز Bearer
+  description: HTTP Authorization Bearer token
+  icon: 🎫
+  color: blue
+  patterns:
+    - ^Bearer\s[A-Za-z0-9_\-\.]+$
+  validator: null
+  examples:
+    positive:
+      - Bearer eyJhbGciOi...
+    negative:
+      - Bearer eyJhbGciOi...#
+  sensitivity: normal
+- id: hmac_signature
+  category: API
+  labels:
+    en: HMAC Signature
+    ar: توقيع HMAC
+  description: HMAC cryptographic message authentication code
+  icon: ✍️
+  color: purple
+  patterns:
+    - ^[a-fA-F0-9]{40,64}$
+  validator: null
+  examples:
+    positive:
+      - b94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+    negative:
+      - b94a8fe5ccb19ba61c4c0873d391e987982fbbd3#
+  sensitivity: normal
+- id: webhook_secret
+  category: API
+  labels:
+    en: Webhook Secret
+    ar: سر Webhook
+  description: Webhook signing secret for request validation
+  icon: 🪝
+  color: orange
+  patterns:
+    - ^whsec_[A-Za-z0-9+/=]{32,}$
+  validator: null
+  examples:
+    positive:
+      - whsec_{{32:a}}
+    negative:
+      - whsec_{{32:a}}#
+  sensitivity: normal
