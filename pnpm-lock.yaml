@@ -686,6 +686,22 @@ importers:
         specifier: 'catalog:'
         version: 4.23.15
 
+  packages/store:
+    dependencies:
+      '@ir/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ir/ledger':
+        specifier: workspace:*
+        version: link:../ledger
+      '@ir/schema':
+        specifier: workspace:*
+        version: link:../schema
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+
   scripts:
     devDependencies:
       '@types/node':

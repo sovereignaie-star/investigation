@@ -44,5 +44,5 @@ node scripts/governance/check.mjs --range origin/main..HEAD
 | `apps/web` | Web app (Vite + React 19) |
 | `apps/server` | API server (Express 5) |
 | `apps/sandbox` | Component preview (shadcn), moves to `packages/ui` in P3-001 |
-| `packages/*` | New domain packages (`@ir/schema`, `@ir/core`, `@ir/ledger`, …), see ROADMAP 5.3 |
+| `packages/*` | New domain packages (`@ir/schema`, `@ir/core`, `@ir/ledger`, `@ir/store`, …), see ROADMAP 5.3 |
 | `lib/*` | OpenAPI spec, generated Zod and React Query client, DB |
