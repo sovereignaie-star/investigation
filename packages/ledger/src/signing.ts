@@ -1,5 +1,5 @@
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, type KeyObject } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, fchmodSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import path from "node:path";
 import { isoNow, systemClock, type Clock } from "@ir/core";
 import { canonicalize } from "./jcs.ts";
@@ -66,11 +66,21 @@ export function installationKeyFromPem(privateKeyPem: string): InstallationKey {
  */
 export function loadOrCreateInstallationKey(dir: string): InstallationKey {
   const keyFile = path.join(dir, "installation.key");
-  if (existsSync(keyFile)) return installationKeyFromPem(readFileSync(keyFile, "utf8"));
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const k = generateInstallationKey();
-  writeFileSync(keyFile, k.privateKeyPem, { flag: "wx", mode: 0o600 });
-  chmodSync(keyFile, 0o600);
+  let fd: number;
+  try {
+    fd = openSync(keyFile, "wx", 0o600); // atomic create: no check-then-write race
+  } catch (x) {
+    if ((x as NodeJS.ErrnoException).code !== "EEXIST") throw x;
+    return installationKeyFromPem(readFileSync(keyFile, "utf8"));
+  }
+  try {
+    fchmodSync(fd, 0o600);
+    writeSync(fd, k.privateKeyPem);
+  } finally {
+    closeSync(fd);
+  }
   writeFileSync(path.join(dir, "installation.pub"), k.publicKeyPem);
   return installationKeyFromPem(k.privateKeyPem);
 }
