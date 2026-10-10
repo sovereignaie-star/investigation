@@ -273,3 +273,10 @@
 - إصلاح عرضي: مرشح الروابط في `build.py` كان يستبعد أي نطاق ينتهي بـ `t.me/` (مثل `oxt.me`) ظناً أنه تيليجرام؛ صار `//t.me/`. لا أثر على الكتالوج الحالي إلا عند إعادة البناء الكامل.
 - ما لم يتم: 151 أداة «مرشح» بلا رابط موثق بعد؛ تُضاف إلى `curated.json` عند الحاجة. OXT لا يستجيب فلم يُضف.
 - التالي: دمج الطلب وإغلاق #6–#9، ثم المرحلة 1 (P1-001).
+
+### 2026-10-10 — [P0-029] دمج تحديثات npm من Dependabot
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: فتح Dependabot خمسة طلبات npm تتعارض كلها على `pnpm-lock.yaml`. اختُبر كل طلب منفرداً في worktree مستقل (install، lint، build، test): #10 (مجموعة minor/patch، 54 تحديثاً) و#12 (vite 7→8) و#13 (chokidar 4→5) و#14 (vitest 3→5) نجحت؛ #11 (recharts 2→3) يكسر typecheck في `mockup-sandbox/src/components/ui/chart.tsx` (TS2339 على `payload` و`label`، وTS7006). طُبّقت تعديلات #10 و#12–#14 على `package.json` و`pnpm-workspace.yaml` بدمج ثلاثي، وحُلّ تعارض كتالوج `pnpm-workspace.yaml` بأخذ نسخ #10 مع `vite: ^8.3.3` من #12، ثم أُعيد توليد ملف القفل مرة واحدة. أضيفت قاعدة `ignore` لتحديثات recharts الكبرى في `.github/dependabot.yml` حتى نقل `mockup-sandbox` إلى `packages/ui` في المرحلة 3.
+- الأدلة: بعد الدمج: `pnpm run lint` و`typecheck` و`build` و`test` (8) ناجحة؛ `pnpm install --frozen-lockfile` ناجح؛ في ملف القفل نسخة واحدة لكل من vite (8.3.4) وvitest (5.0.3) وyaml (2.9.1).
+- ما لم يتم: recharts 3 مؤجل بسبب موثق أعلاه؛ يُغلق #11 بإحالة إلى هذا الإدخال.
+- التالي: دمج #15 وإغلاق #6–#14، ثم P1-001.

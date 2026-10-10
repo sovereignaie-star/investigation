@@ -9,6 +9,11 @@ updates:
       day: sunday
       timezone: Asia/Riyadh
     open-pull-requests-limit: 5
+    ignore:
+      # P0-029: recharts 3 breaks the vendored shadcn chart.tsx (TS2339 payload/label). Revisit when
+      # mockup-sandbox moves to packages/ui in phase 3 and the chart component is regenerated.
+      - dependency-name: recharts
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
