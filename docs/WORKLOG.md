@@ -228,3 +228,15 @@
 - الأدلة: استنساخ نظيف للفرع في `/tmp` بمخزن pnpm فارغ: install 113 ث، lint 4 ث، typecheck 13 ث، build 11 ث، test 2 ث (8 ناجحة)، `dev` للواجهة HTTP 200، `/api/healthz` يعيد `{"status":"ok"}`؛ المجموع 158 ث [مُقاس]. البيئة Node 20.20.2 لا 24.
 - ما لم يتم: `compose.dev.yml` (اختياري، لنمط الفريق فقط) لم يُضف لأن النمط الفردي لا يحتاج قاعدة بيانات؛ يُضاف مع مهام Postgres.
 - التالي: P0-024.
+
+### 2026-10-10 — [P0-024] إعدادات المستودع
+- المنفّذ: وكيل آلي (Perplexity Computer) بصلاحية المالك.
+- ما تم: `.github/CODEOWNERS` (المالك مراجعاً لكل المسارات، مع تخصيص صريح لملفات الحوكمة)، و`.github/labels.yml` بـ 25 تسمية (النوع، المرحلة 0–8، المجال، الأولوية M/S/C، `blocked`، `natural-person-gate`) طُبّقت على المستودع.
+- الأدلة (أوامر `gh api`):
+  - `gh label create <name> --color <c> --description <d> --force` × 25 → 25 ناجحة.
+  - `gh api -X PUT repos/sovereignaie-star/investigation/vulnerability-alerts` → 204.
+  - `gh api -X PUT repos/sovereignaie-star/investigation/automated-security-fixes` → 204؛ القراءة: `{"enabled":true,"paused":false}`.
+  - `gh api repos/sovereignaie-star/investigation --jq .security_and_analysis` → `secret_scanning` و`secret_scanning_push_protection` و`dependabot_security_updates`: enabled.
+  - `gh api repos/sovereignaie-star/investigation/private-vulnerability-reporting` → `{"enabled":true}` (فُعّل في P0-008).
+- ما لم يتم: `secret_scanning_non_provider_patterns` و`secret_scanning_validity_checks` بقيا معطّلين؛ طلب التفعيل لم يغيّر الحالة (يتطلبان GitHub Advanced Security أو Secret Protection المدفوع) [مُقاس]. gitleaks في CI يغطي الأنماط العامة.
+- التالي: P0-025.
