@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **259**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **266**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -58,6 +58,7 @@
 | TL-a461b936 | [Bing Translate](https://translator.bing.com/) | أساسية | web | — | reachable | — | — |
 | TL-0b0ccc44 | [Bing Translator](http://www.bing.com/translator) | أساسية | web | — | reachable | — | — |
 | TL-d34a930f | [Cambridge Dictionary](https://dictionary.cambridge.org/) | أساسية | web | — | reachable | — | — |
+| TL-77619eb7 | [CAMeL Tools](https://github.com/CAMeL-Lab/camel_tools) | داعمة | oss | — | reachable | — | Arabic NLP toolkit: morphology, dialect ID, NER. |
 | TL-e987ad85 | [CartoCSS](https://www.mapbox.com/tilemill/docs/manual/carto/) | داعمة | web | — | unreachable | — | TileMills language. |
 | TL-f18e241f | [chatgpt](https://chatgpt.com/) | أساسية | web | — | restricted | — | — |
 | TL-3546374f | [Cheat․sh](https://github.com/chubin/cheat.sh) | أساسية | oss | — | restricted | — | Timesaving tool that allows cheat sheets to be loaded directly into the command line (or Sublime Text/IntelliJ IDEA) using the curl command (run after installat |
@@ -66,6 +67,7 @@
 | TL-6bfa813f | [Chinese Hokkien dictionary 1](https://niawdeleon.com/) | أساسية | web | — | reachable | — | — |
 | TL-372ab43f | [Chinese Text Project](https://ctext.org/tools/api) | داعمة | api | — | reachable | No | Online open-access digital library for pre-modern Chinese texts |
 | TL-f495726f | [circular-arabic](https://github.com/mapmeld/circular-arabic) | داعمة | oss | — | restricted | — | Write Arabic words in a circle or arc using the Canvas element |
+| TL-9a920edf | [CLD3](https://github.com/google/cld3) | داعمة | oss | — | reachable | — | Compact language detector. |
 | TL-eb4279e2 | [Cloudmersive Natural Language Processing](https://www.cloudmersive.com/nlp-api) | داعمة | api | — | reachable | apiKey | Natural language processing and text analysis |
 | TL-72490baf | [Codex](https://github.com/Jaagrav/CodeX) | داعمة | oss | — | unreachable | No | Online Compiler for Various Languages |
 | TL-73d9bb0b | [Cohere](https://docs.cohere.com/reference/about) | داعمة | api | — | reachable | apiKey | NLP API for text generation, embeddings, classification and summarization with a free trial tier |
@@ -91,6 +93,7 @@
 | TL-15433400 | [Dictionary.com: Translation](http://translate.reference.com/) | أساسية | web | — | unreachable | — | — |
 | TL-663a64cb | [digitalcultures](https://digitalcultures.net/) | أساسية | web | — | reachable | — | — |
 | TL-3e4c93d0 | [DuckDuckGo !bangs](https://chrome.google.com/webstore/detail/duckduckgo-bangs/hdjfebkndhmegijlghjcdghdbealibeb/related) | أساسية | web | — | reachable | — | extension that add DuckDuckGo bang buttons to search results and search links in the context menu |
+| TL-d56ea6e6 | [EasyOCR](https://github.com/JaidedAI/EasyOCR) | داعمة | oss | — | reachable | — | OCR with 80+ languages including Arabic. |
 | TL-0770add1 | [educalingo](https://educalingo.com/) | أساسية | web | — | reachable | — | — |
 | TL-4a5e1f09 | [ELI](https://nlp.insightera.co.th/docs/v1.0) | داعمة | api | — | reachable | apiKey | Natural Language Processing Tools for Thai Language |
 | TL-2ad78240 | [enardict](https://github.com/devjustly/en_ar_dict) | داعمة | oss | — | restricted | — | English Arabic dictionary written in python and Qt4 (pyside). |
@@ -99,6 +102,8 @@
 | TL-b9482f8d | [Explain Shell](https://explainshell.com/) | أساسية | web | — | reachable | — | this site will help you quickly understand terminal commands-lines from articles, manuals, and tutorials |
 | TL-26e1c2dc | [EXUDE-API](http://uttesh.com/exude-api/) | داعمة | api | — | unreachable | No | Used for the primary ways for filtering the stopping, stemming words from the text data |
 | TL-27605e8b | [Fahm](https://github.com/malikolivier/fahm) | داعمة | oss | — | restricted | — | Arabic pop-up dictionary extension for Google Chrome |
+| TL-b48eebe8 | [Farasa](https://farasa.qcri.org/) | داعمة | web | — | reachable | — | Arabic segmentation, POS tagging and NER (QCRI). |
+| TL-83bbd3c9 | [fastText](https://github.com/facebookresearch/fastText) | داعمة | oss | — | reachable | — | Text classification and language identification. |
 | TL-ed5c076c | [Flat font](http://fonts.jozoor.com/flat-font/) | داعمة | web | — | reachable | — | arabic font (Only Regular weight is available for free).. |
 | TL-4072396f | [fnd.io](https://fnd.io/) | أساسية | web | — | reachable | — | alternative search engine for the AppStore and iTunes |
 | TL-05afa189 | [Font Spring](https://www.fontspring.com/matcherator) | أساسية | web | — | restricted | — | — |
@@ -170,6 +175,7 @@
 | TL-df858263 | [Linked: The New Science of Networks](https://barabasi.com/book/linked) | داعمة | web | — | unreachable | — | _, by Albert-László Barabási (2002). |
 | TL-9e39ea86 | [LinuxAC](http://www.linuxac.org/) | داعمة | web | — | restricted | — | Linux Arabic Community |
 | TL-888311b1 | [Listennotes](https://www.listennotes.com/) | أساسية | web | — | restricted | — | Podcast Search Engine |
+| TL-261d1592 | [Marginalia Search](https://search.marginalia.nu/) | داعمة | web | — | reachable | — | Independent search engine focused on non-commercial, text-heavy websites. |
 | TL-5a97f3e4 | [Material Symbols](https://fonts.google.com/icons?icon.query=map) | داعمة | web | — | reachable | — | Over 2,990 glyphs in a single font file with a wide range of design variants. |
 | TL-3140829c | [MediaCraft AI](https://mediacraft-x402-api.onrender.com) | داعمة | api | — | reachable | apiKey | Chinese content compliance review (17 platforms), EN↔CN translation, and SEO optimization. Pay-per-call via x402 (Solana USDC). |
 | TL-f1918a6c | [Memegine](https://memegine.com/) | أساسية | web | — | restricted | — | A search engine to find memes. Helps you find rare and obscure memes when Google fails. |
@@ -226,6 +232,7 @@
 | TL-6fe2b903 | [Slangit - The Slang Dictionary](https://slang.net/) | أساسية | web | — | reachable | — | — |
 | TL-43a64a5e | [soundeffectssearch.com](https://www.soundeffectssearch.com/find-a-sound-library/) | أساسية | web | — | reachable | — | find a sound library |
 | TL-a2f7ec24 | [Stanford CoreNLP](https://sourceforge.net/projects/stanford-corenlp.mirror/) | داعمة | web | — | restricted | — | A Java suite of core NLP tools, providing linguistic annotations such as tokenization, parts of speech, named entities, sentiment analysis, and more. |
+| TL-08b94619 | [Stanza](https://github.com/stanfordnlp/stanza) | داعمة | oss | — | reachable | — | Multilingual NLP pipeline including Arabic. |
 | TL-83845b9a | [Statlyte](https://statlyte.com/api) | داعمة | api | — | reachable | No | Live pricing, context windows and model ids for major LLM APIs |
 | TL-ae4dcdc7 | [Stegcloak](https://github.com/kurolabs/stegcloak) | داعمة | oss | — | restricted | — | Securely assign Digital Authenticity to any written text |
 | TL-3990621e | [Stylifyme](http://stylifyme.com/) | أساسية | web | — | reachable | — | Tool for analyzing the style characteristics of a particular website. In the context of #osint, it will help when analyzing links between two sites (common rare |

@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **344**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **346**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -171,6 +171,7 @@
 | TL-32503f0f | [Leaklookup](https://leak-lookup.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-d5d65306 | [Leakos](https://github.com/carlospolop/Leakos) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-2fa3fb47 | [leakScraper](https://github.com/Acceis/leakScraper) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-97e7d609 | [libphonenumber](https://github.com/google/libphonenumber) | داعمة | oss | بوابة الأشخاص | reachable | — | Google library for parsing, formatting and validating international phone numbers. |
 | TL-07417a58 | [libraryofleaks](https://search.libraryofleaks.org/) | أساسية | dataset | بوابة الأشخاص | reachable | — | — |
 | TL-f62128f7 | [linktr](https://linktr.ee/) | أساسية | web | بوابة الأشخاص | restricted | — | You can use dork for search data |
 | TL-07257647 | [Magical. Text Expander](https://chrome.google.com/webstore/detail/magical-text-expander/iibninhmiggehlcdolcilmhacighjamp/related) | أساسية | web | بوابة الأشخاص | reachable | — | Create shortcuts in Google Chrome to reduce text entry time. For example: email templates, message templates for messengers, signatures and contact information, |
@@ -195,6 +196,7 @@
 | TL-2267391a | [milled.com](https://milled.com/search) | أساسية | web | بوابة الأشخاص | restricted | — | search engine for searching through the texts of email marketing messages |
 | TL-ffb111d3 | [minelead](https://minelead.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-ca1e5cf7 | [minervaosint](https://minervaosint.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-4fcfb90e | [Mosint](https://github.com/alpkeskin/mosint) | داعمة | oss | بوابة الأشخاص | reachable | — | Automated email OSINT tool. |
 | TL-c08fbc32 | [mozilla monitor](https://monitor.mozilla.org/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-71add667 | [Mr. Number (M)](https://www.hiya.com/products/apps/hiya-spam-blocker) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-efd92713 | [MxToolbox](https://mxtoolbox.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |

@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **429**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **430**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -245,6 +245,7 @@
 | TL-c467b03e | [PDF My URL](https://pdfmyurl.com/) | أساسية | web | — | reachable | — | — |
 | TL-600c7a1b | [PeekVault](https://peekvault.com/) | أساسية | web | — | reachable | — | Search public X/Twitter captures from the Internet Archive CDX index, preview archived snapshots, and export results |
 | TL-1c48136b | [Pera Portal](https://portal.geopera.com) | داعمة | web | — | reachable | — | Satellite imagery platform with a free tier: unlimited Sentinel-2 browsing with 45+ spectral indices computed in-browser. Commercial archive search and tasking  |
+| TL-c5c0c962 | [Perma.cc](https://perma.cc/) | داعمة | web | — | restricted | — | Permanent web archiving service run by Harvard Law School Library. |
 | TL-926ac59b | [Phomber](https://github.com/s41r4j/phomber) | أساسية | oss | بوابة الأشخاص | restricted | — | Get information about phone number with command line. |
 | TL-4975c8c0 | [PhoneNumber OSINT](https://github.com/spider863644/PhoneNumber-OSINT) | أساسية | oss | بوابة الأشخاص | restricted | — | Simple tool for gathering basic information about phone numbers (country code, timezone, provider) |
 | TL-01487888 | [Phunter](https://github.com/N0rz3/Phunter) | أساسية | oss | بوابة الأشخاص | restricted | — | Phone number #osint command line #python tool. Gather different info: operator, possible(s) location(s), line type, reputation, various scraped information, spa |

@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **517**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **520**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -187,6 +187,7 @@
 | TL-d8b5b6bc | [HoneyDrive](http://bruteforce.gr/honeydrive) | داعمة | web | — | reachable | — | HoneyDrive is the premier honeypot Linux distro. It is a virtual appliance (OVA) with Xubuntu Desktop 12.04.4 LTS edition installed. It contains over 10 pre-ins |
 | TL-c3da4e02 | [HoneyPy](https://github.com/foospidy/HoneyPy) | داعمة | oss | — | restricted | — | HoneyPy is a low to medium interaction honeypot. It is intended to be easy to: deploy, extend functionality with plugins, and apply custom configurations. |
 | TL-dd13488b | [hostintel - keithjjones Github](https://github.com/keithjjones/hostintel) | أساسية | oss | — | restricted | — | Pull intelligence per host. |
+| TL-6c7617dc | [Hudson Rock Cavalier](https://cavalier.hudsonrock.com/) | داعمة | web | بوابة الأشخاص | reachable | — | Infostealer exposure lookups by domain or email. |
 | TL-447028c6 | [huntress](https://www.huntress.com/) | أساسية | web | — | reachable | — | — |
 | TL-27df01d3 | [HYAS Insight](https://www.maltego.com/transform-hub/hyas-insight/) | أساسية | web | — | reachable | — | — |
 | TL-4dd7d00a | [Hybrid Analysis](https://hybrid-analysis.com/) | أساسية | web | — | reachable | — | Free powerful online sandbox by CrowdStrike. |
@@ -436,6 +437,7 @@
 | TL-ecb66de3 | [THOR Lite](https://www.nextron-systems.com/thor-lite/) | داعمة | web | — | reachable | — | Free IOC and YARA Scanner |
 | TL-50121ae9 | [Threat Actor Directory](https://pranithjain.qzz.io/threatintel/actors/hub) | أساسية | web | — | reachable | — | — |
 | TL-aac2a4ce | [Threat Actor Usernames Scrape](https://github.com/spmedia/Threat-Actor-Usernames-Scrape) | أساسية | oss | بوابة الأشخاص | restricted | — | A collection of fresh intel and 900k+ threat actor usernames scraped from various cybercrime sources & forums. |
+| TL-91a944ac | [Threat Bus](https://github.com/tenzir/threatbus) | داعمة | oss | — | reachable | — | Threat intelligence dissemination layer. |
 | TL-80d7cc4d | [Threat Connect](https://threatconnect.com/threat-intelligence-operations-platform/) | أساسية | web | — | restricted | — | — |
 | TL-a0bc186e | [Threat Feeds](https://threatfeeds.io/) | أساسية | web | — | reachable | — | — |
 | TL-97c46689 | [Threat Jammer](https://threatjammer.com/docs/index) | داعمة | api | — | unreachable | apiKey | Risk scoring service from curated threat intelligence data |
@@ -516,6 +518,7 @@
 | TL-490d7fc0 | [Yara Hub](https://yaraify.abuse.ch/yarahub/) | أساسية | web | — | reachable | — | — |
 | TL-c100089e | [Yara Offc Repo](https://github.com/yara-rules/rules) | أساسية | oss | — | reachable | — | — |
 | TL-2e751614 | [YaraSpell](https://github.com/linuxscout/yaraspell) | داعمة | oss | — | restricted | — | simplified Arabic spell checker. |
+| TL-f879e62e | [Yeti](https://github.com/yeti-platform/yeti) | داعمة | oss | — | reachable | — | Threat intelligence and forensics knowledge platform. |
 | TL-3a7aa58f | [Yomi](https://yomi.yoroi.company) | داعمة | web | — | reachable | — | Free MultiSandbox managed and hosted by Yoroi. |
 | TL-2168e1d9 | [ZAP](https://www.owasp.org/index.php/OWASP_Zed_Attack_Proxy_Project) | داعمة | web | بوابة الأشخاص | unreachable | — | The Zed Attack Proxy (ZAP) is an easy to use integrated penetration testing tool for finding vulnerabilities in web applications. It is designed to be used by p |
 | TL-527e0fd8 | [zerofox](https://www.zerofox.com/platform/) | أساسية | web | — | reachable | — | — |

@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **916**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **920**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -161,6 +161,7 @@
 | TL-620ea2cb | [Depix -  to recover plaintext from pixelized screenshots](https://github.com/spipm/Depixelization_poc) | أساسية | oss | — | reachable | — | — |
 | TL-d50205ca | [DepositPhotos Reverse Image Search](https://ru.depositphotos.com/search/by-images.html) | أساسية | web | — | unreachable | — | tool for reverse image search (strictly from DepositPhoto's collection of 222 million files). |
 | TL-bee50613 | [detect-ai-images](https://detect-ai-images.web.app/) | أساسية | web | — | reachable | — | — |
+| TL-2cdabd06 | [Detectron2](https://github.com/facebookresearch/detectron2) | داعمة | oss | — | reachable | — | Object detection and segmentation. |
 | TL-9ed61535 | [Deturl](http://deturl.com) | أساسية | web | — | reachable | — | — |
 | TL-4ad4781e | [dggridR](https://cran.r-project.org/web/packages/dggridR/index.html) | داعمة | web | بوابة الأشخاص | reachable | — | Provides an interface to DGGRID for working with discrete global grids, using hexagons, triangles, and diamonds to overcome the issue that every bin have the sa |
 | TL-71ad3e63 | [Dicom Viewer](https://www.imaios.com/en/Imaios-Dicom-Viewer) | أساسية | web | — | reachable | — | view MRI or CT photo online (.DCM files) |
@@ -195,6 +196,7 @@
 | TL-914590f2 | [Exif Search](http://www.exif-search.com) | أساسية | web | — | reachable | — | — |
 | TL-ef558375 | [EXIF-PY](https://github.com/ianare/exif-py) | أساسية | oss | — | restricted | — | get exif data of photos thrue command line |
 | TL-731cef69 | [Exif.app](http://exif.app) | أساسية | web | — | reachable | — | Press "Diff check button", upload two graphical images and get a comparison table of their metadata. The differences are highlighted in yellow |
+| TL-900dc7ae | [ExifCleaner](https://github.com/szTheory/exifcleaner) | داعمة | oss | — | reachable | — | Removes metadata from images and documents. |
 | TL-d74b8594 | [ExifEditor](https://exifeditor.io) | أساسية | web | — | reachable | — | — |
 | TL-08972ab1 | [exifLooter](https://github.com/aydinnyunus/exifLooter) | أساسية | oss | — | restricted | — | Quick #go tool to automate work with EXIF data |
 | TL-645c328d | [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | أساسية | web | — | reachable | — | — |
@@ -701,6 +703,7 @@
 | TL-2e3cd861 | [Security Ninjas](https://hub.docker.com/r/opendns/security-ninjas/) | داعمة | web | — | reachable | — | — |
 | TL-9cf5c0d2 | [securitytrails](https://securitytrails.com/) | أساسية | web | بوابة الأشخاص | restricted | — | Search and enumerate web application and attack surface |
 | TL-52e98567 | [SeeAllTheThings](https://github.com/baywolf88/seeallthethings) | أساسية | oss | — | reachable | — | — |
+| TL-9591ac53 | [Segment Anything](https://github.com/facebookresearch/segment-anything) | داعمة | oss | — | reachable | — | Image segmentation model. |
 | TL-f756162f | [Segrada](https://www.segrada.org/) | داعمة | web | — | reachable | — | Cross-platform tool to build and visualize semantic graph databases. |
 | TL-37537fd0 | [Selene](https://github.com/kmhofmann/selene) | داعمة | oss | — | restricted | — | A C++14 image representation, processing and I/O library. |
 | TL-d0c8a805 | [sensity.ai](https://sensity.ai/) | أساسية | web | — | reachable | — | — |
@@ -873,6 +876,7 @@
 | TL-e22e7163 | [Webstigram](https://websta.me/search-engine-optimization/) | أساسية | web | — | reachable | — | — |
 | TL-d63646a4 | [webweb](https://webwebpage.github.io/) | داعمة | web | — | reachable | — | MATLAB/Python library to produce interactive network visualizations with d3.js. |
 | TL-f953d7eb | [wefaceswap - faceswap](https://www.wefaceswap.com/faceswap) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-fe9b1a6b | [WeVerify](https://weverify.eu/) | داعمة | web | — | reachable | — | Verification plugin and tools for images and video. |
 | TL-8a6af30b | [What Font Is](https://www.whatfontis.com/) | أساسية | web | — | reachable | — | — |
 | TL-7453e28e | [What goes on Mastodon](https://observablehq.com/@mauforonda/what-goes-on-in-mastodon) | أساسية | web | — | restricted | — | Interactive real time visualisation which shows the number of new users and posts on Mastodon Instances in the last 6 hours, 24 hours, 72 hours or the entire la |
 | TL-69797d58 | [What The Font](https://www.myfonts.com/pages/whatthefont) | أساسية | web | — | reachable | — | — |

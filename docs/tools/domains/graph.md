@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **211**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **212**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -216,4 +216,5 @@
 | TL-c758b138 | [Wikidata](https://www.wikidata.org/w/api.php?action=help) | داعمة | api | — | reachable | OAuth | Collaboratively edited knowledge base operated by the Wikimedia Foundation |
 | TL-2b37edab | [Windows Events Attack Samples](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) | داعمة | oss | — | restricted | — | Windows Events Attack Samples |
 | TL-698f05aa | [xergm](https://CRAN.R-project.org/package=xergm) | داعمة | web | — | reachable | — | Extensions of exponential random graph models (ERGM, GERGM, TERGM, TNAM and REM). |
+| TL-1f009207 | [yEd](https://www.yworks.com/products/yed) | داعمة | web | — | reachable | — | Graph editor with automatic layouts; reads GraphML. |
 | TL-d6c493ed | [Zsteg](https://github.com/zed-0xff/zsteg) | داعمة | oss | — | restricted | — | Detect steganography hidden in PNG and BMP files |

@@ -27,7 +27,7 @@
 | `docs/ROADMAP.md` | خارطة الطريق الحاكمة |
 | `docs/STATUS.md` | الحالة الحية |
 | `docs/WORKLOG.md` | سجل العمل (إضافة فقط) |
-| `docs/tools/` | كتالوج الأدوات (10,834 أداة) |
+| `docs/tools/` | كتالوج الأدوات (10,881 أداة) |
 | `artifacts/investigation-room` | الواجهة (Vite + React 19 + Tailwind 4) |
 | `artifacts/api-server` | الخادم (Express 5) |
 | `lib/` | OpenAPI، Zod، عميل React Query، قاعدة البيانات |

@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **509**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **511**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -140,6 +140,7 @@
 | TL-d1b04599 | [EstimateTax](https://estimatetax.net/api/) | داعمة | api | — | reachable | No | US federal, state and local income tax calculation for 2026, with the source of every figure |
 | TL-f177a1c7 | [ETSI EN 301 893](https://www.etsi.org/) | أساسية | web | — | reachable | — | (spectrum access rules; check individual member-state telecom & cybercrime law) |
 | TL-1393651f | [EU Sanctions Tool (D)](https://sanctions-tool.ec.europa.eu) | أساسية | web | — | unreachable | — | — |
+| TL-a6b194e1 | [EUIPO eSearch](https://euipo.europa.eu/eSearch/) | داعمة | web | — | reachable | — | European Union trade mark and design register search. |
 | TL-4476c65f | [Europages](http://www.europages.co.uk/) | أساسية | web | — | reachable | — | — |
 | TL-5acdf752 | [European Business Register](http://www.ebr.org/) | أساسية | web | — | unreachable | — | — |
 | TL-8b69b16a | [Every Politician](https://everypolitician.org/) | أساسية | web | — | reachable | — | — |
@@ -406,6 +407,7 @@
 | TL-08879867 | [Right to Disconnect](https://righttodisconnect.jdries.nl/api/) | داعمة | api | — | reachable | No | Right-to-disconnect employment law by EU country: binding status, statute, and sanctions |
 | TL-56971019 | [RiskMap](https://www.riskmap.com/) | أساسية | web | — | reachable | — | — |
 | TL-c7e85c32 | [Rocket Reach](https://rocketreach.co/) | أساسية | web | — | reachable | — | — |
+| TL-f8e0c0f1 | [SAIP](https://www.saip.gov.sa/) | داعمة | web | — | reachable | — | Saudi Authority for Intellectual Property: trademarks and patents. |
 | TL-5acc627c | [salary](https://www.salary.com/research/employer) | أساسية | web | — | reachable | — | — |
 | TL-7e973531 | [Sales Tax Calculator](https://salestaxcalculatorapi.com) | داعمة | api | — | reachable | apiKey | Computes exact sales tax amounts and breakdowns for checkout and billing |
 | TL-b89a9dce | [sayari](https://sayari.com/) | أساسية | web | — | reachable | — | — |

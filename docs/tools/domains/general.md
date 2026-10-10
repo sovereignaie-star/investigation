@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **1392**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **1400**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -805,6 +805,7 @@
 | TL-9b314aef | [onlyfans](https://onlyfans.com/onlyfans) | أساسية | web | — | reachable | — | — |
 | TL-135ada5a | [OnlySuomi](https://onlysuomi.fi/) | أساسية | web | — | reachable | — | — |
 | TL-adc4b164 | [onyphe](https://search.onyphe.io/) | أساسية | web | — | reachable | — | — |
+| TL-5159f26d | [OONI Probe](https://ooni.org/install/) | داعمة | web | — | reachable | — | Measurement of internet censorship and network interference. |
 | TL-b33583a8 | [Open Access Button](https://openaccessbutton.org/) | أساسية | web | — | reachable | — | — |
 | TL-689c50a9 | [Open Measures](https://openmeasures.io/) | أساسية | web | — | reachable | — | — |
 | TL-58f596cc | [Open Multiple Links ☷ One Click](https://www.scrapersnbots.com/webtools/open-multiple-links-one-click.php) | أساسية | web | — | reachable | — | — |
@@ -913,6 +914,7 @@
 | TL-49db1f67 | [Privacy Tools](https://www.privacytools.io/) | أساسية | web | — | reachable | — | — |
 | TL-0653e286 | [privacyrights](https://privacyrights.org/data-brokers) | أساسية | web | — | reachable | — | — |
 | TL-f994f117 | [privacyspace](https://github.com/Xposed-Modules-Repo/cn.geektang.privacyspace) | أساسية | oss | — | reachable | — | For Android mobile pentest. This is an Xposed module. The function of this module is to "hide" the apps, which can achieve the "Second space" function of MIUI |
+| TL-7a659aae | [Privoxy](https://www.privoxy.org/) | داعمة | web | — | reachable | — | Non-caching web proxy with filtering. |
 | TL-ca6e5ed2 | [Profone GSM Tracker](https://cellphonetrackers.org/gsm/gsm-tracker.php) | أساسية | web | — | reachable | — | — |
 | TL-5f5672e6 | [proj](https://github.com/georust/rust-proj) | داعمة | oss | — | restricted | — | Rust bindings for Proj. |
 | TL-eb41b60b | [Proj4rs](https://github.com/3liz/proj4rs) | داعمة | oss | — | restricted | — | Rust adaptation of Proj4 |
@@ -973,6 +975,7 @@
 | TL-39b5db8f | [realgrouplinks](https://realgrouplinks.com/) | أساسية | web | — | unreachable | — | — |
 | TL-2aacf779 | [realtime bluesky](https://realtime.blue/) | أساسية | web | — | reachable | — | — |
 | TL-beccb1b0 | [recmap](https://cran.r-project.org/web/packages/recmap/index.html) | داعمة | web | — | reachable | — | Package provides rectangular cartograms with rectangle sizes reflecting for example population |
+| TL-749c764c | [recordlinkage](https://github.com/J535D165/recordlinkage) | داعمة | oss | — | reachable | — | Record linkage toolkit for Python. |
 | TL-6159a469 | [Recpe riScope](http://www.recperiscope.com/) | أساسية | web | — | reachable | — | — |
 | TL-6aa9ff83 | [Red Team Notes](https://notes.benheater.com/) | أساسية | web | — | reachable | — | Good notes for red team |
 | TL-b439da84 | [Redfin](https://redfin.com) | أساسية | web | — | reachable | — | — |
@@ -1002,6 +1005,7 @@
 | TL-788679a8 | [roothide](https://github.com/roothide/Bootstrap) | أساسية | oss | — | reachable | — | Jailbreaking for iOS 15.0-17.0 A8-A17Pro & M1+M2 |
 | TL-fe4a5386 | [rout3serv](https://github.com/nmandery/rout3serv) | داعمة | oss | — | restricted | — | H3-grid based Routing server with GRPC-API and dataframe integration. |
 | TL-7026bae0 | [rtl sdr](https://www.rtl-sdr.com/) | أساسية | web | — | reachable | — | — |
+| TL-da3cbed8 | [rtl433](https://github.com/merbanan/rtl_433) | داعمة | oss | — | reachable | — | Decoder for ISM band devices (sensors, meters) via SDR. |
 | TL-0dace2a1 | [RTree2D](https://github.com/plokhotnyuk/rtree2d) | داعمة | oss | — | restricted | — | RTree2D is a 2D immutable R-tree with STR (Sort-Tile-Recursive) packing for ultra-fast nearest and intersection queries. |
 | TL-8c465227 | [Ruber ducky](https://shop.hak5.org/collections/hotplug-attack-tools/products/usb-rubber-ducky) | أساسية | web | — | restricted | — | — |
 | TL-befbe65b | [Rubeus](https://github.com/GhostPack/Rubeus) | أساسية | oss | — | reachable | — | — |
@@ -1037,6 +1041,7 @@
 | TL-b2878578 | [Scrap Theft](https://www.scraptheftalert.com) | أساسية | web | — | reachable | — | — |
 | TL-b8d10ef5 | [Scrapfly](https://scrapfly.io/) | أساسية | web | — | reachable | — | Bypassing captcha and WAF |
 | TL-5d04cb97 | [scrcpy](https://github.com/Genymobile/scrcpy/releases) | أساسية | oss | — | reachable | — | — |
+| TL-f9f530a2 | [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus) | داعمة | oss | — | reachable | — | Cross-platform SDR receiver software. |
 | TL-b53cf67a | [sdr-radio](https://www.sdr-radio.com/gallery) | أساسية | web | — | reachable | — | — |
 | TL-87e8c7f1 | [SecLists](https://github.com/danielmiessler/SecLists) | أساسية | oss | — | reachable | — | — |
 | TL-5843f7ed | [SecretFans](https://secretfans.net/) | أساسية | web | — | reachable | — | — |
@@ -1133,6 +1138,7 @@
 | TL-78adb489 | [SPECFEM3DGLOBE](https://github.com/geodynamics/specfem3d_globe) | داعمة | oss | — | restricted | — | SPECFEM3D_GLOBE simulates global and regional (continental-scale) seismic wave propagation. |
 | TL-4449b900 | [spectralGOF](http://people.bu.edu/jccs/spectralGOF.html) | داعمة | web | — | unreachable | — | Computes the spectral goodness of fit (SGOF), a measure of how well a network model explains the structure of an observed network. |
 | TL-4832c04d | [Speurders](https://www.speurders.nl) | أساسية | web | — | reachable | — | (NL) |
+| TL-09d2ddb7 | [Splink](https://github.com/moj-analytical-services/splink) | داعمة | oss | — | reachable | — | Probabilistic record linkage at scale. |
 | TL-272a1d07 | [splitcam](https://splitcam.com/) | أساسية | web | — | reachable | — | — |
 | TL-5d9fcd24 | [SPSE inaproc ID](https://spse.inaproc.id/) | أساسية | web | — | restricted | — | — |
 | TL-c7d42b80 | [spsurvey](https://cran.r-project.org/web/packages/spsurvey/index.html) | داعمة | web | — | reachable | — | Provides a range of sampling functions. |
@@ -1276,6 +1282,7 @@
 | TL-521f9f2a | [ummalqura](https://github.com/up2gpt-commits/hijri-converter) | داعمة | oss | — | restricted | — | Hijri/Islamic date converter based on Umm al-Qura algorithm NPM. |
 | TL-4ad6a611 | [Under Roquentin’s Chestnut Tree](https://mboudour.github.io/) | داعمة | web | — | reachable | — | Moses Boudourides’ blog on analyzing (mostly) networks with Python. |
 | TL-50d1a70f | [understandingwar](https://understandingwar.org/) | أساسية | web | — | reachable | — | — |
+| TL-be7fe04c | [Universal Radio Hacker](https://github.com/jopohl/urh) | داعمة | oss | — | reachable | — | Investigation of wireless protocols with SDR. |
 | TL-1991e5ba | [Unpaywall](https://unpaywall.org/) | أساسية | web | — | reachable | — | — |
 | TL-e01f753e | [unwiredlabs](https://unwiredlabs.com/) | أساسية | web | — | reachable | — | — |
 | TL-6ded08bf | [unxor (T)](https://github.com/tomchop/unxor) | أساسية | oss | — | restricted | — | — |
@@ -1392,6 +1399,7 @@
 | TL-b1ed2b6f | [Zeus-Scanner](https://github.com/Ekultek/Zeus-Scanner) | أساسية | oss | — | reachable | — | A web scanner |
 | TL-20488b6f | [ZILLOW](https://www.zillow.com/homes/for_sale/) | أساسية | web | — | restricted | — | — |
 | TL-70bbebf5 | [Zillow](https://www.zillow.com/) | أساسية | web | — | restricted | — | — |
+| TL-1ced8cdc | [Zingg](https://github.com/zinggAI/zingg) | داعمة | oss | — | reachable | — | Machine-learning entity resolution. |
 | TL-21dabca6 | [Zmail](https://zmail.sourceforge.net/) | أساسية | web | — | restricted | — | — |
 | TL-6de86d4b | [zoho](https://www.zoho.com/id/) | أساسية | web | — | reachable | — | — |
 | TL-4946fe90 | [zonesnucleardetonation](https://remm.hhs.gov/zones_nucleardetonation.htm) | أساسية | web | — | reachable | — | — |
