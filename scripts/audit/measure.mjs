@@ -64,7 +64,7 @@ function run(cmd) {
   const r = spawnSync("sh", ["-c", cmd], {
     cwd: ROOT,
     encoding: "utf8",
-    env: { ...process.env, CI: "true", PORT: process.env.PORT ?? "22124", BASE_PATH: process.env.BASE_PATH ?? "/" },
+    env: { ...process.env, CI: "true", BASE_PATH: process.env.BASE_PATH ?? "/" },
   });
   const out = `${r.stdout}\n${r.stderr}`.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "");
   return { ok: r.status === 0, secs: ((Date.now() - t) / 1000).toFixed(1), out };

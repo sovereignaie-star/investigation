@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/dist
+**/.tsbuildinfo
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+tools/catalog/.cache
+attached_assets

@@ -336,3 +336,15 @@
 - الأدلة: اختبارات `packages` الـ 90 (منها اختبار المئة ألف) ناجحة بلا تغيير.
 - ما لم يتم: —
 - التالي: إزالة Replit (P1-024).
+
+### 2026-10-10 — [P1-024] إزالة Replit وتشغيل مستقل
+- المنفّذ: وكيل آلي (Perplexity Computer) بقرار المالك: «لا حاجة لـ Replit، سيُشغَّل المشروع عبر Render أو Railway أو أي منصة أخرى أو جهاز محلي».
+- ما تم:
+  - حُذفت ملفات Replit: `.replit` و`.replitignore` و`replit.md` و`scripts/post-merge.sh` وملفات `.replit-artifact` الثلاثة. وأُزيلت إضافات `@replit/vite-plugin-*` من الواجهة ومعاينة المكونات ومن كتالوج `pnpm-workspace.yaml` واستثناءاته، مع الإشارات في GOVERNANCE وAGENTS و`.gitignore` والخارطة والحالة. صار R-19 «الارتباط بمنصة استضافة واحدة»، وهو مُعالج.
+  - `PORT` و`BASE_PATH` اختياريان: الخادم على 8080 افتراضياً، وخادم تطوير الواجهة على 5173 ويحوّل `/api` إلى الخادم (`API_URL`).
+  - الخادم يقدّم الواجهة المبنية (`WEB_DIST`، وكل مسار غير `/api` يعود إلى `index.html`)، فيعمل المشروع خدمة واحدة. أضيف `pnpm start`.
+  - ملفات النشر: `Dockerfile` (بناء متعدد المراحل على Node 24، يعمل بالمستخدم `node`، وفيه فحص صحة)، و`.dockerignore`، و`render.yaml` (Blueprint يعتمد `autoDeployTrigger: checksPass` بدل `autoDeploy` المهجور حسب [مرجع Render](https://render.com/docs/blueprint-spec))، و`railway.json` (بناء من Dockerfile حسب [مرجع Railway](https://docs.railway.com/reference/config-as-code)).
+  - مهمة `docker` في CI تبني الصورة وتتحقق من `/api/healthz` ومن الصفحة العربية.
+- الأدلة: نسخة من `apps/server/dist` و`apps/web/dist/public` وحدهما، بلا `node_modules`، تجيب `/api/healthz` بـ `{"status":"ok"}` و`/` بالصفحة RTL، ومسار الواجهة `/case/123` بـ 200، و`/api/nope` بـ 404. `pnpm run build` يعمل بلا متغيرات بيئة. وخادم تطوير الواجهة يجيب 200. lint وtypecheck وtest (103) و`audit:measure` ناجحة. بناء الصورة يُختبر في CI لعدم توفر Docker في بيئة التنفيذ.
+- ما لم يتم: إدخالات WORKLOG السابقة والملفات المؤرشفة في `docs/archive/` تبقى كما هي (WORKLOG إضافة فقط، GR-09)، وفيها ذكر تاريخي لـ Replit.
+- التالي: P1-005 (المدققات) وP1-010 وP1-011.
