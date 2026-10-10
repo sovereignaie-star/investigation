@@ -1028,7 +1028,7 @@ flowchart LR
 
 ---
 
-## 6. خارطة الطريق: ثماني مراحل ومهامها
+## 6. خارطة الطريق: ثماني مراحل حتى GA ومرحلة آفاق بعد GA ومهامها
 
 ### 6.0 كيف تُقرأ جداول المهام
 
@@ -1070,7 +1070,7 @@ flowchart LR
 | P0-019 | سكربت قياس خط الأساس يعيد أرقام القسم 2 | `scripts/audit/measure.mjs` | يطبع جدول 1.2 من المستودع | P0-004 | S | 1 | — |
 | P0-020 | ملف تعليمات الوكلاء الآليين (`AGENTS.md`) | ملف في الجذر | يكرر القواعد الحاكمة بصيغة أوامر | P0-001 | M | 0.25 | — |
 | P0-021 | دمج الخطة الشاملة (`MASTER_PLAN.md`) مع الخارطة: قاعدة أسبقية، سجل حسم التعارضات، مصفوفة تتبع، وحارس GR-16 | `docs/MASTER_PLAN.md`، القسم 14 هنا، `check.mjs` | لا مربع اختيار في الخطة، وكل معرّف فيها موجود في الخارطة (فحص CI)؛ كل قسم منها مربوط بمهام | P0-001، P0-002 | M | 1 | — |
-| P0-022 | جودة الكود الثابتة: ESLint (typescript-eslint strict) وPrettier و`.editorconfig` وسكربت `lint` في CI | `eslint.config.js`، `.prettierrc`، `.editorconfig` | `pnpm lint` بلا أخطاء، ومُشغَّل في وظيفة `build`؛ تُفرض قواعد: لا `any` صريح في النواة، لا `console` في الإنتاج، تعقيد ≤ 15 (NFR-16) | P0-011 | M | 1 | — |
+| P0-022 | جودة الكود الثابتة: ESLint (typescript-eslint strict) وPrettier و`.editorconfig` وسكربت `lint` في CI | `eslint.config.js`، `.prettierrc`، `.editorconfig` | `pnpm lint` بلا أخطاء، ومُشغَّل في وظيفة `build`؛ تُفرض قواعد: لا `any` صريح في النواة، لا `console` في الإنتاج، تعقيد ≤ 15 (NFR-16)؛ lint-staged في `pre-commit` وفحص صيغة Conventional Commits في حارس الحوكمة (ADR-22) | P0-011 | M | 1.5 | — |
 | P0-023 | دليل التطوير وتشغيل المشروع في أقل من 10 دقائق | `docs/DEVELOPMENT.md`، `.vscode/extensions.json`، `compose.dev.yml` اختياري (Postgres لنمط الفريق فقط، ADR-04) | مطوّر جديد يتبع الدليل على جهاز نظيف وينجح في `install` و`typecheck` و`build` و`test` و`dev` خلال 10 دقائق (يُسجَّل القياس) | P0-008، P0-009 | S | 1 | — |
 | P0-024 | إعدادات المستودع: `CODEOWNERS`، تسميات منظمة، الإبلاغ الخاص عن الثغرات، فحص الأسرار في GitHub | `.github/CODEOWNERS`، `.github/labels.yml` | الإعدادات مفعّلة وموثقة في `WORKLOG` بأوامر `gh api` | P0-001 | S | 0.5 | — |
 | P0-025 | `ARCHITECTURE.md` مختصر يحيل إلى القسم 5 وسجلات القرار | ملف في الجذر | يطابق القسم 5 ولا يكرره (روابط لا نسخ) | P0-015 | S | 0.25 | — |
