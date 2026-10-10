@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 11 | 0 |
+| 1 | النواة والسجل | 25 | 12 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -80,7 +80,7 @@
 | P1-010 | مخزن الأدلة بعنونة المحتوى (M) | done | packages/ledger blobs.ts + evidence.ts: blobs/<sha[0:2]>/<sha> zstd, hash verified on every read, atomic idempotent put, request redaction, evidence.stored + verifyEvidence; T-LED-016..019 green |
 | P1-011 | التوقيع بـ Ed25519 ونقاط التثبيت (M) | done | packages/ledger signing.ts + merkle.ts: Ed25519 installation key (single open, 0600, fd-only I/O), ir-checkpoint/1 signed over JCS with RFC 9162 Merkle root, embedded + external verification, inclusion proofs; T-LED-011..015 green |
 | P1-012 | أمر `ir verify` (M) | todo | — |
-| P1-013 | تخزين القضية SQLite + ترحيلات (M) | todo | — |
+| P1-013 | تخزين القضية SQLite + ترحيلات (M) | done | packages/store: node:sqlite case dir (case.sqlite + blobs), 3 checksummed migrations (user_version, drift/newer/gap refused, failed step rolled back), append-only triggers, SqliteLedgerStore, openCase; 6 tests (empty->latest, every vN->latest equals fresh) |
 | P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | todo | — |
 | P1-015 | خزنة المفاتيح في الخادم (M) | todo | — |
 | P1-016 | الإسقاطات: رسم، جدول، تغطية (M) | todo | — |

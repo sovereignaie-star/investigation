@@ -52,7 +52,7 @@ export default tseslint.config(
   },
   {
     // P1-019: the pure core never reads wall-clock time or ambient randomness; inject Clock/Random instead (5.2, D1, D11).
-    files: ["packages/core/src/**/*.ts", "packages/schema/src/**/*.ts", "packages/ledger/src/**/*.ts"],
+    files: ["packages/core/src/**/*.ts", "packages/schema/src/**/*.ts", "packages/ledger/src/**/*.ts", "packages/store/src/**/*.ts"],
     ignores: ["**/*.test.ts", "packages/core/src/clock.ts"],
     rules: {
       "no-restricted-syntax": [
