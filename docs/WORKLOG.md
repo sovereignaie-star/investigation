@@ -899,3 +899,19 @@
 - **ما تم:** الأوامر تُرسل واحداً واحداً وتُنتظر، فاستُبدلت الخريطة بمنتظر واحد يُطابَق معرّفه؛ لا بحث بمحتوى الرسالة.
 - **الأدلة:** `eslint` و`tsc` نظيفان؛ `pnpm run gates:phase1` محلياً => 0، وفحص الشبكة: 4 طلبات، 0 خارجي، 488 حرفاً معروضاً.
 - **التالي:** إعادة فحوص PR #38.
+
+### 2026-10-10 — [P1-029] فرز تنبيهات Dependabot وسياسة مهلها (D-3، D-054)
+- **المنفّذ:** وكيل آلي (Perplexity Computer) بتوجيه المالك (D-3).
+- **الحالة قبل التغيير [مُتحقَّق: واجهة تنبيهات Dependabot]:** 23 تنبيهاً مفتوحاً كلها في `pnpm-lock.yaml`: حرج 1، وعالٍ 11، ومتوسط 8، ومنخفض 3.
+- **ما تم:**
+  - لكل تنبيه حُدد المسار الفعلي بـ `pnpm why -r` لا بتصنيف Dependabot (الذي يصف معظمها بـ «runtime»). **الحرج الوحيد (`proxy-addr`، #59) على مسار الخادم المشحون** عبر `express@5.2.1`. الخادم يضبط `trust proxy` بعدد قفزات فقط، فالاستغلال غير مرجّح، لكنه لم يُثبت بتجربة فأُصلح بلا استثناء. التنبيهات العالية الباقية في أدوات التطوير والبناء: `fast-uri` ×7 عبر `ajv` <- `orval`، و`browserslist` ×2 عبر Babel، و`brace-expansion` عبر `typescript-eslint`، و`braces` عبر `fast-glob` في `@ir/sandbox`.
+  - `pnpm update -r --depth Infinity` لحزم الإصلاح ضمن نطاقاتها المعلنة، بلا تغيير أي `package.json`: `proxy-addr` 2.0.7->2.0.8، و`fast-uri` 3.1.2->3.1.8، و`browserslist` 4.28.2->4.29.3، و`brace-expansion` 5.0.6->5.0.12، و`qs` 6.15.1->6.16.0، و`body-parser` 2.2.2->2.3.0، و`baseline-browser-mapping` 2.10.28->2.11.28، و`fast-copy` 4.0.3->4.1.2. وتبعتها `caniuse-lite` و`electron-to-chromium` و`node-releases` و`update-browserslist-db` و`side-channel` و`hasown` و`es-object-atoms`، وأُضيفت `content-type@2.1.0` و`media-typer@1.1.1` و`type-is@2.1.0` لـ `body-parser@2.3.0`.
+  - **استثناء واحد عالٍ:** `braces` (#54) لا إصدار مصلح له (آخر إصدار 3.0.3 داخل النطاق المصاب). النمط الوحيد ثابت في الكود (`src/components/mockups/**/*.tsx`)، والكود في إضافة Vite للتطوير فقط، خارج الخادم وصورة Docker. موعد إعادة المراجعة 2026-10-17.
+  - **مؤجلة (متوسط ومنخفض):** `postcss-selector-parser` (#58، مقيد بـ `^6` في `@tailwindcss/typography`)، و`esbuild` (#4، مثبت بـ override `0.27.3`)، و`@babel/core` (#5).
+  - السياسة في `SECURITY.md`، والسجل الكامل في `docs/security/DEPENDENCY_ALERTS.md`.
+- **ما فشل أو صُحِّح أثناء العمل:**
+  - كتبتُ أولاً أن `@babel/core@7.29.6` غير متاح؛ تبيّن أنه منشور (2026-05-25) وضمن النطاق، لكن `pnpm update` أبقى `7.29.0` [مُقاس]، والسبب [للتحقق]. صُحح السجل.
+  - أمر `pnpm update ... esbuild` غيّر `esbuild` في `apps/server/package.json` و`packages/cli/package.json` من `0.28.2` إلى `0.27.3` (أثر الـ override)؛ أعيد الملفان كما كانا، ولم يتغير `package.json`. [مُلاحظ] التعارض بين الـ override و`package.json` قائم قبل هذا التغيير.
+- **الأدلة [مُقاس، محلياً]:** `pnpm install --frozen-lockfile` => 0، و`build` => 0، و`typecheck` => 0، و`lint` => 0، و`test:coverage` 226/226 قبل إعادة القاعدة على `main`، و231/231 بعدها مع `build` و`lint` و`typecheck` و`governance` => 0؛ و`pnpm why -r proxy-addr` => `2.0.8`.
+- **ما لم يتم:** إغلاق التنبيهات في GitHub يحدث آلياً بعد الدمج ويُقاس حينها. وإعادة مراجعة `braces` في 2026-10-17.
+- **التالي:** الدمج، ثم قياس التنبيهات المفتوحة، وخمسة تشغيلات `gates` على `main` (D-053)، ثم D-1.
