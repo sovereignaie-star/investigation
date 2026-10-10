@@ -44,7 +44,7 @@ export const LedgerKind = z.enum([
   "note.added",
 ]);
 
-/** Append-only hash chain entry (5.5). entryHash = SHA-256(prevHash || seq || kind || JCS(payload)). */
+/** Append-only hash chain entry (5.5, ADR-06). entryHash = SHA-256(JCS(["ir-ledger/1", prevHash, seq, kind, at, actor, payload])). */
 export const LedgerEntry = z
   .object({
     seq: z.number().int().min(0),
