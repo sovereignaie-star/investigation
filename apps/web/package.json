@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@ir/core": "workspace:*",
     "dexie": "^4.4.6",
     "fuse.js": "^7.5.0",
     "libphonenumber-js": "^1.13.14",

@@ -1,6 +1,7 @@
 import type { InvestigationEdge, InvestigationStats, SmartInvestigatorCallbacks, ApiKeys } from "../types";
 import { IDENTIFIER_LIST } from "./identifierList";
 import { fetchIdentifier, buildNode } from "./resultFetcher";
+import { canonicalKey, NormalizeError } from "@ir/core";
 
 let stopFlag = false;
 
@@ -19,8 +20,17 @@ export function detectAll(value: string) {
   return IDENTIFIER_LIST.filter((id) => id.regex.test(trimmed));
 }
 
-function makeNodeId(value: string, type: string) {
-  return `${type}:${value}`.replace(/[^a-zA-Z0-9:\-_.]/g, "_").slice(0, 64);
+/**
+ * Node id = canonical key (P1-007): full normalized value, so "Example.com" and "example.com" are one node (D-020)
+ * and long or symbol-heavy values never collide (D-021). Values that fail their detected type fall back to "text".
+ */
+export function makeNodeId(value: string, type: string) {
+  try {
+    return canonicalKey(type, value);
+  } catch (err) {
+    if (err instanceof NormalizeError) return canonicalKey("text", value);
+    throw err;
+  }
 }
 
 function makeEdgeId(source: string, target: string) {
@@ -55,14 +65,15 @@ export const smartInvestigator = {
       if (!item) break;
       const { value, depth, parentId } = item;
 
-      if (visited.has(value) || depth > maxDepth) continue;
-      visited.add(value);
+      if (depth > maxDepth) continue;
 
       const detected = detectIdentifier(value);
       const identifierTypeId = detected?.id || "text";
 
+      // D-020: dedupe on the canonical key, not the raw string.
       const nodeId = makeNodeId(value, identifierTypeId);
-      if (visited.has(nodeId) && nodeId !== value) continue;
+      if (visited.has(nodeId)) continue;
+      visited.add(nodeId);
 
       try {
         const result = await fetchIdentifier(value, identifierTypeId, apiKeys);
@@ -91,7 +102,7 @@ export const smartInvestigator = {
 
         if (depth < maxDepth && result.childIdentifiers) {
           for (const child of result.childIdentifiers) {
-            if (!visited.has(child.value)) {
+            if (!visited.has(makeNodeId(child.value, child.type))) {
               queue.push({ value: child.value, depth: depth + 1, parentId: nodeId });
             }
           }
