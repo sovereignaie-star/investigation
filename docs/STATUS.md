@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 24 | 8 | 0 |
+| 1 | النواة والسجل | 24 | 9 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -77,7 +77,7 @@
 | P1-007 | التطبيع والمفتاح القانوني (M) | done | packages/core/src/normalize.ts: normalize()/canonicalKey() for 371 type ids by family; 100,000 distinct inputs -> 100,000 keys, all variants map back; smartInvestigator uses it |
 | P1-008 | تصنيف الحساسية لكل نوع (M) | todo | — |
 | P1-009 | `@ir/ledger`: سلسلة تجزئة + JCS (M) | done | packages/ledger: RFC 8785 JCS, SHA-256 hash chain (ADR-06), append-only Ledger, verify(); T-LED-001..010 green (28 tests, 993 single-char edits all detected) |
-| P1-010 | مخزن الأدلة بعنونة المحتوى (M) | todo | — |
+| P1-010 | مخزن الأدلة بعنونة المحتوى (M) | done | packages/ledger blobs.ts + evidence.ts: blobs/<sha[0:2]>/<sha> zstd, hash verified on every read, atomic idempotent put, request redaction, evidence.stored + verifyEvidence; T-LED-016..019 green |
 | P1-011 | التوقيع بـ Ed25519 ونقاط التثبيت (M) | todo | — |
 | P1-012 | أمر `ir verify` (M) | todo | — |
 | P1-013 | تخزين القضية SQLite + ترحيلات (M) | todo | — |
@@ -378,7 +378,7 @@
 | D-033 | عالٍ | مفتوح | — |
 | D-034 | متوسط | مفتوح | — |
 | D-035 | عالٍ | مفتوح | — |
-| D-036 | متوسط | مفتوح | — |
+| D-036 | متوسط | مفتوح جزئياً | P1-010: الاستجابة الخام تُحفظ blob متحققاً منه ومصدرها (الطلب المنقّح) في `evidence.stored`؛ يبقى استبدال الكاش الثابت بالساعة (P2-007) |
 | D-037 | عالٍ | مفتوح | — |
 | D-038 | متوسط | مُصلح جزئياً | P0-014؛ القرار النهائي في ADR-04 |
 | D-039 | متوسط | مُصلح | P0-007 |
