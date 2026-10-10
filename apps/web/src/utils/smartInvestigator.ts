@@ -1,23 +1,18 @@
 import type { InvestigationEdge, InvestigationStats, SmartInvestigatorCallbacks } from "../types";
 import { IDENTIFIER_LIST } from "./identifierList";
-import { fetchIdentifier, buildNode } from "./resultFetcher";
+import { fetchIdentifier, buildNode, detectType } from "./resultFetcher";
 import { canonicalKey, NormalizeError } from "@ir/core";
+import { detect } from "@ir/core/identifiers";
 
 let stopFlag = false;
 
-export function detectIdentifier(value: string) {
-  const trimmed = value.trim();
-  for (const id of IDENTIFIER_LIST) {
-    if (id.regex.test(trimmed)) {
-      return id;
-    }
-  }
-  return null;
-}
-
-export function detectAll(value: string) {
-  const trimmed = value.trim();
-  return IDENTIFIER_LIST.filter((id) => id.regex.test(trimmed));
+/** Ranked candidates (P1-006): the investigator follows the best one; the rest remain available to the UI. */
+export function detectAll(value: string, context?: string) {
+  const byId = new Map(IDENTIFIER_LIST.map((t) => [t.id, t]));
+  return detect(value, { context }).flatMap((c) => {
+    const t = byId.get(c.type);
+    return t ? [{ ...t, score: c.score, validated: c.validated }] : [];
+  });
 }
 
 /**
@@ -67,8 +62,7 @@ export const smartInvestigator = {
 
       if (depth > maxDepth) continue;
 
-      const detected = detectIdentifier(value);
-      const identifierTypeId = detected?.id || "text";
+      const identifierTypeId = detectType(value);
 
       // D-020: dedupe on the canonical key, not the raw string.
       const nodeId = makeNodeId(value, identifierTypeId);
