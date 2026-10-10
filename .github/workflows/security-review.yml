@@ -1,0 +1,43 @@
+name: security-review
+# P1-031 (owner decision D-8): a pull request touching a security or egress path needs an APPROVED review from the
+# designated reviewer on its current head. Policy and paths: scripts/gates/security-review-gate.mjs and
+# docs/security/REVIEW_SCOPE.md.
+#
+# pull_request_target runs this file and the gate script as they are on the base branch, so a pull request cannot
+# change the check that judges it. pull_request_review re-evaluates on a review; it, too, checks out only the base
+# commit. Neither ever checks out, builds or runs code from the pull request, and the script only reads the API.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: security-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  security-review-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/gates
+            .github/CODEOWNERS
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Gate unit tests (base commit)
+        run: node --test scripts/gates/security-review-gate.test.mjs
+      - name: D-8 review on the current head
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/gates/security-review-gate.mjs

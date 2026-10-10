@@ -18,6 +18,8 @@ jobs:
           node-version: 24
       - name: Guard unit tests
         run: node --test scripts/governance/check.test.mjs
+      - name: D-8 security review gate unit tests (P1-031)
+        run: node --test scripts/gates/security-review-gate.test.mjs
       - name: ROADMAP <-> STATUS <-> MASTER_PLAN consistency
         run: node scripts/governance/check.mjs --consistency
       - name: Every commit updates the docs
