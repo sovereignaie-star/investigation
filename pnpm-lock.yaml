@@ -699,6 +699,9 @@ importers:
       '@ir/schema':
         specifier: workspace:*
         version: link:../schema
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
