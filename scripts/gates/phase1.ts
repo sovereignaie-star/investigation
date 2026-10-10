@@ -9,7 +9,7 @@
  * leaves the machine: the server is started on 127.0.0.1 with a temporary data directory and no network lookups.
  */
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus, platform, release, tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -37,6 +37,21 @@ type Result = {
   blocker?: string;
 };
 const results: Result[] = [];
+/** Files under dir whose name matches re, skipping node_modules and dist; entry types come from readdir itself. */
+function listFiles(dir: string, re: RegExp, skip: readonly string[] = ["node_modules", "dist"]): string[] {
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) {
+        if (!skip.includes(e.name)) walk(p);
+      } else if (e.isFile() && re.test(e.name)) out.push(p);
+    }
+  };
+  walk(dir);
+  return out;
+}
+const SOURCE = /^(?!.*\.test\.tsx?$).*\.tsx?$/;
 const pct = (a: number, b: number) => (b === 0 ? 0 : Math.round((10_000 * a) / b) / 100);
 
 function env() {
@@ -60,7 +75,8 @@ interface VitestJson {
   testResults: { name: string; assertionResults: { fullName: string; title: string; status: string; duration?: number }[] }[];
 }
 function runVitest(): { tests: { file: string; name: string; status: string; ms: number }[]; total: number; failed: number } {
-  const out = path.join(ROOT, "coverage", "vitest-results.json");
+  // outside coverage/: Vitest cleans that directory before it writes the coverage report
+  const out = path.join(mkdtempSync(path.join(tmpdir(), "ir-gate-vitest-")), "results.json");
   const r = spawnSync(BIN("vitest"), ["run", "--coverage", "--reporter=json", `--outputFile=${out}`], {
     cwd: ROOT,
     encoding: "utf8",
@@ -209,7 +225,7 @@ async function e2eServer(): Promise<{ ok: boolean; measured: Record<string, unkn
   const e2e: Record<string, unknown> = {};
   let e2eOk = false;
   try {
-    statSync(serverJs);
+    if (!existsSync(serverJs)) throw new Error(`${serverJs} missing`);
     const data = mkdtempSync(path.join(tmpdir(), "ir-gate-"));
     const token = `gate-admin-${process.pid}`;
     const port = 18_000 + (process.pid % 1000);
@@ -305,15 +321,7 @@ function browserCheck(): { ok: boolean; measured: Record<string, unknown> } {
     "api.securitytrails.com",
     "www.whoisxmlapi.com",
   ];
-  const src: string[] = [];
-  const walkSrc = (d: string) => {
-    for (const e of readdirSync(d)) {
-      const p = path.join(d, e);
-      if (statSync(p).isDirectory()) walkSrc(p);
-      else if (/\.tsx?$/.test(e) && !/\.test\.tsx?$/.test(e)) src.push(p);
-    }
-  };
-  walkSrc(path.join(ROOT, "apps", "web", "src"));
+  const src = listFiles(path.join(ROOT, "apps", "web", "src"), SOURCE);
   const direct: Record<string, string[]> = {};
   let relativeCalls = 0;
   for (const f of src) {
@@ -337,16 +345,7 @@ function browserCheck(): { ok: boolean; measured: Record<string, unknown> } {
   const secretGetter = /reveal\(|\.secret\b(?!:)/.test(vaultClient.replace(/JSON\.stringify\(\{ secret: value \}\)/, ""));
   let bundle: Record<string, unknown> = {};
   try {
-    const dist = path.join(ROOT, "apps", "web", "dist");
-    const files: string[] = [];
-    const walk = (d: string) => {
-      for (const e of readdirSync(d)) {
-        const p = path.join(d, e);
-        if (statSync(p).isDirectory()) walk(p);
-        else if (/\.(js|html)$/.test(e)) files.push(p);
-      }
-    };
-    walk(dist);
+    const files = listFiles(path.join(ROOT, "apps", "web", "dist"), /\.(js|html)$/, []);
     const text = files.map((f) => readFileSync(f, "utf8")).join("\n");
     bundle = { files: files.length, storageWrites: (text.match(/(localStorage|sessionStorage)\.setItem/g) ?? []).length };
   } catch (x) {
@@ -386,17 +385,10 @@ function g12(tests: { file: string; name: string; status: string }[]) {
   const ok = purpose.length > 0 && purpose.every((t) => t.status === "passed");
   const d052 = purpose.filter((t) => t.name.includes("D-052"));
   // No code outside @ir/store's case module opens a case database on its own.
-  const offenders: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(d)) {
-      if (e === "node_modules" || e === "dist") continue;
-      const p = path.join(d, e);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (/\.tsx?$/.test(e) && !/\.test\.tsx?$/.test(e) && /new DatabaseSync\(/.test(readFileSync(p, "utf8")))
-        offenders.push(path.relative(ROOT, p));
-    }
-  };
-  for (const d of ["apps", "packages", "lib"]) walk(path.join(ROOT, d));
+  const offenders = ["apps", "packages", "lib"]
+    .flatMap((d) => listFiles(path.join(ROOT, d), SOURCE))
+    .filter((f) => /new DatabaseSync\(/.test(readFileSync(f, "utf8")))
+    .map((f) => path.relative(ROOT, f));
   const allowed = ["packages/store/src/case.ts"];
   const outside = offenders.filter((f) => !allowed.includes(f));
   results.push({
@@ -411,10 +403,19 @@ function g12(tests: { file: string; name: string; status: string }[]) {
 
 // ---------------------------------------------------------------------------------------------------------------
 function g13() {
-  const s = JSON.parse(readFileSync(path.join(ROOT, "coverage", "coverage-summary.json"), "utf8")) as Record<
-    string,
-    { lines: { covered: number; total: number } }
-  >;
+  let s: Record<string, { lines: { covered: number; total: number } }>;
+  try {
+    s = JSON.parse(readFileSync(path.join(ROOT, "coverage", "coverage-summary.json"), "utf8")) as typeof s;
+  } catch (x) {
+    results.push({
+      id: "G-13",
+      title: "core coverage >= 85%",
+      criterion: "coverage report written by the Vitest run",
+      pass: false,
+      measured: { error: String(x) },
+    });
+    return;
+  }
   const pkgs: Record<string, { covered: number; total: number; pct?: number }> = {};
   for (const [f, v] of Object.entries(s)) {
     if (f === "total") continue;
@@ -463,6 +464,9 @@ if (jsonOut) writeFileSync(path.resolve(ROOT, jsonOut), `${JSON.stringify(report
 const lines = [
   `phase 1 exit gates  commit ${report.environment.commit.slice(0, 7)}${report.environment.dirty ? " (dirty)" : ""}  node ${report.environment.node}  ${report.environment.os}`,
   `suite              ${run.total - run.failed}/${run.total} tests passed`,
+  ...run.tests
+    .filter((t) => !["passed", "skipped", "pending", "todo"].includes(t.status))
+    .map((t) => `        FAILED ${t.file} > ${t.name} (${t.ms} ms)`),
   ...results.map(
     (r) =>
       `${r.id}  ${r.pass ? (r.partial ? "PASS*" : "PASS ") : "FAIL "}  ${r.title}\n        ${JSON.stringify(r.measured)}${r.partial && r.blocker ? `\n        * ${r.blocker}` : ""}`,

@@ -19,6 +19,8 @@ export default defineConfig({
       // tests, and generated data (the identifier catalog is generated from YAML) are not code under test
       exclude: ["**/*.test.ts", "packages/core/src/identifiers/catalog.ts"],
       reporter: ["text", "text-summary", "json-summary"],
+      // G-13 stays measurable when a test fails; the failure still fails the run
+      reportOnFailure: true,
       reportsDirectory: "coverage",
       thresholds: Object.fromEntries(CORE.map((d) => [`${d}/**/*.ts`, { lines: 85 }])),
     },
