@@ -121,3 +121,10 @@
 - **الأدلة:** محلياً: `pnpm run typecheck` => 0، `pnpm run build` => نجاح، `pnpm test` => 8 passed. نتيجة CI تُسجل في الإدخال التالي.
 - **ما لم يتم / ملاحظات:** الحالة `in_progress` حتى تنجح الوظيفتان على GitHub وتُضافا إلى الفحوص المطلوبة لحماية `main`.
 - **التالي:** دمج PR #3، ثم تسجيل `build` و`test` فحوصاً مطلوبة وإغلاق P0-011.
+
+### 2026-10-10 — [P0-011] إغلاق: build وtest فحوص مطلوبة لحماية main
+- **المنفّذ:** Perplexity Computer.
+- **ما تم:** بعد دمج PR #3 ونجاح أول تشغيل لـ `ci.yml` (build ✓ في 20 ثانية، test ✓ في 17 ثانية، governance ✓)، حُدّثت حماية `main` لتشترط الفحوص الثلاثة `governance` و`build` و`test` مع `strict` (الفرع يجب أن يكون محدثاً قبل الدمج).
+- **الأدلة:** `gh api -X PATCH repos/sovereignaie-star/investigation/branches/main/protection/required_status_checks` => `["governance","build","test"]` [مُقاس]. البوابة G-03 متحققة.
+- **ما لم يتم / ملاحظات:** لا شيء متبقٍ في P0-011.
+- **التالي:** P0-021 (دمج الخطة الشاملة التي أرفقها المالك).
