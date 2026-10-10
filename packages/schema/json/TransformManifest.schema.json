@@ -1,0 +1,82 @@
+{
+  "$id": "https://github.com/sovereignaie-star/investigation/schema/TransformManifest.schema.json",
+  "title": "TransformManifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TR-\\d{3}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "inputs": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.-]*$"
+      }
+    },
+    "outputs": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.-]*$"
+      }
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9.-]+$"
+          }
+        }
+      },
+      "required": ["allow"]
+    },
+    "secrets": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      }
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "rps": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maxBytes": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": ["rps", "timeoutMs", "maxBytes"]
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": ["normal", "natural_person_gate", "minor"]
+    },
+    "license": {
+      "type": "string",
+      "enum": ["LC-A", "LC-B", "LC-C", "LC-D"]
+    }
+  },
+  "required": ["id", "version", "inputs", "outputs", "network", "limits", "sensitivity", "license"]
+}
