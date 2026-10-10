@@ -51,9 +51,9 @@ function encryptedCase() {
 const allFileBytes = (dir: string): Buffer => {
   const out: Buffer[] = [];
   const walk = (d: string) => {
-    for (const n of readdirSync(d)) {
-      const p = path.join(d, n);
-      if (statSync(p).isDirectory()) walk(p);
+    for (const n of readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, n.name);
+      if (n.isDirectory()) walk(p);
       else out.push(readFileSync(p));
     }
   };

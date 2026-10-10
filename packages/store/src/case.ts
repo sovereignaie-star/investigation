@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { systemClock, ulidFactory, isoNow, type Clock } from "@ir/core";
@@ -56,10 +56,21 @@ export class CaseLockedError extends Error {
   }
 }
 
+/** Single open, no existence check first (avoids a check-then-read race). */
+function readIfExists(file: string): string | undefined {
+  try {
+    return readFileSync(file, "utf8");
+  } catch (x) {
+    if ((x as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw x;
+  }
+}
+
 function resolveKey(dir: string, db: DatabaseSync, opts: OpenCaseOptions, clock: Clock): { key: CaseKey | null; encrypted: boolean } {
   const keyFile = path.join(dir, CASE_KEY);
-  if (existsSync(keyFile)) {
-    const file = JSON.parse(readFileSync(keyFile, "utf8")) as CaseKeyFile;
+  const keyText = readIfExists(keyFile);
+  if (keyText !== undefined) {
+    const file = JSON.parse(keyText) as CaseKeyFile;
     const caseId = (db.prepare("SELECT value FROM meta WHERE key = 'case_id'").get() as { value: string } | undefined)?.value;
     if (caseId !== undefined && caseId !== file.caseId) throw new Error(`${CASE_KEY} belongs to case ${file.caseId}, not ${caseId}`);
     return { key: opts.passphrase === undefined ? null : unlockCaseKey(file, opts.passphrase), encrypted: true };
