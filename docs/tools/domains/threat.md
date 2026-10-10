@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **507**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **517**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -119,6 +119,7 @@
 | TL-e73d924a | [drweb](https://vms.drweb.com/scan_file/) | أساسية | web | — | reachable | — | — |
 | TL-ca8d5f47 | [dynamite.ai search pcap file](https://lab.dynamite.ai/) | أساسية | web | — | unreachable | — | — |
 | TL-c44d30c7 | [EDR-Antivirus-Bypass-to-Gain-Shell-Access](https://github.com/murat-exp/EDR-Antivirus-Bypass-to-Gain-Shell-Access/tree/main) | أساسية | oss | — | reachable | — | — |
+| TL-7e014a6c | [Elastic Detection Rules](https://github.com/elastic/detection-rules) | داعمة | oss | — | reachable | — | Open detection rules mapped to MITRE ATT&CK. |
 | TL-b96e6ca3 | [elsa](https://github.com/babaknaimi/elsa) | داعمة | oss | — | reachable | — | ELSA (entropy-based local indicator of spatial association) is a novel spatial statistic to measure local spatial autocorrelation in both categorical and contin |
 | TL-4607517e | [Email Header Analisis Toolbox](https://toolbox.googleapps.com/apps/messageheader/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-0ad2634d | [Email-Analytics](https://emailanalytics.com/email-headers/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -135,6 +136,7 @@
 | TL-db65441e | [FBI](https://www.fbi.gov/wanted) | أساسية | web | — | reachable | — | — |
 | TL-6a148603 | [FBI Most Wanted](https://web.archive.org/web/20030315000000*/https://www.fbi.gov/wanted/cyber) | أساسية | web | — | reachable | — | — |
 | TL-cf24a39a | [Fenrir](https://github.com/Neo23x0/Fenrir) | داعمة | oss | — | reachable | — | Simple Bash IOC Scanner |
+| TL-86a6d8b7 | [Feodo Tracker](https://feodotracker.abuse.ch/) | داعمة | web | — | reachable | — | abuse.ch tracker of malware command-and-control servers, with blocklists. |
 | TL-65981292 | [filescan](https://www.filescan.io/scan) | أساسية | web | — | reachable | — | — |
 | TL-811e8fe8 | [Filesec - check the extension also ttp attacker](https://filesec.io/) | أساسية | web | — | reachable | — | — |
 | TL-464434b1 | [Fillter Bypass](https://www.filterbypass.me/id) | أساسية | web | — | unreachable | — | — |
@@ -285,6 +287,8 @@
 | TL-d57086c1 | [Metadefender Cloud](https://www.metadefender.com) | داعمة | web | — | reachable | — | Free threat intelligence platform providing multiscanning, data sanitization and vulnerability assessment of files. |
 | TL-15f3f3f1 | [Mimir](https://github.com/NullArray/Mimir) | أساسية | oss | — | restricted | — | — |
 | TL-d4bb98cc | [MISP Galaxy](https://www.misp-galaxy.org/360net/) | أساسية | web | — | reachable | — | Known or estimated adversary groups as identified by 360.net. |
+| TL-bc934678 | [MITRE CAPEC](https://capec.mitre.org/) | داعمة | web | — | reachable | — | Common Attack Pattern Enumeration and Classification knowledge base. |
+| TL-8c878400 | [MITRE D3FEND](https://d3fend.mitre.org/) | داعمة | web | — | reachable | — | Knowledge graph of defensive countermeasures. |
 | TL-68dc4e7c | [Mitre TTPs](https://attack.mitre.org/) | أساسية | web | — | reachable | — | — |
 | TL-26dc0a61 | [mlsecproject / combine](https://github.com/mlsecproject/combine) | أساسية | oss | — | restricted | — | — |
 | TL-9da49504 | [Mr.Looquer IOC Feed - 1st Dual Stack Threat Feed](https://iocfeed.mrlooquer.com/) | أساسية | web | — | reachable | — | — |
@@ -365,6 +369,7 @@
 | TL-3b0dd7bf | [reskrimum Polri ID](https://web.archive.org/web/20220124010657/https://reskrimum.metro.polri.go.id/dpo/) | أساسية | web | — | reachable | — | — |
 | TL-73ccd38b | [Retire.js](https://chrome.google.com/webstore/detail/retirejs/moibopkbhjceeedibkbkbchbjnkadmom/related) | أساسية | web | — | reachable | — | GoogleChrome extension for scanning a web app for use of vulnerable JavaScript libraries |
 | TL-e24ad0dc | [Reverse.IT](https://www.reverse.it/) | داعمة | web | — | reachable | — | Alternative domain for the Hybrid-Analysis tool provided by CrowdStrike. |
+| TL-a5651bdf | [ReversingLabs](https://www.reversinglabs.com/) | داعمة | web | — | reachable | — | File reputation and malware analysis platform (commercial). |
 | TL-75167cb2 | [RFC.fyi](https://rfc.fyi/) | أساسية | web | — | reachable | — | Browseable, searchable RFC index |
 | TL-5340753f | [rgexf](https://CRAN.R-project.org/package=rgexf) | داعمة | web | — | reachable | — | Export network objects from R to GEXF for manipulation with software like Gephi or Sigma. |
 | TL-4f297bf3 | [RiskIQ](https://community.riskiq.com/) | أساسية | web | — | unreachable | — | — |
@@ -385,6 +390,7 @@
 | TL-be8f290a | [Seekolver](https://github.com/Krypteria/Seekolver) | أساسية | oss | — | restricted | — | #python tool for searching and filtering subdomains using different APIs: SecurityTrails, AlienVault, VirusTotal, SpyOnWeb, Crt sh |
 | TL-01714b80 | [shai-hulud-scanner](https://github.com/nxgn-kd01/shai-hulud-scanner) | داعمة | oss | — | restricted | — | Detect indicators of compromise from the Shai Hulud 2.0 npm supply chain attack that compromised 796+ packages. Performs comprehensive security checks for malic |
 | TL-a4f0e306 | [shellpub](https://n.shellpub.com/en) | أساسية | web | — | reachable | — | — |
+| TL-1095d275 | [Shodan InternetDB](https://internetdb.shodan.io/) | داعمة | web | — | unreachable | — | Keyless IP lookup: open ports, hostnames, tags, CPEs and CVE identifiers from Shodan scan data. |
 | TL-f827da5e | [SickNerd](https://github.com/JakeWnuk/SickNerd) | أساسية | oss | — | restricted | — | tool for researching domain lists using Google Dorking. You can automatically load fresh dorks from GHDB and customize the maximum number of results |
 | TL-1bb6b34f | [SIEM Rules](https://www.siemrules.com/) | أساسية | web | — | reachable | — | — |
 | TL-5134d5c8 | [Sigma](https://github.com/SigmaHQ/sigma) | داعمة | oss | — | restricted | — | Generic signature format for SIEM systems already containing an extensive ruleset. |
@@ -405,10 +411,12 @@
 | TL-64c46305 | [Spiderfoot](https://www.spiderfoot.net/) | أساسية | web | — | reachable | — | — |
 | TL-626b334f | [Spiderfoot HX](https://www.spiderfoot.net/open-source-vs-hx/) | أساسية | web | — | unreachable | — | You must have account |
 | TL-a1f4a991 | [Splunk](https://www.splunk.com/) | أساسية | web | — | reachable | — | — |
+| TL-0138b409 | [Splunk Security Content](https://github.com/splunk/security_content) | داعمة | oss | — | reachable | — | Open analytic stories and detections mapped to ATT&CK. |
 | TL-0e1f7972 | [Sputnik](https://chrome.google.com/webstore/detail/sputnik/manapjdamopgbpimgojkccikaabhmocd/related) | أساسية | web | — | reachable | — | Chrome extension for quick gathering info about IP, domain, hash or URL in dozens of different services: Censys, GreyNoise, VirusTotal, Shodan, ThreatMiner and  |
 | TL-5d9b8017 | [Spyre](https://github.com/spyre-project/spyre) | داعمة | oss | — | restricted | — | Simple YARA-based IOC scanner written in Go |
 | TL-e3f504d1 | [sqhunter](https://github.com/0x4d31/sqhunter) | داعمة | oss | — | restricted | — | Threat hunter based on osquery and Salt Open (SaltStack) that can issue ad-hoc or distributed queries without the need for osquery's tls plugin. sqhunter allows |
 | TL-fd2c5a19 | [SQLI Dorks Generator](https://github.com/Zold1/sqli-dorks-generator) | أساسية | oss | — | restricted | — | python script generates Google Dorks for SQL Injections for sites from the list. |
+| TL-f9e71edf | [SSL Blacklist (SSLBL)](https://sslbl.abuse.ch/) | داعمة | web | — | reachable | — | abuse.ch list of malicious SSL certificates and JA3 fingerprints. |
 | TL-7163fbf5 | [START Consortium for the Study of Terrorism and Responses to Terrorism](https://www.start.umd.edu/) | أساسية | web | — | reachable | — | — |
 | TL-19799897 | [Statistics of the World](https://statisticsoftheworld.com/api-docs) | داعمة | api | — | reachable | No | Economic data for 218 countries — GDP, population, inflation, and 440+ indicators from IMF and World Bank |
 | TL-4cc40d63 | [stealthmole](https://www.stealthmole.com/) | أساسية | web | — | reachable | — | — |
@@ -502,7 +510,9 @@
 | TL-2cbb5b81 | [X-Ray 2.0](https://www.raymond.cc/blog/xray/) | داعمة | web | — | reachable | — | Windows utility (poorly maintained or no longer maintained) to submit virus samples to AV vendors. |
 | TL-6a1db1b7 | [xnLinkFinder](https://github.com/xnl-h4ck3r/xnLinkFinder) | أساسية | oss | — | restricted | — | Tool for discover endpoints for a given target. One of the most versatile tools of this type, with dozens of different settings. |
 | TL-36cff4ef | [XURLFIND3R](https://github.com/hueristiq/xurlfind3r) | أساسية | oss | — | restricted | — | Find domain's known URLs from: AlienVault's, Open Threat Exchange, Common Crawl, Github, Intelligence X, URLScan, Wayback Machine |
+| TL-54a83925 | [YARA](https://github.com/VirusTotal/yara) | داعمة | oss | — | reachable | — | Pattern matching engine for malware identification rules. |
 | TL-1140d8a1 | [Yara Doc](https://yara.readthedocs.io/en/stable/) | أساسية | web | — | reachable | — | — |
+| TL-fb2bb59f | [YARA Forge](https://github.com/YARAHQ/yara-forge) | داعمة | oss | — | reachable | — | Curated, quality-checked YARA rule packages from public repositories. |
 | TL-490d7fc0 | [Yara Hub](https://yaraify.abuse.ch/yarahub/) | أساسية | web | — | reachable | — | — |
 | TL-c100089e | [Yara Offc Repo](https://github.com/yara-rules/rules) | أساسية | oss | — | reachable | — | — |
 | TL-2e751614 | [YaraSpell](https://github.com/linuxscout/yaraspell) | داعمة | oss | — | restricted | — | simplified Arabic spell checker. |

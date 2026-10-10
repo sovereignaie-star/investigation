@@ -14,7 +14,7 @@
 | [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md) | الخطة الشاملة: الرؤية والاستراتيجية والآفاق البعيدة |
 | [`docs/STATUS.md`](docs/STATUS.md) | الحالة الحية لكل مهمة وعيب وبوابة |
 | [`docs/WORKLOG.md`](docs/WORKLOG.md) | سجل العمل: ما تم، بأدلته |
-| [`docs/tools/`](docs/tools/) | كتالوج الأدوات والمصادر (10,814 أداة) |
+| [`docs/tools/`](docs/tools/) | كتالوج الأدوات والمصادر (10,834 أداة) |
 
 ## القاعدة الأولى
 

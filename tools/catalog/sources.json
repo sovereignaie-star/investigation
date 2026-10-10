@@ -17,5 +17,6 @@
  {"id":"jbmusso/awesome-graph","kind":"md","url":"https://raw.githubusercontent.com/jbmusso/awesome-graph/master/README.md","home":"https://github.com/jbmusso/awesome-graph"},
  {"id":"iipc/awesome-web-archiving","kind":"md","url":"https://raw.githubusercontent.com/iipc/awesome-web-archiving/main/README.md","home":"https://github.com/iipc/awesome-web-archiving"},
  {"id":"01walid/awesome-arabic","kind":"md","url":"https://raw.githubusercontent.com/01walid/awesome-arabic/master/README.md","home":"https://github.com/01walid/awesome-arabic"},
- {"id":"Curated-Awesome-Lists/awesome-arabic-nlp","kind":"md","url":"https://raw.githubusercontent.com/Curated-Awesome-Lists/awesome-arabic-nlp/main/README.md","home":"https://github.com/Curated-Awesome-Lists/awesome-arabic-nlp"}
+ {"id":"Curated-Awesome-Lists/awesome-arabic-nlp","kind":"md","url":"https://raw.githubusercontent.com/Curated-Awesome-Lists/awesome-arabic-nlp/main/README.md","home":"https://github.com/Curated-Awesome-Lists/awesome-arabic-nlp"},
+ {"id":"investigation-room/curated","kind":"curated","url":"tools/catalog/curated.json","home":"https://github.com/sovereignaie-star/investigation/blob/main/tools/catalog/curated.json"}
 ]

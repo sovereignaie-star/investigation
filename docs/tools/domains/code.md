@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **367**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **368**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -301,6 +301,7 @@
 | TL-23681740 | [Shakkelha](https://github.com/AliOsm/shakkelha) | داعمة | oss | — | restricted | — | Open source Arabic text diacritization recurrent neural network software written in Python, website: https://shakkelha.herokuapp.com. |
 | TL-d69e2abd | [SheSource](http://www.shesource.org/) | أساسية | web | — | reachable | — | — |
 | TL-3d4b0f38 | [Shotanvil](https://shotanvil.com) | داعمة | api | — | reachable | apiKey | Screenshot, PDF and HTML rendering API with a free tier, API key or x402 auth |
+| TL-4ed276f1 | [Shuffle](https://github.com/Shuffle/Shuffle) | داعمة | oss | — | reachable | — | Open-source security automation (SOAR) workflows. |
 | TL-37d14405 | [simple-guide](http://www.arabicgit.com/simple-guide/) | داعمة | web | — | reachable | — | A simple guide in Arabic to get started using Git. |
 | TL-cc3ecf28 | [SIngle File](https://github.com/gildas-lormeau/SingleFile) | أساسية | oss | — | restricted | — | GoogleChrome, Firefox and MicrosoftEdge addon to save webpage in single html file |
 | TL-03b5c6ba | [Siphon](https://github.com/unidata/siphon) | داعمة | oss | — | restricted | — | A collection of Python utilities for retrieving atmospheric and oceanic data from remote sources, focusing on being able to retrieve data from Unidata data tech |

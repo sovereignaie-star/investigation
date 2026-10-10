@@ -84,6 +84,8 @@ def norm(u):
 
 
 def fetch(src, cache):
+    if src["kind"] == "curated":  # local, owner-curated additions (tools/catalog/curated.json)
+        return open(os.path.join(ROOT, src["url"]), encoding="utf-8").read()
     path = os.path.join(cache, src["id"].replace("/", "__"))
     if os.path.exists(path):
         return open(path, encoding="utf-8", errors="ignore").read()
@@ -123,6 +125,56 @@ class Collector:
         if extra:
             r.update(extra)
         self.rows[k] = r
+
+
+def parse_curated(col, data, src):
+    for e in json.loads(data):
+        col.add(e["name"], e["url"], e.get("cat", "General"), e.get("desc", ""), src)
+
+
+def finalize(r):
+    k = norm(r["url"])
+    r["id"] = "TL-" + hashlib.sha1(k.encode()).hexdigest()[:8]
+    r["sources"] = sorted(r["sources"])
+    r["domain"] = classify(r, r["sources"] == ["public-apis/public-apis"])
+    r["kind"] = kind_of(r)
+    r["tier"] = "core" if CORE_SOURCES.intersection(r["sources"]) else "supporting"
+    r["sensitivity"] = "natural_person_gate" if (r["domain"] in SENSITIVE or SENSITIVE_KW.search(f"{r['name']} {r['description']}")) else "standard"
+    return r
+
+
+def add_curated_offline(sources):
+    """Merge tools/catalog/curated.json into the existing catalog without refetching the public lists.
+    Only the new rows are link-checked; existing rows keep their previous status."""
+    prev_path = os.path.join(OUT, "catalog.csv")
+    old = list(csv.DictReader(open(prev_path, encoding="utf-8")))
+    by_key = {norm(r["url"]): r for r in old}
+    for r in old:
+        r["sources"] = r["sources"].split(";") if r["sources"] else []
+    src = next(s for s in sources if s["kind"] == "curated")
+    col = Collector()
+    parse_curated(col, fetch(src, None), src["id"])
+    new = []
+    for k, r in col.rows.items():
+        if k in by_key:
+            if src["id"] not in by_key[k]["sources"]:
+                by_key[k]["sources"] = sorted(set(by_key[k]["sources"]) | {src["id"]})
+            continue
+        new.append(finalize(r))
+    asyncio.run(check_all(new))
+    for r in new:
+        code = r.get("http", "")
+        r["http"] = code
+        r["link_status"] = link_status(code)
+    stats = open(os.path.join(OUT, "STATS.md"), encoding="utf-8").read()
+    excluded = Counter()
+    for key, label in (("offensive_policy", "مستبعدة بسياسة المنتج"), ("irrelevant_category", "مستبعدة لعدم الصلة")):
+        m = re.search(re.escape(label) + r"[^|]*\| (\d+)", stats)
+        excluded[key] = int(m.group(1)) if m else 0
+    rows = old + new
+    rows.sort(key=lambda r: (r["domain"], r["name"].lower()))
+    emit(rows, sources, excluded, checked=False)
+    return new
 
 
 def parse_tree(col, data, src):
@@ -211,13 +263,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-check", action="store_true")
     ap.add_argument("--cache", default=os.path.join(HERE, ".cache"))
+    ap.add_argument("--add-curated", action="store_true", help="merge curated.json into the existing catalog offline")
     a = ap.parse_args()
     sources = json.load(open(os.path.join(HERE, "sources.json"), encoding="utf-8"))
+    if a.add_curated:
+        for r in add_curated_offline(sources):
+            print(r["id"], r["link_status"], r["http"], r["name"])
+        return
     col = Collector()
     for src in sources:
         data = fetch(src, a.cache)
         if src["kind"] == "json-tree":
             parse_tree(col, data, src["id"])
+        elif src["kind"] == "curated":
+            parse_curated(col, data, src["id"])
         else:
             parse_md(col, data, src["id"], table=src["kind"] == "md-table")
     rows = []

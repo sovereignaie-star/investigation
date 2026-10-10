@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **342**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **344**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -203,6 +203,7 @@
 | TL-f1a612be | [National cell](https://www.nationalcellulardirectory.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-5a318914 | [ncunlock](https://ncunlock.com/) | أساسية | web | بوابة الأشخاص | reachable | — | A software tool for unlock ubl mobile phone like xiaomi, oneplus and other (It doesn't always work, if it doesn't work you need to pay too) |
 | TL-863ea117 | [Network Science Book - Network Datasets](http://networksciencebook.com/translations/en/resources/data.html) | داعمة | dataset | بوابة الأشخاص | reachable | — | Network data sets from Albert-László Barabási’s _Network Science_ book. Includes data on IMDB actors, arXiv scientific collaboration, network of routers, the US |
+| TL-363374e2 | [NeverBounce](https://neverbounce.com/) | داعمة | api | بوابة الأشخاص | restricted | — | Email address deliverability verification API. |
 | TL-268f9360 | [Next Caller (R)](https://nextcaller.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-588324f0 | [Number Finder IOS](https://apps.apple.com/us/app/number-finder-caller-id-book/id1324048797?platform=iphone) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-ce5ae607 | [Number guru](https://www.numberguru.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -348,3 +349,4 @@
 | TL-1b4e34b3 | [ychecker gmail email checker validate](https://ychecker.com/bulk-email-checker) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-4f64ede4 | [Zaba reverse phone](https://www.zabasearch.com/reverse-phone-lookup/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-3a11c98a | [Zen](https://github.com/s0md3v/Zen) | أساسية | oss | بوابة الأشخاص | restricted | — | Tool for gathering emails of #Github users |
+| TL-0c35adb5 | [ZeroBounce](https://www.zerobounce.net/) | داعمة | api | بوابة الأشخاص | reachable | — | Email address validation and deliverability API. |
