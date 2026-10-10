@@ -48,3 +48,4 @@ jobs:
           curl -fsS http://localhost:8080/api/healthz
           curl -fsS http://localhost:8080/ | grep -q '<html lang="ar" dir="rtl">'
           docker logs ir
+          docker run --rm investigation-room node ir.mjs --help

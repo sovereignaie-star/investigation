@@ -1,0 +1,22 @@
+{
+  "name": "@ir/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "ir": "./dist/ir.mjs"
+  },
+  "scripts": {
+    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --banner:js=\"#!/usr/bin/env node\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ir/core": "workspace:*",
+    "@ir/ledger": "workspace:*",
+    "@ir/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "esbuild": "0.28.2"
+  }
+}
