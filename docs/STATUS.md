@@ -91,7 +91,7 @@
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | todo | — |
 | P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | todo | — |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
-| P1-024 | إزالة الاعتماد على Replit وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | Replit removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
+| P1-024 | إزالة الاعتماد على منصة الاستضافة السابقة وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | legacy hosting files removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
 
 ### المرحلة 2: المحرّك والمحوّلات
 
