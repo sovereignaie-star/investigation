@@ -1,6 +1,6 @@
-import type { InvestigationNode, InvestigationEdge, InvestigationStats, SmartInvestigatorCallbacks, ApiKeys } from '../types';
-import { IDENTIFIER_LIST } from './identifierList';
-import { fetchIdentifier, buildNode } from './resultFetcher';
+import type { InvestigationEdge, InvestigationStats, SmartInvestigatorCallbacks, ApiKeys } from "../types";
+import { IDENTIFIER_LIST } from "./identifierList";
+import { fetchIdentifier, buildNode } from "./resultFetcher";
 
 let stopFlag = false;
 
@@ -16,11 +16,11 @@ export function detectIdentifier(value: string) {
 
 export function detectAll(value: string) {
   const trimmed = value.trim();
-  return IDENTIFIER_LIST.filter(id => id.regex.test(trimmed));
+  return IDENTIFIER_LIST.filter((id) => id.regex.test(trimmed));
 }
 
 function makeNodeId(value: string, type: string) {
-  return `${type}:${value}`.replace(/[^a-zA-Z0-9:\-_.]/g, '_').slice(0, 64);
+  return `${type}:${value}`.replace(/[^a-zA-Z0-9:\-_.]/g, "_").slice(0, 64);
 }
 
 function makeEdgeId(source: string, target: string) {
@@ -28,15 +28,11 @@ function makeEdgeId(source: string, target: string) {
 }
 
 export const smartInvestigator = {
-  stop() { stopFlag = true; },
+  stop() {
+    stopFlag = true;
+  },
 
-  async investigate(
-    rootValue: string,
-    apiKeys: Partial<ApiKeys> = {},
-    callbacks: SmartInvestigatorCallbacks,
-    maxDepth = 3,
-    maxNodes = 50
-  ) {
+  async investigate(rootValue: string, apiKeys: Partial<ApiKeys> = {}, callbacks: SmartInvestigatorCallbacks, maxDepth = 3, maxNodes = 50) {
     stopFlag = false;
     const visited = new Set<string>();
     const stats: InvestigationStats = {
@@ -46,13 +42,11 @@ export const smartInvestigator = {
       errorCount: 0,
       elapsed: 0,
       identifierTypes: {},
-      status: 'investigating',
+      status: "investigating",
     };
     const startTime = Date.now();
 
-    const queue: Array<{ value: string; depth: number; parentId?: string }> = [
-      { value: rootValue.trim(), depth: 0, parentId: undefined },
-    ];
+    const queue: Array<{ value: string; depth: number; parentId?: string }> = [{ value: rootValue.trim(), depth: 0, parentId: undefined }];
 
     while (queue.length > 0 && !callbacks.shouldStop() && !stopFlag) {
       if (stats.nodeCount >= maxNodes) break;
@@ -65,7 +59,7 @@ export const smartInvestigator = {
       visited.add(value);
 
       const detected = detectIdentifier(value);
-      const identifierTypeId = detected?.id || 'text';
+      const identifierTypeId = detected?.id || "text";
 
       const nodeId = makeNodeId(value, identifierTypeId);
       if (visited.has(nodeId) && nodeId !== value) continue;
@@ -107,11 +101,11 @@ export const smartInvestigator = {
         callbacks.onError(nodeId, String(err));
       }
 
-      await new Promise(r => setTimeout(r, 150));
+      await new Promise((r) => setTimeout(r, 150));
     }
 
     stats.elapsed = Date.now() - startTime;
-    stats.status = stopFlag ? 'stopped' : 'done';
+    stats.status = stopFlag ? "stopped" : "done";
     callbacks.onComplete({ ...stats });
   },
 };

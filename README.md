@@ -26,6 +26,7 @@
 
 ```sh
 pnpm install --frozen-lockfile   # يفعّل خطافات الحوكمة تلقائياً
+pnpm run lint
 pnpm run typecheck
 pnpm test
 PORT=22124 BASE_PATH=/ pnpm run build

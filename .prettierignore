@@ -1,0 +1,8 @@
+# Generated, vendored or hand-aligned content (P0-022).
+pnpm-lock.yaml
+**/dist/**
+**/generated/**
+attached_assets/
+docs/
+tools/catalog/.cache/
+*.md

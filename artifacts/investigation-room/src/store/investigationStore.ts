@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { InvestigationNode, InvestigationEdge, InvestigationStats } from '../types';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { InvestigationNode, InvestigationEdge, InvestigationStats } from "../types";
 
 interface InvestigationStore {
   nodes: InvestigationNode[];
@@ -35,12 +35,12 @@ const defaultStats: InvestigationStats = {
   errorCount: 0,
   elapsed: 0,
   identifierTypes: {},
-  status: 'idle',
+  status: "idle",
 };
 
 export const useInvestigationStore = create<InvestigationStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       nodes: [],
       edges: [],
       stats: { ...defaultStats },
@@ -95,7 +95,7 @@ export const useInvestigationStore = create<InvestigationStore>()(
           isInvestigating: value,
           stats: {
             ...state.stats,
-            status: value ? 'investigating' : (state.stats.status === 'investigating' ? 'done' : state.stats.status),
+            status: value ? "investigating" : state.stats.status === "investigating" ? "done" : state.stats.status,
           },
         }));
       },
@@ -134,12 +134,12 @@ export const useInvestigationStore = create<InvestigationStore>()(
       },
     }),
     {
-      name: 'investigation-store',
+      name: "investigation-store",
       partialize: (state) => ({
         nodes: state.nodes,
         edges: state.edges,
         stats: state.stats,
       }),
-    }
-  )
+    },
+  ),
 );

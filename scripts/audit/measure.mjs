@@ -61,8 +61,12 @@ function fetcherTypeIds() {
 
 function run(cmd) {
   const t = Date.now();
-  const r = spawnSync("sh", ["-c", cmd], { cwd: ROOT, encoding: "utf8", env: { ...process.env, CI: "true", PORT: process.env.PORT ?? "22124", BASE_PATH: process.env.BASE_PATH ?? "/" } });
-  const out = `${r.stdout}\n${r.stderr}`.replace(/\x1b\[[0-9;]*m/g, "");
+  const r = spawnSync("sh", ["-c", cmd], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: { ...process.env, CI: "true", PORT: process.env.PORT ?? "22124", BASE_PATH: process.env.BASE_PATH ?? "/" },
+  });
+  const out = `${r.stdout}\n${r.stderr}`.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "");
   return { ok: r.status === 0, secs: ((Date.now() - t) / 1000).toFixed(1), out };
 }
 
@@ -99,13 +103,18 @@ else {
   const cats = new Set(list.map((t) => t.category));
   const routed = fetcherTypeIds();
   const withFetcher = list.filter((t) => routed.has(t.id)).length;
-  let total = 0, own = 0, first = 0;
+  let total = 0,
+    own = 0,
+    first = 0;
   for (const t of list) {
     for (const ex of t.examples ?? []) {
       total++;
       t.regex.lastIndex = 0;
       if (t.regex.test(ex)) own++;
-      const hit = list.find((c) => { c.regex.lastIndex = 0; return c.regex.test(ex.trim()); });
+      const hit = list.find((c) => {
+        c.regex.lastIndex = 0;
+        return c.regex.test(ex.trim());
+      });
       if (hit?.id === t.id) first++;
     }
   }
@@ -115,20 +124,37 @@ else {
 const testFiles = files.filter((f) => /\.test\.(ts|tsx|mjs|js)$/.test(f));
 m.testFiles = testFiles.length;
 m.ciWorkflows = files.filter((f) => /^\.github\/workflows\/.+\.ya?ml$/.test(f)).map((f) => path.basename(f));
-m.projectFiles = Object.fromEntries(["README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"].map((f) => [f, files.includes(f)]));
+m.projectFiles = Object.fromEntries(
+  ["README.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md"].map((f) => [f, files.includes(f)]),
+);
 const routes = walk(rel("artifacts/api-server/src"), (p) => /\.ts$/.test(p)).flatMap((p) =>
-  [...readFileSync(p, "utf8").matchAll(/\brouter\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)/g)].map((x) => `${x[1].toUpperCase()} ${x[2]}`));
+  [...readFileSync(p, "utf8").matchAll(/\brouter\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)/g)].map(
+    (x) => `${x[1].toUpperCase()} ${x[2]}`,
+  ),
+);
 m.apiRoutes = routes;
 const gi = existsSync(rel(".gitignore")) ? readFileSync(rel(".gitignore"), "utf8") : "";
 m.gitignoreEnv = /^\.env\b/m.test(gi);
 m.secretScanning = { gitleaksConfig: files.includes(".gitleaks.toml"), workflow: m.ciWorkflows.includes("secrets.yml") };
 
 const py = files.filter((f) => f.endsWith(".py") && f.startsWith("attached_assets/"));
-const hashes = new Set(py.map((f) => createHash("sha256").update(readFileSync(rel(f))).digest("hex")));
+const hashes = new Set(
+  py.map((f) =>
+    createHash("sha256")
+      .update(readFileSync(rel(f)))
+      .digest("hex"),
+  ),
+);
 // "valid Python program" = parses as Python and is not a bare JSON document (Investigation9.py is JSON).
-const PYCHK = "import ast,json,sys\ns=open(sys.argv[1],encoding='utf-8').read()\nast.parse(s)\ntry:\n  json.loads(s); sys.exit(3)\nexcept ValueError: pass";
+const PYCHK =
+  "import ast,json,sys\ns=open(sys.argv[1],encoding='utf-8').read()\nast.parse(s)\ntry:\n  json.loads(s); sys.exit(3)\nexcept ValueError: pass";
 const compiles = py.filter((f) => spawnSync("python3", ["-c", PYCHK, rel(f)]).status === 0).length;
-m.pythonAssets = { files: py.length, unique: hashes.size, lines: py.reduce((n, f) => n + (readFileSync(rel(f), "utf8").match(/\n/g) ?? []).length, 0), validPython: compiles };
+m.pythonAssets = {
+  files: py.length,
+  unique: hashes.size,
+  lines: py.reduce((n, f) => n + (readFileSync(rel(f), "utf8").match(/\n/g) ?? []).length, 0),
+  validPython: compiles,
+};
 
 if (args.has("--full")) {
   const tc = run("pnpm run typecheck");
@@ -136,7 +162,11 @@ if (args.has("--full")) {
   const b = run("pnpm -r --if-present run build");
   const t = run("pnpm test");
   const passed = (t.out.match(/Tests\s+(\d+) passed/) ?? [])[1];
-  m.full = { typecheck: { ok: tc.ok, secs: tc.secs, firstError: firstErr }, build: { ok: b.ok, secs: b.secs }, tests: { ok: t.ok, secs: t.secs, passed: passed ? Number(passed) : null } };
+  m.full = {
+    typecheck: { ok: tc.ok, secs: tc.secs, firstError: firstErr },
+    build: { ok: b.ok, secs: b.secs },
+    tests: { ok: t.ok, secs: t.secs, passed: passed ? Number(passed) : null },
+  };
 }
 
 if (args.has("--json")) {
@@ -150,15 +180,24 @@ const rows = [
   ["الإيداع المقيس", `\`${m.head}\``],
   ["الملفات المتتبعة في git", `${fmt(m.trackedFiles)} ملفاً`],
   ["الإيداعات", `${fmt(m.commits.count)} إيداعاً (${m.commits.first} إلى ${m.commits.last})، المؤلفون: ${m.commits.authors.join("، ")}`],
-  ["مشاريع مساحة العمل (workspace)", `${m.workspaceProjects} مشاريع${m.installedPackages != null ? `، ${fmt(m.installedPackages)} حزمة مثبتة` : "، الاعتماديات غير مثبتة"}`],
+  [
+    "مشاريع مساحة العمل (workspace)",
+    `${m.workspaceProjects} مشاريع${m.installedPackages != null ? `، ${fmt(m.installedPackages)} حزمة مثبتة` : "، الاعتماديات غير مثبتة"}`,
+  ],
   ...(m.full
     ? [
-        ["`pnpm run typecheck`", m.full.typecheck.ok ? `**ينجح** (${m.full.typecheck.secs} ث)` : `**يفشل**: ${m.full.typecheck.firstError}`],
+        [
+          "`pnpm run typecheck`",
+          m.full.typecheck.ok ? `**ينجح** (${m.full.typecheck.secs} ث)` : `**يفشل**: ${m.full.typecheck.firstError}`,
+        ],
         ["`build` لكل المشاريع", m.full.build.ok ? `**ينجح** (${m.full.build.secs} ث)` : "**يفشل**"],
         ["`pnpm test`", m.full.tests.ok ? `**ينجح**: ${m.full.tests.passed ?? "?"} اختباراً (${m.full.tests.secs} ث)` : "**يفشل**"],
       ]
     : [["typecheck / build / test", "لم تُشغَّل (أضف `--full`)"]]),
-  ["أسطر TypeScript في تطبيق الواجهة", `${fmt(m.uiTsLines.all)} سطراً (${fmt(m.uiTsLines.excludingIdentifierList)} دون \`identifierList.ts\`)`],
+  [
+    "أسطر TypeScript في تطبيق الواجهة",
+    `${fmt(m.uiTsLines.all)} سطراً (${fmt(m.uiTsLines.excludingIdentifierList)} دون \`identifierList.ts\`)`,
+  ],
   ...(I.error
     ? [["قائمة المعرّفات", `**معطوبة نحوياً**: ${I.error}`]]
     : [
@@ -171,8 +210,14 @@ const rows = [
   ["تكامل مستمر (CI)", m.ciWorkflows.length ? `${m.ciWorkflows.length} مسارات: ${m.ciWorkflows.join("، ")}` : "لا يوجد"],
   ["README / LICENSE / SECURITY", ["README.md", "LICENSE", "SECURITY.md"].map((f) => `${f}: ${yes(m.projectFiles[f])}`).join("، ")],
   ["مسارات API", m.apiRoutes.length ? `${m.apiRoutes.length}: ${m.apiRoutes.map((r) => `\`${r}\``).join("، ")}` : "لا يوجد"],
-  ["نظافة الأسرار", `\`.env\` في \`.gitignore\`: ${m.gitignoreEnv ? "نعم" : "لا"}؛ إعداد gitleaks: ${yes(m.secretScanning.gitleaksConfig)}؛ مسار فحص الأسرار: ${yes(m.secretScanning.workflow)}`],
-  ["ملفات بايثون المرفقة", `${m.pythonAssets.files} ملفاً = ${m.pythonAssets.unique} فريداً، ${fmt(m.pythonAssets.lines)} سطراً، ${m.pythonAssets.validPython} منها برامج بايثون صالحة`],
+  [
+    "نظافة الأسرار",
+    `\`.env\` في \`.gitignore\`: ${m.gitignoreEnv ? "نعم" : "لا"}؛ إعداد gitleaks: ${yes(m.secretScanning.gitleaksConfig)}؛ مسار فحص الأسرار: ${yes(m.secretScanning.workflow)}`,
+  ],
+  [
+    "ملفات بايثون المرفقة",
+    `${m.pythonAssets.files} ملفاً = ${m.pythonAssets.unique} فريداً، ${fmt(m.pythonAssets.lines)} سطراً، ${m.pythonAssets.validPython} منها برامج بايثون صالحة`,
+  ],
 ];
 console.log(`### القياس الحالي (scripts/audit/measure.mjs، ${new Date().toISOString().slice(0, 10)}) [مُقاس]\n`);
 console.log("| المقياس | القيمة |\n|---|---|");
