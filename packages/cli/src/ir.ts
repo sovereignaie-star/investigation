@@ -101,7 +101,13 @@ function runProject(
     return 2;
   }
   try {
-    const c = openCase(dir, { actor: "ir-cli", readOnly: true, ...passphraseFrom(v["passphrase-file"]) });
+    // the passphrase is handed to openCase as its own field, only to unwrap the case key (Argon2id, P1-014); it is
+    // never part of what gets hashed
+    const { passphrase } = passphraseFrom(v["passphrase-file"]);
+    const c =
+      passphrase === undefined
+        ? openCase(dir, { actor: "ir-cli", readOnly: true })
+        : openCase(dir, { actor: "ir-cli", readOnly: true, passphrase });
     try {
       const p = project(c.entries(), at === undefined ? {} : { upTo: at });
       const hash = projectionHash(p);
