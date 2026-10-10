@@ -6,3 +6,9 @@
 /scripts/governance/      @sovereignaie-star
 /.github/                 @sovereignaie-star
 /SECURITY.md              @sovereignaie-star
+# D-8 (owner decision, 2026-10-10): human review for security and egress paths. Scope: docs/security/REVIEW_SCOPE.md.
+# Enforcement in branch protection is pending the owner's choice there (self-approval is impossible today).
+/packages/egress/         @sovereignaie-star
+/apps/server/             @sovereignaie-star
+/packages/store/          @sovereignaie-star
+/scripts/gates/           @sovereignaie-star
