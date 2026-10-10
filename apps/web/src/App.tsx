@@ -20,11 +20,11 @@ export default function App() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 text-start">
       <header className="mb-10">
-        <p className="text-sm text-slate-500">المرحلة 0 — التثبيت والتأسيس</p>
+        <p className="text-sm text-slate-500">المرحلة 1 — النواة والسجل</p>
         <h1 className="mt-2 text-3xl font-bold">غرفة التحقيق</h1>
         <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
-          أداة تحقيق مفتوح المصدر، عربية الأولوية، محلية أولاً، تبني رسماً من الارتباطات فوق سجل أدلة موثَّق.
-          محطة العمل قيد الإنشاء وفق خارطة الطريق.
+          أداة تحقيق مفتوح المصدر، عربية الأولوية، محلية أولاً، تبني رسماً من الارتباطات فوق سجل أدلة موثَّق. محطة العمل قيد الإنشاء وفق
+          خارطة الطريق.
         </p>
       </header>
 
@@ -36,19 +36,39 @@ export default function App() {
           {categories.map(([key, { ar, n }]) => (
             <li key={key} className="flex justify-between rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
               <span>{ar}</span>
-              <span dir="ltr" className="tabular-nums text-slate-500">{n}</span>
+              <span dir="ltr" className="tabular-nums text-slate-500">
+                {n}
+              </span>
             </li>
           ))}
         </ul>
       </section>
 
       <section aria-labelledby="docs">
-        <h2 id="docs" className="mb-3 text-xl font-semibold">وثائق المشروع الحاكمة</h2>
+        <h2 id="docs" className="mb-3 text-xl font-semibold">
+          وثائق المشروع الحاكمة
+        </h2>
         <ul className="list-disc space-y-1 ps-6">
-          <li><a className="underline" href={`${REPO}/blob/main/docs/ROADMAP.md`}>خارطة الطريق</a></li>
-          <li><a className="underline" href={`${REPO}/blob/main/docs/STATUS.md`}>حالة المشروع</a></li>
-          <li><a className="underline" href={`${REPO}/blob/main/docs/WORKLOG.md`}>سجل العمل</a></li>
-          <li><a className="underline" href={`${REPO}/blob/main/GOVERNANCE.md`}>القواعد الحاكمة</a></li>
+          <li>
+            <a className="underline" href={`${REPO}/blob/main/docs/ROADMAP.md`}>
+              خارطة الطريق
+            </a>
+          </li>
+          <li>
+            <a className="underline" href={`${REPO}/blob/main/docs/STATUS.md`}>
+              حالة المشروع
+            </a>
+          </li>
+          <li>
+            <a className="underline" href={`${REPO}/blob/main/docs/WORKLOG.md`}>
+              سجل العمل
+            </a>
+          </li>
+          <li>
+            <a className="underline" href={`${REPO}/blob/main/GOVERNANCE.md`}>
+              القواعد الحاكمة
+            </a>
+          </li>
         </ul>
       </section>
     </main>

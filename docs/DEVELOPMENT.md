@@ -6,14 +6,14 @@
 
 | الأداة | النسخة | ملاحظة |
 |---|---|---|
-| Node.js | 24 (`.nvmrc`) | النسخ الأقدم تعمل مع تحذير `Unsupported engine` لكنها غير مدعومة |
+| Node.js | `>=24.7` (`.nvmrc` = 24) | الإصدارات الأقدم غير مدعومة ولا تصلح دليلاً على نجاح الفحوص |
 | pnpm | 10 (`packageManager` في `package.json`) | `corepack enable` أو `npm i -g pnpm@10` |
 | git | أي نسخة حديثة | الخطافات في `.githooks` تُفعَّل تلقائياً بـ `pnpm install` |
 | Python 3 | اختياري | لإعادة بناء كتالوج الأدوات فقط (`tools/catalog/build.py`) |
 
 لا تحتاج قاعدة بيانات: النمط الفردي يعمل بلا Postgres (ADR-04). `DATABASE_URL` مطلوب لنمط الفريق فقط.
 
-## التشغيل
+## التثبيت وفحوص الأساس
 
 ```sh
 git clone https://github.com/sovereignaie-star/investigation.git
@@ -23,9 +23,25 @@ pnpm run lint
 pnpm run typecheck
 pnpm run build
 pnpm test
-pnpm --filter @ir/server run dev   # الخادم: http://localhost:8080/api/healthz
-pnpm --filter @ir/web run dev      # الواجهة: http://localhost:5173 (تحوّل /api إلى الخادم)
-pnpm start                         # بعد البناء: خدمة واحدة على http://localhost:8080
+```
+
+## تطوير الواجهة والخادم
+
+انسخ `.env.example` إلى `.env` إذا احتجت إلى إعداد الخادم، ثم عيّن `IR_ADMIN_TOKEN` عشوائياً قبل إدارة الخزنة أو استعمال lookup. لا تودِع `.env` أبداً (GR-12). شغّل الخادم والواجهة في **طرفيتين منفصلتين** لأن كلا الأمرين يستمر في العمل:
+
+```sh
+# الطرفية الأولى: يبني الخادم ثم يشغله على http://127.0.0.1:8080
+pnpm --filter @ir/server run dev
+
+# الطرفية الثانية: الواجهة على http://localhost:5173 وتحوّل /api إلى الخادم
+pnpm --filter @ir/web run dev
+```
+
+## تشغيل الخدمة الواحدة محلياً
+
+```sh
+pnpm run build
+pnpm start                         # يحمّل .env إن وجد، ويستمع افتراضياً على http://127.0.0.1:8080
 ```
 
 النشر (Docker، Render، Railway، جهاز محلي) موثق في `README.md` قسم «النشر».
@@ -38,7 +54,7 @@ pnpm ir project path/to/case [--at seq] [--expect sha256]   # إعادة بنا�
 node packages/cli/dist/ir.mjs verify path/to/case                                # بعد البناء، بلا node_modules
 ```
 
-انسخ `.env.example` إلى `.env` إن احتجت متغيرات (لا تُودِع `.env` أبداً، GR-12). مفاتيح مزودي البيانات لا توضع في `.env` بل في خزنة المفاتيح المشفرة (P1-015).
+مفاتيح مزودي البيانات لا توضع في `.env` بل في خزنة المفاتيح المشفرة (P1-015). رمز `IR_ADMIN_TOKEN` هو رمز إدارة للخادم، لا مفتاح مزوّد، ويُحفظ خارج Git.
 
 ## ما يحدث عند الإيداع
 
@@ -59,9 +75,9 @@ node packages/cli/dist/ir.mjs verify path/to/case                               
 | `node scripts/governance/check.mjs --range origin/main..HEAD` | فحص كل إيداعات الفرع قبل الدفع |
 | `python3 tools/catalog/build.py --add-curated` | دمج `tools/catalog/curated.json` في الكتالوج دون إعادة الجلب |
 
-## القياس المسجّل
+## قياس تاريخي يحتاج إلى إعادة تحقق
 
-نسخة نظيفة من الفرع في 2026-10-10، مخزن pnpm فارغ، بيئة Linux بـ Node 20.20.2 [مُقاس]:
+القياس التالي أُخذ في 2026-10-10 تحت Node 20.20.2، وهو **لا يطابق** شرط التشغيل الحالي `>=24.7`؛ لذلك هو سجل تاريخي [مُقاس] وليس دليلاً صالحاً على «أقل من 10 دقائق». يُعاد القياس تحت Node المدعوم قبل أي ادعاء زمني جديد:
 
 | الخطوة | الزمن | النتيجة |
 |---|---|---|
@@ -74,7 +90,7 @@ node packages/cli/dist/ir.mjs verify path/to/case                               
 | الخادم `/api/healthz` | نحو 3 ث | `{"status":"ok"}` |
 | **المجموع من الاستنساخ** | **158 ث** | أقل من 10 دقائق |
 
-يُعاد هذا القياس على Node 24 في CI (وظيفتا `build` و`test`).
+تعمل وظائف CI على Node 24؛ أضف زمن الاستنساخ النظيف الجديد هنا فقط بعد تسجيل النسخ والنتائج القابلة لإعادة التنفيذ.
 
 ## فهرس المعرّفات (P1-003)
 
@@ -83,4 +99,3 @@ node packages/cli/dist/ir.mjs verify path/to/case                               
 - كل نوع يحتاج مثالاً إيجابياً يقبله نمطه ومدققه، ومثالاً سلبياً يرفضه.
 - أمثلة المفاتيح والرموز السرية تُكتب قوالب `{{N:c}}` (مثل `sk_test_{{24:x}}`)، ولا تُكتب نصاً حرفياً.
 - النوع الذي يطابق نمطه كلمات عامة يُضبط فيه `context.required: true` مع كلمات سياق.
-
