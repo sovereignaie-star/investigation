@@ -25,14 +25,14 @@
 
 ## الوضع الحالي مقابل المستهدف
 
-الكود اليوم ما زال في التخطيط الموروث (`artifacts/*`، `lib/*`)؛ النقل إلى `apps/*` و`packages/*` يبدأ في المرحلة 1. أرقام الوضع الحالي تُقاس بـ `pnpm run audit:measure` (P0-019).
+نُقلت التطبيقات إلى `apps/*` في P1-001، والحزم الجديدة تُنشأ في `packages/*`. أرقام الوضع الحالي تُقاس بـ `pnpm run audit:measure` (P0-019).
 
-| اليوم | يصير | المهمة |
+| كان | صار / يصير | المهمة |
 |---|---|---|
-| `artifacts/investigation-room` | `apps/web` | المرحلة 1 |
-| `artifacts/api-server` | `apps/server` | المرحلة 1 |
-| `artifacts/mockup-sandbox` | `packages/ui` | المرحلة 3 |
-| `src/utils/identifierList.ts` و`resultFetcher.ts` و`smartInvestigator.ts` | `packages/core` و`packages/transforms/*` و`packages/engine` | P1-004..P1-006، المرحلة 2 |
+| `artifacts/investigation-room` (`@workspace/investigation-room`) | `apps/web` (`@ir/web`) | P1-001 (تم) |
+| `artifacts/api-server` (`@workspace/api-server`) | `apps/server` (`@ir/server`) | P1-001 (تم) |
+| `artifacts/mockup-sandbox` | `apps/sandbox` (`@ir/sandbox`) مؤقتاً، ثم `packages/ui` | P1-001 (تم)، P3-001 |
+| `apps/web/src/utils/identifierList.ts` و`resultFetcher.ts` و`smartInvestigator.ts` | `packages/core` و`packages/transforms/*` و`packages/engine` | P1-004..P1-006، المرحلة 2 |
 | `lib/api-spec`، `lib/api-zod`، `lib/api-client-react` | كما هي (OpenAPI ← Orval، ADR-14) | — |
 
 أي تغيير معماري يبدأ بسجل قرار جديد في `docs/adr/` وتحديث القسم 5 في الإيداع نفسه (GR-01).

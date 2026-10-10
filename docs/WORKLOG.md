@@ -280,3 +280,11 @@
 - الأدلة: بعد الدمج: `pnpm run lint` و`typecheck` و`build` و`test` (8) ناجحة؛ `pnpm install --frozen-lockfile` ناجح؛ في ملف القفل نسخة واحدة لكل من vite (8.3.4) وvitest (5.0.3) وyaml (2.9.1).
 - ما لم يتم: recharts 3 مؤجل بسبب موثق أعلاه؛ يُغلق #11 بإحالة إلى هذا الإدخال.
 - التالي: دمج #15 وإغلاق #6–#14، ثم P1-001.
+
+### 2026-10-10 — [P1-001] إعادة هيكلة مساحة العمل إلى `apps/*` و`packages/*`
+- المنفّذ: وكيل آلي (Perplexity Computer)، بداية المرحلة 1 بطلب المالك «ابدأ بناء المشروع».
+- ما تم: `git mv` (يحفظ التاريخ): `artifacts/investigation-room` → `apps/web` (`@ir/web`)، `artifacts/api-server` → `apps/server` (`@ir/server`)، `artifacts/mockup-sandbox` → `apps/sandbox` (`@ir/sandbox`، مؤقتاً حتى P3-001). فُتح `packages/*` في `pnpm-workspace.yaml` مع `packages/README.md` (قواعد الحزمة). حُدّثت المسارات والأسماء في: `package.json` (typecheck يشمل `apps/**` و`packages/**`)، `vitest.config.ts`، `eslint.config.mjs`، `scripts/audit/measure.mjs`، ملفات `.replit-artifact/artifact.toml` الثلاثة، README وAGENTS وreplit.md وDEVELOPMENT وARCHITECTURE والقسم 5.3. بقيت `lib/*` كما هي (5.3).
+- الأدلة: `pnpm install` ثم `pnpm run lint` و`typecheck` و`build` و`test` (8) و`audit:measure` ناجحة؛ `node apps/server/dist/index.mjs` يجيب `/api/healthz` بـ `{"status":"ok"}`؛ `apps/web/dist/public/index.html` يُبنى.
+- إصلاح في الخطاف: `lint-staged` كان يعيد تنسيق الملفات المنقولة فيحوّل النقل إلى حذف وإضافة (153 ملفاً بدل إعادة تسمية). صار `.githooks/pre-commit` يمرر `--diff-filter=ACM` فلا تُلمس ملفات النقل (R)، ويبقى تاريخها متصلاً (`git log --follow`).
+- ما لم يتم: معرّف عنصر الواجهة في Replit (`id = "artifacts/investigation-room"`) أُبقي كما هو لأنه مفتاح ثابت؛ [للتحقق] أن Replit يكتشف `.replit-artifact` خارج `artifacts/` عند فتح المستودع فيه. D-043 يبقى مفتوحاً حتى P3-001.
+- التالي: P1-002 (`@ir/schema`) وP1-019 (الساعة والمولّد القابلان للحقن).

@@ -2,7 +2,7 @@ kind = "web"
 previewPath = "/"
 title = "Investigation Room"
 version = "1.0.0"
-id = "artifacts/investigation-room"
+id = "artifacts/investigation-room"  # stable Replit artifact id (kept after the P1-001 move)
 router = "path"
 
 [[integratedSkills]]
@@ -15,11 +15,11 @@ paths = [ "/" ]
 localPort = 22124
 
 [services.development]
-run = "pnpm --filter @workspace/investigation-room run dev"
+run = "pnpm --filter @ir/web run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/investigation-room", "run", "build" ]
-publicDir = "artifacts/investigation-room/dist/public"
+build = [ "pnpm", "--filter", "@ir/web", "run", "build" ]
+publicDir = "apps/web/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]

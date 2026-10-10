@@ -23,8 +23,8 @@ pnpm run lint
 pnpm run typecheck
 PORT=22124 BASE_PATH=/ pnpm run build
 pnpm test
-PORT=5173 BASE_PATH=/ pnpm --filter @workspace/investigation-room run dev   # الواجهة: http://localhost:5173
-PORT=8080 pnpm --filter @workspace/api-server run dev                         # الخادم: http://localhost:8080/api/healthz
+PORT=5173 BASE_PATH=/ pnpm --filter @ir/web run dev   # الواجهة: http://localhost:5173
+PORT=8080 pnpm --filter @ir/server run dev                         # الخادم: http://localhost:8080/api/healthz
 ```
 
 انسخ `.env.example` إلى `.env` إن احتجت متغيرات (لا تُودِع `.env` أبداً، GR-12). مفاتيح مزودي البيانات لا توضع في `.env` بل في خزنة المفاتيح المشفرة (P1-015).

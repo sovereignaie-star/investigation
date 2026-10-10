@@ -32,7 +32,7 @@ pnpm run lint
 pnpm run typecheck
 pnpm test
 PORT=22124 BASE_PATH=/ pnpm run build
-PORT=5173 BASE_PATH=/ pnpm --filter @workspace/investigation-room run dev
+PORT=5173 BASE_PATH=/ pnpm --filter @ir/web run dev
 ```
 
 متغيرات البيئة موثقة في [`.env.example`](.env.example). قاعدة البيانات اختيارية في هذه المرحلة؛ بدون `DATABASE_URL` يعمل كل شيء عدا مسارات الخادم التي تحتاجها.
