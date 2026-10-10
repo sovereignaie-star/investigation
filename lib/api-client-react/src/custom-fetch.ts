@@ -25,8 +25,15 @@ let _authTokenGetter: AuthTokenGetter | null = null;
  * Useful for Expo bundles that need to call a remote API server.
  * Pass `null` to clear the base URL.
  */
+/** Linear-time trim (a `/\/+$/` regex is quadratic on long runs of slashes, CodeQL js/polynomial-redos). */
+function trimTrailingSlashes(s: string): string {
+  let end = s.length;
+  while (end > 0 && s.charCodeAt(end - 1) === 47) end--;
+  return s.slice(0, end);
+}
+
 export function setBaseUrl(url: string | null): void {
-  _baseUrl = url ? url.replace(/\/+$/, "") : null;
+  _baseUrl = url ? trimTrailingSlashes(url) : null;
 }
 
 /**
@@ -103,11 +110,11 @@ function isJsonMediaType(mediaType: string | null): boolean {
 function isTextMediaType(mediaType: string | null): boolean {
   return Boolean(
     mediaType &&
-      (mediaType.startsWith("text/") ||
-        mediaType === "application/xml" ||
-        mediaType === "text/xml" ||
-        mediaType.endsWith("+xml") ||
-        mediaType === "application/x-www-form-urlencoded"),
+    (mediaType.startsWith("text/") ||
+      mediaType === "application/xml" ||
+      mediaType === "text/xml" ||
+      mediaType.endsWith("+xml") ||
+      mediaType === "application/x-www-form-urlencoded"),
   );
 }
 
@@ -158,10 +165,7 @@ function buildErrorMessage(response: Response, data: unknown): string {
 
   const title = getStringField(data, "title");
   const detail = getStringField(data, "detail");
-  const message =
-    getStringField(data, "message") ??
-    getStringField(data, "error_description") ??
-    getStringField(data, "error");
+  const message = getStringField(data, "message") ?? getStringField(data, "error_description") ?? getStringField(data, "error");
 
   if (title && detail) return `${prefix}: ${title} — ${detail}`;
   if (detail) return `${prefix}: ${detail}`;
@@ -181,11 +185,7 @@ export class ApiError<T = unknown> extends Error {
   readonly method: string;
   readonly url: string;
 
-  constructor(
-    response: Response,
-    data: T | null,
-    requestInfo: { method: string; url: string },
-  ) {
+  constructor(response: Response, data: T | null, requestInfo: { method: string; url: string }) {
     super(buildErrorMessage(response, data));
     Object.setPrototypeOf(this, new.target.prototype);
 
@@ -210,12 +210,7 @@ export class ResponseParseError extends Error {
   readonly rawBody: string;
   readonly cause: unknown;
 
-  constructor(
-    response: Response,
-    rawBody: string,
-    cause: unknown,
-    requestInfo: { method: string; url: string },
-  ) {
+  constructor(response: Response, rawBody: string, cause: unknown, requestInfo: { method: string; url: string }) {
     super(
       `Failed to parse response from ${requestInfo.method} ${response.url || requestInfo.url} ` +
         `(${response.status} ${response.statusText}) as JSON`,
@@ -233,10 +228,7 @@ export class ResponseParseError extends Error {
   }
 }
 
-async function parseJsonBody(
-  response: Response,
-  requestInfo: { method: string; url: string },
-): Promise<unknown> {
+async function parseJsonBody(response: Response, requestInfo: { method: string; url: string }): Promise<unknown> {
   const raw = await response.text();
   const normalized = stripBom(raw);
 
@@ -299,8 +291,7 @@ async function parseSuccessBody(
     return null;
   }
 
-  const effectiveType =
-    responseType === "auto" ? inferResponseType(response) : responseType;
+  const effectiveType = responseType === "auto" ? inferResponseType(response) : responseType;
 
   switch (effectiveType) {
     case "json":
@@ -313,19 +304,13 @@ async function parseSuccessBody(
 
     case "blob":
       if (typeof response.blob !== "function") {
-        throw new TypeError(
-          "Blob responses are not supported in this runtime. " +
-            "Use responseType \"json\" or \"text\" instead.",
-        );
+        throw new TypeError("Blob responses are not supported in this runtime. " + 'Use responseType "json" or "text" instead.');
       }
       return response.blob();
   }
 }
 
-export async function customFetch<T = unknown>(
-  input: RequestInfo | URL,
-  options: CustomFetchOptions = {},
-): Promise<T> {
+export async function customFetch<T = unknown>(input: RequestInfo | URL, options: CustomFetchOptions = {}): Promise<T> {
   input = applyBaseUrl(input);
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
@@ -337,11 +322,7 @@ export async function customFetch<T = unknown>(
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
 
-  if (
-    typeof init.body === "string" &&
-    !headers.has("content-type") &&
-    looksLikeJson(init.body)
-  ) {
+  if (typeof init.body === "string" && !headers.has("content-type") && looksLikeJson(init.body)) {
     headers.set("content-type", "application/json");
   }
 

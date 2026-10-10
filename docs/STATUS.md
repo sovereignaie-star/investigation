@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 24 | 10 | 0 |
+| 1 | النواة والسجل | 25 | 11 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -92,6 +92,7 @@
 | P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | todo | — |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
 | P1-024 | إزالة الاعتماد على منصة الاستضافة السابقة وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | legacy hosting files removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
+| P1-025 | إغلاق تنبيهات CodeQL القديمة على main (S) | done | set-status.mjs: IDs validated (D-nnn, G-nn, Pn-nnn) and escaped before RegExp; custom-fetch: linear trailing-slash trim; alerts 1,3-6 resolved, 13-15 (localStorage keys) left for P1-015 |
 
 ### المرحلة 2: المحرّك والمحوّلات
 
