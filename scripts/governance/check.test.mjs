@@ -65,3 +65,10 @@ test("T-GOV-011 master plan referencing an unknown task is rejected (GR-16)", ()
 test("T-GOV-012 phase 8 task ids are recognised", () => {
   assert.deepEqual(taskIdsInMessage("feat: x [P8-001]"), ["P8-001"]);
 });
+test("T-GOV-013 subject that is not a Conventional Commit is rejected (ADR-22)", () => {
+  assert.ok(evaluate({ ...ok, message: "Repair list [P0-004]" }).some((x) => x.startsWith("GR-03") && x.includes("Conventional")));
+});
+test("T-GOV-014 scoped and breaking Conventional Commit subjects pass", () => {
+  assert.deepEqual(evaluate({ ...ok, message: "feat(web)!: new list [P0-004]" }), []);
+  assert.deepEqual(evaluate({ ...ok, message: "docs: notes [P0-004]\n\nbody" }), []);
+});

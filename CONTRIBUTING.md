@@ -13,7 +13,8 @@
 - رسالة بصيغة [Conventional Commits](https://www.conventionalcommits.org/) وتحمل معرّف المهمة: `fix(core): repair identifier list [P0-004]`.
 - يعدّل `docs/STATUS.md` (عبر `node scripts/governance/set-status.mjs`) ويضيف إدخالاً إلى `docs/WORKLOG.md` **في الإيداع نفسه** (GR-01).
 - لا أسرار ولا ملفات `.env` (GR-12).
-- تحقق محلياً: `pnpm run typecheck`، `pnpm test`، `pnpm run governance`.
+- تحقق محلياً: `pnpm run lint`، `pnpm run typecheck`، `pnpm test`، `pnpm run governance`. خطاف `pre-commit` يشغّل ESLint وPrettier على الملفات المُودَعة فقط (lint-staged)، فيُطبَّق التنسيق تدريجياً على ما تلمسه دون إعادة تنسيق المستودع كله.
+- السطر الأول من رسالة الإيداع بصيغة Conventional Commits: `type(scope): ملخص [P0-004]` (GR-03، ADR-22)، ويرفضه الحارس إن خالفها.
 
 ## طلب الدمج
 

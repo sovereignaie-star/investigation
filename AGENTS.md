@@ -22,6 +22,7 @@ This file applies to every automated agent working in this repository (Claude, R
 ## Before you finish any change
 
 ```bash
+pnpm run lint                  # ESLint (P0-022); staged files are also formatted by Prettier in pre-commit
 pnpm run typecheck
 pnpm run build
 pnpm test

@@ -7,6 +7,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "lint": "eslint . --max-warnings=0",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "governance": "node scripts/governance/check.mjs --last && node scripts/governance/check.mjs --consistency",
     "governance:test": "node --test scripts/governance/check.test.mjs",
@@ -16,13 +17,28 @@
   },
   "private": true,
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.13.0",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=24",
     "pnpm": ">=10"
   },
-  "packageManager": "pnpm@10.34.6"
+  "packageManager": "pnpm@10.34.6",
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --max-warnings=0 --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{json,yml,yaml,css,html}": [
+      "prettier --write"
+    ]
+  }
 }

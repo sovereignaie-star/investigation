@@ -6,4 +6,10 @@ case "$staged" in *"docs/STATUS.md"*) ;; *) echo "GR-01: stage docs/STATUS.md wi
 case "$staged" in *"docs/WORKLOG.md"*) ;; *) echo "GR-01: add a docs/WORKLOG.md entry in this commit (see GOVERNANCE.md)."; exit 1;; esac
 # GR-12: never commit env files
 if echo "$staged" | grep -Eq '(^|/)\.env($|\.)' && ! echo "$staged" | grep -Eq '\.env\.example$'; then echo "GR-12: .env files must not be committed."; exit 1; fi
+# P0-022: lint and format staged files only (lint-staged re-stages formatted files).
+if [ -x "$root/node_modules/.bin/lint-staged" ]; then
+  "$root/node_modules/.bin/lint-staged" || exit 1
+else
+  echo "pre-commit: lint-staged not installed (run pnpm install); skipping lint, CI will still run it."
+fi
 exit 0

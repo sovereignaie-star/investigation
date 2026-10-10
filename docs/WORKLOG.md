@@ -214,3 +214,10 @@
 
 - ما لم يتم: القياس على إيداع قديم (`--ref`) غير مدعوم لأن خط الأساس `56e0f14` لا يُبنى أصلاً؛ أرقامه مجمّدة في 1.2.
 - التالي: P0-022.
+
+### 2026-10-10 — [P0-022] جودة الكود الثابتة
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: `eslint.config.mjs` (ESLint 9 + typescript-eslint strict + react-hooks؛ قواعد: `complexity` ≤ 15، `no-console` خارج السكربتات والاختبارات، `no-explicit-any`)؛ `.prettierrc.json` و`.prettierignore` و`.editorconfig`؛ `pnpm run lint` وخطوة Lint في وظيفة `build` في CI؛ lint-staged في `.githooks/pre-commit` (ESLint وPrettier على الملفات المُودَعة فقط، فيُطبّق التنسيق تدريجياً)؛ فحص Conventional Commits في الحارس (GR-03، ADR-22) مع T-GOV-013/014. إصلاحات صغيرة كشفها المدقق: متغيرات غير مستعملة، كتلة فارغة، تأكيدات non-null، حذف مفتاح ديناميكي. وأُصلح D-013: أُزيل استدعاء `api.whoisfreaks.com` غير المستعمل الذي كان يرسل اسم النطاق الهدف لطرف ثالث. أضيف `yaml: ^2.9.1` إلى `overrides` لأن lint-staged جلب نسخة ثانية من yaml فتكررت نسخة vite وفشل typecheck في `mockup-sandbox` (TS2769).
+- الأدلة: `pnpm run lint` بلا أخطاء؛ `pnpm run build` ينجح؛ `pnpm test` 8 ناجحة؛ اختبارات الحارس 15 ناجحة؛ `check.mjs --range origin/main..HEAD` بلا فشل.
+- ما لم يتم: أربعة ملفات قديمة معفاة صراحة من `complexity` و`no-useless-escape` و`no-control-regex` في `eslint.config.mjs` (`identifierList.ts`، `resultFetcher.ts`، `smartInvestigator.ts`، `custom-fetch.ts`) حتى تستبدلها P1-004..P1-006 ومحوّلات المرحلة 2؛ ومكونات shadcn في `mockup-sandbox`. لم يُعَد تنسيق المستودع كله بـ Prettier عمداً.
+- التالي: P0-023.

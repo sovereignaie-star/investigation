@@ -33,7 +33,7 @@ describe("identifierList", () => {
   it("T-IDL-005 onion_v3 example is a valid v3 address", () => {
     const onion = IDENTIFIER_LIST.find((t) => t.id === "onion_v3");
     expect(onion?.examples?.[0]).toMatch(/^[a-z2-7]{56}\.onion$/);
-    expect(onion?.regex.test(onion.examples![0])).toBe(true);
+    expect(onion?.regex.test(onion?.examples?.[0] ?? "")).toBe(true);
   });
 
   it("T-IDL-006 baseline: share of examples matching their own regex does not regress (D-006, fixed in P1-004)", () => {

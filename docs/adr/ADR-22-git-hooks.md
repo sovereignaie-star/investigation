@@ -12,7 +12,7 @@
 
 ## القرار
 
-نبقي `.githooks` (تُفعَّل بسكربت `prepare`)، ونضيف معها في P0-022: lint-staged داخل `pre-commit`، وفحص صيغة Conventional Commits داخل حارس الحوكمة بدل commitlint. حتى ذلك الحين الصيغة إلزامية بالمراجعة (CONTRIBUTING).
+نبقي `.githooks` (تُفعَّل بسكربت `prepare`)، ونضيف معها في P0-022: lint-staged داخل `pre-commit`، وفحص صيغة Conventional Commits داخل حارس الحوكمة بدل commitlint. نُفّذ في P0-022 (2026-10-10): `CONVENTIONAL_RE` في `scripts/governance/check.mjs` (T-GOV-013/014)، وlint-staged في `.githooks/pre-commit`.
 
 ## البدائل
 

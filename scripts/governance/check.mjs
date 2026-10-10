@@ -42,6 +42,9 @@ export function statusRows(text) {
   return rows;
 }
 
+// ADR-22: subject line follows Conventional Commits, e.g. "fix(web): repair list [P0-004]".
+export const CONVENTIONAL_RE = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: \S/;
+
 export function taskIdsInMessage(msg) {
   return [...new Set([...msg.matchAll(TASK_RE)].map((m) => m[1]))];
 }
@@ -54,6 +57,9 @@ export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmap
   if (!changed.has(WORKLOG)) errors.push(`GR-01: ${WORKLOG} must get a new entry in the same commit.`);
   const ids = taskIdsInMessage(message);
   if (ids.length === 0) errors.push("GR-03: commit message must reference at least one task id, e.g. [P0-004].");
+  const subject = message.split("\n").find((l) => l.trim()) ?? "";
+  if (!CONVENTIONAL_RE.test(subject))
+    errors.push(`GR-03: subject must follow Conventional Commits "type(scope): summary" (ADR-22); got "${subject.slice(0, 60)}".`);
   for (const id of ids) if (!roadmapIds.has(id)) errors.push(`GR-03: task ${id} does not exist in ${ROADMAP}.`);
   if (changed.has(WORKLOG)) {
     const added = worklogAdded.join("\n");
@@ -66,7 +72,8 @@ export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmap
 }
 
 function diffLines(diff) {
-  const added = [], removed = [];
+  const added = [],
+    removed = [];
   for (const line of diff.split("\n")) {
     if (line.startsWith("+++") || line.startsWith("---")) continue;
     if (line.startsWith("+")) added.push(line.slice(1));
@@ -81,7 +88,10 @@ function readRoadmapIds(ref) {
 }
 
 function checkStaged(msgFile) {
-  const message = readFileSync(msgFile, "utf8").split("\n").filter((l) => !l.startsWith("#")).join("\n");
+  const message = readFileSync(msgFile, "utf8")
+    .split("\n")
+    .filter((l) => !l.startsWith("#"))
+    .join("\n");
   if (/^(Merge|Revert) /.test(message)) return [];
   const files = git(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
   const { added, removed } = diffLines(git(["diff", "--cached", "-U0", "--", WORKLOG]));
@@ -99,22 +109,44 @@ function checkCommit(sha) {
   const files = git(["diff", "--name-only", base, sha]).split("\n").filter(Boolean);
   const { added, removed } = diffLines(git(["diff", "-U0", base, sha, "--", WORKLOG]));
   let roadmapIds;
-  try { roadmapIds = readRoadmapIds(sha); } catch { roadmapIds = new Set(); }
+  try {
+    roadmapIds = readRoadmapIds(sha);
+  } catch {
+    roadmapIds = new Set();
+  }
   return { errors: evaluate({ files, message, worklogAdded: added, worklogRemoved: removed, roadmapIds }) };
 }
 
 function checkRange(range) {
   const shas = git(["rev-list", "--reverse", range]).split("\n").filter(Boolean);
-  let failed = 0, botOnly = 0, compliant = 0;
+  let failed = 0,
+    botOnly = 0,
+    compliant = 0;
   for (const sha of shas) {
     const subject = git(["log", "-1", "--format=%h %s", sha]).trim();
     const r = checkCommit(sha);
-    if (r.skipped === "merge") { console.log(`skip  ${subject} (merge)`); continue; }
-    if (r.skipped === "bot") { botOnly++; console.log(`bot   ${subject} (${r.author}) – needs a governed follow-up commit in the same PR`); continue; }
-    if (r.errors.length) { failed++; console.log(`FAIL  ${subject}`); for (const e of r.errors) console.log(`      - ${e}`); }
-    else { compliant++; console.log(`ok    ${subject}`); }
+    if (r.skipped === "merge") {
+      console.log(`skip  ${subject} (merge)`);
+      continue;
+    }
+    if (r.skipped === "bot") {
+      botOnly++;
+      console.log(`bot   ${subject} (${r.author}) – needs a governed follow-up commit in the same PR`);
+      continue;
+    }
+    if (r.errors.length) {
+      failed++;
+      console.log(`FAIL  ${subject}`);
+      for (const e of r.errors) console.log(`      - ${e}`);
+    } else {
+      compliant++;
+      console.log(`ok    ${subject}`);
+    }
   }
-  if (botOnly && !compliant) { console.log("FAIL  bot commits present without any governed commit updating STATUS/WORKLOG (GR-01)."); failed++; }
+  if (botOnly && !compliant) {
+    console.log("FAIL  bot commits present without any governed commit updating STATUS/WORKLOG (GR-01).");
+    failed++;
+  }
   console.log(`\n${shas.length} commit(s) checked, ${failed} failing.`);
   return failed;
 }
@@ -170,7 +202,9 @@ function main(argv) {
   if (errors.length) {
     console.error("\nGovernance check failed (see GOVERNANCE.md):");
     for (const e of errors) console.error("  - " + e);
-    console.error("\nUpdate docs/STATUS.md and add a docs/WORKLOG.md entry IN THIS SAME COMMIT, and reference the task id in the message.\n");
+    console.error(
+      "\nUpdate docs/STATUS.md and add a docs/WORKLOG.md entry IN THIS SAME COMMIT, and reference the task id in the message.\n",
+    );
     process.exit(1);
   }
 }
