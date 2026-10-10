@@ -73,7 +73,12 @@ export function loadOrCreateInstallationKey(dir: string): InstallationKey {
     fd = openSync(keyFile, "wx", 0o600); // atomic create: no check-then-write race
   } catch (x) {
     if ((x as NodeJS.ErrnoException).code !== "EEXIST") throw x;
-    return installationKeyFromPem(readFileSync(keyFile, "utf8"));
+    const existing = openSync(keyFile, "r"); // read through the descriptor, not the path
+    try {
+      return installationKeyFromPem(readFileSync(existing, "utf8"));
+    } finally {
+      closeSync(existing);
+    }
   }
   try {
     fchmodSync(fd, 0o600);
