@@ -9,12 +9,15 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "governance": "node scripts/governance/check.mjs --last && node scripts/governance/check.mjs --consistency",
-    "governance:test": "node --test scripts/governance/check.test.mjs"
+    "governance:test": "node --test scripts/governance/check.test.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "private": true,
   "devDependencies": {
     "prettier": "^3.8.3",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=24",
