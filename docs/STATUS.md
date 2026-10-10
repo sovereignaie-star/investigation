@@ -81,7 +81,7 @@
 | P1-011 | التوقيع بـ Ed25519 ونقاط التثبيت (M) | done | packages/ledger signing.ts + merkle.ts: Ed25519 installation key (single open, 0600, fd-only I/O), ir-checkpoint/1 signed over JCS with RFC 9162 Merkle root, embedded + external verification, inclusion proofs; T-LED-011..015 green |
 | P1-012 | أمر `ir verify` (M) | done | packages/cli (ir verify, bundled dist/ir.mjs, in Docker image) + @ir/store verifyCase/formatReport: chain, evidence re-hash, embedded and published checkpoints, exit 0/1/2, --json; 4 tests |
 | P1-013 | تخزين القضية SQLite + ترحيلات (M) | done | packages/store: node:sqlite case dir (case.sqlite + blobs), 3 checksummed migrations (user_version, drift/newer/gap refused, failed step rolled back), append-only triggers, SqliteLedgerStore, openCase; 6 tests (empty->latest, every vN->latest equals fresh) |
-| P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | done | packages/store crypto.ts: Argon2id (RFC 9106 vector) wrapped per-case key, AES-256-GCM sealed payloads and HMAC-addressed blobs; reading without key fails; ir verify --passphrase-file; 8 tests |
+| P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | done | packages/store crypto.ts: Argon2id (RFC 9106 vector) wrapped per-case key, AES-256-GCM sealed payloads and HMAC-addressed blobs; reading without key fails; ir verify --passphrase-file; 8 tests; no check-then-read on case.key.json (CodeQL js/file-system-race fixed in code) |
 | P1-015 | خزنة المفاتيح في الخادم (M) | todo | — |
 | P1-016 | الإسقاطات: رسم، جدول، تغطية (M) | todo | — |
 | P1-017 | سجل التدقيق (M) | todo | — |
