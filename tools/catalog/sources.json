@@ -1,0 +1,21 @@
+[
+ {"id":"lockfale/OSINT-Framework","kind":"json-tree","url":"https://raw.githubusercontent.com/lockfale/OSINT-Framework/master/public/arf.json","home":"https://github.com/lockfale/OSINT-Framework"},
+ {"id":"jivoi/awesome-osint","kind":"md","url":"https://raw.githubusercontent.com/jivoi/awesome-osint/master/README.md","home":"https://github.com/jivoi/awesome-osint"},
+ {"id":"cipher387/osint_stuff_tool_collection","kind":"md","url":"https://raw.githubusercontent.com/cipher387/osint_stuff_tool_collection/main/README.md","home":"https://github.com/cipher387/osint_stuff_tool_collection"},
+ {"id":"Jieyab89/OSINT-Cheat-sheet","kind":"md","url":"https://raw.githubusercontent.com/Jieyab89/OSINT-Cheat-sheet/main/README.md","home":"https://github.com/Jieyab89/OSINT-Cheat-sheet"},
+ {"id":"Ph055a/OSINT_Collection","kind":"md","url":"https://raw.githubusercontent.com/Ph055a/OSINT_Collection/master/README.md","home":"https://github.com/Ph055a/OSINT_Collection"},
+ {"id":"tracelabs/awesome-osint","kind":"md","url":"https://raw.githubusercontent.com/tracelabs/awesome-osint/master/README.md","home":"https://github.com/tracelabs/awesome-osint"},
+ {"id":"osintambition/Social-Media-OSINT-Tools-Collection","kind":"md","url":"https://raw.githubusercontent.com/osintambition/Social-Media-OSINT-Tools-Collection/main/README.md","home":"https://github.com/osintambition/Social-Media-OSINT-Tools-Collection"},
+ {"id":"ItIsMeCall911/Awesome-Telegram-OSINT","kind":"md","url":"https://raw.githubusercontent.com/ItIsMeCall911/Awesome-Telegram-OSINT/main/README.md","home":"https://github.com/ItIsMeCall911/Awesome-Telegram-OSINT"},
+ {"id":"public-apis/public-apis","kind":"md-table","url":"https://raw.githubusercontent.com/public-apis/public-apis/master/README.md","home":"https://github.com/public-apis/public-apis"},
+ {"id":"hslatman/awesome-threat-intelligence","kind":"md","url":"https://raw.githubusercontent.com/hslatman/awesome-threat-intelligence/master/README.md","home":"https://github.com/hslatman/awesome-threat-intelligence"},
+ {"id":"cugu/awesome-forensics","kind":"md","url":"https://raw.githubusercontent.com/cugu/awesome-forensics/main/README.md","home":"https://github.com/cugu/awesome-forensics"},
+ {"id":"meirwah/awesome-incident-response","kind":"md","url":"https://raw.githubusercontent.com/meirwah/awesome-incident-response/master/README.md","home":"https://github.com/meirwah/awesome-incident-response"},
+ {"id":"sbilly/awesome-security","kind":"md","url":"https://raw.githubusercontent.com/sbilly/awesome-security/master/README.md","home":"https://github.com/sbilly/awesome-security"},
+ {"id":"sacridini/Awesome-Geospatial","kind":"md","url":"https://raw.githubusercontent.com/sacridini/Awesome-Geospatial/master/README.md","home":"https://github.com/sacridini/Awesome-Geospatial"},
+ {"id":"briatte/awesome-network-analysis","kind":"md","url":"https://raw.githubusercontent.com/briatte/awesome-network-analysis/master/README.md","home":"https://github.com/briatte/awesome-network-analysis"},
+ {"id":"jbmusso/awesome-graph","kind":"md","url":"https://raw.githubusercontent.com/jbmusso/awesome-graph/master/README.md","home":"https://github.com/jbmusso/awesome-graph"},
+ {"id":"iipc/awesome-web-archiving","kind":"md","url":"https://raw.githubusercontent.com/iipc/awesome-web-archiving/main/README.md","home":"https://github.com/iipc/awesome-web-archiving"},
+ {"id":"01walid/awesome-arabic","kind":"md","url":"https://raw.githubusercontent.com/01walid/awesome-arabic/master/README.md","home":"https://github.com/01walid/awesome-arabic"},
+ {"id":"Curated-Awesome-Lists/awesome-arabic-nlp","kind":"md","url":"https://raw.githubusercontent.com/Curated-Awesome-Lists/awesome-arabic-nlp/main/README.md","home":"https://github.com/Curated-Awesome-Lists/awesome-arabic-nlp"}
+]

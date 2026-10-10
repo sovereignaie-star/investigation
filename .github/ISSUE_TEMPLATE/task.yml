@@ -1,0 +1,19 @@
+name: مهمة من خارطة الطريق
+description: عمل مرتبط بمهمة Pn-nnn في docs/ROADMAP.md
+title: "[Pn-nnn] "
+body:
+  - type: input
+    id: task
+    attributes: { label: معرّف المهمة, placeholder: "P0-004" }
+    validations: { required: true }
+  - type: textarea
+    id: details
+    attributes: { label: التفاصيل ومعيار القبول }
+    validations: { required: true }
+  - type: checkboxes
+    id: gov
+    attributes:
+      label: الحوكمة
+      options:
+        - label: أفهم أن كل إيداع يجب أن يحدّث docs/STATUS.md وdocs/WORKLOG.md (GR-01)
+          required: true

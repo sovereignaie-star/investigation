@@ -1,0 +1,11 @@
+name: عيب
+description: خلل في السلوك أو البناء
+title: "[bug] "
+body:
+  - type: textarea
+    id: repro
+    attributes: { label: خطوات إعادة الإنتاج والنتيجة المتوقعة والفعلية }
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: الإيداع أو الإصدار }

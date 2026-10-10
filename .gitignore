@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Tool catalog raw-source cache (tools/catalog/build.py --cache)
+tools/catalog/.cache/
