@@ -154,3 +154,14 @@ describe("golden set: extractor scores (UC-02, D-005)", () => {
     expect(spurious.length).toBeLessThanOrEqual(10);
   });
 });
+
+describe("extract: robustness", () => {
+  it("trims punctuation in linear time and keeps spans exact", () => {
+    const t0 = Date.now();
+    expect(extract(`(${"!".repeat(50_000)}`)).toEqual([]);
+    expect(Date.now() - t0).toBeLessThan(2000);
+    const text = "«192.0.2.7»، ثم (DE89370400440532013000).";
+    const got = extract(text);
+    expect(got.map((g) => text.slice(g.start, g.end))).toEqual(["192.0.2.7", "DE89370400440532013000"]);
+  });
+});

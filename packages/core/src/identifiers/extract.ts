@@ -23,8 +23,9 @@ export interface ExtractOptions {
   minSpecificity?: number;
 }
 
-const LEAD = /^[([{"'«“‘<]+/u;
-const TRAIL = /[)\]}"'»”’>.,;:!?،؛]+$/u;
+// Linear trimming (no regex backtracking on long punctuation runs, CodeQL js/polynomial-redos).
+const LEAD = new Set([..."([{\"'«“‘<"]);
+const TRAIL = new Set([...")]}\"'»”’>.,;:!?،؛"]);
 
 interface Token {
   start: number;
@@ -35,12 +36,13 @@ interface Token {
 function tokens(text: string): Token[] {
   const out: Token[] = [];
   for (const m of text.matchAll(/\S+/gu)) {
-    let v = m[0];
-    let start = m.index;
-    const lead = LEAD.exec(v)?.[0].length ?? 0;
-    v = v.slice(lead);
-    start += lead;
-    v = v.replace(TRAIL, "");
+    const v0 = m[0];
+    let a = 0,
+      b = v0.length;
+    while (a < b && LEAD.has(v0.charAt(a))) a++;
+    while (b > a && TRAIL.has(v0.charAt(b - 1))) b--;
+    const v = v0.slice(a, b);
+    const start = m.index + a;
     if (v) out.push({ start, end: start + v.length, value: v });
   }
   return out;
