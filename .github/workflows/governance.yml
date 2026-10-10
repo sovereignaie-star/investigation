@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 24
       - name: Guard unit tests
-        run: node --test scripts/governance/
+        run: node --test scripts/governance/check.test.mjs
       - name: ROADMAP <-> STATUS consistency
         run: node scripts/governance/check.mjs --consistency
       - name: Every commit updates the docs
