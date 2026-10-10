@@ -221,3 +221,10 @@
 - الأدلة: `pnpm run lint` بلا أخطاء؛ `pnpm run build` ينجح؛ `pnpm test` 8 ناجحة؛ اختبارات الحارس 15 ناجحة؛ `check.mjs --range origin/main..HEAD` بلا فشل.
 - ما لم يتم: أربعة ملفات قديمة معفاة صراحة من `complexity` و`no-useless-escape` و`no-control-regex` في `eslint.config.mjs` (`identifierList.ts`، `resultFetcher.ts`، `smartInvestigator.ts`، `custom-fetch.ts`) حتى تستبدلها P1-004..P1-006 ومحوّلات المرحلة 2؛ ومكونات shadcn في `mockup-sandbox`. لم يُعَد تنسيق المستودع كله بـ Prettier عمداً.
 - التالي: P0-023.
+
+### 2026-10-10 — [P0-023] دليل التطوير
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: `docs/DEVELOPMENT.md` (المتطلبات، التشغيل، ما يُفحص عند الإيداع، أوامر مفيدة، القياس المسجل)، و`.vscode/extensions.json`، وروابط من README وCONTRIBUTING.
+- الأدلة: استنساخ نظيف للفرع في `/tmp` بمخزن pnpm فارغ: install 113 ث، lint 4 ث، typecheck 13 ث، build 11 ث، test 2 ث (8 ناجحة)، `dev` للواجهة HTTP 200، `/api/healthz` يعيد `{"status":"ok"}`؛ المجموع 158 ث [مُقاس]. البيئة Node 20.20.2 لا 24.
+- ما لم يتم: `compose.dev.yml` (اختياري، لنمط الفريق فقط) لم يُضف لأن النمط الفردي لا يحتاج قاعدة بيانات؛ يُضاف مع مهام Postgres.
+- التالي: P0-024.
