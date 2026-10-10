@@ -26,6 +26,8 @@ export interface OpenCaseOptions {
   clock?: Clock;
   /** Open read-only (verification, export): no migrations, no writes. */
   readOnly?: boolean;
+  /** Verifiers report chain errors themselves instead of refusing to open (used by verifyCase). */
+  skipChainCheck?: boolean;
 }
 
 export const CASE_DB = "case.sqlite";
@@ -44,7 +46,7 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
       db.exec("PRAGMA synchronous = FULL");
       migrate(db, { clock });
     }
-    const ledger = new Ledger({ store: sqliteLedgerStore(db), clock, actor: opts.actor });
+    const ledger = new Ledger({ store: sqliteLedgerStore(db), clock, actor: opts.actor, skipVerify: opts.skipChainCheck ?? false });
     const blobs = fsBlobStore(dir);
     const insertEvidence = db.prepare(
       "INSERT INTO evidence (id, sha256, mime, size, fetched_at, transform_id, ledger_seq) VALUES (?, ?, ?, ?, ?, ?, ?)",

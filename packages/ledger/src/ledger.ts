@@ -45,6 +45,8 @@ export interface LedgerOptions {
   store?: LedgerStore;
   clock?: Clock;
   actor: string;
+  /** Skip the open-time chain check (only for verifiers that report problems instead of refusing). */
+  skipVerify?: boolean;
 }
 
 /** Append-only hash chain (5.5, D1). */
@@ -58,7 +60,7 @@ export class Ledger {
     this.#clock = opts.clock ?? systemClock;
     this.#actor = opts.actor;
     const existing = this.#store.all();
-    if (existing.length > 0) {
+    if (existing.length > 0 && !opts.skipVerify) {
       const report = verify(existing);
       if (!report.ok) throw new Error(`ledger store is corrupt: ${report.errors[0]?.message ?? "unknown"}`);
     }

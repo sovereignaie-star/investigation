@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 12 | 0 |
+| 1 | النواة والسجل | 25 | 13 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -79,7 +79,7 @@
 | P1-009 | `@ir/ledger`: سلسلة تجزئة + JCS (M) | done | packages/ledger: RFC 8785 JCS, SHA-256 hash chain (ADR-06), append-only Ledger, verify(); T-LED-001..010 green (28 tests, 993 single-char edits all detected) |
 | P1-010 | مخزن الأدلة بعنونة المحتوى (M) | done | packages/ledger blobs.ts + evidence.ts: blobs/<sha[0:2]>/<sha> zstd, hash verified on every read, atomic idempotent put, request redaction, evidence.stored + verifyEvidence; T-LED-016..019 green |
 | P1-011 | التوقيع بـ Ed25519 ونقاط التثبيت (M) | done | packages/ledger signing.ts + merkle.ts: Ed25519 installation key (single open, 0600, fd-only I/O), ir-checkpoint/1 signed over JCS with RFC 9162 Merkle root, embedded + external verification, inclusion proofs; T-LED-011..015 green |
-| P1-012 | أمر `ir verify` (M) | todo | — |
+| P1-012 | أمر `ir verify` (M) | done | packages/cli (ir verify, bundled dist/ir.mjs, in Docker image) + @ir/store verifyCase/formatReport: chain, evidence re-hash, embedded and published checkpoints, exit 0/1/2, --json; 4 tests |
 | P1-013 | تخزين القضية SQLite + ترحيلات (M) | done | packages/store: node:sqlite case dir (case.sqlite + blobs), 3 checksummed migrations (user_version, drift/newer/gap refused, failed step rolled back), append-only triggers, SqliteLedgerStore, openCase; 6 tests (empty->latest, every vN->latest equals fresh) |
 | P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | todo | — |
 | P1-015 | خزنة المفاتيح في الخادم (M) | todo | — |

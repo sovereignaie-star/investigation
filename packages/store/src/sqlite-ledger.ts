@@ -3,6 +3,15 @@ import { canonicalize, type Entry, type LedgerStore } from "@ir/ledger";
 
 type Row = { seq: number; prev_hash: string | null; entry_hash: string; kind: string; at: string; actor: string; payload: string };
 
+/** A row edited outside the ledger may not even be JSON; keep it visible so verify() reports entry_hash, not a crash. */
+function parsePayload(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { unparseable: text };
+  }
+}
+
 /**
  * LedgerStore on the `ledger` table. Rows are append-only in the database itself (triggers reject UPDATE and DELETE),
  * and the payload is stored as its JCS text, so reading back gives exactly the bytes that were hashed.
@@ -24,7 +33,7 @@ export function sqliteLedgerStore(db: DatabaseSync): LedgerStore {
         kind: r.kind as Entry["kind"],
         at: r.at,
         actor: r.actor,
-        payload: JSON.parse(r.payload) as unknown,
+        payload: parsePayload(r.payload),
       }));
     },
   };

@@ -30,6 +30,13 @@ pnpm start                         # بعد البناء: خدمة واحدة ع
 
 النشر (Docker، Render، Railway، جهاز محلي) موثق في `README.md` قسم «النشر».
 
+التحقق من سلامة قضية (P1-012):
+
+```sh
+pnpm ir verify path/to/case --key installation.pub --checkpoint checkpoint.json   # أو --json
+node packages/cli/dist/ir.mjs verify path/to/case                                # بعد البناء، بلا node_modules
+```
+
 انسخ `.env.example` إلى `.env` إن احتجت متغيرات (لا تُودِع `.env` أبداً، GR-12). مفاتيح مزودي البيانات لا توضع في `.env` بل في خزنة المفاتيح المشفرة (P1-015).
 
 ## ما يحدث عند الإيداع
