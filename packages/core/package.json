@@ -6,13 +6,16 @@
   "exports": {
     ".": "./src/index.ts",
     "./validate": "./src/validators/index.ts",
-    "./psl": "./src/psl/index.ts"
+    "./psl": "./src/psl/index.ts",
+    "./identifiers": "./src/identifiers/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "gen:data": "node scripts/gen-data.mjs"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@ir/schema": "workspace:*",
+    "@types/node": "catalog:",
+    "yaml": "^2.9.1"
   }
 }

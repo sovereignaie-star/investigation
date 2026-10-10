@@ -1,0 +1,36 @@
+# Identifier catalog: DarkWeb (2 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: onion_v2
+  category: DarkWeb
+  labels:
+    en: Tor .onion v2 Address
+    ar: عنوان Tor البصلي v2
+  description: Tor hidden service v2 address (deprecated)
+  icon: 🧅
+  color: purple
+  patterns:
+    - ^[a-z2-7]{16}\.onion$
+  validator: null
+  examples:
+    positive:
+      - 3g2upl4pq6kufc4m.onion
+    negative:
+      - 3g2upl4pq6kufc4m.onion#
+  sensitivity: normal
+- id: onion_v3
+  category: DarkWeb
+  labels:
+    en: Tor .onion v3 Address
+    ar: عنوان Tor البصلي v3
+  description: Tor hidden service v3 address (56 chars)
+  icon: 🧅
+  color: purple
+  patterns:
+    - ^[a-z2-7]{56}\.onion$
+  validator: null
+  examples:
+    positive:
+      - 2gzyxa5ihm7nsggfxnu52rck2vv4rvmdlkiu3zzui5du4xyclen53wid.onion
+    negative:
+      - 2gzyxa5ihm7nsggfxnu52rck2vv4rvmdlkiu3zzui5du4xyclen53wid.onion#
+  sensitivity: normal

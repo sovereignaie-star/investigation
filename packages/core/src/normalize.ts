@@ -168,7 +168,11 @@ const EXACT: Record<string, Normalizer> = {
   domain: normalizeHost,
   subdomain: normalizeHost,
   hostname: normalizeHost,
-  mx_record: normalizeHost,
+  // "preference host" (RFC 1035 MX RDATA); a bare host is accepted as preference-less
+  mx_record: (s) => {
+    const m = /^(\d{1,5})\s+(\S+)$/.exec(cleanText(s));
+    return m ? `${Number(m[1])} ${normalizeHost(m[2] ?? "")}` : normalizeHost(s);
+  },
   smtp_server: normalizeHost,
   ens_name: lower,
   onion_v2: lower,

@@ -1,0 +1,903 @@
+# Identifier catalog: Documents (53 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: passport_generic
+  category: Documents
+  labels:
+    en: Passport Number (Generic)
+    ar: رقم جواز سفر
+  description: Generic passport number format
+  icon: 🛂
+  color: blue
+  patterns:
+    - ^[A-Z0-9]{6,9}$
+  validator: null
+  examples:
+    positive:
+      - AB123456
+    negative:
+      - AB123456#
+  sensitivity: natural_person_gate
+- id: passport_us
+  category: Documents
+  labels:
+    en: US Passport Number
+    ar: جواز سفر أمريكي
+  description: United States passport number
+  icon: 🇺🇸
+  color: blue
+  patterns:
+    - ^[0-9]{9}$
+  validator: null
+  examples:
+    positive:
+      - "123456789"
+    negative:
+      - 123456789#
+  sensitivity: natural_person_gate
+- id: passport_uk
+  category: Documents
+  labels:
+    en: UK Passport Number
+    ar: جواز سفر بريطاني
+  description: United Kingdom passport number
+  icon: 🇬🇧
+  color: blue
+  patterns:
+    - ^[0-9]{9}$
+  validator: null
+  examples:
+    positive:
+      - "123456789"
+    negative:
+      - 123456789#
+  sensitivity: natural_person_gate
+- id: passport_de
+  category: Documents
+  labels:
+    en: German Passport Number
+    ar: جواز سفر ألماني
+  description: German passport (Reisepass) number
+  icon: 🇩🇪
+  color: gray
+  patterns:
+    - ^[CFGHJKLMNPRTVWXYZ][CFGHJKLMNPRTVWXYZ0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - C01X00T47
+    negative:
+      - C01X00T47#
+  sensitivity: natural_person_gate
+- id: passport_fr
+  category: Documents
+  labels:
+    en: French Passport Number
+    ar: جواز سفر فرنسي
+  description: French passport number
+  icon: 🇫🇷
+  color: blue
+  patterns:
+    - ^[0-9]{2}[A-Z]{2}[0-9]{5}$
+  validator: null
+  examples:
+    positive:
+      - 12AB56789
+    negative:
+      - 12AB56789#
+  sensitivity: natural_person_gate
+- id: passport_sa
+  category: Documents
+  labels:
+    en: Saudi Passport Number
+    ar: جواز سفر سعودي
+  description: Saudi Arabia passport number
+  icon: 🇸🇦
+  color: green
+  patterns:
+    - ^[A-Z]{1}[0-9]{7}$
+  validator: null
+  examples:
+    positive:
+      - A1234567
+    negative:
+      - A1234567#
+  sensitivity: natural_person_gate
+- id: national_id_sa
+  category: Documents
+  labels:
+    en: Saudi National ID
+    ar: هوية وطنية سعودية
+  description: Saudi Arabia national identity number
+  icon: 🇸🇦
+  color: green
+  patterns:
+    - ^[12]\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890"
+    negative:
+      - 1234567890#
+  sensitivity: natural_person_gate
+- id: iqama_sa
+  category: Documents
+  labels:
+    en: Saudi Iqama Number
+    ar: رقم إقامة سعودي
+  description: Saudi Arabia residency permit (Iqama)
+  icon: 🇸🇦
+  color: green
+  patterns:
+    - ^[2]\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "2123456789"
+    negative:
+      - 2123456789#
+  sensitivity: natural_person_gate
+- id: national_id_ae
+  category: Documents
+  labels:
+    en: UAE Emirates ID
+    ar: هوية إماراتية
+  description: UAE Emirates Identity Authority ID
+  icon: 🇦🇪
+  color: red
+  patterns:
+    - ^\d{3}-?\d{4}-?\d{7}-?\d{1}$
+  validator: null
+  examples:
+    positive:
+      - 784-1234-1234567-8
+    negative:
+      - 784-1234-1234567-8#
+  sensitivity: natural_person_gate
+- id: national_id_eg
+  category: Documents
+  labels:
+    en: Egyptian National ID
+    ar: رقم قومي مصري
+  description: Egyptian National ID number
+  icon: 🇪🇬
+  color: orange
+  patterns:
+    - ^[23]\d{13}$
+  validator: null
+  examples:
+    positive:
+      - "29901011234567"
+    negative:
+      - 29901011234567#
+  sensitivity: natural_person_gate
+- id: national_id_jo
+  category: Documents
+  labels:
+    en: Jordanian National ID
+    ar: رقم وطني أردني
+  description: Jordanian national identity number
+  icon: 🇯🇴
+  color: green
+  patterns:
+    - ^\d{10}$
+  validator: null
+  examples:
+    positive:
+      - "9876543210"
+    negative:
+      - 9876543210#
+  sensitivity: natural_person_gate
+- id: national_id_ps
+  category: Documents
+  labels:
+    en: Palestinian ID
+    ar: هوية فلسطينية
+  description: Palestinian identity number
+  icon: 🇵🇸
+  color: green
+  patterns:
+    - ^[0-9]{9}$
+  validator: null
+  examples:
+    positive:
+      - "123456789"
+    negative:
+      - 123456789#
+  sensitivity: natural_person_gate
+- id: national_id_iq
+  category: Documents
+  labels:
+    en: Iraqi National ID
+    ar: هوية وطنية عراقية
+  description: Iraqi national identity number
+  icon: 🇮🇶
+  color: green
+  patterns:
+    - ^\d{12}$
+  validator: null
+  examples:
+    positive:
+      - "123456789012"
+    negative:
+      - 123456789012#
+  sensitivity: natural_person_gate
+- id: national_id_sy
+  category: Documents
+  labels:
+    en: Syrian National ID
+    ar: هوية وطنية سورية
+  description: Syrian national identity number
+  icon: 🇸🇾
+  color: green
+  patterns:
+    - ^\d{10,12}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890"
+    negative:
+      - 1234567890#
+  sensitivity: natural_person_gate
+- id: national_id_ma
+  category: Documents
+  labels:
+    en: Moroccan CIN
+    ar: بطاقة وطنية مغربية
+  description: Moroccan Carte d'Identité Nationale
+  icon: 🇲🇦
+  color: red
+  patterns:
+    - ^[A-Z]{1,2}\d{5,6}$
+  validator: null
+  examples:
+    positive:
+      - AB123456
+    negative:
+      - AB123456#
+  sensitivity: natural_person_gate
+- id: national_id_tn
+  category: Documents
+  labels:
+    en: Tunisian CIN
+    ar: بطاقة هوية تونسية
+  description: Tunisian Carte d'Identité Nationale
+  icon: 🇹🇳
+  color: red
+  patterns:
+    - ^\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "12345678"
+    negative:
+      - 12345678#
+  sensitivity: natural_person_gate
+- id: national_id_dz
+  category: Documents
+  labels:
+    en: Algerian National ID
+    ar: هوية وطنية جزائرية
+  description: Algerian national identity number
+  icon: 🇩🇿
+  color: green
+  patterns:
+    - ^\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "123456789"
+    negative:
+      - 123456789#
+  sensitivity: natural_person_gate
+- id: national_id_ly
+  category: Documents
+  labels:
+    en: Libyan National ID
+    ar: هوية وطنية ليبية
+  description: Libyan national identity number
+  icon: 🇱🇾
+  color: green
+  patterns:
+    - ^\d{12}$
+  validator: null
+  examples:
+    positive:
+      - "123456789012"
+    negative:
+      - 123456789012#
+  sensitivity: natural_person_gate
+- id: national_id_tr
+  category: Documents
+  labels:
+    en: Turkish National ID (TC)
+    ar: هوية تركية TC
+  description: Turkish Republic Identity Number (TC Kimlik No)
+  icon: 🇹🇷
+  color: red
+  patterns:
+    - ^[1-9]\d{10}$
+  validator: null
+  examples:
+    positive:
+      - "12345678901"
+    negative:
+      - 12345678901#
+  sensitivity: natural_person_gate
+- id: national_id_ir
+  category: Documents
+  labels:
+    en: Iranian National ID
+    ar: كد ملي إيراني
+  description: Iranian National Code (Kode Melli)
+  icon: 🇮🇷
+  color: green
+  patterns:
+    - ^\d{10}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890"
+    negative:
+      - 1234567890#
+  sensitivity: natural_person_gate
+- id: ssn_us
+  category: Documents
+  labels:
+    en: US Social Security Number
+    ar: رقم الضمان الاجتماعي الأمريكي
+  description: United States Social Security Number (SSN)
+  icon: 🇺🇸
+  color: blue
+  patterns:
+    - ^(?!000|666|9\d{2})\d{3}-?(?!00)\d{2}-?(?!0000)\d{4}$
+  validator: null
+  examples:
+    positive:
+      - 123-45-6789
+    negative:
+      - 123-45-6789#
+  sensitivity: natural_person_gate
+- id: sin_ca
+  category: Documents
+  labels:
+    en: Canadian SIN
+    ar: رقم التأمين الاجتماعي الكندي
+  description: Canadian Social Insurance Number (SIN)
+  icon: 🇨🇦
+  color: red
+  patterns:
+    - ^\d{3}[-\s]?\d{3}[-\s]?\d{3}$
+  validator: null
+  examples:
+    positive:
+      - 123-456-789
+    negative:
+      - 123-456-789#
+  sensitivity: natural_person_gate
+- id: nino_uk
+  category: Documents
+  labels:
+    en: UK National Insurance Number
+    ar: رقم التأمين الوطني البريطاني
+  description: UK National Insurance Number (NINO)
+  icon: 🇬🇧
+  color: blue
+  patterns:
+    - ^[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$
+  validator: null
+  examples:
+    positive:
+      - AB123456C
+    negative:
+      - AB123456C#
+  sensitivity: natural_person_gate
+- id: tax_id_de
+  category: Documents
+  labels:
+    en: German Tax ID (Steuer-ID)
+    ar: معرف ضريبي ألماني
+  description: German personal tax identification number
+  icon: 🇩🇪
+  color: gray
+  patterns:
+    - ^[1-9]\d{10}$
+  validator: null
+  examples:
+    positive:
+      - "12345678901"
+    negative:
+      - 12345678901#
+  sensitivity: natural_person_gate
+- id: nif_es
+  category: Documents
+  labels:
+    en: Spanish NIF/NIE
+    ar: معرف ضريبي إسباني
+  description: Spanish Tax Identification Number
+  icon: 🇪🇸
+  color: red
+  patterns:
+    - ^[0-9XYZ]\d{7}[A-Z]$
+  validator: null
+  examples:
+    positive:
+      - 12345678A
+    negative:
+      - 12345678A#
+  sensitivity: natural_person_gate
+- id: cpf_br
+  category: Documents
+  labels:
+    en: Brazilian CPF
+    ar: رقم CPF البرازيلي
+  description: Brazilian Cadastro de Pessoas Físicas number
+  icon: 🇧🇷
+  color: green
+  patterns:
+    - ^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$
+  validator: null
+  examples:
+    positive:
+      - 123.456.789-00
+    negative:
+      - 123.456.789-00#
+  sensitivity: natural_person_gate
+- id: cnpj_br
+  category: Documents
+  labels:
+    en: Brazilian CNPJ
+    ar: رقم CNPJ البرازيلي
+  description: Brazilian company registration number (CNPJ)
+  icon: 🇧🇷
+  color: green
+  patterns:
+    - ^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}$
+  validator: null
+  examples:
+    positive:
+      - 12.345.678/0001-00
+    negative:
+      - 12.345.678/0001-00#
+  sensitivity: normal
+- id: curp_mx
+  category: Documents
+  labels:
+    en: Mexican CURP
+    ar: رقم CURP المكسيكي
+  description: Mexican Clave Única de Registro de Población
+  icon: 🇲🇽
+  color: green
+  patterns:
+    - ^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$
+  validator: null
+  examples:
+    positive:
+      - BADD110313HCMLNS09
+    negative:
+      - BADD110313HCMLNS09#
+  sensitivity: natural_person_gate
+- id: rfc_mx
+  category: Documents
+  labels:
+    en: Mexican RFC
+    ar: رقم RFC المكسيكي
+  description: Mexican Registro Federal de Contribuyentes
+  icon: 🇲🇽
+  color: green
+  patterns:
+    - ^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$
+  validator: null
+  examples:
+    positive:
+      - GODE561231GR8
+    negative:
+      - GODE561231GR8#
+  sensitivity: natural_person_gate
+- id: aadhar_in
+  category: Documents
+  labels:
+    en: Indian Aadhaar Number
+    ar: رقم آدهار الهندي
+  description: Indian Aadhaar unique identification number
+  icon: 🇮🇳
+  color: orange
+  patterns:
+    - ^[2-9]\d{11}$
+  validator: null
+  examples:
+    positive:
+      - "234567890123"
+    negative:
+      - 234567890123#
+  sensitivity: natural_person_gate
+- id: pan_in
+  category: Documents
+  labels:
+    en: Indian PAN Card
+    ar: بطاقة PAN الهندية
+  description: Indian Permanent Account Number (income tax)
+  icon: 🇮🇳
+  color: orange
+  patterns:
+    - ^[A-Z]{5}[0-9]{4}[A-Z]{1}$
+  validator: null
+  examples:
+    positive:
+      - ABCDE1234F
+    negative:
+      - ABCDE1234F#
+  sensitivity: natural_person_gate
+- id: nric_sg
+  category: Documents
+  labels:
+    en: Singapore NRIC/FIN
+    ar: هوية سنغافورة
+  description: Singapore National Registration Identity Card
+  icon: 🇸🇬
+  color: red
+  patterns:
+    - ^[STFGM]\d{7}[A-Z]$
+  validator: null
+  examples:
+    positive:
+      - S1234567A
+    negative:
+      - S1234567A#
+  sensitivity: natural_person_gate
+- id: mykad_my
+  category: Documents
+  labels:
+    en: Malaysian MyKad
+    ar: بطاقة MyKad الماليزية
+  description: Malaysian identity card (MyKad)
+  icon: 🇲🇾
+  color: blue
+  patterns:
+    - ^\d{2}[01]\d[0-5]\d[-\s]?\d{2}[-\s]?\d{4}$
+  validator: null
+  examples:
+    positive:
+      - 901231-14-5678
+    negative:
+      - 901231-14-5678#
+  sensitivity: natural_person_gate
+- id: ktp_id
+  category: Documents
+  labels:
+    en: Indonesian KTP
+    ar: هوية إندونيسيا KTP
+  description: Indonesian national identity card (KTP)
+  icon: 🇮🇩
+  color: red
+  patterns:
+    - ^\d{16}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890123456"
+    negative:
+      - 1234567890123456#
+  sensitivity: natural_person_gate
+- id: driving_license_us
+  category: Documents
+  labels:
+    en: US Driving License
+    ar: رخصة قيادة أمريكية
+  description: US state driving license number
+  icon: 🚗
+  color: blue
+  patterns:
+    - ^[A-Z0-9]{1,18}$
+  validator: null
+  examples:
+    positive:
+      - A1234567
+    negative:
+      - A1234567#
+  sensitivity: natural_person_gate
+- id: mrz_line
+  category: Documents
+  labels:
+    en: MRZ Machine Readable Zone
+    ar: منطقة القراءة الآلية MRZ
+  description: Travel document machine readable zone line
+  icon: 🔏
+  color: gray
+  patterns:
+    - ^[A-Z0-9<]{44}$
+  validator: null
+  examples:
+    positive:
+      - P<GBRSMITH<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    negative:
+      - P<GBRSMITH<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<<<#
+  sensitivity: natural_person_gate
+- id: visa_number
+  category: Documents
+  labels:
+    en: Visa Number
+    ar: رقم تأشيرة
+  description: Travel visa document number
+  icon: ✈️
+  color: blue
+  patterns:
+    - ^[A-Z0-9]{6,12}$
+  validator: null
+  examples:
+    positive:
+      - V12345678
+    negative:
+      - V12345678#
+  sensitivity: natural_person_gate
+- id: birth_cert
+  category: Documents
+  labels:
+    en: Birth Certificate Number
+    ar: رقم شهادة الميلاد
+  description: Birth certificate registration number
+  icon: 🎂
+  color: pink
+  patterns:
+    - ^[A-Z0-9\-]{5,20}$
+  validator: null
+  examples:
+    positive:
+      - BC-2001-123456
+    negative:
+      - BC-2001-123456#
+  sensitivity: natural_person_gate
+- id: national_id_pk
+  category: Documents
+  labels:
+    en: Pakistani CNIC
+    ar: هوية CNIC الباكستانية
+  description: Pakistani Computerized National Identity Card
+  icon: 🇵🇰
+  color: green
+  patterns:
+    - ^\d{5}-?\d{7}-?\d{1}$
+  validator: null
+  examples:
+    positive:
+      - 12345-1234567-1
+    negative:
+      - 12345-1234567-1#
+  sensitivity: natural_person_gate
+- id: national_id_bd
+  category: Documents
+  labels:
+    en: Bangladeshi NID
+    ar: هوية بنغلاديشية
+  description: Bangladesh National Identity Card number
+  icon: 🇧🇩
+  color: green
+  patterns:
+    - ^\d{10}$|^\d{13}$|^\d{17}$
+  validator: null
+  examples:
+    positive:
+      - "1234567890"
+    negative:
+      - 1234567890#
+  sensitivity: natural_person_gate
+- id: nhif_ke
+  category: Documents
+  labels:
+    en: Kenyan National ID
+    ar: هوية وطنية كينية
+  description: Kenyan national identity card number
+  icon: 🇰🇪
+  color: red
+  patterns:
+    - ^\d{7,8}$
+  validator: null
+  examples:
+    positive:
+      - "12345678"
+    negative:
+      - 12345678#
+  sensitivity: natural_person_gate
+- id: national_id_ng
+  category: Documents
+  labels:
+    en: Nigerian NIN
+    ar: هوية NIN النيجيرية
+  description: Nigerian National Identification Number
+  icon: 🇳🇬
+  color: green
+  patterns:
+    - ^\d{11}$
+  validator: null
+  examples:
+    positive:
+      - "12345678901"
+    negative:
+      - 12345678901#
+  sensitivity: natural_person_gate
+- id: national_id_za
+  category: Documents
+  labels:
+    en: South African ID
+    ar: هوية جنوب أفريقية
+  description: South African identity document number
+  icon: 🇿🇦
+  color: blue
+  patterns:
+    - ^\d{13}$
+  validator: null
+  examples:
+    positive:
+      - "9001014800088"
+    negative:
+      - 9001014800088#
+  sensitivity: natural_person_gate
+- id: national_id_ru
+  category: Documents
+  labels:
+    en: Russian Passport (Internal)
+    ar: جواز داخلي روسي
+  description: Russian internal passport number
+  icon: 🇷🇺
+  color: red
+  patterns:
+    - ^\d{4}\s?\d{6}$
+  validator: null
+  examples:
+    positive:
+      - 1234 567890
+    negative:
+      - 1234 567890#
+  sensitivity: natural_person_gate
+- id: snils_ru
+  category: Documents
+  labels:
+    en: Russian SNILS
+    ar: رقم SNILS الروسي
+  description: Russian social insurance number (СНИЛС)
+  icon: 🇷🇺
+  color: red
+  patterns:
+    - ^\d{3}-\d{3}-\d{3}\s?\d{2}$
+  validator: null
+  examples:
+    positive:
+      - 123-456-789 00
+    negative:
+      - 123-456-789 00#
+  sensitivity: natural_person_gate
+- id: inn_ru
+  category: Documents
+  labels:
+    en: Russian INN (Tax Number)
+    ar: رقم INN الضريبي الروسي
+  description: Russian Individual Taxpayer Number (ИНН)
+  icon: 🇷🇺
+  color: red
+  patterns:
+    - ^\d{10}$|^\d{12}$
+  validator: null
+  examples:
+    positive:
+      - "123456789012"
+    negative:
+      - 123456789012#
+  sensitivity: natural_person_gate
+- id: iin_kz
+  category: Documents
+  labels:
+    en: Kazakh IIN
+    ar: رقم IIN الكازاخستاني
+  description: Kazakhstan Individual Identification Number
+  icon: 🇰🇿
+  color: blue
+  patterns:
+    - ^\d{12}$
+  validator: null
+  examples:
+    positive:
+      - "900101300001"
+    negative:
+      - 900101300001#
+  sensitivity: natural_person_gate
+- id: passport_cn
+  category: Documents
+  labels:
+    en: Chinese Passport
+    ar: جواز سفر صيني
+  description: Chinese passport number
+  icon: 🇨🇳
+  color: red
+  patterns:
+    - ^[EGe][a-zA-Z0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - E12345678
+    negative:
+      - E12345678#
+  sensitivity: natural_person_gate
+- id: id_card_cn
+  category: Documents
+  labels:
+    en: Chinese ID Card
+    ar: بطاقة هوية صينية
+  description: Chinese Resident Identity Card number
+  icon: 🇨🇳
+  color: red
+  patterns:
+    - ^\d{17}[\dX]$
+  validator: null
+  examples:
+    positive:
+      - 11010519491231002X
+    negative:
+      - 11010519491231002X#
+  sensitivity: natural_person_gate
+- id: my_number_jp
+  category: Documents
+  labels:
+    en: Japanese My Number
+    ar: الرقم الياباني My Number
+  description: Japanese individual number (My Number / マイナンバー)
+  icon: 🇯🇵
+  color: red
+  patterns:
+    - ^\d{12}$
+  validator: null
+  examples:
+    positive:
+      - "123456789012"
+    negative:
+      - 123456789012#
+  sensitivity: natural_person_gate
+- id: resident_reg_kr
+  category: Documents
+  labels:
+    en: Korean Resident Registration
+    ar: رقم التسجيل الكوري
+  description: South Korean Resident Registration Number
+  icon: 🇰🇷
+  color: blue
+  patterns:
+    - ^\d{6}-[1-4]\d{6}$
+  validator: null
+  examples:
+    positive:
+      - 900101-1234567
+    negative:
+      - 900101-1234567#
+  sensitivity: natural_person_gate
+- id: medicare_au
+  category: Documents
+  labels:
+    en: Australian Medicare Number
+    ar: رقم Medicare الأسترالي
+  description: Australian Medicare card number
+  icon: 🇦🇺
+  color: yellow
+  patterns:
+    - ^\d{10}$
+  validator: null
+  examples:
+    positive:
+      - "2123456701"
+    negative:
+      - 2123456701#
+  sensitivity: natural_person_gate
+- id: tfn_au
+  category: Documents
+  labels:
+    en: Australian TFN
+    ar: رقم TFN الأسترالي
+  description: Australian Tax File Number
+  icon: 🇦🇺
+  color: yellow
+  patterns:
+    - ^\d{8,9}$
+  validator: null
+  examples:
+    positive:
+      - "123456789"
+    negative:
+      - 123456789#
+  sensitivity: natural_person_gate

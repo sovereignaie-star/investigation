@@ -1,0 +1,176 @@
+# Identifier catalog: Email (10 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: email
+  category: Email
+  labels:
+    en: Email Address
+    ar: البريد الإلكتروني
+  description: Standard email address
+  icon: 📧
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$
+  validator: null
+  examples:
+    positive:
+      - user@example.com
+    negative:
+      - user@example.com#
+  sensitivity: normal
+  transforms:
+    - haveibeenpwned
+    - hunter
+    - clearbit
+- id: email_disposable
+  category: Email
+  labels:
+    en: Disposable Email
+    ar: بريد مؤقت
+  description: Temporary disposable email
+  icon: 🗑️
+  color: orange
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@(mailinator|guerrillamail|tempmail|throwam|yopmail|sharklasers|guerrillamailblock|spam4|grr|zzrgg|trbvm|mt2r)\.com$
+  validator: null
+  examples:
+    positive:
+      - test@mailinator.com
+    negative:
+      - test@mailinator.com#
+  sensitivity: normal
+- id: email_corporate
+  category: Email
+  labels:
+    en: Corporate Email
+    ar: بريد مؤسسي
+  description: Corporate email address
+  icon: 🏢
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@(?!gmail|yahoo|hotmail|outlook|aol|icloud)[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$
+  validator: null
+  examples:
+    positive:
+      - john@company.com
+    negative:
+      - john@company.com#
+  sensitivity: normal
+- id: gmail
+  category: Email
+  labels:
+    en: Gmail Address
+    ar: جيميل
+  description: Google Gmail address
+  icon: 📨
+  color: red
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@gmail\.com$
+  validator: null
+  examples:
+    positive:
+      - user@gmail.com
+    negative:
+      - user@gmail.com#
+  sensitivity: normal
+- id: protonmail
+  category: Email
+  labels:
+    en: ProtonMail Address
+    ar: بروتون ميل
+  description: Encrypted ProtonMail address
+  icon: 🔒
+  color: purple
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@proton(mail)?\.com$
+  validator: null
+  examples:
+    positive:
+      - user@protonmail.com
+    negative:
+      - user@protonmail.com#
+  sensitivity: normal
+- id: tutanota
+  category: Email
+  labels:
+    en: Tutanota Address
+    ar: توتانوتا
+  description: Encrypted Tutanota email
+  icon: 🔐
+  color: green
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@(tutanota|tuta)\.com$
+  validator: null
+  examples:
+    positive:
+      - user@tutanota.com
+    negative:
+      - user@tutanota.com#
+  sensitivity: normal
+- id: outlook
+  category: Email
+  labels:
+    en: Outlook/Hotmail
+    ar: أوتلوك
+  description: Microsoft Outlook or Hotmail
+  icon: 📬
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@(outlook|hotmail|live|msn)\.com$
+  validator: null
+  examples:
+    positive:
+      - user@outlook.com
+    negative:
+      - user@outlook.com#
+  sensitivity: normal
+- id: yahoo_mail
+  category: Email
+  labels:
+    en: Yahoo Mail
+    ar: ياهو ميل
+  description: Yahoo Mail address
+  icon: 📮
+  color: purple
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@yahoo\.(com|co\.uk|fr|de|es|it|jp)$
+  validator: null
+  examples:
+    positive:
+      - user@yahoo.com
+    negative:
+      - user@yahoo.com#
+  sensitivity: normal
+- id: icloud_mail
+  category: Email
+  labels:
+    en: iCloud Mail
+    ar: آي كلاود ميل
+  description: Apple iCloud email
+  icon: ☁️
+  color: blue
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@(icloud|me|mac)\.com$
+  validator: null
+  examples:
+    positive:
+      - user@icloud.com
+    negative:
+      - user@icloud.com#
+  sensitivity: normal
+- id: yandex_mail
+  category: Email
+  labels:
+    en: Yandex Mail
+    ar: ياندكس ميل
+  description: Russian Yandex email
+  icon: 🇷🇺
+  color: red
+  patterns:
+    - ^[a-zA-Z0-9._%+\-]+@yandex\.(ru|com|ua|by|kz)$
+  validator: null
+  examples:
+    positive:
+      - user@yandex.ru
+    negative:
+      - user@yandex.ru#
+  sensitivity: normal

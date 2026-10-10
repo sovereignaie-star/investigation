@@ -1,0 +1,1143 @@
+# Identifier catalog: Phone (67 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: phone_intl
+  category: Phone
+  labels:
+    en: International Phone
+    ar: هاتف دولي
+  description: International phone number with country code
+  icon: 📞
+  color: green
+  patterns:
+    - ^\+[1-9]\d{6,14}$
+  validator: null
+  examples:
+    positive:
+      - "+966501234567"
+    negative:
+      - +966501234567#
+  sensitivity: normal
+  transforms:
+    - numverify
+- id: phone_us
+  category: Phone
+  labels:
+    en: US Phone Number
+    ar: هاتف أمريكي
+  description: US/Canada phone number
+  icon: 🇺🇸
+  color: blue
+  patterns:
+    - ^(\+?1[-.\s]?)?(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})$
+  validator: null
+  examples:
+    positive:
+      - +1-555-123-4567
+    negative:
+      - +1-555-123-4567#
+  sensitivity: normal
+- id: phone_uk
+  category: Phone
+  labels:
+    en: UK Phone Number
+    ar: هاتف بريطاني
+  description: UK phone number
+  icon: 🇬🇧
+  color: blue
+  patterns:
+    - ^(\+?44[-.\s]?)?0?[1-9](?:[-.\s]?\d){8,9}$
+  validator: null
+  examples:
+    positive:
+      - +44 7911 123456
+    negative:
+      - +44 7911 123456#
+  sensitivity: normal
+- id: phone_sa
+  category: Phone
+  labels:
+    en: Saudi Arabia Phone
+    ar: هاتف سعودي
+  description: Saudi Arabia phone number
+  icon: 🇸🇦
+  color: green
+  patterns:
+    - ^(\+?966[-.\s]?)?0?5[0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - "+966501234567"
+    negative:
+      - +966501234567#
+  sensitivity: normal
+- id: phone_ae
+  category: Phone
+  labels:
+    en: UAE Phone Number
+    ar: هاتف إماراتي
+  description: UAE phone number
+  icon: 🇦🇪
+  color: red
+  patterns:
+    - ^(\+?971[-.\s]?)?0?5[0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - "+971501234567"
+    negative:
+      - +971501234567#
+  sensitivity: normal
+- id: phone_eg
+  category: Phone
+  labels:
+    en: Egypt Phone Number
+    ar: هاتف مصري
+  description: Egypt phone number
+  icon: 🇪🇬
+  color: orange
+  patterns:
+    - ^(\+?20[-.\s]?)?0?1[0125]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+201012345678"
+    negative:
+      - +201012345678#
+  sensitivity: normal
+- id: phone_jo
+  category: Phone
+  labels:
+    en: Jordan Phone
+    ar: هاتف أردني
+  description: Jordan phone number
+  icon: 🇯🇴
+  color: green
+  patterns:
+    - ^(\+?962[-.\s]?)?0?7[789]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+962791234567"
+    negative:
+      - +962791234567#
+  sensitivity: normal
+- id: phone_kw
+  category: Phone
+  labels:
+    en: Kuwait Phone
+    ar: هاتف كويتي
+  description: Kuwait phone number
+  icon: 🇰🇼
+  color: green
+  patterns:
+    - ^(\+?965[-.\s]?)?[569]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+96551234567"
+    negative:
+      - +96551234567#
+  sensitivity: normal
+- id: phone_qa
+  category: Phone
+  labels:
+    en: Qatar Phone
+    ar: هاتف قطري
+  description: Qatar phone number
+  icon: 🇶🇦
+  color: red
+  patterns:
+    - ^(\+?974[-.\s]?)?[356]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+97451234567"
+    negative:
+      - +97451234567#
+  sensitivity: normal
+- id: phone_bh
+  category: Phone
+  labels:
+    en: Bahrain Phone
+    ar: هاتف بحريني
+  description: Bahrain phone number
+  icon: 🇧🇭
+  color: red
+  patterns:
+    - ^(\+?973[-.\s]?)?[369]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+97336123456"
+    negative:
+      - +97336123456#
+  sensitivity: normal
+- id: phone_om
+  category: Phone
+  labels:
+    en: Oman Phone
+    ar: هاتف عُماني
+  description: Oman phone number
+  icon: 🇴🇲
+  color: red
+  patterns:
+    - ^(\+?968[-.\s]?)?[79]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+96892123456"
+    negative:
+      - +96892123456#
+  sensitivity: normal
+- id: phone_iq
+  category: Phone
+  labels:
+    en: Iraq Phone
+    ar: هاتف عراقي
+  description: Iraq phone number
+  icon: 🇮🇶
+  color: green
+  patterns:
+    - ^(\+?964[-.\s]?)?0?7[0-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+9647701234567"
+    negative:
+      - +9647701234567#
+  sensitivity: normal
+- id: phone_sy
+  category: Phone
+  labels:
+    en: Syria Phone
+    ar: هاتف سوري
+  description: Syria phone number
+  icon: 🇸🇾
+  color: green
+  patterns:
+    - ^(\+?963[-.\s]?)?0?9[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+963991234567"
+    negative:
+      - +963991234567#
+  sensitivity: normal
+- id: phone_lb
+  category: Phone
+  labels:
+    en: Lebanon Phone
+    ar: هاتف لبناني
+  description: Lebanon phone number
+  icon: 🇱🇧
+  color: red
+  patterns:
+    - ^(\+?961[-.\s]?)?0?[37]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+96171234567"
+    negative:
+      - +96171234567#
+  sensitivity: normal
+- id: phone_ma
+  category: Phone
+  labels:
+    en: Morocco Phone
+    ar: هاتف مغربي
+  description: Morocco phone number
+  icon: 🇲🇦
+  color: red
+  patterns:
+    - ^(\+?212[-.\s]?)?0?[5-7]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+212612345678"
+    negative:
+      - +212612345678#
+  sensitivity: normal
+- id: phone_tn
+  category: Phone
+  labels:
+    en: Tunisia Phone
+    ar: هاتف تونسي
+  description: Tunisia phone number
+  icon: 🇹🇳
+  color: red
+  patterns:
+    - ^(\+?216[-.\s]?)?[2459]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+21623456789"
+    negative:
+      - +21623456789#
+  sensitivity: normal
+- id: phone_dz
+  category: Phone
+  labels:
+    en: Algeria Phone
+    ar: هاتف جزائري
+  description: Algeria phone number
+  icon: 🇩🇿
+  color: green
+  patterns:
+    - ^(\+?213[-.\s]?)?0?[567]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+213551234567"
+    negative:
+      - +213551234567#
+  sensitivity: normal
+- id: phone_tr
+  category: Phone
+  labels:
+    en: Turkey Phone
+    ar: هاتف تركي
+  description: Turkey phone number
+  icon: 🇹🇷
+  color: red
+  patterns:
+    - ^(\+?90[-.\s]?)?0?5[0-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+905123456789"
+    negative:
+      - +905123456789#
+  sensitivity: normal
+- id: phone_ir
+  category: Phone
+  labels:
+    en: Iran Phone
+    ar: هاتف إيراني
+  description: Iran phone number
+  icon: 🇮🇷
+  color: green
+  patterns:
+    - ^(\+?98[-.\s]?)?0?9[0-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+989121234567"
+    negative:
+      - +989121234567#
+  sensitivity: normal
+- id: phone_pk
+  category: Phone
+  labels:
+    en: Pakistan Phone
+    ar: هاتف باكستاني
+  description: Pakistan phone number
+  icon: 🇵🇰
+  color: green
+  patterns:
+    - ^(\+?92[-.\s]?)?0?3[0-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+923001234567"
+    negative:
+      - +923001234567#
+  sensitivity: normal
+- id: phone_in
+  category: Phone
+  labels:
+    en: India Phone
+    ar: هاتف هندي
+  description: India phone number
+  icon: 🇮🇳
+  color: orange
+  patterns:
+    - ^(\+?91[-.\s]?)?[6-9]\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "+919876543210"
+    negative:
+      - +919876543210#
+  sensitivity: normal
+- id: phone_ng
+  category: Phone
+  labels:
+    en: Nigeria Phone
+    ar: هاتف نيجيري
+  description: Nigeria phone number
+  icon: 🇳🇬
+  color: green
+  patterns:
+    - ^(\+?234[-.\s]?)?0?[789][01]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+2348012345678"
+    negative:
+      - +2348012345678#
+  sensitivity: normal
+- id: phone_za
+  category: Phone
+  labels:
+    en: South Africa Phone
+    ar: هاتف جنوب أفريقي
+  description: South Africa phone number
+  icon: 🇿🇦
+  color: blue
+  patterns:
+    - ^(\+?27[-.\s]?)?0?[6-8]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+27612345678"
+    negative:
+      - +27612345678#
+  sensitivity: normal
+- id: phone_de
+  category: Phone
+  labels:
+    en: Germany Phone
+    ar: هاتف ألماني
+  description: Germany phone number
+  icon: 🇩🇪
+  color: gray
+  patterns:
+    - ^(\+?49[-.\s]?)?0?1[5-7]\d{8,11}$
+  validator: null
+  examples:
+    positive:
+      - "+4915123456789"
+    negative:
+      - +4915123456789#
+  sensitivity: normal
+- id: phone_fr
+  category: Phone
+  labels:
+    en: France Phone
+    ar: هاتف فرنسي
+  description: France phone number
+  icon: 🇫🇷
+  color: blue
+  patterns:
+    - ^(\+?33[-.\s]?)?0?[67]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+33612345678"
+    negative:
+      - +33612345678#
+  sensitivity: normal
+- id: phone_ru
+  category: Phone
+  labels:
+    en: Russia Phone
+    ar: هاتف روسي
+  description: Russia phone number
+  icon: 🇷🇺
+  color: red
+  patterns:
+    - ^(\+?7[-.\s]?)?[9]\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "+79161234567"
+    negative:
+      - +79161234567#
+  sensitivity: normal
+- id: phone_cn
+  category: Phone
+  labels:
+    en: China Phone
+    ar: هاتف صيني
+  description: China phone number
+  icon: 🇨🇳
+  color: red
+  patterns:
+    - ^(\+?86[-.\s]?)?1[3-9]\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "+8613812345678"
+    negative:
+      - +8613812345678#
+  sensitivity: normal
+- id: phone_br
+  category: Phone
+  labels:
+    en: Brazil Phone
+    ar: هاتف برازيلي
+  description: Brazil phone number
+  icon: 🇧🇷
+  color: green
+  patterns:
+    - ^(\+?55[-.\s]?)?[1-9]{2}9?\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+5511987654321"
+    negative:
+      - +5511987654321#
+  sensitivity: normal
+- id: phone_mx
+  category: Phone
+  labels:
+    en: Mexico Phone
+    ar: هاتف مكسيكي
+  description: Mexico phone number
+  icon: 🇲🇽
+  color: green
+  patterns:
+    - ^(\+?52[-.\s]?)?(1[-.\s]?)?[1-9]\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "+5215512345678"
+    negative:
+      - +5215512345678#
+  sensitivity: normal
+- id: phone_au
+  category: Phone
+  labels:
+    en: Australia Phone
+    ar: هاتف أسترالي
+  description: Australia phone number
+  icon: 🇦🇺
+  color: yellow
+  patterns:
+    - ^(\+?61[-.\s]?)?0?4\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+61412345678"
+    negative:
+      - +61412345678#
+  sensitivity: normal
+- id: phone_ca
+  category: Phone
+  labels:
+    en: Canada Phone
+    ar: هاتف كندي
+  description: Canada phone number
+  icon: 🇨🇦
+  color: red
+  patterns:
+    - ^(\+?1[-.\s]?)?[2-9]\d{2}[-.\s]?\d{3}[-.\s]?\d{4}$
+  validator: null
+  examples:
+    positive:
+      - "+16041234567"
+    negative:
+      - +16041234567#
+  sensitivity: normal
+- id: phone_jp
+  category: Phone
+  labels:
+    en: Japan Phone
+    ar: هاتف ياباني
+  description: Japan phone number
+  icon: 🇯🇵
+  color: red
+  patterns:
+    - ^(\+?81[-.\s]?)?0?[789]0[-.\s]?\d{4}[-.\s]?\d{4}$
+  validator: null
+  examples:
+    positive:
+      - "+819012345678"
+    negative:
+      - +819012345678#
+  sensitivity: normal
+- id: phone_kr
+  category: Phone
+  labels:
+    en: South Korea Phone
+    ar: هاتف كوري
+  description: South Korea phone number
+  icon: 🇰🇷
+  color: blue
+  patterns:
+    - ^(\+?82[-.\s]?)?0?1[0-9][-.\s]?\d{3,4}[-.\s]?\d{4}$
+  validator: null
+  examples:
+    positive:
+      - "+821012345678"
+    negative:
+      - +821012345678#
+  sensitivity: normal
+- id: phone_id
+  category: Phone
+  labels:
+    en: Indonesia Phone
+    ar: هاتف إندونيسي
+  description: Indonesia phone number
+  icon: 🇮🇩
+  color: red
+  patterns:
+    - ^(\+?62[-.\s]?)?0?8[1-9]\d{7,10}$
+  validator: null
+  examples:
+    positive:
+      - "+6281234567890"
+    negative:
+      - +6281234567890#
+  sensitivity: normal
+- id: phone_my
+  category: Phone
+  labels:
+    en: Malaysia Phone
+    ar: هاتف ماليزي
+  description: Malaysia phone number
+  icon: 🇲🇾
+  color: blue
+  patterns:
+    - ^(\+?60[-.\s]?)?0?1[0-9][-.\s]?\d{7,8}$
+  validator: null
+  examples:
+    positive:
+      - "+601112345678"
+    negative:
+      - +601112345678#
+  sensitivity: normal
+- id: phone_sg
+  category: Phone
+  labels:
+    en: Singapore Phone
+    ar: هاتف سنغافوري
+  description: Singapore phone number
+  icon: 🇸🇬
+  color: red
+  patterns:
+    - ^(\+?65[-.\s]?)?[689]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+6591234567"
+    negative:
+      - +6591234567#
+  sensitivity: normal
+- id: phone_th
+  category: Phone
+  labels:
+    en: Thailand Phone
+    ar: هاتف تايلاندي
+  description: Thailand phone number
+  icon: 🇹🇭
+  color: blue
+  patterns:
+    - ^(\+?66[-.\s]?)?0?[689]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+66812345678"
+    negative:
+      - +66812345678#
+  sensitivity: normal
+- id: phone_vn
+  category: Phone
+  labels:
+    en: Vietnam Phone
+    ar: هاتف فيتنامي
+  description: Vietnam phone number
+  icon: 🇻🇳
+  color: red
+  patterns:
+    - ^(\+?84[-.\s]?)?0?[3-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+84912345678"
+    negative:
+      - +84912345678#
+  sensitivity: normal
+- id: phone_ph
+  category: Phone
+  labels:
+    en: Philippines Phone
+    ar: هاتف فلبيني
+  description: Philippines phone number
+  icon: 🇵🇭
+  color: blue
+  patterns:
+    - ^(\+?63[-.\s]?)?0?9\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "+639123456789"
+    negative:
+      - +639123456789#
+  sensitivity: normal
+- id: phone_bd
+  category: Phone
+  labels:
+    en: Bangladesh Phone
+    ar: هاتف بنغلاديشي
+  description: Bangladesh phone number
+  icon: 🇧🇩
+  color: green
+  patterns:
+    - ^(\+?880[-.\s]?)?0?1[3-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+8801712345678"
+    negative:
+      - +8801712345678#
+  sensitivity: normal
+- id: phone_it
+  category: Phone
+  labels:
+    en: Italy Phone
+    ar: هاتف إيطالي
+  description: Italy phone number
+  icon: 🇮🇹
+  color: green
+  patterns:
+    - ^(\+?39[-.\s]?)?3\d{9}$
+  validator: null
+  examples:
+    positive:
+      - "+393123456789"
+    negative:
+      - +393123456789#
+  sensitivity: normal
+- id: phone_es
+  category: Phone
+  labels:
+    en: Spain Phone
+    ar: هاتف إسباني
+  description: Spain phone number
+  icon: 🇪🇸
+  color: red
+  patterns:
+    - ^(\+?34[-.\s]?)?[6-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+34612345678"
+    negative:
+      - +34612345678#
+  sensitivity: normal
+- id: phone_pl
+  category: Phone
+  labels:
+    en: Poland Phone
+    ar: هاتف بولندي
+  description: Poland phone number
+  icon: 🇵🇱
+  color: red
+  patterns:
+    - ^(\+?48[-.\s]?)?[4-8]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+48512345678"
+    negative:
+      - +48512345678#
+  sensitivity: normal
+- id: phone_nl
+  category: Phone
+  labels:
+    en: Netherlands Phone
+    ar: هاتف هولندي
+  description: Netherlands phone number
+  icon: 🇳🇱
+  color: orange
+  patterns:
+    - ^(\+?31[-.\s]?)?0?6\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+31612345678"
+    negative:
+      - +31612345678#
+  sensitivity: normal
+- id: phone_se
+  category: Phone
+  labels:
+    en: Sweden Phone
+    ar: هاتف سويدي
+  description: Sweden phone number
+  icon: 🇸🇪
+  color: blue
+  patterns:
+    - ^(\+?46[-.\s]?)?0?7[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+46701234567"
+    negative:
+      - +46701234567#
+  sensitivity: normal
+- id: phone_no
+  category: Phone
+  labels:
+    en: Norway Phone
+    ar: هاتف نرويجي
+  description: Norway phone number
+  icon: 🇳🇴
+  color: red
+  patterns:
+    - ^(\+?47[-.\s]?)?[49]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+4740123456"
+    negative:
+      - +4740123456#
+  sensitivity: normal
+- id: phone_dk
+  category: Phone
+  labels:
+    en: Denmark Phone
+    ar: هاتف دنماركي
+  description: Denmark phone number
+  icon: 🇩🇰
+  color: red
+  patterns:
+    - ^(\+?45[-.\s]?)?[2-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+4520123456"
+    negative:
+      - +4520123456#
+  sensitivity: normal
+- id: phone_fi
+  category: Phone
+  labels:
+    en: Finland Phone
+    ar: هاتف فنلندي
+  description: Finland phone number
+  icon: 🇫🇮
+  color: blue
+  patterns:
+    - ^(\+?358[-.\s]?)?0?4[0-9]\d{7,8}$
+  validator: null
+  examples:
+    positive:
+      - "+358401234567"
+    negative:
+      - +358401234567#
+  sensitivity: normal
+- id: phone_pt
+  category: Phone
+  labels:
+    en: Portugal Phone
+    ar: هاتف برتغالي
+  description: Portugal phone number
+  icon: 🇵🇹
+  color: red
+  patterns:
+    - ^(\+?351[-.\s]?)?9[1236]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+351912345678"
+    negative:
+      - +351912345678#
+  sensitivity: normal
+- id: phone_ch
+  category: Phone
+  labels:
+    en: Switzerland Phone
+    ar: هاتف سويسري
+  description: Switzerland phone number
+  icon: 🇨🇭
+  color: red
+  patterns:
+    - ^(\+?41[-.\s]?)?0?7[5-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+41791234567"
+    negative:
+      - +41791234567#
+  sensitivity: normal
+- id: phone_be
+  category: Phone
+  labels:
+    en: Belgium Phone
+    ar: هاتف بلجيكي
+  description: Belgium phone number
+  icon: 🇧🇪
+  color: yellow
+  patterns:
+    - ^(\+?32[-.\s]?)?0?4[5-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+32451234567"
+    negative:
+      - +32451234567#
+  sensitivity: normal
+- id: phone_at
+  category: Phone
+  labels:
+    en: Austria Phone
+    ar: هاتف نمساوي
+  description: Austria phone number
+  icon: 🇦🇹
+  color: red
+  patterns:
+    - ^(\+?43[-.\s]?)?0?6[4-8]\d{7,10}$
+  validator: null
+  examples:
+    positive:
+      - "+436641234567"
+    negative:
+      - +436641234567#
+  sensitivity: normal
+- id: phone_ro
+  category: Phone
+  labels:
+    en: Romania Phone
+    ar: هاتف روماني
+  description: Romania phone number
+  icon: 🇷🇴
+  color: blue
+  patterns:
+    - ^(\+?40[-.\s]?)?0?7[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+40712345678"
+    negative:
+      - +40712345678#
+  sensitivity: normal
+- id: phone_ua
+  category: Phone
+  labels:
+    en: Ukraine Phone
+    ar: هاتف أوكراني
+  description: Ukraine phone number
+  icon: 🇺🇦
+  color: blue
+  patterns:
+    - ^(\+?380[-.\s]?)?0?[679]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+380671234567"
+    negative:
+      - +380671234567#
+  sensitivity: normal
+- id: phone_kz
+  category: Phone
+  labels:
+    en: Kazakhstan Phone
+    ar: هاتف كازاخستاني
+  description: Kazakhstan phone number
+  icon: 🇰🇿
+  color: blue
+  patterns:
+    - ^(\+?7[-.\s]?)?7[0-8]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+77012345678"
+    negative:
+      - +77012345678#
+  sensitivity: normal
+- id: phone_uz
+  category: Phone
+  labels:
+    en: Uzbekistan Phone
+    ar: هاتف أوزبكي
+  description: Uzbekistan phone number
+  icon: 🇺🇿
+  color: blue
+  patterns:
+    - ^(\+?998[-.\s]?)?[2-9]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+998901234567"
+    negative:
+      - +998901234567#
+  sensitivity: normal
+- id: phone_ge
+  category: Phone
+  labels:
+    en: Georgia Phone
+    ar: هاتف جورجي
+  description: Georgia phone number
+  icon: 🇬🇪
+  color: red
+  patterns:
+    - ^(\+?995[-.\s]?)?5[0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - "+995512345678"
+    negative:
+      - +995512345678#
+  sensitivity: normal
+- id: phone_az
+  category: Phone
+  labels:
+    en: Azerbaijan Phone
+    ar: هاتف أذربيجاني
+  description: Azerbaijan phone number
+  icon: 🇦🇿
+  color: blue
+  patterns:
+    - ^(\+?994[-.\s]?)?[456]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+994501234567"
+    negative:
+      - +994501234567#
+  sensitivity: normal
+- id: phone_am
+  category: Phone
+  labels:
+    en: Armenia Phone
+    ar: هاتف أرميني
+  description: Armenia phone number
+  icon: 🇦🇲
+  color: red
+  patterns:
+    - ^(\+?374[-.\s]?)?[59]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+37494123456"
+    negative:
+      - +37494123456#
+  sensitivity: normal
+- id: phone_et
+  category: Phone
+  labels:
+    en: Ethiopia Phone
+    ar: هاتف إثيوبي
+  description: Ethiopia phone number
+  icon: 🇪🇹
+  color: green
+  patterns:
+    - ^(\+?251[-.\s]?)?0?9[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+251912345678"
+    negative:
+      - +251912345678#
+  sensitivity: normal
+- id: phone_ke
+  category: Phone
+  labels:
+    en: Kenya Phone
+    ar: هاتف كيني
+  description: Kenya phone number
+  icon: 🇰🇪
+  color: red
+  patterns:
+    - ^(\+?254[-.\s]?)?0?7[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+254712345678"
+    negative:
+      - +254712345678#
+  sensitivity: normal
+- id: phone_gh
+  category: Phone
+  labels:
+    en: Ghana Phone
+    ar: هاتف غاني
+  description: Ghana phone number
+  icon: 🇬🇭
+  color: red
+  patterns:
+    - ^(\+?233[-.\s]?)?0?[235][0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+233241234567"
+    negative:
+      - +233241234567#
+  sensitivity: normal
+- id: phone_tz
+  category: Phone
+  labels:
+    en: Tanzania Phone
+    ar: هاتف تنزاني
+  description: Tanzania phone number
+  icon: 🇹🇿
+  color: blue
+  patterns:
+    - ^(\+?255[-.\s]?)?0?[67]\d{8}$
+  validator: null
+  examples:
+    positive:
+      - "+255712345678"
+    negative:
+      - +255712345678#
+  sensitivity: normal
+- id: phone_ug
+  category: Phone
+  labels:
+    en: Uganda Phone
+    ar: هاتف أوغندي
+  description: Uganda phone number
+  icon: 🇺🇬
+  color: yellow
+  patterns:
+    - ^(\+?256[-.\s]?)?0?7[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+256712345678"
+    negative:
+      - +256712345678#
+  sensitivity: normal
+- id: phone_ly
+  category: Phone
+  labels:
+    en: Libya Phone
+    ar: هاتف ليبي
+  description: Libya phone number
+  icon: 🇱🇾
+  color: green
+  patterns:
+    - ^(\+?218[-.\s]?)?0?9[1-4]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+218911234567"
+    negative:
+      - +218911234567#
+  sensitivity: normal
+- id: phone_sd
+  category: Phone
+  labels:
+    en: Sudan Phone
+    ar: هاتف سوداني
+  description: Sudan phone number
+  icon: 🇸🇩
+  color: green
+  patterns:
+    - ^(\+?249[-.\s]?)?0?9[0-9]\d{7}$
+  validator: null
+  examples:
+    positive:
+      - "+249912345678"
+    negative:
+      - +249912345678#
+  sensitivity: normal
+- id: phone_so
+  category: Phone
+  labels:
+    en: Somalia Phone
+    ar: هاتف صومالي
+  description: Somalia phone number
+  icon: 🇸🇴
+  color: blue
+  patterns:
+    - ^(\+?252[-.\s]?)?0?[67]\d{7,8}$
+  validator: null
+  examples:
+    positive:
+      - "+252612345678"
+    negative:
+      - +252612345678#
+  sensitivity: normal

@@ -1,0 +1,342 @@
+# Identifier catalog: Hash (20 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: md5_hash
+  category: Hash
+  labels:
+    en: MD5 Hash
+    ar: هاش MD5
+  description: MD5 cryptographic hash (32 hex chars)
+  icon: "#️⃣"
+  color: gray
+  patterns:
+    - ^[a-fA-F0-9]{32}$
+  validator: null
+  examples:
+    positive:
+      - d41d8cd98f00b204e9800998ecf8427e
+    negative:
+      - d41d8cd98f00b204e9800998ecf8427e#
+  sensitivity: normal
+- id: sha1_hash
+  category: Hash
+  labels:
+    en: SHA-1 Hash
+    ar: هاش SHA-1
+  description: SHA-1 cryptographic hash (40 hex chars)
+  icon: "#️⃣"
+  color: yellow
+  patterns:
+    - ^[a-fA-F0-9]{40}$
+  validator: null
+  examples:
+    positive:
+      - da39a3ee5e6b4b0d3255bfef95601890afd80709
+    negative:
+      - da39a3ee5e6b4b0d3255bfef95601890afd80709#
+  sensitivity: normal
+- id: sha256_hash
+  category: Hash
+  labels:
+    en: SHA-256 Hash
+    ar: هاش SHA-256
+  description: SHA-256 cryptographic hash (64 hex chars)
+  icon: "#️⃣"
+  color: blue
+  patterns:
+    - ^[a-fA-F0-9]{64}$
+  validator: null
+  examples:
+    positive:
+      - e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    negative:
+      - e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855#
+  sensitivity: normal
+- id: sha512_hash
+  category: Hash
+  labels:
+    en: SHA-512 Hash
+    ar: هاش SHA-512
+  description: SHA-512 cryptographic hash (128 hex chars)
+  icon: "#️⃣"
+  color: purple
+  patterns:
+    - ^[a-fA-F0-9]{128}$
+  validator: null
+  examples:
+    positive:
+      - cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e
+    negative:
+      - cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e#
+  sensitivity: normal
+- id: sha384_hash
+  category: Hash
+  labels:
+    en: SHA-384 Hash
+    ar: هاش SHA-384
+  description: SHA-384 cryptographic hash (96 hex chars)
+  icon: "#️⃣"
+  color: blue
+  patterns:
+    - ^[a-fA-F0-9]{96}$
+  validator: null
+  examples:
+    positive:
+      - cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7
+    negative:
+      - cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7#
+  sensitivity: normal
+- id: ntlm_hash
+  category: Hash
+  labels:
+    en: NTLM Hash
+    ar: هاش NTLM
+  description: Windows NTLM password hash
+  icon: 🪟
+  color: blue
+  patterns:
+    - ^[a-fA-F0-9]{32}$
+  validator: null
+  examples:
+    positive:
+      - 8846f7eaee8fb117ad06bdd830b7586c
+    negative:
+      - 8846f7eaee8fb117ad06bdd830b7586c#
+  sensitivity: normal
+- id: bcrypt_hash
+  category: Hash
+  labels:
+    en: BCrypt Hash
+    ar: هاش BCrypt
+  description: BCrypt password hash
+  icon: "#️⃣"
+  color: green
+  patterns:
+    - ^\$2[ayb]\$[0-9]{2}\$[./A-Za-z0-9]{53}$
+  validator: null
+  examples:
+    positive:
+      - $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+    negative:
+      - $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy#
+  sensitivity: normal
+- id: crc32
+  category: Hash
+  labels:
+    en: CRC32 Checksum
+    ar: مجموع تحقق CRC32
+  description: CRC32 cyclic redundancy check value
+  icon: ✅
+  color: gray
+  patterns:
+    - ^[a-fA-F0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - deadbeef
+    negative:
+      - deadbeef#
+  sensitivity: normal
+- id: murmur_hash
+  category: Hash
+  labels:
+    en: MurmurHash
+    ar: هاش Murmur
+  description: MurmurHash non-cryptographic hash
+  icon: "#️⃣"
+  color: gray
+  patterns:
+    - ^[a-fA-F0-9]{8}$
+  validator: null
+  examples:
+    positive:
+      - c4a3f3db
+    negative:
+      - c4a3f3db#
+  sensitivity: normal
+- id: ssdeep_hash
+  category: Hash
+  labels:
+    en: ssdeep / Fuzzy Hash
+    ar: هاش ضبابي ssdeep
+  description: ssdeep fuzzy/context-triggered piecewise hash
+  icon: "#️⃣"
+  color: orange
+  patterns:
+    - ^\d+:[a-zA-Z0-9+/]+:[a-zA-Z0-9+/]+$
+  validator: null
+  examples:
+    positive:
+      - 3:AXGBicFlgVNhBGcL6wCrFQEv:AXGBicFlgVNhBGcL6wCrFQEv
+    negative:
+      - 3:AXGBicFlgVNhBGcL6wCrFQEv:AXGBicFlgVNhBGcL6wCrFQEv#
+  sensitivity: normal
+- id: tlsh
+  category: Hash
+  labels:
+    en: TLSH Fuzzy Hash
+    ar: هاش TLSH الضبابي
+  description: TLSH (Trend Micro Locality Sensitive Hash)
+  icon: "#️⃣"
+  color: red
+  patterns:
+    - ^T1[0-9A-F]{70}$
+  validator: null
+  examples:
+    positive:
+      - T1A3C0047EA1B5C2D3E4F5061728394A5B6C7D8E9FA0B1C2D3E4F5061728394A5B6C7D8E
+    negative:
+      - T1A3C0047EA1B5C2D3E4F5061728394A5B6C7D8E9FA0B1C2D3E4F5061728394A5B6C7D8E#
+  sensitivity: normal
+- id: ripemd160
+  category: Hash
+  labels:
+    en: RIPEMD-160 Hash
+    ar: هاش RIPEMD-160
+  description: RIPEMD-160 hash (40 hex chars)
+  icon: "#️⃣"
+  color: purple
+  patterns:
+    - ^[a-fA-F0-9]{40}$
+  validator: null
+  examples:
+    positive:
+      - 9c1185a5c5e9fc54612808977ee8f548b2258d31
+    negative:
+      - 9c1185a5c5e9fc54612808977ee8f548b2258d31#
+  sensitivity: normal
+- id: whirlpool_hash
+  category: Hash
+  labels:
+    en: Whirlpool Hash
+    ar: هاش Whirlpool
+  description: Whirlpool cryptographic hash (128 hex chars)
+  icon: "#️⃣"
+  color: blue
+  patterns:
+    - ^[a-fA-F0-9]{128}$
+  validator: null
+  examples:
+    positive:
+      - 19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3
+    negative:
+      - 19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3#
+  sensitivity: normal
+- id: md4_hash
+  category: Hash
+  labels:
+    en: MD4 Hash
+    ar: هاش MD4
+  description: MD4 cryptographic hash (32 hex chars, deprecated)
+  icon: "#️⃣"
+  color: gray
+  patterns:
+    - ^[a-fA-F0-9]{32}$
+  validator: null
+  examples:
+    positive:
+      - 31d6cfe0d16ae931b73c59d7e0c089c0
+    negative:
+      - 31d6cfe0d16ae931b73c59d7e0c089c0#
+  sensitivity: normal
+- id: sha3_256
+  category: Hash
+  labels:
+    en: SHA3-256 Hash
+    ar: هاش SHA3-256
+  description: SHA-3 256-bit Keccak hash
+  icon: "#️⃣"
+  color: teal
+  patterns:
+    - ^[a-fA-F0-9]{64}$
+  validator: null
+  examples:
+    positive:
+      - a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+    negative:
+      - a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a#
+  sensitivity: normal
+- id: keccak256
+  category: Hash
+  labels:
+    en: Keccak-256 Hash
+    ar: هاش Keccak-256
+  description: Keccak-256 hash used in Ethereum
+  icon: "#️⃣"
+  color: blue
+  patterns:
+    - ^(0x)?[a-fA-F0-9]{64}$
+  validator: null
+  examples:
+    positive:
+      - "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+    negative:
+      - 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470#
+  sensitivity: normal
+- id: torrent_info_hash
+  category: Hash
+  labels:
+    en: Torrent Info Hash
+    ar: هاش ملف تورنت
+  description: BitTorrent torrent file info hash
+  icon: 🧲
+  color: green
+  patterns:
+    - ^[a-fA-F0-9]{40}$
+  validator: null
+  examples:
+    positive:
+      - 08ada5a7a6183aae1e09d831df6748d566095a10
+    negative:
+      - 08ada5a7a6183aae1e09d831df6748d566095a10#
+  sensitivity: normal
+- id: file_hash_generic
+  category: Hash
+  labels:
+    en: File Hash (Generic)
+    ar: هاش ملف عام
+  description: Generic file integrity hash
+  icon: 📄
+  color: gray
+  patterns:
+    - ^[a-fA-F0-9]{32,128}$
+  validator: null
+  examples:
+    positive:
+      - d41d8cd98f00b204e9800998ecf8427e
+    negative:
+      - d41d8cd98f00b204e9800998ecf8427e#
+  sensitivity: normal
+- id: pgp_fingerprint
+  category: Hash
+  labels:
+    en: PGP Key Fingerprint
+    ar: بصمة مفتاح PGP
+  description: OpenPGP public key fingerprint
+  icon: 🔑
+  color: yellow
+  patterns:
+    - ^[A-F0-9]{4}(\s?[A-F0-9]{4}){9}$
+  validator: null
+  examples:
+    positive:
+      - 0123 4567 89AB CDEF 0123 4567 89AB CDEF 0123 4567
+    negative:
+      - 0123 4567 89AB CDEF 0123 4567 89AB CDEF 0123 4567#
+  sensitivity: normal
+- id: winpeid
+  category: Hash
+  labels:
+    en: Windows PE Hash (imphash)
+    ar: هاش Windows PE
+  description: Windows PE import hash (imphash) for malware analysis
+  icon: 🪟
+  color: blue
+  patterns:
+    - ^[a-fA-F0-9]{32}$
+  validator: null
+  examples:
+    positive:
+      - d41d8cd98f00b204e9800998ecf8427e
+    negative:
+      - d41d8cd98f00b204e9800998ecf8427e#
+  sensitivity: normal

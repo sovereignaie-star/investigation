@@ -681,9 +681,15 @@ importers:
 
   packages/core:
     devDependencies:
+      '@ir/schema':
+        specifier: workspace:*
+        version: link:../schema
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
 
   packages/ledger:
     dependencies:

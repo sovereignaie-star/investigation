@@ -3,3 +3,4 @@ export * from "./case.ts";
 export * from "./graph.ts";
 export * from "./evidence.ts";
 export { SCHEMAS, toJsonSchemas } from "./registry.ts";
+export * from "./identifier-spec.ts";
