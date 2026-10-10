@@ -1,0 +1,26 @@
+# P0-017: dependency updates. Bot commits are allowed by the governance guard only
+# when the PR also carries a governed commit that updates docs/STATUS.md and docs/WORKLOG.md (GR-01).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+      timezone: Asia/Riyadh
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore(deps)"
+    labels: [dependencies]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: sunday
+      timezone: Asia/Riyadh
+    commit-message:
+      prefix: "ci(deps)"
+    labels: [dependencies, ci]
