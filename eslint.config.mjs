@@ -51,8 +51,24 @@ export default tseslint.config(
     rules: { complexity: "off", "@typescript-eslint/no-unused-vars": "off" },
   },
   {
+    // P1-019: the pure core never reads wall-clock time or ambient randomness; inject Clock/Random instead (5.2, D1, D11).
+    files: ["packages/core/src/**/*.ts", "packages/schema/src/**/*.ts", "packages/ledger/src/**/*.ts"],
+    ignores: ["**/*.test.ts", "packages/core/src/clock.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        { selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']", message: "Use an injected Clock (P1-019)." },
+        { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: "Use an injected Clock (P1-019)." },
+        {
+          selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+          message: "Use an injected Random (P1-019).",
+        },
+      ],
+    },
+  },
+  {
     // CLI tools and tests print by design.
-    files: ["scripts/**", "**/*.test.*", "**/vite.config.*", "**/build.mjs"],
+    files: ["scripts/**", "packages/*/scripts/**", "**/*.test.*", "**/vite.config.*", "**/build.mjs"],
     rules: { "no-console": "off" },
   },
 );
