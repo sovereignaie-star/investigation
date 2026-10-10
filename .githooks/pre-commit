@@ -1,0 +1,9 @@
+#!/bin/sh
+# Fast pre-check (GR-01). Full check runs in commit-msg and again in CI.
+root="$(git rev-parse --show-toplevel)"
+staged="$(git diff --cached --name-only)"
+case "$staged" in *"docs/STATUS.md"*) ;; *) echo "GR-01: stage docs/STATUS.md with your change (see GOVERNANCE.md)."; exit 1;; esac
+case "$staged" in *"docs/WORKLOG.md"*) ;; *) echo "GR-01: add a docs/WORKLOG.md entry in this commit (see GOVERNANCE.md)."; exit 1;; esac
+# GR-12: never commit env files
+if echo "$staged" | grep -Eq '(^|/)\.env($|\.)' && ! echo "$staged" | grep -Eq '\.env\.example$'; then echo "GR-12: .env files must not be committed."; exit 1; fi
+exit 0

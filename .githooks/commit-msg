@@ -1,0 +1,3 @@
+#!/bin/sh
+# GR-01/GR-03/GR-04: every commit must update docs/STATUS.md and docs/WORKLOG.md and cite a task id.
+exec node "$(git rev-parse --show-toplevel)/scripts/governance/check.mjs" --commit-msg "$1"

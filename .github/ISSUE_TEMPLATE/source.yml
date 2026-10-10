@@ -1,0 +1,22 @@
+name: اعتماد مصدر أو أداة
+description: ترشيح أداة من الكتالوج (TL-xxxxxxxx) لتصبح محوّلاً (TR-xxx) — الخارطة 7.2
+title: "[source] "
+body:
+  - type: input
+    id: tl
+    attributes: { label: معرّف الكتالوج, placeholder: "TL-18a2d7b5" }
+    validations: { required: true }
+  - type: textarea
+    id: value
+    attributes: { label: القيمة للمستخدمين (PR-1..PR-6) }
+    validations: { required: true }
+  - type: textarea
+    id: terms
+    attributes: { label: الشروط والترخيص وحدود المعدل والحاجة لمفتاح }
+    validations: { required: true }
+  - type: dropdown
+    id: sensitivity
+    attributes:
+      label: الحساسية
+      options: ["عادي", "بوابة الأشخاص الطبيعيين"]
+    validations: { required: true }
