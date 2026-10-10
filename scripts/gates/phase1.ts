@@ -408,13 +408,18 @@ async function cdpVisit(
   const ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((r, j) => ((ws.onopen = r), (ws.onerror = j)));
   let id = 0;
-  const pending = new Map<number, (v: unknown) => void>();
+  // commands are sent one at a time and awaited, so one waiter suffices (no lookup keyed by message content)
+  let waiting: { id: number; resolve: (v: unknown) => void } | undefined;
   const requests: string[] = [];
   const problems: string[] = [];
   let loaded = false;
   ws.onmessage = (ev) => {
     const m = JSON.parse(String(ev.data)) as { id?: number; method?: string; params?: Record<string, unknown>; result?: unknown };
-    if (m.id !== undefined) pending.get(m.id)?.(m.result);
+    if (waiting && m.id === waiting.id) {
+      const w = waiting;
+      waiting = undefined;
+      w.resolve(m.result);
+    }
     if (m.method === "Network.requestWillBeSent") requests.push(String((m.params?.["request"] as { url: string }).url));
     if (m.method === "Page.loadEventFired") loaded = true;
     if (m.method === "Runtime.exceptionThrown") problems.push(JSON.stringify(m.params).slice(0, 300));
@@ -424,7 +429,7 @@ async function cdpVisit(
   const send = (method: string, params: Record<string, unknown> = {}) =>
     new Promise<unknown>((resolve) => {
       const n = ++id;
-      pending.set(n, resolve);
+      waiting = { id: n, resolve };
       ws.send(JSON.stringify({ id: n, method, params }));
     });
   await send("Network.enable");
