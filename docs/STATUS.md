@@ -7,17 +7,17 @@
 | البند | القيمة |
 |---|---|
 | آخر تحديث | 2026-10-10 |
-| المرحلة الحالية | 1 — النواة والسجل (بقي P1-022) |
+| المرحلة الحالية | 1 — النواة والسجل (المهام منجزة؛ بقي قياس بوابات الخروج G-08..G-13 قبل المرحلة 2) |
 | الإصدار | لا إصدار بعد (`0.0.0`) |
 | آخر إيداع محدِّث | `git log -1 -- docs/STATUS.md` |
-| ملخص الحالة | المرحلة 0 مكتملة (29/29)؛ المرحلة 1: 25 من 26 مهمة منجزة؛ بقي P1-022 (فهارس O(1))؛ الخطة الشاملة والمراجع الأربعة مدمجة ومصنّفة (القسم 14)؛ الخريطة الأمّ وأدوات التحليل في `docs/references/`؛ فهرسها `docs/REFERENCES.md`؛ lint وtypecheck وbuild وtest خضراء؛ CodeQL وgitleaks وDependabot مفعّلة |
+| ملخص الحالة | المرحلة 0 مكتملة (29/29)؛ المرحلة 1: مهامها كلها منجزة (26/26) وبوابات خروجها G-08..G-13 لم تُقَس بعد؛ P1-022 أغلق D-034 وD-051 (فهرس دمج تزايدي، الإسقاط الحي = إعادة البناء)؛ الخطة الشاملة والمراجع مدمجة ومصنّفة (القسم 14)؛ lint وtypecheck وbuild وtest خضراء؛ CodeQL وgitleaks وDependabot مفعّلة |
 
 ## تقدم المراحل
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 24 | 1 |
+| 1 | النواة والسجل | 26 | 26 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -89,7 +89,7 @@
 | P1-019 | ساعة ومولّد قابلان للحقن (S) | done | packages/core: Clock (system/manual), Random (crypto/seeded), monotonic ULID factory; 6 tests; ESLint bans Date.now/new Date()/Math.random in core, schema, ledger |
 | P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | done | fixtures/detect/golden.jsonl: 5,000 snippets (ar/en), 6,533 deterministic + 3,025 other entities, 800 near misses; independent generator self-checked on published vectors; golden.test.ts second review + extractor scores: deterministic precision 99.97%, recall 99.97%, near misses 0 accepted, other recall 97.5%; linear punctuation trimming (CodeQL #25 fixed in code) |
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | done | apps/web store is in-memory (no zustand persist); storagePolicy.purgeLegacyCaseStorage() deletes 'investigation-store' at start-up; investigationStore.test.ts: no localStorage/sessionStorage writes, purge, source guard; verified in headless Chromium (keys after reload: []) |
-| P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | in_progress | PR #34: صُنّفت مراجع المالك (PR #31/#32/#33) في docs/references/؛ المرجع في ROADMAP 14.9؛ يُنفَّذ على فرع perf/P1-022-projection-indexes |
+| P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | done | PR (هذا الفرع): Projector merge index = incremental union-find with path compression, rebuilt only on revert or a late alias of a merge-named id; web store IdIndex (O(1) lookup) + addNodes/addEdges; 100,000 nodes projected in 0.47 s, 5,000 chained merges 0.02 s (was 76 s for 2,000), web batch 100k nodes + edges < 2 s; live == rebuild with late aliases (D-051) |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
 | P1-024 | إزالة الاعتماد على منصة الاستضافة السابقة وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | legacy hosting files removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
 | P1-025 | إغلاق تنبيهات CodeQL القديمة على main (S) | done | set-status.mjs: IDs validated (D-nnn, G-nn, Pn-nnn) and escaped before RegExp; custom-fetch: linear trailing-slash trim; alerts 1,3-6 resolved, 13-15 (localStorage keys) left for P1-015 |
@@ -341,7 +341,7 @@
 | G-49 | P9 | كتيبات التشغيل وتمرين واحد | 7 | لم تتحقق |
 | G-50 | الكل | كل ما سبق أخضر وتوقيع المالك | 7 | لم تتحقق |
 
-## العيوب (خط الأساس D-001..D-050)
+## العيوب (خط الأساس D-001..D-050، وما اكتُشف بعده)
 
 | المعرّف | الشدة | الحالة | ملاحظة |
 |---|---|---|---|
@@ -378,7 +378,7 @@
 | D-031 | متوسط | مفتوح | — |
 | D-032 | منخفض | مفتوح | — |
 | D-033 | عالٍ | مغلق | P1-021: لا persist ولا كتابة في localStorage/sessionStorage؛ المفتاح القديم يُحذف عند الإقلاع؛ اختبار حارس يمنع العودة |
-| D-034 | متوسط | مفتوح جزئياً | P1-021 لم يغيّر الإضافة الخطية؛ فهارس O(1) في P1-022 |
+| D-034 | متوسط | مُصلح | P1-021 + P1-022: lookups by id index; bulk adds via addNodes/addEdges (one copy per batch) |
 | D-035 | عالٍ | مفتوح جزئياً | P1-013 + P1-014: تخزين الخادم بترحيلات ومعاملات وتشفير جاهز؛ الواجهة ما زالت على Dexie (investigationDatabase.ts) حتى تنتقل إلى واجهة القضية البرمجية في المرحلة 3 |
 | D-036 | متوسط | مفتوح جزئياً | P1-010: الاستجابة الخام تُحفظ blob متحققاً منه ومصدرها (الطلب المنقّح) في `evidence.stored`؛ يبقى استبدال الكاش الثابت بالساعة (P2-007) |
 | D-037 | عالٍ | مفتوح | — |
@@ -395,3 +395,4 @@
 | D-048 | متوسط | جزئي | كتالوج الأدوات يوثق المصادر وحالتها؛ التوثيق لكل محوّل في P2-011 |
 | D-049 | عالٍ | مفتوح | — |
 | D-050 | متوسط | مفتوح جزئياً | P1-017 + P1-018: سجل التدقيق وغرض القضية منفّذان؛ تمييز الأشخاص الطبيعيين يأتي مع P2-013 |
+| D-051 | عالٍ | مُصلح | P1-022: incremental merge index, invalidated on revert or late alias; D-051 tests fail on the old code |

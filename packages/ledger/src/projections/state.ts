@@ -42,7 +42,17 @@ export class Projector {
   readonly merges = new Map<string, MergeDecision & { seq: number }>();
   readonly issues: Issue[] = [];
   notes = 0;
-  #roots: Map<string, string> | null = null;
+  /**
+   * Merge index (P1-022, D-034, D-051): union-find over node ids with path compression, kept in step with the chain.
+   * `merge.decided` is a union and `resolve` a find, amortised O(log n) each (near constant in practice). It is rebuilt from `merges` in seq order only when
+   * an earlier union is no longer valid: a merge is reverted, or an entity a merge refers to is added later under a
+   * canonical key that already has a node (its alias changes what the merge joins). A rebuild applies exactly the
+   * same unions in the same order, so the live index, a rebuild and a fresh projection of the chain always agree.
+   */
+  readonly #parent = new Map<string, string>();
+  /** Entity ids named by any merge decision: only these can make an earlier union stale. */
+  readonly #mergeRefs = new Set<string>();
+  #stale = false;
 
   apply(entry: Entry): this {
     if (entry.seq <= this.seq) throw new Error(`projection out of order: seq ${entry.seq} after ${this.seq}`);
@@ -61,36 +71,53 @@ export class Projector {
     this.issues.push({ seq: entry.seq, kind: entry.kind, code, message });
   }
 
+  /** Records a new merge in the index (called after it is stored in `merges`). */
+  mergeAdded(m: MergeDecision): void {
+    this.#mergeRefs.add(m.survivorId);
+    for (const id of m.entityIds) this.#mergeRefs.add(id);
+    if (!this.#stale) this.#union(m);
+  }
+
+  /** An earlier union no longer holds (revert): the index is rebuilt on the next `resolve`. */
   invalidateMerges(): void {
-    this.#roots = null;
+    this.#stale = true;
+  }
+
+  /** A new entity id became an alias of an existing node; stale only if a merge already named that id. */
+  aliasAdded(id: string): void {
+    if (this.#mergeRefs.has(id)) this.#stale = true;
   }
 
   /** The node id an entity id is shown under: canonical-key duplicates, then active merges (survivor wins). */
   resolve(id: string): string {
-    const first = this.keyAlias.get(id) ?? id;
-    return this.#mergeRoots().get(first) ?? first;
+    if (this.#stale) this.#rebuild();
+    return this.#find(this.keyAlias.get(id) ?? id);
   }
 
-  #mergeRoots(): Map<string, string> {
-    if (this.#roots) return this.#roots;
-    const parent = new Map<string, string>();
-    const find = (x: string): string => {
-      let r = x;
-      while (parent.has(r) && parent.get(r) !== r) r = parent.get(r) as string;
-      return r;
-    };
-    for (const m of [...this.merges.values()].sort((a, b) => a.seq - b.seq)) {
-      if (m.reverted) continue;
-      const survivor = find(this.keyAlias.get(m.survivorId) ?? m.survivorId);
-      for (const id of m.entityIds) {
-        const r = find(this.keyAlias.get(id) ?? id);
-        if (r !== survivor) parent.set(r, survivor);
-      }
+  #find(x: string): string {
+    let r = x;
+    for (let up = this.#parent.get(r); up !== undefined && up !== r; up = this.#parent.get(r)) r = up;
+    // path compression: every id on the walk now points at the root
+    for (let c = x, up = this.#parent.get(c); up !== undefined && up !== r; up = this.#parent.get(c)) {
+      this.#parent.set(c, r);
+      c = up;
     }
-    const roots = new Map<string, string>();
-    for (const id of parent.keys()) roots.set(id, find(id));
-    this.#roots = roots;
-    return roots;
+    return r;
+  }
+
+  #union(m: MergeDecision): void {
+    const survivor = this.#find(this.keyAlias.get(m.survivorId) ?? m.survivorId);
+    for (const id of m.entityIds) {
+      const r = this.#find(this.keyAlias.get(id) ?? id);
+      if (r !== survivor) this.#parent.set(r, survivor);
+    }
+  }
+
+  #rebuild(): void {
+    this.#parent.clear();
+    this.#stale = false;
+    // `merges` keeps insertion order, which is ledger (seq) order because entries are applied in order
+    for (const m of this.merges.values()) if (!m.reverted) this.#union(m);
   }
 }
 
@@ -110,8 +137,10 @@ const HANDLERS: Partial<Record<Entry["kind"], Handler>> = {
     if (p.entities.has(ent.id)) return p.issue(e, "duplicate-id", `entity ${ent.id} already added`);
     p.entities.set(ent.id, { ...ent, seq: e.seq });
     const first = p.byKey.get(ent.canonicalKey);
-    if (first) p.keyAlias.set(ent.id, first);
-    else p.byKey.set(ent.canonicalKey, ent.id);
+    if (first) {
+      p.keyAlias.set(ent.id, first);
+      p.aliasAdded(ent.id);
+    } else p.byKey.set(ent.canonicalKey, ent.id);
   },
   "claim.added": (p, e) => {
     const c = parsed(p, e, Claim);
@@ -141,7 +170,7 @@ const HANDLERS: Partial<Record<Entry["kind"], Handler>> = {
     if (p.merges.has(m.id)) return p.issue(e, "duplicate-id", `merge ${m.id} already decided`);
     for (const id of m.entityIds) if (!p.entities.has(id)) p.issue(e, "unknown-entity", `merge ${m.id} refers to ${id}`);
     p.merges.set(m.id, { ...m, reverted: false, seq: e.seq });
-    p.invalidateMerges();
+    p.mergeAdded(m);
   },
   "merge.reverted": (p, e) => {
     const r = parsed(p, e, MergeReverted);
