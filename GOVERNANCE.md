@@ -66,4 +66,5 @@
 | `node scripts/governance/check.mjs --range origin/main..HEAD` | فحص كل إيداعات فرعك قبل الدفع |
 | `node scripts/governance/check.mjs --consistency` | اتساق الخارطة مع الحالة |
 | `node scripts/governance/sync-status.mjs --write` | إضافة أسطر حالة لمهام جديدة أُضيفت للخارطة |
+| `node scripts/governance/set-status.mjs P0-004 done "الدليل"` | تحديث حالة مهمة (و`--gate` و`--defect` و`--summary`) وإعادة حساب تقدم المراحل |
 | `node --test scripts/governance/check.test.mjs` | اختبارات الحارس نفسه |

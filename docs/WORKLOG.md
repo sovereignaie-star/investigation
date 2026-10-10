@@ -48,3 +48,10 @@
 - **الأدلة:** سجل التشغيل 38010674079 (فشل)؛ محلياً `node --test scripts/governance/check.test.mjs` => 9 pass.
 - **ما لم يتم / ملاحظات:** يوضح هذا الإصلاح أن القاعدة GR-01 تسري على إصلاحات الحوكمة نفسها.
 - **التالي:** دمج PR #1 ثم تفعيل حماية الفرع.
+
+### 2026-10-10 — [P0-001] تفعيل حماية الفرع وإغلاق مهمة الحوكمة
+- **المنفّذ:** Perplexity Computer.
+- **ما تم:** دُمج PR #1 بطريقة rebase (كل إيداع فيه اجتاز الحارس). فُعّلت حماية `main` عبر واجهة GitHub: فحص `governance` مطلوب ومحدَّث (strict)، PR إلزامي، تسري على المشرفين (`enforce_admins: true`)، لا دفع قسري ولا حذف، تاريخ خطي. أضيف `scripts/governance/set-status.mjs` لتحديث صفوف الحالة وإعادة حساب جدول تقدم المراحل.
+- **الأدلة:** `gh api repos/sovereignaie-star/investigation/branches/main/protection` => `contexts: ["governance"]`, `enforce_admins: true`؛ فحص PR #1 = pass (التشغيل 38010760742).
+- **ما لم يتم / ملاحظات:** فحوص `build` و`test` تُضاف إلى الفحوص المطلوبة عند P0-011.
+- **التالي:** P0-004.
