@@ -1,7 +1,7 @@
 // T-GOV-001..T-GOV-008 — unit tests for the governance guard. Run: node --test scripts/governance/check.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { evaluate, consistency, taskIdsInMessage, STATUS, WORKLOG } from "./check.mjs";
+import { evaluate, consistency, masterPlanChecks, taskIdsInMessage, STATUS, WORKLOG } from "./check.mjs";
 
 const ids = new Set(["P0-004", "P0-005"]);
 const ok = {
@@ -48,4 +48,20 @@ test("T-GOV-005 consistency: missing, invalid and unknown rows", () => {
   assert.ok(e.some((x) => x.includes("P0-005") && x.includes("no row")));
   assert.ok(e.some((x) => x.includes("invalid state")));
   assert.ok(e.some((x) => x.includes("P0-777")));
+});
+
+test("T-GOV-009 master plan with a checkbox is rejected (GR-16)", () => {
+  const e = masterPlanChecks("# x\n- [ ] do it\n- [x] done\n", ids);
+  assert.equal(e.filter((x) => x.startsWith("GR-16") && x.includes("checkbox")).length, 2);
+});
+test("T-GOV-010 master plan checkboxes inside code fences are ignored", () => {
+  assert.deepEqual(masterPlanChecks("```md\n- [ ] example\n```\n", ids), []);
+});
+test("T-GOV-011 master plan referencing an unknown task is rejected (GR-16)", () => {
+  const e = masterPlanChecks("see P0-004 and P8-999", ids);
+  assert.ok(e.some((x) => x.includes("P8-999")));
+  assert.ok(!e.some((x) => x.includes("P0-004")));
+});
+test("T-GOV-012 phase 8 task ids are recognised", () => {
+  assert.deepEqual(taskIdsInMessage("feat: x [P8-001]"), ["P8-001"]);
 });

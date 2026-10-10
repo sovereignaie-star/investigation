@@ -30,7 +30,7 @@ if (a === "--defect") {
 } else if (a === "--phase") {
   replaceRow(/^\| المرحلة الحالية \|[^\n]*$/m, () => `| المرحلة الحالية | ${b} |`);
 } else {
-  if (!/^P[0-7]-\d{3}$/.test(a || "") || !VALID_STATES.has(b)) {
+  if (!/^P[0-9]-\d{3}$/.test(a || "") || !VALID_STATES.has(b)) {
     console.error("usage: set-status.mjs <Pn-nnn> <todo|in_progress|blocked|done|dropped> [evidence]");
     process.exit(2);
   }
@@ -38,8 +38,8 @@ if (a === "--defect") {
 }
 
 // Recompute phase progress from the task rows.
-const rows = [...s.matchAll(/^\| (P([0-7])-\d{3}) \| [^|]+\| ([a-z_]+) \|/gm)];
-for (let n = 0; n <= 7; n++) {
+const rows = [...s.matchAll(/^\| (P([0-9])-\d{3}) \| [^|]+\| ([a-z_]+) \|/gm)];
+for (let n = 0; n <= 9; n++) {
   const ph = rows.filter((r) => r[2] === String(n));
   const done = ph.filter((r) => r[3] === "done").length;
   const prog = ph.filter((r) => r[3] === "in_progress").length;
