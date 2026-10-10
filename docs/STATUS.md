@@ -16,7 +16,7 @@
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
-| 0 | التثبيت والتأسيس | 20 | 14 | 0 |
+| 0 | التثبيت والتأسيس | 20 | 14 | 1 |
 | 1 | النواة والسجل | 22 | 0 | 0 |
 | 2 | المحرّك والمحوّلات | 22 | 0 | 0 |
 | 3 | محطة العمل | 20 | 0 | 0 |
@@ -43,7 +43,7 @@
 | P0-008 | ملفات المشروع: README، LICENSE، SECURITY، CONTRIBUTING، CODE_OF_CONDUCT (M) | todo | — |
 | P0-009 | تثبيت بيئة التشغيل: `engines` و`.nvmrc` و`packageManager` (M) | done | PR #3: `engines` (node>=24، pnpm>=10) و`packageManager: pnpm@10.34.6` و`.nvmrc`=24 |
 | P0-010 | إطار الاختبار Vitest وأول اختبارات (سلامة قائمة المعرّفات) (M) | done | PR #3: Vitest 3 + `vitest.config.ts`؛ `pnpm test` => 2 ملفات، 8 اختبارات ناجحة (T-IDL-001..006 واستيراد `@workspace/db`) |
-| P0-011 | خط CI للبناء: تثبيت، فحص أنواع، بناء، اختبار (M) | todo | — |
+| P0-011 | خط CI للبناء: تثبيت، فحص أنواع، بناء، اختبار (M) | in_progress | PR #3: `.github/workflows/ci.yml` (وظيفتا build وtest على Node 24)؛ تسجيلهما فحصين مطلوبين بعد أول تشغيل أخضر |
 | P0-012 | تنظيف نصوص القالب: `replit.md` و`index.html` (`lang="ar" dir="rtl"`) (M) | done | PR #1 (`replit.md`) + PR #3 (`index.html`: `lang=ar dir=rtl`، وصف حقيقي، `noindex`، إزالة خطوط Google الخارجية) |
 | P0-013 | إصلاح `post-merge.sh` (اسم الحزمة) (S) | done | PR #3: اسم الحزمة صريح، وتخطي `drizzle push` بلا `DATABASE_URL` |
 | P0-014 | جعل `lib/db` كسولاً (لا يرمي خطأ عند الاستيراد) (S) | done | PR #3: `getDb()`/`getPool()` كسولان؛ لا خطأ عند الاستيراد (اختبار في P0-010) |
