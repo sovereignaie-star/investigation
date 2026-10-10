@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import express, { type Express } from "express";
+import rateLimit from "express-rate-limit";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
@@ -39,6 +40,9 @@ app.use("/api", router);
  */
 const webDist = process.env["WEB_DIST"] ?? path.resolve(import.meta.dirname, "..", "..", "web", "dist", "public");
 if (existsSync(path.join(webDist, "index.html"))) {
+  // Static files and the SPA fallback touch the file system: limit per client (CodeQL js/missing-rate-limiting).
+  const webLimiter = rateLimit({ windowMs: 60_000, limit: 600, standardHeaders: "draft-8", legacyHeaders: false });
+  app.use(webLimiter);
   app.use(express.static(webDist, { index: false, maxAge: "1h" }));
   app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
     res.sendFile(path.join(webDist, "index.html"));
