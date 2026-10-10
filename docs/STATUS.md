@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 23 | 0 |
+| 1 | النواة والسجل | 25 | 24 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -88,7 +88,7 @@
 | P1-018 | غرض القضية والأساس المشروع (M) | done | openCase requires create (CaseInit: purpose >= 10 chars, closed legalBasis) else NoCaseError; case.created is the first entry; info()/update(changes, reason) via case.updated; refused case writes nothing; tests in audit-purpose.test.ts |
 | P1-019 | ساعة ومولّد قابلان للحقن (S) | done | packages/core: Clock (system/manual), Random (crypto/seeded), monotonic ULID factory; 6 tests; ESLint bans Date.now/new Date()/Math.random in core, schema, ledger |
 | P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | done | fixtures/detect/golden.jsonl: 5,000 snippets (ar/en), 6,533 deterministic + 3,025 other entities, 800 near misses; independent generator self-checked on published vectors; golden.test.ts second review + extractor scores: deterministic precision 99.97%, recall 99.97%, near misses 0 accepted, other recall 97.5%; linear punctuation trimming (CodeQL #25 fixed in code) |
-| P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | todo | — |
+| P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | done | apps/web store is in-memory (no zustand persist); storagePolicy.purgeLegacyCaseStorage() deletes 'investigation-store' at start-up; investigationStore.test.ts: no localStorage/sessionStorage writes, purge, source guard; verified in headless Chromium (keys after reload: []) |
 | P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | todo | — |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
 | P1-024 | إزالة الاعتماد على منصة الاستضافة السابقة وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | legacy hosting files removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
@@ -376,8 +376,8 @@
 | D-030 | حرج | مغلق | P1-015: المفاتيح في خزنة الخادم المختومة، والواجهة لا تخزنها ولا تستلمها؛ نقل تلقائي لمرة واحدة من localStorage ثم حذفها |
 | D-031 | متوسط | مفتوح | — |
 | D-032 | منخفض | مفتوح | — |
-| D-033 | عالٍ | مفتوح | — |
-| D-034 | متوسط | مفتوح | — |
+| D-033 | عالٍ | مغلق | P1-021: لا persist ولا كتابة في localStorage/sessionStorage؛ المفتاح القديم يُحذف عند الإقلاع؛ اختبار حارس يمنع العودة |
+| D-034 | متوسط | مفتوح جزئياً | P1-021 لم يغيّر الإضافة الخطية؛ فهارس O(1) في P1-022 |
 | D-035 | عالٍ | مفتوح جزئياً | P1-013 + P1-014: تخزين الخادم بترحيلات ومعاملات وتشفير جاهز؛ الواجهة ما زالت على Dexie (investigationDatabase.ts) حتى تنتقل إلى واجهة القضية البرمجية في المرحلة 3 |
 | D-036 | متوسط | مفتوح جزئياً | P1-010: الاستجابة الخام تُحفظ blob متحققاً منه ومصدرها (الطلب المنقّح) في `evidence.stored`؛ يبقى استبدال الكاش الثابت بالساعة (P2-007) |
 | D-037 | عالٍ | مفتوح | — |
