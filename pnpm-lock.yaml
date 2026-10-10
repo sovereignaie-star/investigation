@@ -356,6 +356,12 @@ importers:
 
   apps/server:
     dependencies:
+      '@ir/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@ir/store':
+        specifier: workspace:*
+        version: link:../../packages/store
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod

@@ -48,6 +48,8 @@ pnpm start                       # خدمة واحدة: الواجهة والو�
 | Railway | ملف [`railway.json`](railway.json) يبني من `Dockerfile` |
 | جهاز محلي | `pnpm run build && pnpm start` |
 
+مفاتيح مزودي الخدمة تُحفظ في خزنة على الخادم فقط (`IR_DATA_DIR/vault.json`، مختومة بـ AES-256-GCM) ولا تعود إلى المتصفح. على المنصات المستضافة: اضبط `IR_VAULT_KEY` و`IR_ADMIN_TOKEN` و`TRUST_PROXY=1` واربط قرصاً دائماً بـ `IR_DATA_DIR` (ملف `render.yaml` يفعل ذلك). على الجهاز المحلي لا يلزم شيء.
+
 متغيرات البيئة موثقة في [`.env.example`](.env.example). قاعدة البيانات اختيارية في هذه المرحلة؛ بدون `DATABASE_URL` يعمل كل شيء عدا مسارات الخادم التي تحتاجها.
 
 ## المساهمة والأمن والسلوك
