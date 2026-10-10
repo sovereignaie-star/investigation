@@ -36,8 +36,13 @@ const SECRET_BLOB = "<html>registrant-record-unique-9f31</html>";
 function encryptedCase() {
   const dir = tmp();
   const clock = manualClock("2026-10-10T14:00:00.000Z");
-  const c = openCase(dir, { actor: "analyst", clock, passphrase: PASS, kdf: FAST });
-  c.append("case.created", { purpose: "عناية واجبة", note: SECRET_TEXT });
+  const c = openCase(dir, {
+    actor: "analyst",
+    clock,
+    passphrase: PASS,
+    kdf: FAST,
+    create: { title: "سرية", purpose: `عناية واجبة ${SECRET_TEXT}`, legalBasis: "due_diligence" },
+  });
   const ev = c.addEvidence({
     bytes: new TextEncoder().encode(SECRET_BLOB),
     mime: "text/html",
@@ -94,7 +99,7 @@ describe("case encryption (P1-014)", () => {
     locked.close();
     expect(() => openCase(dir, { actor: "x", passphrase: "wrong passphrase" })).toThrow(WrongPassphraseError);
     const c = openCase(dir, { actor: "x", passphrase: PASS });
-    expect(c.entries()[0]?.payload).toEqual({ purpose: "عناية واجبة", note: SECRET_TEXT });
+    expect(c.info().purpose).toBe(`عناية واجبة ${SECRET_TEXT}`);
     expect(new TextDecoder().decode(c.blobs.get(ev.sha256))).toBe(SECRET_BLOB);
     c.close();
   });
@@ -109,7 +114,7 @@ describe("case encryption (P1-014)", () => {
     expect(r1).toMatchObject({
       ok: true,
       encryption: "locked",
-      chain: { ok: true, length: 3 },
+      chain: { ok: true, length: 6 },
       evidence: { skipped: true },
       checkpoints: { embedded: 1, problems: [] },
     });
@@ -159,7 +164,7 @@ describe("case encryption (P1-014)", () => {
     writeFileSync(path.join(a.dir, CASE_KEY), readFileSync(path.join(b.dir, CASE_KEY)));
     expect(() => openCase(a.dir, { actor: "x", passphrase: PASS })).toThrow(/belongs to case/);
     const plain = tmp();
-    openCase(plain, { actor: "x" }).close();
+    openCase(plain, { actor: "x", create: { title: "t", purpose: "a stated purpose", legalBasis: "self_assessment" } }).close();
     expect(() => openCase(plain, { actor: "x", passphrase: PASS })).toThrow(/not encrypted/);
   });
 });

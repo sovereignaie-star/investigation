@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 15 | 0 |
+| 1 | النواة والسجل | 25 | 17 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -84,8 +84,8 @@
 | P1-014 | تشفير القضية (SQLCipher أو تشفير ملفات) واشتقاق المفتاح (M) | done | packages/store crypto.ts: Argon2id (RFC 9106 vector) wrapped per-case key, AES-256-GCM sealed payloads and HMAC-addressed blobs; reading without key fails; ir verify --passphrase-file; 8 tests; no check-then-read on case.key.json (CodeQL js/file-system-race fixed in code) |
 | P1-015 | خزنة المفاتيح في الخادم (M) | done | packages/store vault.ts (AES-256-GCM per entry, name as AAD; master from IR_VAULT_KEY / IR_VAULT_PASSPHRASE / generated 0600 key file); /api/vault never returns a secret; keyed lookups server-side; IR_ADMIN_TOKEN or loopback; web off localStorage; 7 tests and docker CI check |
 | P1-016 | الإسقاطات: رسم، جدول، تغطية (M) | todo | — |
-| P1-017 | سجل التدقيق (M) | todo | — |
-| P1-018 | غرض القضية والأساس المشروع (M) | todo | — |
+| P1-017 | سجل التدقيق (M) | done | Case.audit(): AuditEvent (purposeRef = case id) appended as audit.event in the chain and indexed in audit_events in one transaction; created, updated, evidence.stored, unlocked, passphrase_changed audited; detail sealed in encrypted cases; ir verify cross-checks index vs chain |
+| P1-018 | غرض القضية والأساس المشروع (M) | done | openCase requires create (CaseInit: purpose >= 10 chars, closed legalBasis) else NoCaseError; case.created is the first entry; info()/update(changes, reason) via case.updated; refused case writes nothing; tests in audit-purpose.test.ts |
 | P1-019 | ساعة ومولّد قابلان للحقن (S) | done | packages/core: Clock (system/manual), Random (crypto/seeded), monotonic ULID factory; 6 tests; ESLint bans Date.now/new Date()/Math.random in core, schema, ledger |
 | P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | todo | — |
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | todo | — |
@@ -393,4 +393,4 @@
 | D-047 | متوسط | مُصلح جزئياً | P0-012: `lang/dir`؛ i18n في P3-017 |
 | D-048 | متوسط | جزئي | كتالوج الأدوات يوثق المصادر وحالتها؛ التوثيق لكل محوّل في P2-011 |
 | D-049 | عالٍ | مفتوح | — |
-| D-050 | متوسط | مفتوح | — |
+| D-050 | متوسط | مفتوح جزئياً | P1-017 + P1-018: سجل التدقيق وغرض القضية منفّذان؛ تمييز الأشخاص الطبيعيين يأتي مع P2-013 |

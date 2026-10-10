@@ -42,6 +42,8 @@ export const LedgerKind = z.enum([
   "merge.reverted",
   "checkpoint",
   "note.added",
+  "case.updated",
+  "audit.event",
 ]);
 
 /** Append-only hash chain entry (5.5, ADR-06). entryHash = SHA-256(JCS(["ir-ledger/1", prevHash, seq, kind, at, actor, payload])). */
