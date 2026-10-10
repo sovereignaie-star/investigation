@@ -16,7 +16,7 @@
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
-| 0 | التثبيت والتأسيس | 26 | 23 | 0 |
+| 0 | التثبيت والتأسيس | 26 | 24 | 0 |
 | 1 | النواة والسجل | 22 | 0 | 0 |
 | 2 | المحرّك والمحوّلات | 30 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
@@ -56,7 +56,7 @@
 | P0-020 | ملف تعليمات الوكلاء الآليين (`AGENTS.md`) (M) | done | إيداع الحوكمة الأول: `AGENTS.md` |
 | P0-021 | دمج الخطة الشاملة (`MASTER_PLAN.md`) مع الخارطة: قاعدة أسبقية، سجل حسم التعارضات، مصفوفة تتبع، وحارس GR-16 (M) | done | PR (هذا الفرع): docs/MASTER_PLAN.md مدمجة (3,569 سطراً، 0 مربعات)، الأصل في docs/archive بـ SHA-256، القسم 14 في الخارطة (39 تعارضاً محسوماً، ربط 21 مرحلة، 46 مهمة و11 محوّلاً جديداً)، check --consistency أخضر |
 | P0-022 | جودة الكود الثابتة: ESLint (typescript-eslint strict) وPrettier و`.editorconfig` وسكربت `lint` في CI (M) | done | eslint.config.mjs (strict, complexity 15, no-console, no-explicit-any) + .prettierrc.json + .editorconfig + lint-staged pre-commit + Conventional Commits in guard (T-GOV-013/014) + lint step in CI |
-| P0-023 | دليل التطوير وتشغيل المشروع في أقل من 10 دقائق (S) | todo | — |
+| P0-023 | دليل التطوير وتشغيل المشروع في أقل من 10 دقائق (S) | done | docs/DEVELOPMENT.md + .vscode/extensions.json; fresh clone to dev+healthz in 158 s |
 | P0-024 | إعدادات المستودع: `CODEOWNERS`، تسميات منظمة، الإبلاغ الخاص عن الثغرات، فحص الأسرار في GitHub (S) | todo | — |
 | P0-025 | `ARCHITECTURE.md` مختصر يحيل إلى القسم 5 وسجلات القرار (S) | todo | — |
 | P0-026 | دمج «المرجع الشامل لقدرات OSINT» (المرجع الثاني) (M) | done | 14.7 + P2-028..030 + P4-018..022 + TR-054..080 + curated.json (20 tools, catalog 10,834) |
