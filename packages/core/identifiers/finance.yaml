@@ -306,6 +306,19 @@
       - BRK.B
     negative:
       - AAPL#
+  context:
+    keywords:
+      - ticker
+      - stock
+      - shares
+      - nasdaq
+      - nyse
+      - tadawul
+      - سهم
+      - أسهم
+      - تداول
+      - رمز السهم
+    required: true
   sensitivity: normal
 - id: crypto_exchange_id
   category: Finance

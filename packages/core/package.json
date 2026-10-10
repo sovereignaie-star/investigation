@@ -11,7 +11,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "gen:data": "node scripts/gen-data.mjs"
+    "gen:data": "node scripts/gen-data.mjs",
+    "gen:golden": "node scripts/gen-golden.mjs"
   },
   "devDependencies": {
     "@ir/schema": "workspace:*",

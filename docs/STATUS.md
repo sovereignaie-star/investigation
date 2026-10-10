@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 25 | 21 | 0 |
+| 1 | النواة والسجل | 25 | 22 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -87,7 +87,7 @@
 | P1-017 | سجل التدقيق (M) | done | Case.audit(): AuditEvent (purposeRef = case id) appended as audit.event in the chain and indexed in audit_events in one transaction; created, updated, evidence.stored, unlocked, passphrase_changed audited; detail sealed in encrypted cases; ir verify cross-checks index vs chain |
 | P1-018 | غرض القضية والأساس المشروع (M) | done | openCase requires create (CaseInit: purpose >= 10 chars, closed legalBasis) else NoCaseError; case.created is the first entry; info()/update(changes, reason) via case.updated; refused case writes nothing; tests in audit-purpose.test.ts |
 | P1-019 | ساعة ومولّد قابلان للحقن (S) | done | packages/core: Clock (system/manual), Random (crypto/seeded), monotonic ULID factory; 6 tests; ESLint bans Date.now/new Date()/Math.random in core, schema, ledger |
-| P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | todo | — |
+| P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | done | fixtures/detect/golden.jsonl: 5,000 snippets (ar/en), 6,533 deterministic + 3,025 other entities, 800 near misses; independent generator self-checked on published vectors; golden.test.ts second review + extractor scores: deterministic precision 99.97%, recall 99.97%, near misses 0 accepted, other recall 97.5% |
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | todo | — |
 | P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | todo | — |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
@@ -348,7 +348,7 @@
 | D-002 | حاجز | مُصلح جزئياً | P0-006 نقطة دخول دنيا؛ محطة العمل في P3-002 |
 | D-003 | حاجز | مفتوح | — |
 | D-004 | حرج | مُصلح | P0-005 |
-| D-005 | عالٍ | مغلق جزئياً | P1-006: الأفضل يطابق النوع المعلن في 224 من 377 (59.4%) بلا سياق مقابل 14.1% لأول تطابق، و314 (83.3%) بكلمة التسمية؛ المجموعة الذهبية في P1-020 |
+| D-005 | عالٍ | مغلق | P1-020: على 5,000 مقتطف ذهبي: الحتمي precision 99.97% وrecall 99.97% (6,531 من 6,533)، ولا شبيه معطوب مقبول؛ أول تطابق كان 14.1% |
 | D-006 | عالٍ | مغلق | P1-004: الأمثلة الإيجابية مقبولة 100% بنمط نوعها ومدققه (377 من 377 بالقياس) |
 | D-007 | عالٍ | مغلق | P1-006: الأنواع المتطابقة النمط مرشحون منفصلون بدرجات متساوية، والسياق يحسم بينها |
 | D-008 | متوسط | مغلق | P1-003: العدد الحقيقي 371 نوعاً في 13 تصنيفاً مقاس وموثّق، والتوسعة عبر YAML بمثال إيجابي وسلبي إلزامي |

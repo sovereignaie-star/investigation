@@ -11,6 +11,7 @@ import type { IdentifierSpecData } from "./types.ts";
 export { IDENTIFIER_SPECS };
 export type { IdentifierSpecData };
 
+const CASE_SENSITIVE = new Set(["eip55"]);
 const byId = new Map(IDENTIFIER_SPECS.map((s) => [s.id, s]));
 const compiled = new Map<string, RegExp[]>();
 
@@ -38,7 +39,8 @@ export function matchesSpec(spec: IdentifierSpecData, raw: string): { pattern: b
   } catch {
     return { pattern, valid: false }; // e.g. an address offered to the hostname type: not normalizable, so not valid
   }
-  const v = validate(spec.id, normalized);
+  // case carries the checksum (EIP-55): validate what was written, since the normalized form is lowercased
+  const v = validate(spec.id, spec.validator && CASE_SENSITIVE.has(spec.validator) ? text : normalized);
   return { pattern, valid: v ? v.valid : null };
 }
 
@@ -47,3 +49,4 @@ export const accepts = (spec: IdentifierSpecData, raw: string): boolean => {
   return m.pattern && m.valid !== false;
 };
 export { detect, detectBest, type Candidate, type DetectOptions } from "./detect.ts";
+export { extract, type Extracted, type ExtractOptions } from "./extract.ts";
