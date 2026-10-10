@@ -16,7 +16,7 @@
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
-| 0 | التثبيت والتأسيس | 26 | 21 | 0 |
+| 0 | التثبيت والتأسيس | 26 | 22 | 0 |
 | 1 | النواة والسجل | 22 | 0 | 0 |
 | 2 | المحرّك والمحوّلات | 30 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
@@ -52,7 +52,7 @@
 | P0-016 | إزالة تكرار ملفات بايثون المرفقة وجردها ببصماتها (S) | done | PR (هذا الفرع): 26 ملفاً => 13 فريداً في attached_assets/legacy/ بأسماء نظيفة + MANIFEST.md ببصمات SHA-256؛ 11,563 سطراً و3 ملفات بايثون صالحة + Investigation9 (JSON) يطابق الخارطة 2.9 |
 | P0-017 | فحوص أمن آلية: Dependabot، CodeQL، gitleaks (S) | done | PR (هذا الفرع): dependabot.yml (npm + actions أسبوعياً)، codeql.yml (security-extended على كل PR وmain وأسبوعياً)، secrets.yml (gitleaks 8.30.1 مثبّت ببصمة)؛ فحص كامل التاريخ: 33 إيداعاً بلا تسريب بعد استثناء موثق واحد (رأس PEM مثالاً) |
 | P0-018 | قوالب Issues وPR تتضمن قائمة الحوكمة (S) | done | إيداع الحوكمة الأول: `.github/pull_request_template.md` وقوالب Issues |
-| P0-019 | سكربت قياس خط الأساس يعيد أرقام القسم 2 (S) | todo | — |
+| P0-019 | سكربت قياس خط الأساس يعيد أرقام القسم 2 (S) | done | scripts/audit/measure.mjs + pnpm run audit:measure; reproduces 1.2 (31/371 fetchers, 14/377 first-match, 11,563 py lines, 3 valid) |
 | P0-020 | ملف تعليمات الوكلاء الآليين (`AGENTS.md`) (M) | done | إيداع الحوكمة الأول: `AGENTS.md` |
 | P0-021 | دمج الخطة الشاملة (`MASTER_PLAN.md`) مع الخارطة: قاعدة أسبقية، سجل حسم التعارضات، مصفوفة تتبع، وحارس GR-16 (M) | done | PR (هذا الفرع): docs/MASTER_PLAN.md مدمجة (3,569 سطراً، 0 مربعات)، الأصل في docs/archive بـ SHA-256، القسم 14 في الخارطة (39 تعارضاً محسوماً، ربط 21 مرحلة، 46 مهمة و11 محوّلاً جديداً)، check --consistency أخضر |
 | P0-022 | جودة الكود الثابتة: ESLint (typescript-eslint strict) وPrettier و`.editorconfig` وسكربت `lint` في CI (M) | todo | — |

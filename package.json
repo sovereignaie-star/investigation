@@ -10,6 +10,7 @@
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "governance": "node scripts/governance/check.mjs --last && node scripts/governance/check.mjs --consistency",
     "governance:test": "node --test scripts/governance/check.test.mjs",
+    "audit:measure": "node scripts/audit/measure.mjs --full",
     "test": "vitest run",
     "test:watch": "vitest"
   },
