@@ -16,7 +16,7 @@
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
-| 0 | التثبيت والتأسيس | 26 | 26 | 0 |
+| 0 | التثبيت والتأسيس | 28 | 27 | 0 |
 | 1 | النواة والسجل | 22 | 0 | 0 |
 | 2 | المحرّك والمحوّلات | 30 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
@@ -60,6 +60,8 @@
 | P0-024 | إعدادات المستودع: `CODEOWNERS`، تسميات منظمة، الإبلاغ الخاص عن الثغرات، فحص الأسرار في GitHub (S) | done | CODEOWNERS + labels.yml (25 labels applied); secret scanning + push protection, private vuln reporting, Dependabot alerts + security updates enabled via gh api |
 | P0-025 | `ARCHITECTURE.md` مختصر يحيل إلى القسم 5 وسجلات القرار (S) | done | ARCHITECTURE.md: links to ROADMAP 5.x anchors and docs/adr, current vs target layout |
 | P0-026 | دمج «المرجع الشامل لقدرات OSINT» (المرجع الثاني) (M) | done | 14.7 + P2-028..030 + P4-018..022 + TR-054..080 + curated.json (20 tools, catalog 10,834) |
+| P0-027 | دمج تحديثات Dependabot لإجراءات GitHub في إيداع محكوم واحد، وحل تعارضاتها (S) | done | PRs #6-#8 folded into one governed commit: checkout v7, setup-node v7, pnpm/action-setup v6 in all workflows |
+| P0-028 | دمج «ترسانة الأدوات والقدرات» (PR #9) (M) | todo | — |
 
 ### المرحلة 1: النواة والسجل
 
