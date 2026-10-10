@@ -1,4 +1,4 @@
-// T-GOV-001..T-GOV-008 — unit tests for the governance guard. Run: node --test scripts/governance/
+// T-GOV-001..T-GOV-008 — unit tests for the governance guard. Run: node --test scripts/governance/check.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { evaluate, consistency, taskIdsInMessage, STATUS, WORKLOG } from "./check.mjs";
