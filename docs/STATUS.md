@@ -98,7 +98,7 @@
 | P1-028 | إنشاء القضية ذرّياً والتحقق من سجل الغرض | done | PR (هذا الفرع): case identity + case.created + audit in one transaction; IncompleteCaseError on writable open of a chain without case.created; ir verify reports purpose; crash at every clock read 1..40, plain and encrypted, leaves no case and no key file |
 | P1-029 | فرز تنبيهات Dependabot وسياسة مهلها (D-3) | done | PR #39: `docs/security/DEPENDENCY_ALERTS.md` يسجل الـ 23 تنبيهاً؛ 11 من 12 حرجاً وعالياً مُصلحة في ملف القفل (`proxy-addr` 2.0.8، `fast-uri` 3.1.8، `browserslist` 4.29.3، `brace-expansion` 5.0.12)؛ `braces` (#54) استثناء موثق بلا إصلاح منشور، يُراجع 2026-10-17؛ السياسة في SECURITY.md |
 | P1-030 | تعطيل `/api/lookup/*` افتراضياً خلف علم صريح (D-2) | done | PR #38: `IR_ENABLE_LOOKUPS=1` حرفياً يفعّلها و`IR_OFFLINE=1` يعطّلها دائماً؛ 403 بلا قراءة الخزنة؛ اختبار بشاهدين (`fetch` المحقون والعام) لثلاث حالات تعطيل؛ ضابط سلبي (`return true`) -> 4 اختبارات تفشل |
-| P1-031 | فرض المراجعة البشرية لمسارات الأمن والخروج (D-8) | in_progress | PR (هذا الفرع): الفحص والاختبارات وCODEOWNERS؛ دعوة `@xuuux-voox` بصلاحية Write معلّقة على قبوله؛ الفحص غير مطلوب على `main` قبل إثبات حالتي الموافقة والرفض في طلبات تجريبية؛ `pull_request_target` لا يعمل قبل الدمج في `main` (سلوك GitHub منذ 2025-12-08) |
+| P1-031 | فرض المراجعة البشرية لمسارات الأمن والخروج (D-8) | in_progress | PR (هذا الفرع): الفحص والاختبارات وCODEOWNERS؛ دعوة `@xuuux-voox` بصلاحية Write معلّقة على قبوله؛ الفحص غير مطلوب على `main` قبل إثبات حالتي الموافقة والرفض في طلبات تجريبية؛ `pull_request_target` لا يعمل قبل الدمج في `main` (سلوك GitHub منذ 2025-12-08)؛ طلب تجريبي (inside) لا يُدمج |
 
 ### المرحلة 2: المحرّك والمحوّلات
 
