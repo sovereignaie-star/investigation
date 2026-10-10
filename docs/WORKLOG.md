@@ -240,3 +240,10 @@
   - `gh api repos/sovereignaie-star/investigation/private-vulnerability-reporting` → `{"enabled":true}` (فُعّل في P0-008).
 - ما لم يتم: `secret_scanning_non_provider_patterns` و`secret_scanning_validity_checks` بقيا معطّلين؛ طلب التفعيل لم يغيّر الحالة (يتطلبان GitHub Advanced Security أو Secret Protection المدفوع) [مُقاس]. gitleaks في CI يغطي الأنماط العامة.
 - التالي: P0-025.
+
+### 2026-10-10 — [P0-025] مدخل المعمارية
+- المنفّذ: وكيل آلي (Perplexity Computer).
+- ما تم: `ARCHITECTURE.md` في الجذر: ثلاثة مبادئ، جدول «أين تجد ماذا» يحيل إلى 5.1–5.20 و`docs/adr/` دون نسخ، وجدول الوضع الحالي مقابل المستهدف (`artifacts/*` إلى `apps/*` و`packages/*`). رابط من README.
+- الأدلة: كل روابط الأقسام (14 رابطاً) تطابق عناوين القسم 5 بصيغة روابط GitHub (فحص آلي)؛ `check.mjs --consistency` ناجح.
+- ما لم يتم: لا شيء ضمن معيار القبول.
+- التالي: إغلاق المرحلة 0 ودفع الفرع وفتح PR.
