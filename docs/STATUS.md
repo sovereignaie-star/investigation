@@ -16,7 +16,7 @@
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
-| 0 | التثبيت والتأسيس | 25 | 16 | 0 |
+| 0 | التثبيت والتأسيس | 25 | 17 | 0 |
 | 1 | النواة والسجل | 22 | 0 | 0 |
 | 2 | المحرّك والمحوّلات | 27 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
@@ -41,7 +41,7 @@
 | P0-005 | إصلاح خطأ `TS2352` ومفتاح الكاش (M) | done | PR #2: جدول كاش جديد بمفتاح أساسي cacheKey (Dexie v2) و`put` بدل التحويل string→number؛ `pnpm run typecheck` => exit 0 |
 | P0-006 | نقطة دخول دنيا للواجهة (`main.tsx`، `App.tsx`) بواجهة عربية RTL (M) | done | PR #3: `main.tsx` + `App.tsx` + `index.css`؛ `PORT=22124 BASE_PATH=/ pnpm run build` => نجاح (30 وحدة، 82KB gzip) |
 | P0-007 | نظافة الأسرار: `.gitignore` للبيئة و`.env.example` (M) | done | PR #3: `.gitignore` يحظر `.env` و`.env.*` مع استثناء `.env.example`؛ `git check-ignore .env` => مطابق |
-| P0-008 | ملفات المشروع: README، LICENSE، SECURITY، CONTRIBUTING، CODE_OF_CONDUCT (M) | todo | — |
+| P0-008 | ملفات المشروع: README، LICENSE، SECURITY، CONTRIBUTING، CODE_OF_CONDUCT (M) | done | PR (هذا الفرع): README وLICENSE (نص AGPL-3.0 الرسمي، 661 سطراً) وSECURITY وCONTRIBUTING وCODE_OF_CONDUCT في الجذر ومترابطة؛ package.json => AGPL-3.0-or-later؛ الإبلاغ الخاص عن الثغرات مفعّل |
 | P0-009 | تثبيت بيئة التشغيل: `engines` و`.nvmrc` و`packageManager` (M) | done | PR #3: `engines` (node>=24، pnpm>=10) و`packageManager: pnpm@10.34.6` و`.nvmrc`=24 |
 | P0-010 | إطار الاختبار Vitest وأول اختبارات (سلامة قائمة المعرّفات) (M) | done | PR #3: Vitest 3 + `vitest.config.ts`؛ `pnpm test` => 2 ملفات، 8 اختبارات ناجحة (T-IDL-001..006 واستيراد `@workspace/db`) |
 | P0-011 | خط CI للبناء: تثبيت، فحص أنواع، بناء، اختبار (M) | done | PR #3 دمج `ci.yml`؛ أول تشغيل: build ✓ (20 ث)، test ✓ (17 ث)؛ ثم صارت `governance` و`build` و`test` فحوصاً مطلوبة لحماية `main` |
@@ -270,7 +270,7 @@
 | G-01 | P8 | `typecheck` أخضر في الجذر | 0 | متحققة (PR #2) |
 | G-02 | P8 | `build` أخضر لكل التطبيقات | 0 | متحققة (PR #3) |
 | G-03 | P8 | `test` أخضر في CI | 0 | متحققة (PR #3: `test` أخضر ومطلوب) |
-| G-04 | P9 | README وLICENSE وSECURITY وCONTRIBUTING موجودة | 0 | لم تتحقق |
+| G-04 | P9 | README وLICENSE وSECURITY وCONTRIBUTING موجودة | 0 | متحققة (P0-008) |
 | G-05 | P9 | حارس الحوكمة مفعل محلياً وفي CI، و`main` محمي | 0 | متحققة |
 | G-06 | P9 | كل مهمة في الخارطة لها سطر حالة | 0 | متحققة (`--consistency`) |
 | G-07 | P4 | لا أسرار في المستودع (gitleaks) | 0 | لم تتحقق |
@@ -361,7 +361,7 @@
 | D-037 | عالٍ | مفتوح | — |
 | D-038 | متوسط | مُصلح جزئياً | P0-014؛ القرار النهائي في ADR-04 |
 | D-039 | متوسط | مُصلح | P0-007 |
-| D-040 | عالٍ | مفتوح | — |
+| D-040 | عالٍ | مُصلح | P0-008، P0-009، P0-010، P0-011 |
 | D-041 | منخفض | مُصلح | P0-012 |
 | D-042 | متوسط | مفتوح | — |
 | D-043 | منخفض | مفتوح | — |

@@ -150,3 +150,10 @@
 - **الأدلة:** `grep -c "\[ \]" docs/MASTER_PLAN.md` => 0؛ `sha256sum docs/archive/…` يطابق المرفق؛ `check.mjs --consistency` => متسق. مصادر متوقفة [مُتحقَّق]: BinaryEdge أُغلق 2025-03-31 (Coalition)، PassiveTotal استُبدل بـ Defender TI (RiskIQ)، Clearbit أوقف الأدوات المجانية 2025-04-30، Bing Search API أُوقفت 2025-08-11 (Microsoft Learn)، Google Custom Search JSON API مغلقة للجدد وتتوقف 2027-01-01 (Google)، abuse.ch يشترط Auth-Key منذ 2025-06-30، VirusTotal العامة تمنع الاستعمال التجاري.
 - **ما لم يتم / ملاحظات:** خانات المنافسين الجديدة [للتحقق]. المهام الجديدة كلها `todo`.
 - **التالي:** P0-008 (README والترخيص AGPL وملفات المجتمع).
+
+### 2026-10-10 — [P0-008] ملفات المشروع والترخيص
+- **المنفّذ:** Perplexity Computer.
+- **ما تم:** `README.md` (عربي مع ملخص إنجليزي، يربط الوثائق الحاكمة وأوامر التشغيل)، `LICENSE` بنص AGPL-3.0 الرسمي، `SECURITY.md` (إبلاغ خاص عبر GitHub Security Advisories، مدد الاستجابة، النطاق)، `CONTRIBUTING.md` (دورة العمل وقواعد الإيداع والـ PR)، `CODE_OF_CONDUCT.md` (مقتبس من Contributor Covenant 2.1). حقل `license` في `package.json` من MIT إلى `AGPL-3.0-or-later` (ADR-10). فُعّل الإبلاغ الخاص عن الثغرات في المستودع.
+- **الأدلة:** `sha256sum LICENSE` => `0d96a4ff…abcb0` (النص الرسمي من gnu.org، 661 سطراً)؛ `gh api repos/sovereignaie-star/investigation/private-vulnerability-reporting` => `{"enabled":true}` [مُقاس]. العيب D-040 مُصلح بكامل عناصره، والبوابة G-04 متحققة.
+- **ما لم يتم / ملاحظات:** CODEOWNERS والتسميات وفحص الأسرار ضمن P0-024.
+- **التالي:** P0-015 (سجلات القرار في `docs/adr/`).
