@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **402**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **406**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -36,6 +36,7 @@
 | TL-b0cb7df5 | [airspace](https://www.airspace-review.com/) | أساسية | web | — | reachable | — | — |
 | TL-bc0a40a0 | [AIS Hub](http://www.aishub.net/api) | داعمة | api | — | reachable | apiKey | Real-time data of any marine and inland vessel equipped with AIS tracking system |
 | TL-e3792e95 | [AIS Signal Map](https://www.aishub.net/coverage) | أساسية | web | — | reachable | — | — |
+| TL-334f16eb | [AIS-catcher](https://github.com/jvde-github/AIS-catcher) | داعمة | oss | — | reachable | — | AIS vessel message receiver and decoder for SDR. |
 | TL-e06861a9 | [All Vehicle Data](http://www.allvehicledata.com/) | أساسية | web | — | reachable | — | — |
 | TL-8e8c95c3 | [Amadeus for Developers](https://developers.amadeus.com/self-service) | داعمة | api | — | reachable | OAuth | Travel Search - Limited usage |
 | TL-3bf99294 | [Analyst Research Tools](https://analystresearchtools.com) | أساسية | web | بوابة الأشخاص | reachable | — | Online #osint tools: People Search (USA🇺🇸 and International), Email Search, Phone Number Search🇺🇸, Username Permutator, Email Permutator, Vehicle License Plate  |
@@ -109,6 +110,7 @@
 | TL-bd8a59ba | [Direkht Ban Guru](https://direkt.bahn.guru/) | أساسية | web | — | reachable | — | Enter the name of the station to see what cities you can get to by train without changing (+ travel time for each city). |
 | TL-83d8e2ff | [dmvcivls.gov](https://dmvcivls-wselfservice.ct.gov/Registration/VerifyRegistration) | أساسية | web | — | reachable | — | — |
 | TL-57e907ae | [dodgeforum](https://dodgeforum.com/forum/vindecoder.php) | أساسية | web | — | reachable | — | — |
+| TL-a97e6e01 | [dump1090 (FlightAware)](https://github.com/flightaware/dump1090) | داعمة | oss | — | reachable | — | ADS-B Mode S decoder for RTL-SDR receivers. |
 | TL-07f03dec | [Education & Training Events in Israel, List of all Israel Educational](https://10times.com/israel/education-training) | داعمة | web | — | reachable | — | Discover upcoming education and training events in Israel. Find conferences, talks, and seminars related to NLP for Hebrew and Arabic. |
 | TL-6b7e4165 | [EMSA](https://www.emsa.europa.eu/) | أساسية | web | — | reachable | — | — |
 | TL-7e493a73 | [epicvin](https://epicvin.com/) | أساسية | web | — | reachable | — | — |
@@ -281,6 +283,7 @@
 | TL-c0d34219 | [Railway zugfinder](https://www.zugfinder.net/) | أساسية | web | — | reachable | — | — |
 | TL-a96cf98f | [Railworks](https://railworks.paddez.com/docs) | داعمة | api | — | reachable | No | Irish Rail planned engineering works: affected stations, DART closures, change log and ICS feeds |
 | TL-94660a9d | [Rasp.yandex.ru/map/trains](https://rasp.yandex.ru/map/trains) | أساسية | web | — | reachable | — | Live map of trains for Russia, Belarus, Ukraine, Kazahstan and Abhazia |
+| TL-4ec05284 | [readsb](https://github.com/wiedehopf/readsb) | داعمة | oss | — | reachable | — | ADS-B decoder with JSON output for local receivers. |
 | TL-73880864 | [REFUGE Restrooms](https://www.refugerestrooms.org/api/docs/#!/restrooms) | داعمة | api | — | reachable | No | Provides safe restroom access for transgender, intersex and gender nonconforming individuals |
 | TL-6538c2cf | [RevCarData](https://revcardata.com) | داعمة | api | — | reachable | apiKey | 86,000+ global vehicle specifications and EV metrics |
 | TL-1b89f0d5 | [Road511](https://road511.com/docs.html) | داعمة | api | — | reachable | apiKey | Unified traffic data from 65 US/CA jurisdictions: events, cameras, signs, bridges, truck routes |
@@ -321,6 +324,7 @@
 | TL-7b8b0268 | [Submarine Vessels Tracking Map](https://www.marinevesseltraffic.com/submarine-vessels-tracking-map) | أساسية | web | — | restricted | — | — |
 | TL-ed48ca33 | [Submarinecablemap.com](https://www.submarinecablemap.com/) | أساسية | web | — | reachable | — | submarine communications cables map |
 | TL-a75aa572 | [Tankerkoenig](https://creativecommons.tankerkoenig.de/swagger/) | داعمة | api | — | reachable | apiKey | German realtime gas/diesel prices |
+| TL-cd0ecc2c | [tar1090](https://github.com/wiedehopf/tar1090) | داعمة | oss | بوابة الأشخاص | reachable | — | Web interface for ADS-B decoders (readsb/dump1090). |
 | TL-66ba2791 | [thatsthem (Vin Search)](http://thatsthem.com/vin-search) | أساسية | web | — | restricted | — | — |
 | TL-33fe621e | [The OSINTion](https://www.theosintion.com/courses) | أساسية | web | — | unreachable | — | — |
 | TL-a218d0ac | [The Painted Planet](https://hicsuntleones.nl/paintedplanet/) | أساسية | web | — | reachable | — | Click on a point on the map to get a list of landscapes by famous artists depicting the area. |

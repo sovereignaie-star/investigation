@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **1688**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **1689**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -653,6 +653,7 @@
 | TL-a75df053 | [googleway](https://github.com/SymbolixAU/googleway) | داعمة | oss | — | restricted | — | R Package for accessing and plotting Google Maps. |
 | TL-c832bcbb | [gpdvega](https://github.com/iliatimofeev/gpdvega) | داعمة | oss | — | restricted | — | gpdvega is a bridge between GeoPandas and Altair that allows to seamlessly chart geospatial data. |
 | TL-0ed84b0e | [gpkg-rs](https://github.com/cjriley9/gpkg-rs) | داعمة | oss | — | restricted | — | A Rust crate for reading and writing GeoPackages. |
+| TL-4f45c027 | [Gpredict](https://github.com/csete/gpredict) | داعمة | oss | — | reachable | — | Real-time satellite tracking and orbit prediction. |
 | TL-4694ab00 | [GPS Visualizer](https://www.gpsvisualizer.com/) | أساسية | web | — | reachable | — | show gpx and tcx files on map |
 | TL-bf919a4b | [Gps Visualizer](https://www.gpsvisualizer.com/calculators) | أساسية | web | — | reachable | — | — |
 | TL-c01dfda0 | [GPSJam](https://gpsjam.org/) | أساسية | web | — | reachable | — | GPS Interfence Map shows where GPS jamming systems could be operating on a particular day (most often associated with military conflicts). |

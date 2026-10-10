@@ -38,7 +38,7 @@ node scripts/governance/check.mjs --range origin/main..HEAD
 | `docs/ROADMAP.md` | Scope, design, all tasks (Arabic) |
 | `docs/STATUS.md` | Live status — the only place for task state |
 | `docs/WORKLOG.md` | Append-only log of what was done, with evidence |
-| `docs/tools/` | Tool catalog (10,834 real tools from 19 curated lists + owner-curated additions) |
+| `docs/tools/` | Tool catalog (10,881 real tools from 19 curated lists + owner-curated additions) |
 | `docs/adr/` | Architecture decision records |
 | `scripts/governance/` | The governance guard |
 | `artifacts/investigation-room` | Web app (Vite + React 19) |

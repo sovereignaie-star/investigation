@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **247**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **248**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -151,6 +151,7 @@
 | TL-b3c56abc | [Gemini](https://docs.gemini.com/rest-api/) | داعمة | api | — | reachable | No | Cryptocurrencies Exchange |
 | TL-34db52d7 | [Geodesy.jl](https://github.com/JuliaGeo/Geodesy.jl) | داعمة | oss | — | restricted | — | Work with points defined in various coordinate systems. |
 | TL-051ff393 | [Get Started with Web3](https://github.com/beihaili/Get-Started-with-Web3/blob/main/docs/api.md) | داعمة | oss | — | reachable | No | Bilingual Web3 lessons, glossary search and role-based learning paths |
+| TL-d630855a | [Gqrx](https://github.com/gqrx-sdr/gqrx) | داعمة | oss | — | reachable | — | Software defined radio receiver. |
 | TL-883d199d | [GraphSense](https://github.com/INTERPOL-Innovation-Centre/GraphSense-Maltego-transform) | أساسية | oss | — | reachable | — | — |
 | TL-c9f609f2 | [Hashable](https://hashable.space/pages/api/) | داعمة | api | — | unreachable | No | A REST API to access high level cryptographic functions and methods |
 | TL-d799603d | [hashes](https://hashes.com/en/tools/hash_identifier) | أساسية | web | — | reachable | — | — |

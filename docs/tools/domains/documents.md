@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **439**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **443**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -100,9 +100,11 @@
 | TL-4ad70d9f | [DC gov opendata](https://opendata.dc.gov/) | أساسية | dataset | — | reachable | — | — |
 | TL-df94b689 | [DDL Search](http://ddlsearch.free.fr) | أساسية | web | — | reachable | — | search engine for Rapidshare, Megaupload, Filefactory, Depositfile, Fileserve and a lot of other file sharing sites |
 | TL-853f2678 | [dedigger](https://www.dedigger.com/#gsc.tab=0) | أساسية | web | — | reachable | — | Find public files in Google Drive |
+| TL-8fa57ef2 | [dedupe](https://github.com/dedupeio/dedupe) | داعمة | oss | — | reachable | — | Python library for fuzzy matching and deduplication. |
 | TL-b88427a6 | [Deep Learning ArcGIS](https://github.com/Esri/deep-learning-frameworks) | داعمة | oss | — | restricted | — | Deep Learning Libraries Installers for ArcGIS. |
 | TL-b8a70433 | [delaunator-rs](https://github.com/mourner/delaunator-rs) | داعمة | oss | — | restricted | — | A very fast static 2D Delaunay triangulation library for Rust. |
 | TL-0c7b4f6c | [Deux traditions d’analyse des reseaux sociaux](https://www.cairn.info/revue-reseaux1-2002-5-page-183.htm) | داعمة | web | — | restricted | — | , by Michael Eve (English version; _Réseaux_, 2002). |
+| TL-59f4c976 | [DidierStevensSuite (pdfid, pdf-parser)](https://github.com/DidierStevens/DidierStevensSuite) | داعمة | oss | — | reachable | — | Static analysis tools for PDF and Office documents. |
 | TL-b0c9bfea | [Digital Humanities](http://cmb.huma-num.fr/) | داعمة | web | — | reachable | — | Interdisciplinary group of researchers at the Marc Bloch Centre in Berlin, with many network science projects. |
 | TL-8ec9521e | [DMASON](https://github.com/isislab-unisa/dmason) | داعمة | oss | — | restricted | — | DMASON is a parallel version of the MASON library for writing and running simulations of Agent based simulation models. |
 | TL-ee26b36e | [DocCheap](https://doc.cheap/docs) | داعمة | api | — | reachable | apiKey | Read passports, ID cards and driver's licences into JSON, $0.01 per recognised document |
@@ -302,6 +304,7 @@
 | TL-a80ff5bd | [pdfyes](http://pdfyes.com/) | أساسية | web | — | reachable | — | — |
 | TL-bc0fc6bc | [PeakMetrics](https://rapidapi.com/peakmetrics-peakmetrics-default/api/peakmetrics-news) | داعمة | api | — | reachable | apiKey | News articles and public datasets |
 | TL-474cb8ea | [Pedestriansfirst](https://pedestriansfirst.itdp.org/) | أساسية | web | — | reachable | — | Evaluate the pedestrian friendliness of streets in different cities. There is a lot of detailed data that will be useful both for choosing a place to live and f |
+| TL-9a597988 | [peepdf](https://github.com/jesparza/peepdf) | داعمة | oss | — | reachable | — | PDF analysis tool for suspicious documents. |
 | TL-fd3b963c | [Penguin Publishing](http://www.penguinrandomhouse.biz/webservices/rest/) | داعمة | api | — | reachable | No | Books, book covers and related data |
 | TL-515b2f77 | [pentest-book](https://github.com/six2dez/pentest-book) | أساسية | oss | — | reachable | — | he great sites for pentesting and recon cheat sheet |
 | TL-f69f4cdd | [Peter J. Mucha’s Research Group at the University of North Carolina at Chapel Hill](http://mucha.web.unc.edu/networks/) | داعمة | web | — | reachable | — | . |
@@ -320,6 +323,7 @@
 | TL-184af443 | [python py2exe](https://www.py2exe.org/) | أساسية | web | — | reachable | — | make your python script to executable file |
 | TL-6e1343ea | [python pyinstaller](https://pyinstaller.org/en/stable/) | أساسية | web | — | reachable | — | make your python script to executable file |
 | TL-78f8e0f2 | [PyTrends](https://github.com/GeneralMills/pytrends) | أساسية | oss | — | restricted | — | Simple #python library for automatically collecting data from Google Trends. |
+| TL-50b5d284 | [qpdf](https://github.com/qpdf/qpdf) | داعمة | oss | — | reachable | — | PDF structure inspection and transformation. |
 | TL-85202e51 | [Quran Cloud](https://alquran.cloud/api) | داعمة | api | — | reachable | No | A RESTful Quran API to retrieve an Ayah, Surah, Juz or the entire Holy Quran |
 | TL-0945bdf2 | [Radatools](https://deim.urv.cat/~sergio.gomez/radatools.php) | داعمة | web | — | unreachable | — | Set of tools intended for the analysis of complex networks, built on top of Radalib, a library written in Ada. |
 | TL-e5c84e15 | [RAPID API Collection](https://rapidapi.com/hub) | أساسية | api | — | reachable | — | — |

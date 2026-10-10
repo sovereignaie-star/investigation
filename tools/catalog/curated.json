@@ -1,22 +1,427 @@
 [
-  {"name": "Shodan InternetDB", "url": "https://internetdb.shodan.io/", "cat": "Internet-wide scanning", "desc": "Keyless IP lookup: open ports, hostnames, tags, CPEs and CVE identifiers from Shodan scan data."},
-  {"name": "Quake (360)", "url": "https://quake.360.net/", "cat": "Internet-wide scanning", "desc": "Internet asset search engine (hosts, services, certificates)."},
-  {"name": "ReversingLabs", "url": "https://www.reversinglabs.com/", "cat": "Threat intel & malware", "desc": "File reputation and malware analysis platform (commercial)."},
-  {"name": "Feodo Tracker", "url": "https://feodotracker.abuse.ch/", "cat": "Threat intel & malware", "desc": "abuse.ch tracker of malware command-and-control servers, with blocklists."},
-  {"name": "SSL Blacklist (SSLBL)", "url": "https://sslbl.abuse.ch/", "cat": "Threat intel & malware", "desc": "abuse.ch list of malicious SSL certificates and JA3 fingerprints."},
-  {"name": "YARA", "url": "https://github.com/VirusTotal/yara", "cat": "Threat intel & malware", "desc": "Pattern matching engine for malware identification rules."},
-  {"name": "YARA Forge", "url": "https://github.com/YARAHQ/yara-forge", "cat": "Threat intel & malware", "desc": "Curated, quality-checked YARA rule packages from public repositories."},
-  {"name": "Elastic Detection Rules", "url": "https://github.com/elastic/detection-rules", "cat": "Threat intel & malware", "desc": "Open detection rules mapped to MITRE ATT&CK."},
-  {"name": "Splunk Security Content", "url": "https://github.com/splunk/security_content", "cat": "Threat intel & malware", "desc": "Open analytic stories and detections mapped to ATT&CK."},
-  {"name": "MITRE CAPEC", "url": "https://capec.mitre.org/", "cat": "Threat intel & malware", "desc": "Common Attack Pattern Enumeration and Classification knowledge base."},
-  {"name": "MITRE D3FEND", "url": "https://d3fend.mitre.org/", "cat": "Threat intel & malware", "desc": "Knowledge graph of defensive countermeasures."},
-  {"name": "DNSGrep", "url": "https://github.com/erbbysam/DNSGrep", "cat": "Domains, DNS & certificates", "desc": "Fast search over large DNS datasets."},
-  {"name": "Findomain", "url": "https://github.com/Findomain/Findomain", "cat": "Domains, DNS & certificates", "desc": "Passive subdomain enumeration from certificate transparency and public APIs."},
-  {"name": "IANA", "url": "https://www.iana.org/", "cat": "Domains, DNS & certificates", "desc": "Root zone database, RDAP bootstrap and number resource registries."},
-  {"name": "Whale Alert", "url": "https://whale-alert.io/", "cat": "Crypto & blockchain", "desc": "Large blockchain transaction tracking and alerts across chains."},
-  {"name": "NeverBounce", "url": "https://neverbounce.com/", "cat": "Email verification", "desc": "Email address deliverability verification API."},
-  {"name": "ZeroBounce", "url": "https://www.zerobounce.net/", "cat": "Email verification", "desc": "Email address validation and deliverability API."},
-  {"name": "Shuffle", "url": "https://github.com/Shuffle/Shuffle", "cat": "Automation & workflow", "desc": "Open-source security automation (SOAR) workflows."},
-  {"name": "n8n", "url": "https://github.com/n8n-io/n8n", "cat": "Automation & workflow", "desc": "Workflow automation platform with self-hosting."},
-  {"name": "CIRCL Passive DNS", "url": "https://www.circl.lu/services/passive-dns/", "cat": "Domains, DNS & certificates", "desc": "Historical DNS resolutions collected by CIRCL; access on request for security teams."}
+  {
+    "name": "Shodan InternetDB",
+    "url": "https://internetdb.shodan.io/",
+    "cat": "Internet-wide scanning",
+    "desc": "Keyless IP lookup: open ports, hostnames, tags, CPEs and CVE identifiers from Shodan scan data."
+  },
+  {
+    "name": "Quake (360)",
+    "url": "https://quake.360.net/",
+    "cat": "Internet-wide scanning",
+    "desc": "Internet asset search engine (hosts, services, certificates)."
+  },
+  {
+    "name": "ReversingLabs",
+    "url": "https://www.reversinglabs.com/",
+    "cat": "Threat intel & malware",
+    "desc": "File reputation and malware analysis platform (commercial)."
+  },
+  {
+    "name": "Feodo Tracker",
+    "url": "https://feodotracker.abuse.ch/",
+    "cat": "Threat intel & malware",
+    "desc": "abuse.ch tracker of malware command-and-control servers, with blocklists."
+  },
+  {
+    "name": "SSL Blacklist (SSLBL)",
+    "url": "https://sslbl.abuse.ch/",
+    "cat": "Threat intel & malware",
+    "desc": "abuse.ch list of malicious SSL certificates and JA3 fingerprints."
+  },
+  {
+    "name": "YARA",
+    "url": "https://github.com/VirusTotal/yara",
+    "cat": "Threat intel & malware",
+    "desc": "Pattern matching engine for malware identification rules."
+  },
+  {
+    "name": "YARA Forge",
+    "url": "https://github.com/YARAHQ/yara-forge",
+    "cat": "Threat intel & malware",
+    "desc": "Curated, quality-checked YARA rule packages from public repositories."
+  },
+  {
+    "name": "Elastic Detection Rules",
+    "url": "https://github.com/elastic/detection-rules",
+    "cat": "Threat intel & malware",
+    "desc": "Open detection rules mapped to MITRE ATT&CK."
+  },
+  {
+    "name": "Splunk Security Content",
+    "url": "https://github.com/splunk/security_content",
+    "cat": "Threat intel & malware",
+    "desc": "Open analytic stories and detections mapped to ATT&CK."
+  },
+  {
+    "name": "MITRE CAPEC",
+    "url": "https://capec.mitre.org/",
+    "cat": "Threat intel & malware",
+    "desc": "Common Attack Pattern Enumeration and Classification knowledge base."
+  },
+  {
+    "name": "MITRE D3FEND",
+    "url": "https://d3fend.mitre.org/",
+    "cat": "Threat intel & malware",
+    "desc": "Knowledge graph of defensive countermeasures."
+  },
+  {
+    "name": "DNSGrep",
+    "url": "https://github.com/erbbysam/DNSGrep",
+    "cat": "Domains, DNS & certificates",
+    "desc": "Fast search over large DNS datasets."
+  },
+  {
+    "name": "Findomain",
+    "url": "https://github.com/Findomain/Findomain",
+    "cat": "Domains, DNS & certificates",
+    "desc": "Passive subdomain enumeration from certificate transparency and public APIs."
+  },
+  {
+    "name": "IANA",
+    "url": "https://www.iana.org/",
+    "cat": "Domains, DNS & certificates",
+    "desc": "Root zone database, RDAP bootstrap and number resource registries."
+  },
+  {
+    "name": "Whale Alert",
+    "url": "https://whale-alert.io/",
+    "cat": "Crypto & blockchain",
+    "desc": "Large blockchain transaction tracking and alerts across chains."
+  },
+  {
+    "name": "NeverBounce",
+    "url": "https://neverbounce.com/",
+    "cat": "Email verification",
+    "desc": "Email address deliverability verification API."
+  },
+  {
+    "name": "ZeroBounce",
+    "url": "https://www.zerobounce.net/",
+    "cat": "Email verification",
+    "desc": "Email address validation and deliverability API."
+  },
+  {
+    "name": "Shuffle",
+    "url": "https://github.com/Shuffle/Shuffle",
+    "cat": "Automation & workflow",
+    "desc": "Open-source security automation (SOAR) workflows."
+  },
+  {
+    "name": "n8n",
+    "url": "https://github.com/n8n-io/n8n",
+    "cat": "Automation & workflow",
+    "desc": "Workflow automation platform with self-hosting."
+  },
+  {
+    "name": "CIRCL Passive DNS",
+    "url": "https://www.circl.lu/services/passive-dns/",
+    "cat": "Domains, DNS & certificates",
+    "desc": "Historical DNS resolutions collected by CIRCL; access on request for security teams."
+  },
+  {
+    "name": "Marginalia Search",
+    "url": "https://search.marginalia.nu/",
+    "cat": "Search engines",
+    "desc": "Independent search engine focused on non-commercial, text-heavy websites."
+  },
+  {
+    "name": "libphonenumber",
+    "url": "https://github.com/google/libphonenumber",
+    "cat": "Email & phone",
+    "desc": "Google library for parsing, formatting and validating international phone numbers."
+  },
+  {
+    "name": "MassDNS",
+    "url": "https://github.com/blechschmidt/massdns",
+    "cat": "Domains, DNS & certificates",
+    "desc": "High-performance DNS stub resolver for bulk lookups."
+  },
+  {
+    "name": "Bitquery",
+    "url": "https://bitquery.io/",
+    "cat": "Crypto & blockchain",
+    "desc": "Multi-chain blockchain data APIs (GraphQL)."
+  },
+  {
+    "name": "WIPO Global Brand Database",
+    "url": "https://branddb.wipo.int/",
+    "cat": "Companies & trademarks",
+    "desc": "Search of trademarks across national and international registers."
+  },
+  {
+    "name": "EUIPO eSearch",
+    "url": "https://euipo.europa.eu/eSearch/",
+    "cat": "Companies & trademarks",
+    "desc": "European Union trade mark and design register search."
+  },
+  {
+    "name": "SAIP",
+    "url": "https://www.saip.gov.sa/",
+    "cat": "Companies & trademarks",
+    "desc": "Saudi Authority for Intellectual Property: trademarks and patents."
+  },
+  {
+    "name": "Perma.cc",
+    "url": "https://perma.cc/",
+    "cat": "Web archiving",
+    "desc": "Permanent web archiving service run by Harvard Law School Library."
+  },
+  {
+    "name": "dump1090 (FlightAware)",
+    "url": "https://github.com/flightaware/dump1090",
+    "cat": "Transport: aviation",
+    "desc": "ADS-B Mode S decoder for RTL-SDR receivers."
+  },
+  {
+    "name": "readsb",
+    "url": "https://github.com/wiedehopf/readsb",
+    "cat": "Transport: aviation",
+    "desc": "ADS-B decoder with JSON output for local receivers."
+  },
+  {
+    "name": "tar1090",
+    "url": "https://github.com/wiedehopf/tar1090",
+    "cat": "Transport: aviation",
+    "desc": "Web interface for ADS-B decoders (readsb/dump1090)."
+  },
+  {
+    "name": "AIS-catcher",
+    "url": "https://github.com/jvde-github/AIS-catcher",
+    "cat": "Transport: maritime",
+    "desc": "AIS vessel message receiver and decoder for SDR."
+  },
+  {
+    "name": "rtl_433",
+    "url": "https://github.com/merbanan/rtl_433",
+    "cat": "Radio",
+    "desc": "Decoder for ISM band devices (sensors, meters) via SDR."
+  },
+  { "name": "Gqrx", "url": "https://github.com/gqrx-sdr/gqrx", "cat": "Radio", "desc": "Software defined radio receiver." },
+  {
+    "name": "SDR++",
+    "url": "https://github.com/AlexandreRouma/SDRPlusPlus",
+    "cat": "Radio",
+    "desc": "Cross-platform SDR receiver software."
+  },
+  {
+    "name": "Universal Radio Hacker",
+    "url": "https://github.com/jopohl/urh",
+    "cat": "Radio",
+    "desc": "Investigation of wireless protocols with SDR."
+  },
+  {
+    "name": "Gpredict",
+    "url": "https://github.com/csete/gpredict",
+    "cat": "Satellite tracking",
+    "desc": "Real-time satellite tracking and orbit prediction."
+  },
+  {
+    "name": "DidierStevensSuite (pdfid, pdf-parser)",
+    "url": "https://github.com/DidierStevens/DidierStevensSuite",
+    "cat": "Documents & files",
+    "desc": "Static analysis tools for PDF and Office documents."
+  },
+  {
+    "name": "peepdf",
+    "url": "https://github.com/jesparza/peepdf",
+    "cat": "Documents & files",
+    "desc": "PDF analysis tool for suspicious documents."
+  },
+  {
+    "name": "qpdf",
+    "url": "https://github.com/qpdf/qpdf",
+    "cat": "Documents & files",
+    "desc": "PDF structure inspection and transformation."
+  },
+  {
+    "name": "EasyOCR",
+    "url": "https://github.com/JaidedAI/EasyOCR",
+    "cat": "Documents & files",
+    "desc": "OCR with 80+ languages including Arabic."
+  },
+  {
+    "name": "WeVerify",
+    "url": "https://weverify.eu/",
+    "cat": "Image, video & visual verification",
+    "desc": "Verification plugin and tools for images and video."
+  },
+  {
+    "name": "yEd",
+    "url": "https://www.yworks.com/products/yed",
+    "cat": "Network & graph analysis",
+    "desc": "Graph editor with automatic layouts; reads GraphML."
+  },
+  {
+    "name": "Splink",
+    "url": "https://github.com/moj-analytical-services/splink",
+    "cat": "Entity resolution",
+    "desc": "Probabilistic record linkage at scale."
+  },
+  { "name": "Zingg", "url": "https://github.com/zinggAI/zingg", "cat": "Entity resolution", "desc": "Machine-learning entity resolution." },
+  {
+    "name": "dedupe",
+    "url": "https://github.com/dedupeio/dedupe",
+    "cat": "Entity resolution",
+    "desc": "Python library for fuzzy matching and deduplication."
+  },
+  {
+    "name": "recordlinkage",
+    "url": "https://github.com/J535D165/recordlinkage",
+    "cat": "Entity resolution",
+    "desc": "Record linkage toolkit for Python."
+  },
+  {
+    "name": "Senzing",
+    "url": "https://senzing.com/",
+    "cat": "Entity resolution",
+    "desc": "Entity resolution engine (commercial, free tier)."
+  },
+  {
+    "name": "Yeti",
+    "url": "https://github.com/yeti-platform/yeti",
+    "cat": "Threat intel & malware",
+    "desc": "Threat intelligence and forensics knowledge platform."
+  },
+  {
+    "name": "Plaso (log2timeline)",
+    "url": "https://github.com/log2timeline/plaso",
+    "cat": "Forensics & incident response",
+    "desc": "Super-timeline creation from forensic artifacts."
+  },
+  {
+    "name": "Eric Zimmerman tools",
+    "url": "https://ericzimmerman.github.io/",
+    "cat": "Forensics & incident response",
+    "desc": "Windows forensic artifact parsers."
+  },
+  {
+    "name": "CAPEv2",
+    "url": "https://github.com/kevoreilly/CAPEv2",
+    "cat": "Threat intel & malware",
+    "desc": "Malware sandbox with configuration and payload extraction (Cuckoo successor)."
+  },
+  {
+    "name": "Hudson Rock Cavalier",
+    "url": "https://cavalier.hudsonrock.com/",
+    "cat": "Threat intel & malware",
+    "desc": "Infostealer exposure lookups by domain or email."
+  },
+  { "name": "Mosint", "url": "https://github.com/alpkeskin/mosint", "cat": "Email & phone", "desc": "Automated email OSINT tool." },
+  {
+    "name": "DataSploit",
+    "url": "https://github.com/DataSploit/datasploit",
+    "cat": "Automation & collection frameworks",
+    "desc": "OSINT framework for domains, emails and usernames."
+  },
+  {
+    "name": "CAMeL Tools",
+    "url": "https://github.com/CAMeL-Lab/camel_tools",
+    "cat": "Arabic, linguistics & translation",
+    "desc": "Arabic NLP toolkit: morphology, dialect ID, NER."
+  },
+  {
+    "name": "Farasa",
+    "url": "https://farasa.qcri.org/",
+    "cat": "Arabic, linguistics & translation",
+    "desc": "Arabic segmentation, POS tagging and NER (QCRI)."
+  },
+  {
+    "name": "Stanza",
+    "url": "https://github.com/stanfordnlp/stanza",
+    "cat": "Arabic, linguistics & translation",
+    "desc": "Multilingual NLP pipeline including Arabic."
+  },
+  {
+    "name": "fastText",
+    "url": "https://github.com/facebookresearch/fastText",
+    "cat": "Arabic, linguistics & translation",
+    "desc": "Text classification and language identification."
+  },
+  {
+    "name": "CLD3",
+    "url": "https://github.com/google/cld3",
+    "cat": "Arabic, linguistics & translation",
+    "desc": "Compact language detector."
+  },
+  {
+    "name": "Arkime",
+    "url": "https://github.com/arkime/arkime",
+    "cat": "Forensics & incident response",
+    "desc": "Large-scale packet capture indexing and search."
+  },
+  {
+    "name": "Graylog",
+    "url": "https://github.com/Graylog2/graylog2-server",
+    "cat": "Forensics & incident response",
+    "desc": "Log management and analysis."
+  },
+  {
+    "name": "OONI Probe",
+    "url": "https://ooni.org/install/",
+    "cat": "Network measurement",
+    "desc": "Measurement of internet censorship and network interference."
+  },
+  {
+    "name": "ExifCleaner",
+    "url": "https://github.com/szTheory/exifcleaner",
+    "cat": "Image, video & visual verification",
+    "desc": "Removes metadata from images and documents."
+  },
+  {
+    "name": "Segment Anything",
+    "url": "https://github.com/facebookresearch/segment-anything",
+    "cat": "Image, video & visual verification",
+    "desc": "Image segmentation model."
+  },
+  {
+    "name": "Detectron2",
+    "url": "https://github.com/facebookresearch/detectron2",
+    "cat": "Image, video & visual verification",
+    "desc": "Object detection and segmentation."
+  },
+  {
+    "name": "libimobiledevice",
+    "url": "https://github.com/libimobiledevice/libimobiledevice",
+    "cat": "Forensics & incident response",
+    "desc": "Protocol library for iOS devices."
+  },
+  {
+    "name": "x64dbg",
+    "url": "https://github.com/x64dbg/x64dbg",
+    "cat": "Forensics & incident response",
+    "desc": "Open-source debugger for Windows binaries."
+  },
+  {
+    "name": "dnSpyEx",
+    "url": "https://github.com/dnSpyEx/dnSpy",
+    "cat": "Forensics & incident response",
+    "desc": ".NET debugger and assembly editor."
+  },
+  {
+    "name": "IDA Free",
+    "url": "https://hex-rays.com/ida-free",
+    "cat": "Forensics & incident response",
+    "desc": "Disassembler, free edition."
+  },
+  {
+    "name": "Binary Ninja",
+    "url": "https://binary.ninja/",
+    "cat": "Forensics & incident response",
+    "desc": "Reverse engineering platform."
+  },
+  {
+    "name": "Threat Bus",
+    "url": "https://github.com/tenzir/threatbus",
+    "cat": "Threat intel & malware",
+    "desc": "Threat intelligence dissemination layer."
+  },
+  {
+    "name": "jq",
+    "url": "https://github.com/jqlang/jq",
+    "cat": "Automation & collection frameworks",
+    "desc": "Command-line JSON processor."
+  },
+  { "name": "Privoxy", "url": "https://www.privoxy.org/", "cat": "Privacy", "desc": "Non-caching web proxy with filtering." },
+  { "name": "Tor Project", "url": "https://www.torproject.org/", "cat": "Dark web & Tor", "desc": "Tor network and Tor Browser." }
 ]

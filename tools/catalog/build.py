@@ -22,7 +22,7 @@ OUT = os.path.join(ROOT, "docs", "tools")
 
 BAD_URL = re.compile(
     r"(arxiv\.org|doi\.org|dl\.acm\.org|springer|sciencedirect|wiley\.com|jstor|ieeexplore|researchgate|ssrn"
-    r"|youtube\.com|youtu\.be|vimeo|medium\.com|\.pdf$|amazon\.|goodreads|slideshare|reddit\.com/r/|t\.me/"
+    r"|youtube\.com|youtu\.be|vimeo|medium\.com|\.pdf$|amazon\.|goodreads|slideshare|reddit\.com/r/|//t\.me/"
     r"|discord\.gg|facebook\.com/groups|linkedin\.com/in/|twitter\.com/[^/]+$|x\.com/[^/]+$|wikipedia\.org"
     r"|coursera|udemy|podcast|shields\.io|badge|travis-ci|img\.|\.png$|\.jpg$|\.svg$|\.gif$|creativecommons\.org"
     r"|awesome\.re|github\.com/sindresorhus/awesome|contributing|patreon|buymeacoffee|ko-fi|twitter\.com/intent)",

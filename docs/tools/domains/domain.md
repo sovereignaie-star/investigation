@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **599**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **600**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -342,6 +342,7 @@
 | TL-4fff21b9 | [MapTiler Server](https://www.maptiler.com/server/) | داعمة | web | — | reachable | — | Map server for self-hosting. Publish interactive maps to get map services from your own server or laptop. |
 | TL-97c535d0 | [MarkMonitor Whois Search](https://domains.markmonitor.com/whois/) | أساسية | web | — | reachable | — | — |
 | TL-cc068763 | [Masscan (T)](https://github.com/robertdavidgraham/masscan) | أساسية | oss | — | reachable | — | — |
+| TL-a0b1a4dd | [MassDNS](https://github.com/blechschmidt/massdns) | داعمة | oss | — | reachable | — | High-performance DNS stub resolver for bulk lookups. |
 | TL-a83c923a | [MaxMind Demo](https://www.maxmind.com/en/home) | أساسية | web | — | reachable | — | — |
 | TL-d6ae308f | [MayorSecDNSScan](https://github.com/dievus/msdnsscan) | أساسية | oss | — | restricted | — | Identify DNS records for target domains, check for zone transfers and conduct subdomain enumeration. |
 | TL-7d0b84de | [Metadata Parser](https://github.com/jvanasco/metadata_parser) | أساسية | oss | — | restricted | — | A simple #Python library to help retrieve website metadata by URL (description, location, keywords, keywords, images, content author names, and more). |

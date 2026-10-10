@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **365**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **366**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -298,6 +298,7 @@
 | TL-af2ea256 | [securitytoolkits - list dorking](https://securitytoolkits.com/bug-hunting) | أساسية | web | — | unreachable | — | — |
 | TL-7d59a257 | [Seek](http://www.seek.com.au/) | أساسية | web | — | restricted | — | (AU) |
 | TL-345095de | [Sellerapp.com. Amazon Reverse ASIN search](https://www.sellerapp.com/amazon-reverse-asin.html) | أساسية | web | — | reachable | — | — |
+| TL-813d550a | [Senzing](https://senzing.com/) | داعمة | web | — | reachable | — | Entity resolution engine (commercial, free tier). |
 | TL-6ae37cfa | [shellclear](https://github.com/rusty-ferris-club/shellclear) | داعمة | oss | — | restricted | — | It helps you to Secure your shell history commands by finding sensitive commands in your all history commands and allowing you to clean them. |
 | TL-673dda5e | [ShrewdEye](https://shrewdeye.app/) | أساسية | web | — | unreachable | — | Online versions of popular command line #osint tools: Amass, SubFinder, AssetFinder, GAU, DNSX |
 | TL-aedc50c0 | [SimilarPages](http://www.similarpages.com/) | أساسية | web | — | unreachable | — | — |

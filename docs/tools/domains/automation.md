@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **138**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **139**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -64,6 +64,7 @@
 | TL-4b23e728 | [IntRec-Pack (T)](https://github.com/NullArray/IntRec-Pack) | أساسية | oss | — | restricted | — | — |
 | TL-d38fe4f3 | [IVRE](https://github.com/ivre/ivre) | أساسية | oss | — | restricted | — | framework for network recon |
 | TL-92a5d0f5 | [Javascript reccon](https://gist.github.com/fuckup1337/49484c35c8ad8ae1d165ffe7d71375eb) | أساسية | web | — | reachable | — | This is a simple guide to perform javascript recon in the bugbounty |
+| TL-f3f40ff1 | [jq](https://github.com/jqlang/jq) | داعمة | oss | — | reachable | — | Command-line JSON processor. |
 | TL-bb176271 | [JSON to CSV](https://json-csv.com/) | أساسية | web | — | reachable | — | — |
 | TL-a9ede899 | [Kuiper](https://github.com/DFIRKuiper/Kuiper) | داعمة | oss | — | reachable | — | Digital Investigation Platform |
 | TL-b31dbc4e | [Laika BOSS](https://github.com/lmco/laikaboss) | داعمة | oss | — | reachable | — | Laika is an object scanner and intrusion detection system |

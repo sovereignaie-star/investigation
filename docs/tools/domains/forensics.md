@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **339**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **345**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -17,6 +17,7 @@
 | TL-82fc63b9 | [AnyRun](https://any.run/) | أساسية | web | — | reachable | — | — |
 | TL-6b987e99 | [APFS Fuse](https://github.com/sgan81/apfs-fuse) | داعمة | oss | — | restricted | — | A read-only FUSE driver for the new Apple File System |
 | TL-7e26f603 | [AppCompatProcessor](https://github.com/mbevilacqua/appcompatprocessor) | داعمة | oss | — | restricted | — | AppCompatProcessor has been designed to extract additional value from enterprise-wide AppCompat / AmCache data beyond the classic stacking and grepping techniqu |
+| TL-7da6a0b3 | [Arkime](https://github.com/arkime/arkime) | داعمة | oss | — | reachable | — | Large-scale packet capture indexing and search. |
 | TL-fb5f33aa | [ArtEx](https://www.doubleblak.com/index.php) | داعمة | web | — | reachable | — | Artifact Examiner for iOS Full File System extractions |
 | TL-595add3b | [artifactcollector](https://github.com/forensicanalysis/artifactcollector) | داعمة | oss | — | restricted | — | A customizable agent to collect forensic artifacts on any Windows, macOS or Linux system |
 | TL-16c04897 | [atlanticcouncil](https://www.atlanticcouncil.org/) | أساسية | web | — | reachable | — | — |
@@ -29,6 +30,7 @@
 | TL-95bc5a39 | [belkasoft](https://belkasoft.com/x) | أساسية | web | — | reachable | — | — |
 | TL-76672a98 | [Belkasoft Evidence Center](https://belkasoft.com/ec) | داعمة | web | — | reachable | — | The toolkit will quickly extract digital evidence from multiple sources by analyzing hard drives, drive images, memory dumps, iOS, Blackberry and Android backup |
 | TL-5db22e93 | [Belkasoft RAM Capturer](https://belkasoft.com/ram-capturer) | داعمة | web | — | reachable | — | Volatile Memory Acquisition Tool |
+| TL-01c95fe0 | [Binary Ninja](https://binary.ninja/) | داعمة | web | — | reachable | — | Reverse engineering platform. |
 | TL-0425cd44 | [Binwalk](https://github.com/ReFirmLabs/binwalk) | أساسية | oss | — | reachable | — | — |
 | TL-3c496024 | [bitscout](https://github.com/vitaly-kamluk/bitscout) | داعمة | oss | — | reachable | — | LiveCD/LiveUSB for remote forensic acquisition and analysis |
 | TL-68be22f1 | [Blauhaunt](https://github.com/cgosec/Blauhaunt) | داعمة | oss | — | restricted | — | A tool collection for filtering and visualizing logon events |
@@ -69,6 +71,7 @@
 | TL-e2291a25 | [Disk Arbitrator](https://github.com/aburgh/Disk-Arbitrator) | داعمة | oss | — | restricted | — | A Mac OS X forensic utility designed to help the user ensure correct forensic procedures are followed during imaging of a disk device |
 | TL-30a640e5 | [DiskerNet](https://github.com/DO-SAY-GO/dn) | أساسية | oss | — | restricted | — | A non-WARC-based tool which hooks into the Chrome browser and archives everything you browse making it available for offline replay. *(In Development)* |
 | TL-9b40b93b | [Dissect](https://github.com/fox-it/dissect) | داعمة | oss | — | reachable | — | Dissect is a digital forensics & incident response framework and toolset that allows you to quickly access and analyse forensic artefacts from various disk and  |
+| TL-cf96d385 | [dnSpyEx](https://github.com/dnSpyEx/dnSpy) | داعمة | oss | — | reachable | — | .NET debugger and assembly editor. |
 | TL-8307be4a | [Docker Explorer](https://github.com/google/docker-explorer) | داعمة | oss | — | restricted | — | Extracts and interprets forensic artifacts from disk images of Docker Host systems |
 | TL-8cc0e0d0 | [dof (Docker Forensics Toolkit)](https://github.com/docker-forensics-toolkit/toolkit) | داعمة | oss | — | restricted | — | Extracts and interprets forensic artifacts from disk images of Docker Host systems |
 | TL-55bd6fbd | [domaintools](https://www.domaintools.com/) | أساسية | web | — | reachable | — | — |
@@ -126,6 +129,7 @@
 | TL-4c6b0ac3 | [GoWitness](https://github.com/sensepost/gowitness) | أساسية | oss | — | reachable | — | CLI tool to take screenshots of web pages for evidence collection. |
 | TL-64ed9c95 | [GraphHopper Routing Engine](https://github.com/graphhopper/graphhopper) | داعمة | oss | — | restricted | — | GraphHopper is a fast and memory efficient Java routing engine, released under Apache License 2.0. By default it uses OpenStreetMap and GTFS data, but it can im |
 | TL-231e14d0 | [GraphStore](https://github.com/gephi/graphstore) | داعمة | oss | — | restricted | — | In-memory graph structure implementation, powering Gephi. |
+| TL-aca35d65 | [Graylog](https://github.com/Graylog2/graylog2-server) | داعمة | oss | — | reachable | — | Log management and analysis. |
 | TL-e483e1cb | [Greenshot (T)](https://getgreenshot.org/) | أساسية | web | — | reachable | — | — |
 | TL-ba23100c | [grr](https://github.com/google/grr) | داعمة | oss | — | reachable | — | GRR Rapid Response: remote live forensics for incident response |
 | TL-1d1a9279 | [GuardSIght Playbook Battle Cards](https://github.com/guardsight/gsvsoc_cirt-playbook-battle-cards) | داعمة | oss | — | restricted | — | A collection of Cyber Incident Response Playbook Battle Cards |
@@ -170,6 +174,7 @@
 | TL-419b1ecc | [KontragentPro](https://kontragentpro.ru/api/v2/docs) | داعمة | api | — | reachable | No | Russian company data from state registers by INN or OGRN: profile, finances, timeline |
 | TL-ed20ca62 | [LastActivityView](https://www.nirsoft.net/utils/computer_activity_view.html) | داعمة | web | — | reachable | — | LastActivityView by Nirsoftis a tool for Windows operating system that collects information from various sources on a running system, and displays a log of acti |
 | TL-32e2d3d3 | [libewf](https://github.com/libyal/libewf) | داعمة | oss | — | restricted | — | Libewf is a library and some tools to access the Expert Witness Compression Format (EWF, E01) |
+| TL-311f555b | [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice) | داعمة | oss | — | reachable | — | Protocol library for iOS devices. |
 | TL-61c9c46c | [libvips](https://github.com/libvips/libvips) | داعمة | oss | — | restricted | — | A fast image processing library with low memory needs. |
 | TL-bf71964d | [Limacharlie](https://www.limacharlie.io/) | داعمة | web | — | reachable | — | Endpoint security platform composed of a collection of small projects all working together that gives you a cross-platform (Windows, OSX, Linux, Android and iOS |
 | TL-cc83f8ba | [LiME](https://github.com/jtsylve/LiME) | داعمة | oss | — | restricted | — | Loadable Kernel Module (LKM), which allows the acquisition of volatile memory from Linux and Linux-based devices, formerly called DMD |
@@ -338,6 +343,7 @@
 | TL-c1757f48 | [WinTriage](https://www.securizame.com/wintriage-the-triage-tool-for-windows-dfirers/) | داعمة | web | — | reachable | — | Wintriage is a live response tool that extracts Windows artifacts. It must be executed with local or domain administrator privileges and recommended to be done  |
 | TL-7fc1e1c0 | [Wombat Forensics](https://github.com/pjrinaldi/wombatforensics) | داعمة | oss | — | reachable | — | Forensic GUI tool |
 | TL-7682614f | [X-Ways Forensics](http://www.x-ways.net/forensics/) | داعمة | web | — | reachable | — | Forensics tool for Disk cloning and imaging. It can be used to find deleted files and disk analysis. |
+| TL-6fedde23 | [x64dbg](https://github.com/x64dbg/x64dbg) | داعمة | oss | — | reachable | — | Open-source debugger for Windows binaries. |
 | TL-c5079f04 | [XFlux](https://www.xfluxapi.com/docs/api) | داعمة | api | — | reachable | apiKey | Read X/Twitter profiles, search, timelines; account monitors with signed webhooks |
 | TL-002e2d68 | [xmount](https://www.pinguin.lu/xmount) | داعمة | web | — | reachable | — | Convert between different disk image formats |
 | TL-7751ea5f | [Xplico](http://www.xplico.org/) | داعمة | web | بوابة الأشخاص | reachable | — | The goal of Xplico is extract from an internet traffic capture the applications data contained. For example, from a pcap file Xplico extracts each email (POP, I |

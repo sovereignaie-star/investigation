@@ -1,0 +1,5174 @@
+{
+  "source": "PR #9 docs/ROADMAP2.md (owner, 2026-10-10)",
+  "aliases": {
+    "crt.sh": "crt.sh",
+    "emailrep.io": "emailrep",
+    "icij offshore leaks": "offshoreleaks",
+    "misp": "misp-project",
+    "mitre att&ck": "attack.mitre",
+    "ripestat": "stat.ripe",
+    "hurricane electric bgp": "bgp.he.net",
+    "circl passive dns": "circl.lu/services/passive-dns",
+    "shuffle soar": "shuffle/shuffle",
+    "hunter.io": "hunter.io",
+    "securitytrails": "securitytrails",
+    "whoisxml api": "whoisxml",
+    "dfir iris": "dfir-iris",
+    "mosint": "mosint",
+    "ftm": "followthemoney",
+    "follow the money": "followthemoney",
+    "plaso / log2timeline": "plaso",
+    "tor browser": "torproject.org",
+    "arkham": "intel.arkm.com",
+    "hugging face transformers": "huggingface/transformers",
+    "yolo": "ultralytics",
+    "bgp.tools": "://bgp.tools"
+  },
+  "status": {
+    "defunct": {
+      "bing search": [
+        "واجهات Bing للبحث أُوقفت في 2025-08-11",
+        "https://learn.microsoft.com/en-us/lifecycle/announcements/bing-search-api-retirement"
+      ],
+      "bing visual search": [
+        "ضمن واجهات Bing الموقوفة في 2025-08-11",
+        "https://learn.microsoft.com/en-us/lifecycle/announcements/bing-search-api-retirement"
+      ],
+      "bing cache": [
+        "لا واجهة بعد إيقاف واجهات Bing",
+        "https://learn.microsoft.com/en-us/lifecycle/announcements/bing-search-api-retirement"
+      ],
+      "google cache": ["أُزيل في 2024", "https://www.seroundtable.com/google-cache-dead-38112.html"],
+      "firefox monitor": [
+        "صار اسمه Mozilla Monitor ويعتمد بيانات HIBP (مغطّى في TR-038)",
+        "https://support.mozilla.org/en-US/kb/mozilla-monitor-faq"
+      ],
+      "cuckoo": ["مستودعه مؤرشف منذ 2021؛ البديل CAPEv2", "https://github.com/cuckoosandbox/cuckoo"],
+      "cuckoo sandbox": ["مستودعه مؤرشف منذ 2021؛ البديل CAPEv2", "https://github.com/cuckoosandbox/cuckoo"],
+      "alexa": ["أُغلق في 2022-05-01", "https://www.theverge.com/2021/12/9/22825744/amazon-retiring-alexa-web-ranking-sevice"],
+      "binaryedge": ["متوقف (14.4)", "https://help.coalitioninc.com/hc/en-us/articles/34383910057371-BinaryEdge-Transition-FAQ"],
+      "riskiq passivetotal": ["متوقف (14.4)", "https://community.riskiq.com/"],
+      "passivetotal": ["متوقف (14.4)", "https://community.riskiq.com/"],
+      "google search": [
+        "لا واجهة بحث عامة مجانية: Custom Search JSON API مغلقة أمام العملاء الجدد (14.4)؛ يبقى فتح الاستعلام يدوياً (TR-033)",
+        "https://developers.google.com/custom-search/v1/overview"
+      ]
+    },
+    "excluded": {
+      "dehashed": "بحث في بيانات اعتماد مسربة لأشخاص (E-03)",
+      "leakcheck": "بحث في بيانات اعتماد مسربة لأشخاص (E-03)",
+      "snusbase": "بحث في بيانات اعتماد مسربة لأشخاص (E-03)",
+      "pimeyes": "بحث بالوجه عن أشخاص (E-02)",
+      "holehe": "يستنتج الحسابات بإساءة استعمال مسارات التسجيل لدى أطراف ثالثة وقد ينبّه صاحبها (14.7)",
+      "ghunt": "يتطلب جلسة Google ويستهدف حساب شخص (14.7)",
+      "osintgram": "جمع من Instagram بجلسة دخول، يخالف شروط المنصة",
+      "osintgraph": "جمع من Instagram بجلسة دخول، يخالف شروط المنصة",
+      "truecaller": "كشف هوية أصحاب الأرقام من دفاتر عناوين المستخدمين (E-03)"
+    },
+    "stack": {
+      "postgresql": "ADR-04 (نمط الفريق)",
+      "redis": "نمط الفريق (5.9)",
+      "bullmq": "طابور المحرك (5.7)",
+      "ollama": "P5-012",
+      "llama.cpp": "P5-012",
+      "opentelemetry": "5.19",
+      "prometheus": "5.19",
+      "sentry": "5.19 (اختياري، معطّل افتراضياً ADR-23)",
+      "docker": "P7 (حزمة النشر)",
+      "docker compose": "P0-023 (اختياري)",
+      "github actions": "CI (P0-011)",
+      "playwright": "اختبارات E2E وتوليد PDF (P5-010)",
+      "typst": "P5-027",
+      "react-pdf": "P5-027",
+      "puppeteer": "P5-027",
+      "d3.js": "P3",
+      "cytoscape": "P3 (عرض الرسم)",
+      "sigma.js": "P3 (عرض الرسم)",
+      "maplibre": "P4-012",
+      "networkx": "P4-011 (مرجع اختبار)",
+      "libsodium": "خزنة المفاتيح P1-015",
+      "age": "تشفير الحزم P4-016",
+      "openssl": "P1-015",
+      "minio": "نمط الفريق (5.9)",
+      "s3": "نمط الفريق (5.9)",
+      "openapi": "ADR-14",
+      "graphml": "P4-015",
+      "gexf": "P4-015",
+      "prov-o": "P4-015",
+      "stix 2.1": "P4-014",
+      "misp format": "P4-022",
+      "ftm": "P4-013",
+      "webhooks": "P8",
+      "meilisearch": "P5-020 (بديل بحث)",
+      "typesense": "P5-020 (بديل بحث)",
+      "chroma": "P5-020",
+      "qdrant": "P5-020",
+      "faiss": "P5-020",
+      "camel tools": "P5-025",
+      "farasa": "P5-025",
+      "stanza": "P5-025",
+      "spacy": "P5-025",
+      "splink": "P4-023",
+      "zingg": "P4-023",
+      "dedupe": "P4-023",
+      "recordlinkage": "P4-023",
+      "tesseract": "P5-024",
+      "easyocr": "P5-024",
+      "exiftool": "TR-031",
+      "ibm plex sans arabic": "P3 (الخطوط)",
+      "noto sans arabic": "P3 (الخطوط)",
+      "tajawal": "P3 (الخطوط)",
+      "cairo": "P3 (الخطوط)"
+    }
+  },
+  "rows": [
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Google Search",
+      "desc": "أكبر محرك بحث، يدعم Google Dorks المتقدمة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Bing Search",
+      "desc": "محرك بحث ثانٍ، واجهة بحث متقدمة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "DuckDuckGo",
+      "desc": "محرك بحث يركز على الخصوصية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Yandex Search",
+      "desc": "محرك بحث روسي، بحث عكسي قوي للصور",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Baidu",
+      "desc": "محرك بحث صيني، مفيد للأصول الصينية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Brave Search",
+      "desc": "محرك بحث مستقل بفهرسة خاصة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Startpage",
+      "desc": "نتائج Google مع خصوصية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Mojeek",
+      "desc": "محرك بحث مستقل تماماً",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.1",
+      "section": "محركات البحث العامة والمتخصصة",
+      "name": "Marginalia Search",
+      "desc": "يبحث في الويب غير التجاري",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.2",
+      "section": "قواعد وأدوات الـ Dorking",
+      "name": "Google Hacking Database (GHDB",
+      "desc": "كتالوج من Exploit-DB لاستعلامات Dork",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.2",
+      "section": "قواعد وأدوات الـ Dorking",
+      "name": "DorkSearch",
+      "desc": "منشئ ومكتبة Dorks",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.2",
+      "section": "قواعد وأدوات الـ Dorking",
+      "name": "dorkhound",
+      "desc": "يولّد 340+ استعلام Dork في 25 فئة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "1.2",
+      "section": "قواعد وأدوات الـ Dorking",
+      "name": "OSINT Framework",
+      "desc": "دليل تفاعلي لأدوات OSINT",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "WhatsMyName",
+      "desc": "بحث عن أسماء المستخدمين في مئات المواقع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Sherlock",
+      "desc": "بحث عن أسماء المستخدمين في 400+ منصة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Maigret",
+      "desc": "بحث في 3000+ موقع مع بيانات الملف الشخصي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Blackbird",
+      "desc": "بحث في 700+ موقع من قائمة WhatsMyName",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Holehe",
+      "desc": "التحقق من تسجيل البريد في 120+ موقع قد يلامس خطوطاً رمادية",
+      "lic": ["caution", "oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "GHunt",
+      "desc": "OSINT من حساب Google يتطلب تسجيل دخول",
+      "lic": ["caution", "oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Namechk",
+      "desc": "التحقق من توفر اسم المستخدم",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Social Analyzer",
+      "desc": "تحليل ملفات شخصية عبر منصات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Stalkie",
+      "desc": "أسماء مستخدمين في 13+ منصة مع تقييم ثقة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "2",
+      "section": "محركات البحث عن الأشخاص والأسماء",
+      "name": "Canopy",
+      "desc": "كشف البصمة الرقمية عبر منصات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "Hunter.io",
+      "desc": "البحث عن بريد بالاسم/النطاق والتحقق",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "Emailrep.io",
+      "desc": "سمعة البريد الإلكتروني",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "Have I Been Pwned",
+      "desc": "التحقق من تسريبات البريد يحتاج موافقة صاحب البريد",
+      "lic": ["caution", "free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "Firefox Monitor",
+      "desc": "مراقبة تسريبات البريد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "DeHashed",
+      "desc": "بحث في التسريبات يتطلب تبرير قانوني",
+      "lic": ["caution", "paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "LeakCheck",
+      "desc": "بحث في التسريبات يتطلب تبرير قانوني",
+      "lic": ["caution", "paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "Intelligence X",
+      "desc": "محرك بحث في التسريبات والويب المظلم يتطلب تبرير قانوني",
+      "lic": ["caution", "paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "Hudson Rock Cavalier",
+      "desc": "كشف اختراق أجهزة عبر معلومات مسربة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "3",
+      "section": "محركات البحث عن البريد الإلكتروني",
+      "name": "XposedOrNot",
+      "desc": "التحقق من التسريبات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "4",
+      "section": "محركات البحث عن الهاتف",
+      "name": "PhoneInfoga",
+      "desc": "تحليل الهاتف: البلد، المزود، البحث",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "4",
+      "section": "محركات البحث عن الهاتف",
+      "name": "Numverify",
+      "desc": "التحقق من الهاتف",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "4",
+      "section": "محركات البحث عن الهاتف",
+      "name": "AbstractAPI Phone Validation",
+      "desc": "التحقق من الهاتف",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "4",
+      "section": "محركات البحث عن الهاتف",
+      "name": "Twilio Lookup",
+      "desc": "معلومات الهاتف الرسمية",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "4",
+      "section": "محركات البحث عن الهاتف",
+      "name": "Truecaller",
+      "desc": "تعريف المتصل بيانات مستخدمين، حذر أخلاقي",
+      "lic": ["caution", "free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "4",
+      "section": "محركات البحث عن الهاتف",
+      "name": "libphonenumber",
+      "desc": "مكتبة Google لتحليل الأرقام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "SecurityTrails",
+      "desc": "DNS تاريخي، WHOIS، نطاقات فرعية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "WhoisXML API",
+      "desc": "WHOIS وDNS",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "WhoisFreaks",
+      "desc": "WHOIS وبيانات تاريخية",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "ViewDNS.info",
+      "desc": "أدوات DNS وWHOIS متعددة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "DNSdumpster",
+      "desc": "اكتشاف نطاقات فرعية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "crt.sh",
+      "desc": "سجل شهادات TLS (Certificate Transparency)",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "CIRCL Passive DNS",
+      "desc": "DNS السلبي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "Robtex",
+      "desc": "تحليل DNS وIP",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "Amass",
+      "desc": "اكتشاف سطح الهجوم، نطاقات فرعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "Subfinder",
+      "desc": "اكتشاف نطاقات فرعية سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "Sublist3r",
+      "desc": "اكتشاف نطاقات فرعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "Findomain",
+      "desc": "اكتشاف نطاقات فرعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "dnsx",
+      "desc": "مجموعة أدوات DNS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "MassDNS",
+      "desc": "DNS سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "dnstwist",
+      "desc": "كشف النطاقات المشابهة (typosquatting)",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "5",
+      "section": "محركات البحث عن النطاقات وDNS",
+      "name": "dnsrecon",
+      "desc": "استطلاع DNS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Shodan",
+      "desc": "محرك بحث الأجهزة المتصلة بالإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Censys",
+      "desc": "محرك بحث الإنترنت والأصول الرقمية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "BinaryEdge",
+      "desc": "بيانات استطلاع الإنترنت",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Onyphe",
+      "desc": "استطلاع الإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Netlas",
+      "desc": "محرك بحث الإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "ZoomEye",
+      "desc": "محرك بحث صيني للإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Fofa",
+      "desc": "محرك بحث صيني",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "CriminalIP",
+      "desc": "محرك بحث الأمن السيبراني",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "LeakIX",
+      "desc": "كشف الخدمات المكشوفة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "GreyNoise",
+      "desc": "تحليل ضوضاء الإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Shodan InternetDB",
+      "desc": "بيانات Shodan مجانية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "IPinfo",
+      "desc": "معلومات IP: ASN، الموقع، المزود",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "IPGeolocation",
+      "desc": "تحديد الموقع الجغرافي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "MaxMind",
+      "desc": "قواعد بيانات IP",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "IP2Location",
+      "desc": "تحديد الموقع",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "BGPView",
+      "desc": "معلومات BGP وASN",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "RIPEstat",
+      "desc": "إحصاءات RIPE",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "Hurricane Electric BGP",
+      "desc": "أدوات BGP",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "PeeringDB",
+      "desc": "بيانات التصيير",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "6",
+      "section": "محركات البحث عن عناوين IP والشبكات",
+      "name": "bgp.tools",
+      "desc": "أدوات BGP",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "VirusTotal",
+      "desc": "تحليل الملفات والروابط والعناوين",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "AbuseIPDB",
+      "desc": "قاعدة بيانات إساءة IP",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "ThreatFox",
+      "desc": "مؤشرات التهديد من abuse.ch",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "URLhaus",
+      "desc": "قواعد بيانات URLs الخبيثة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "MalwareBazaar",
+      "desc": "قاعدة بيانات البرمجيات الخبيثة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Feodo Tracker",
+      "desc": "تتبع C2",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "SSL Blacklist",
+      "desc": "شهادات SSL الخبيثة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "URLScan.io",
+      "desc": "تحليل ومسح المواقع",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Hybrid Analysis",
+      "desc": "تحليل البرمجيات الخبيثة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Any.Run",
+      "desc": "تحليل تفاعلي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Joe Sandbox",
+      "desc": "تحليل البرمجيات الخبيثة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Triage",
+      "desc": "تحليل البرمجيات الخبيثة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Intezer",
+      "desc": "تحليل الشيفرة",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "Malpedia",
+      "desc": "موسوعة البرمجيات الخبيثة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "7",
+      "section": "محركات البحث عن التهديدات والسمعة",
+      "name": "ThreatMiner",
+      "desc": "استخبارات التهديدات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Etherscan",
+      "desc": "مستكشف Ethereum",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Blockchain.com Explorer",
+      "desc": "مستكشف Bitcoin",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Blockchair",
+      "desc": "مستكشف متعدد السلاسل",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Tokenview",
+      "desc": "مستكشف متعدد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Arkham Intelligence",
+      "desc": "تحليلات on-chain وكشف الهويات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Breadcrumbs",
+      "desc": "تحقيقات بصرية للبلوكشين",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Whale Alert",
+      "desc": "تنبيهات المعاملات الكبيرة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Chainabuse",
+      "desc": "قاعدة بيانات الاحتيال",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "CryptoScamDB",
+      "desc": "قاعدة بيانات الاحتيال",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "OXT",
+      "desc": "تحليل Bitcoin",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "WalletExplorer",
+      "desc": "مستكشف Bitcoin",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Blockchain.com API",
+      "desc": "API للبلوكشين",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Bitquery",
+      "desc": "API للبلوكشين",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "Covalent",
+      "desc": "API للبلوكشين",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "8",
+      "section": "محركات البحث عن العملات الرقمية",
+      "name": "crypttrace",
+      "desc": "مجموعة أدوات تحقيقات العملات الرقمية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "OpenCorporates",
+      "desc": "أكبر قاعدة بيانات شركات مفتوحة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "OpenOwnership",
+      "desc": "بيانات الملكية الحقيقية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "OCCRP Aleph",
+      "desc": "بيانات صحافة استقصائية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "ICIJ Offshore Leaks",
+      "desc": "بيانات التسريبات البحرية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "OpenSanctions",
+      "desc": "قوائم العقوبات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "SEC EDGAR",
+      "desc": "سجلات الشركات الأمريكية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "Companies House",
+      "desc": "سجلات الشركات البريطانية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "Delaware Business Search",
+      "desc": "سجلات شركات ديلاوير",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "EU Business Register",
+      "desc": "سجلات الشركات الأوروبية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "WIPO Global Brand Database",
+      "desc": "العلامات التجارية العالمية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "USPTO",
+      "desc": "براءات وعلامات أمريكية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "EUIPO",
+      "desc": "علامات الاتحاد الأوروبي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "SAIP",
+      "desc": "العلامات التجارية السعودية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "Google Patents",
+      "desc": "براءات الاختراع",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "Crunchbase",
+      "desc": "بيانات الشركات الناشئة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "9",
+      "section": "محركات البحث عن الشركات والسجلات",
+      "name": "Sayari",
+      "desc": "استخبارات سلسلة التوريد",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Google Images",
+      "desc": "بحث عكسي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Yandex Images",
+      "desc": "بحث عكسي قوي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Bing Visual Search",
+      "desc": "بحث عكسي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "TinEye",
+      "desc": "بحث عكسي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "SauceNAO",
+      "desc": "بحث عن مصدر الصور",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "PimEyes",
+      "desc": "بحث عن الوجوه",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Karma Decay",
+      "desc": "بحث عن الصور المكررة على Reddit",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "InVID",
+      "desc": "التحقق من الصور والفيديو",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "FotoForensics",
+      "desc": "تحليل التلاعب",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Forensically",
+      "desc": "تحليل التلاعب",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Ghiro",
+      "desc": "تحليل forensics للصور",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Izitru",
+      "desc": "التحقق من الصور",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Deepware Scanner",
+      "desc": "كشف Deepfake",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Sensity",
+      "desc": "كشف Deepfake",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "Reality Defender",
+      "desc": "كشف Deepfake",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "ExifTool",
+      "desc": "استخراج بيانات الصور",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Wayback Machine",
+      "desc": "نسخ قديمة من الصفحات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Archive.today",
+      "desc": "أرشيف الصفحات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Common Crawl",
+      "desc": "بيانات زحف الويب",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Google Cache",
+      "desc": "نسخ Google المؤقتة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Bing Cache",
+      "desc": "نسخ Bing المؤقتة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Yandex Cache",
+      "desc": "نسخ Yandex المؤقتة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Timetravel",
+      "desc": "أرشيف متعدد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Memento",
+      "desc": "أرشيف",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "Perma.cc",
+      "desc": "أرشفة دائمة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "11",
+      "section": "محركات البحث عن الأصول التاريخية",
+      "name": "urlscan.io",
+      "desc": "أرشفة وتحليل الصفحات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "12",
+      "section": "محركات البحث عن وسائل التواصل",
+      "name": "Bluesky",
+      "desc": "أدوات تحليل",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "12",
+      "section": "محركات البحث عن وسائل التواصل",
+      "name": "Mastodon",
+      "desc": "بحث في المثيلات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "12",
+      "section": "محركات البحث عن وسائل التواصل",
+      "name": "SocialNet",
+      "desc": "تحقيقات وسائل التواصل",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "12",
+      "section": "محركات البحث عن وسائل التواصل",
+      "name": "Osintgraph",
+      "desc": "تحليل شبكات Instagram",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "12",
+      "section": "محركات البحث عن وسائل التواصل",
+      "name": "Toutatis",
+      "desc": "بيانات Instagram",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Flightradar24",
+      "desc": "تتبع الطائرات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "FlightAware",
+      "desc": "تتبع الطائرات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "ADS-B Exchange",
+      "desc": "بيانات ADS-B غير مفلترة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "OpenSky Network",
+      "desc": "بيانات ADS-B بحثية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "PlaneFinder",
+      "desc": "تتبع الطائرات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "MarineTraffic",
+      "desc": "تتبع السفن",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "VesselFinder",
+      "desc": "تتبع السفن",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Global Fishing Watch",
+      "desc": "تتبع الصيد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Equasis",
+      "desc": "بيانات السفن",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "WiGLE",
+      "desc": "قواعد بيانات الشبكات اللاسلكية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "dump1090",
+      "desc": "فك ADS-B",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "readsb",
+      "desc": "فك ADS-B",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "tar1090",
+      "desc": "واجهة ويب للطائرات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "AIS-catcher",
+      "desc": "استقبال AIS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Gqrx",
+      "desc": "مستقبل SDR",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "SDR++",
+      "desc": "مستقبل SDR",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Universal Radio Hacker",
+      "desc": "تحليل البروتوكولات اللاسلكية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "rtl_433",
+      "desc": "فك أجهزة ISM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "SatDump",
+      "desc": "فك بيانات الأقمار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Gpredict",
+      "desc": "تتبع الأقمار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "Kismet",
+      "desc": "كشف الشبكات اللاسلكية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "13",
+      "section": "محركات البحث عن الطائرات والسفن",
+      "name": "OpenALPR",
+      "desc": "التعرف على لوحات السيارات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "Ahmia",
+      "desc": "محرك بحث Tor",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "OnionScan",
+      "desc": "تحليل خدمات Tor",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "Onionsearch",
+      "desc": "بحث في Tor",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "Hidden Wiki",
+      "desc": "دليل مواقع Tor",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "DarkOwl",
+      "desc": "استخبارات الويب المظلم",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "Intel471",
+      "desc": "استخبارات الويب المظلم",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "Flashpoint",
+      "desc": "استخبارات الويب المظلم",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "darkwatch",
+      "desc": "مراقبة التعرض على الويب المظلم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "14",
+      "section": "محركات البحث في الويب المظلم",
+      "name": "AIL Framework",
+      "desc": "تحليل التسريبات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "USASpending.gov",
+      "desc": "الإنفاق الحكومي الأمريكي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "FEC",
+      "desc": "تبرعات سياسية أمريكية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "Follow the Money",
+      "desc": "تتبع الأموال",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "OpenTender",
+      "desc": "المناقصات الأوروبية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "data.gov",
+      "desc": "البيانات المفتوحة الأمريكية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "data.gov.uk",
+      "desc": "البيانات المفتوحة البريطانية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "EU Open Data Portal",
+      "desc": "البيانات المفتوحة الأوروبية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "15",
+      "section": "محركات البحث عن البيانات الحكومية والمفتوحة",
+      "name": "World Bank Open Data",
+      "desc": "بيانات البنك الدولي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "Metagoofil",
+      "desc": "استخراج بيانات وصفية من الوثائق العامة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "FOCA",
+      "desc": "تحليل البيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "ExifTool",
+      "desc": "استخراج البيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "pdfid",
+      "desc": "تحليل PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "peepdf",
+      "desc": "تحليل PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "pdf-parser",
+      "desc": "تحليل PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "qpdf",
+      "desc": "معالجة PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "oletools",
+      "desc": "تحليل ملفات Office",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "python-docx",
+      "desc": "معالجة Word",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "openpyxl",
+      "desc": "معالجة Excel",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
+      "sec": "16",
+      "section": "محركات البحث عن الملفات والوثائق",
+      "name": "EasyOCR",
+      "desc": "OCR متعدد اللغات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "ExifTool",
+      "desc": "المعيار الذهبي لاستخراج البيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "FOCA",
+      "desc": "تحليل جماعي للبيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "Metagoofil",
+      "desc": "استخراج بيانات من الوثائق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "Metadata2Go",
+      "desc": "عرض البيانات الوصفية عبر الإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "Jeffrey's Image Metadata Viewer",
+      "desc": "عارض بيانات الصور",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "Metapicz",
+      "desc": "عارض بيانات الصور",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "17",
+      "section": "تحليل البيانات الوصفية (Metadata Analysis)",
+      "name": "MAT2",
+      "desc": "تنقية البيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "FotoForensics",
+      "desc": "تحليل التلاعب (ELA)",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Forensically",
+      "desc": "تحليل التلاعب",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Ghiro",
+      "desc": "تحليل forensics",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Izitru",
+      "desc": "التحقق من الصور",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "InVID",
+      "desc": "التحقق من الصور والفيديو",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "WeVerify",
+      "desc": "التحقق من المحتوى",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "AP Verify",
+      "desc": "التحقق من الصور والفيديو",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Google Vision",
+      "desc": "API تحليل الصور بالذكاء الاصطناعي",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "AWS Rekognition",
+      "desc": "تحليل الصور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Azure Vision",
+      "desc": "تحليل الصور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Deepware Scanner",
+      "desc": "كشف Deepfake",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Sensity",
+      "desc": "كشف Deepfake",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "Reality Defender",
+      "desc": "كشف Deepfake",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "18",
+      "section": "تحليل الصور والوسائط",
+      "name": "OpenALPR",
+      "desc": "التعرف على اللوحات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Google Earth Pro",
+      "desc": "صور الأقمار الصناعية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Google Maps",
+      "desc": "خرائط",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Yandex Maps",
+      "desc": "خرائط",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Bing Maps",
+      "desc": "خرائط",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Mapillary",
+      "desc": "صور مستوى الشارع",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "KartaView",
+      "desc": "صور مستوى الشارع",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "OpenStreetMap",
+      "desc": "خرائط مفتوحة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Overpass Turbo",
+      "desc": "استعلامات OSM متقدمة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Bellingcat OSM Search",
+      "desc": "بحث في OSM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "SunCalc",
+      "desc": "حساب موضع الشمس",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "ShadowCalculator",
+      "desc": "حساب الظلال",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Peakfinder",
+      "desc": "تحديد القمم",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Peakvisor",
+      "desc": "تحديد القمم",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Sentinel Hub",
+      "desc": "صور الأقمار الصناعية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Planet Labs",
+      "desc": "صور الأقمار",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "Maxar",
+      "desc": "صور الأقمار",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "19",
+      "section": "التحليل الجغرافي (Geolocation & Mapping)",
+      "name": "TracePoint",
+      "desc": "تحديد الموقع من الصور",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Maltego",
+      "desc": "تحليل الروابط والرسم البياني",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Gephi",
+      "desc": "تحليل وتصور الشبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Cytoscape",
+      "desc": "تحليل الشبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Neo4j",
+      "desc": "قاعدة بيانات الرسم البياني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Linkurious",
+      "desc": "تصور Neo4j",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "i2 Analyst's Notebook",
+      "desc": "تحليل استخباراتي",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "yEd",
+      "desc": "رسم بياني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Graphviz",
+      "desc": "رسم بياني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Sigma.js",
+      "desc": "مكتبة رسم بياني للويب",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "D3.js",
+      "desc": "تصور بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "Vis.js",
+      "desc": "تصور شبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "PyGraphviz",
+      "desc": "رسم بياني بلغة Python",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "20",
+      "section": "تحليل الشبكات والروابط (Link Analysis)",
+      "name": "NetworkX",
+      "desc": "تحليل شبكات بلغة Python",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Elasticsearch",
+      "desc": "محرك بحث وتحليلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "OpenSearch",
+      "desc": "بحث وتحليلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Meilisearch",
+      "desc": "بحث سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Typesense",
+      "desc": "بحث سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Apache Superset",
+      "desc": "تصور بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Metabase",
+      "desc": "تحليلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "DuckDB",
+      "desc": "قاعدة بيانات تحليلية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Pandas",
+      "desc": "تحليل بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Polars",
+      "desc": "تحليل بيانات سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "21",
+      "section": "تحليل البيانات الكبيرة والاستعلام",
+      "name": "Apache Spark",
+      "desc": "معالجة بيانات ضخمة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "spaCy",
+      "desc": "معالجة لغة طبيعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "Stanza",
+      "desc": "NLP متعدد اللغات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "Hugging Face Transformers",
+      "desc": "نماذج NLP",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "BERT",
+      "desc": "فهم النصوص",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "fastText",
+      "desc": "تصنيف النصوص",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "LangDetect",
+      "desc": "تحديد اللغة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "CLD3",
+      "desc": "تحديد اللغة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "EasyOCR",
+      "desc": "OCR متعدد اللغات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "Google",
+      "desc": "NLP تحليل النصوص",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "22",
+      "section": "تحليل النصوص واللغة",
+      "name": "AWS Comprehend",
+      "desc": "تحليل النصوص",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "Dedupe",
+      "desc": "إزالة التكرار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "Splink",
+      "desc": "ربط السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "Zingg",
+      "desc": "تعلم آلي لربط السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "Senzing",
+      "desc": "مطابقة الكيانات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "Tilores",
+      "desc": "حل الكيانات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "RecordLinkage",
+      "desc": "ربط السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "23",
+      "section": "تحليل الهوية والكيانات (Entity Resolution)",
+      "name": "PyEntityResolution",
+      "desc": "حل الكيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "MISP",
+      "desc": "منصة مشاركة استخبارات التهديدات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "OpenCTI",
+      "desc": "إدارة المعرفة السيبرانية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "IntelOwl",
+      "desc": "تحليل المؤشرات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Yeti",
+      "desc": "استخبارات التهديدات والطب الشرعي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "TheHive",
+      "desc": "استجابة للحوادث",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Cortex",
+      "desc": "تحليل المراقبة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Threat Bus",
+      "desc": "توزيع استخبارات التهديدات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Sigma",
+      "desc": "قواعد كشف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "YARA",
+      "desc": "قواعد كشف البرمجيات الخبيثة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Snort",
+      "desc": "كشف التسلل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Suricata",
+      "desc": "كشف التسلل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Elastic Detection Rules",
+      "desc": "قواعد كشف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "Splunk Security Content",
+      "desc": "قواعد كشف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "MITRE ATT&CK",
+      "desc": "إطار تقنيات المهاجمين",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "MITRE CAPEC",
+      "desc": "أنماط الهجوم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "24",
+      "section": "تحليل التهديدات والأمن السيبراني",
+      "name": "MITRE D3FEND",
+      "desc": "تقنيات الدفاع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Volatility",
+      "desc": "3 تحليل الذاكرة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "AVML",
+      "desc": "حجز ذاكرة Linux",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "LiME",
+      "desc": "استخراج ذاكرة Linux",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "KAPE",
+      "desc": "جمع وتحليل الأدلة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Velociraptor",
+      "desc": "استجابة للحوادث",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Autopsy",
+      "desc": "تحليل forensics",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "The Sleuth Kit",
+      "desc": "تحليل forensics",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Plaso / log2timeline",
+      "desc": "تحليل زمني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Timesketch",
+      "desc": "تحليل زمني تعاوني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "FTK Imager",
+      "desc": "حجز الأدلة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Magnet AXIOM",
+      "desc": "تحليل forensics",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Cellebrite",
+      "desc": "تحليل الهواتف",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "X-Ways Forensics",
+      "desc": "تحليل forensics",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "EnCase Forensic",
+      "desc": "تحليل forensics",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Aleapp",
+      "desc": "تحليل Android",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "iLEAPP",
+      "desc": "تحليل iOS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Eric Zimmerman Tools",
+      "desc": "أدوات Windows forensics",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "MFTECmd",
+      "desc": "تحليل MFT",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "ShellBags Explorer",
+      "desc": "تحليل ShellBags",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Registry Explorer",
+      "desc": "تحليل Registry",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Wireshark",
+      "desc": "تحليل الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "NetworkMiner",
+      "desc": "تحليل الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "Zeek",
+      "desc": "تحليل الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "25",
+      "section": "تحليل الطب الشرعي الرقمي (DFIR)",
+      "name": "TCPdump",
+      "desc": "تحليل الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "Chainalysis",
+      "desc": "تحقيقات بلوكشين",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "TRM Labs",
+      "desc": "تحقيقات بلوكشين",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "Elliptic",
+      "desc": "تحقيقات بلوكشين",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "CipherTrace",
+      "desc": "تحقيقات بلوكشين",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "Nansen",
+      "desc": "تحليلات on-chain",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "Dune Analytics",
+      "desc": "استعلامات بلوكشين",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "DeFiLlama",
+      "desc": "بيانات DeFi",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "Breadcrumbs",
+      "desc": "تحقيقات بصرية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "26",
+      "section": "تحليل العملات الرقمية (المتقدمة)",
+      "name": "Arkham",
+      "desc": "تحليلات on-chain",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "OpenCorporates",
+      "desc": "بيانات الشركات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "Sayari",
+      "desc": "استخبارات سلسلة التوريد",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "LexisNexis",
+      "desc": "بيانات قانونية وتجارية",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "ComplyAdvantage",
+      "desc": "مراقبة المخاطر",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "Aleph (OCCRP",
+      "desc": "بيانات صحافة استقصائية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "Follow the Money",
+      "desc": "تتبع الأموال",
+      "lic": ["free"]
+    },
+    {
+      "layer": "arms",
+      "sec": "27",
+      "section": "تحليل البيانات المالية",
+      "name": "OpenTender",
+      "desc": "المناقصات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Tor Browser",
+      "desc": "تصفح مجهول",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Brave Browser",
+      "desc": "متصفح يركز على الخصوصية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Firefox",
+      "desc": "متصفح مرن",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Chromium",
+      "desc": "متصفح مفتوح المصدر",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Tails",
+      "desc": "نظام تشغيل مجهول",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Whonix",
+      "desc": "نظام تشغيل مجهول",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Qubes OS",
+      "desc": "نظام تشغيل آمن",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "Sputnik",
+      "desc": "إضافة OSINT للمتصفح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "28",
+      "section": "المتصفحات وأدوات التصفح",
+      "name": "PRISM",
+      "desc": "OSINT إضافة Firefox",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "Tor",
+      "desc": "شبكة مجهولة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "I2P",
+      "desc": "شبكة مجهولة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "VPN",
+      "desc": "شبكات افتراضية خاصة",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "ProxyChains",
+      "desc": "تسلسل البروكسيات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "Privoxy",
+      "desc": "بروكسي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "Squid",
+      "desc": "بروكسي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "mitmproxy",
+      "desc": "بروكسي تفاعلي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "29",
+      "section": "أدوات البروكسي والخصوصية",
+      "name": "Burp Suite",
+      "desc": "بروكسي أمني",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "curl",
+      "desc": "نقل البيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "wget",
+      "desc": "تنزيل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "nmap",
+      "desc": "مسح الشبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "netcat",
+      "desc": "أدوات الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "dig",
+      "desc": "استعلامات DNS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "whois",
+      "desc": "استعلامات WHOIS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "traceroute",
+      "desc": "تتبع المسار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "ping",
+      "desc": "اختبار الاتصال",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "tcpdump",
+      "desc": "تحليل الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "jq",
+      "desc": "معالجة JSON",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "yq",
+      "desc": "معالجة YAML",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "ripgrep",
+      "desc": "بحث سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "fd",
+      "desc": "بحث عن الملفات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "30",
+      "section": "أدوات سطر الأوامر",
+      "name": "fzf",
+      "desc": "بحث تفاعلي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "theHarvester",
+      "desc": "جمع بريد ونطاقات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "SpiderFoot",
+      "desc": "أتمتة OSINT",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Recon-ng",
+      "desc": "إطار استطلاع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "DataSploit",
+      "desc": "OSINT آلي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Metagoofil",
+      "desc": "جمع وثائق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Photon",
+      "desc": "زحف سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Scrapy",
+      "desc": "إطار زحف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Beautiful Soup",
+      "desc": "تحليل HTML",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Selenium",
+      "desc": "أتمتة المتصفح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Playwright",
+      "desc": "أتمتة المتصفح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "31",
+      "section": "أدوات جمع البيانات الآلي",
+      "name": "Puppeteer",
+      "desc": "أتمتة المتصفح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "instaloader",
+      "desc": "تنزيل من Instagram",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "twint",
+      "desc": "تحليل Twitter",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "snscrape",
+      "desc": "زحف الشبكات الاجتماعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "Osintgram",
+      "desc": "تحليل Instagram",
+      "lic": ["caution", "oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "Toutatis",
+      "desc": "بيانات Instagram",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "Osintgraph",
+      "desc": "تحليل شبكات Instagram",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "SocialNet",
+      "desc": "تحقيقات وسائل التواصل",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "legs",
+      "sec": "32",
+      "section": "أدوات تحليل الشبكات الاجتماعية",
+      "name": "CyberTrace",
+      "desc": "تحليل forensics لوسائل التواصل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "Ollama",
+      "desc": "تشغيل نماذج LLM محلياً",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "vLLM",
+      "desc": "خدمة LLM عالية الأداء",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "llama.cpp",
+      "desc": "تشغيل LLM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "LM Studio",
+      "desc": "واجهة لتشغيل LLM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "Hugging Face",
+      "desc": "نماذج ومجموعات بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "LangChain",
+      "desc": "إطار تطبيقات LLM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "LlamaIndex",
+      "desc": "إطار تطبيقات LLM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "AutoGen",
+      "desc": "وكلاء متعددون",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "33",
+      "section": "أطر عمل الذكاء الاصطناعي",
+      "name": "CrewAI",
+      "desc": "وكلاء متعددون",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "34",
+      "section": "أدوات MCP (Model Context Protocol)",
+      "name": "osint-mcp",
+      "desc": "26 أداة OSINT مجانية كأدوات MCP",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "34",
+      "section": "أدوات MCP (Model Context Protocol)",
+      "name": "mcp-world",
+      "desc": "أدوات OSINT لـ Claude",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "34",
+      "section": "أدوات MCP (Model Context Protocol)",
+      "name": "argus",
+      "desc": "إطار OSINT محلي مع MCP",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "Docker",
+      "desc": "حاويات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "Docker Compose",
+      "desc": "تنسيق حاويات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "Kubernetes",
+      "desc": "تنسيق حاويات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "Helm",
+      "desc": "إدارة Kubernetes",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "Terraform",
+      "desc": "بنية تحتية كشيفرة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "Ansible",
+      "desc": "أتمتة التكوين",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "35",
+      "section": "منصات النشر والتشغيل",
+      "name": "ArgoCD",
+      "desc": "نشر GitOps",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "PostgreSQL",
+      "desc": "قاعدة بيانات علائقية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "SQLite",
+      "desc": "قاعدة بيانات مدمجة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "DuckDB",
+      "desc": "قاعدة بيانات تحليلية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "Neo4j",
+      "desc": "قاعدة بيانات رسم بياني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "Redis",
+      "desc": "مخزن مؤقت",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "Elasticsearch",
+      "desc": "بحث وتحليلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "OpenSearch",
+      "desc": "بحث وتحليلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "Meilisearch",
+      "desc": "بحث سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "MinIO",
+      "desc": "تخزين كائنات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "36",
+      "section": "قواعد البيانات ومخازن البيانات",
+      "name": "S3",
+      "desc": "تخزين سحابي",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Prometheus",
+      "desc": "مراقبة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Grafana",
+      "desc": "لوحات معلومات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Loki",
+      "desc": "تسجيل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Jaeger",
+      "desc": "تتبع موزع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "OpenTelemetry",
+      "desc": "مراقبة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Sentry",
+      "desc": "تتبع الأخطاء",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Uptime Kuma",
+      "desc": "مراقبة التوفر",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "37",
+      "section": "أدوات المراقبة والقياس",
+      "name": "Netdata",
+      "desc": "مراقبة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "n8n",
+      "desc": "أتمتة سير العمل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "Apache Airflow",
+      "desc": "تنسيق المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "Prefect",
+      "desc": "تنسيق المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "Dagster",
+      "desc": "تنسيق المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "Temporal",
+      "desc": "تنسيق سير العمل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "Celery",
+      "desc": "مهام موزعة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "BullMQ",
+      "desc": "طوابير Node.js",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "38",
+      "section": "أدوات الأتمتة والتنسيق",
+      "name": "Redis Queue",
+      "desc": "طوابير",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Gephi",
+      "desc": "تصور شبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Cytoscape",
+      "desc": "تصور شبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "D3.js",
+      "desc": "تصور بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Sigma.js",
+      "desc": "تصور شبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Vis.js",
+      "desc": "تصور شبكات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Apache Superset",
+      "desc": "تصور بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Metabase",
+      "desc": "تحليلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Redash",
+      "desc": "استعلامات ولوحات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Grafana",
+      "desc": "لوحات معلومات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Kibana",
+      "desc": "تصور بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "OpenSearch Dashboards",
+      "desc": "تصور بيانات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Puppeteer",
+      "desc": "توليد PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Playwright",
+      "desc": "توليد PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "React-PDF",
+      "desc": "توليد PDF",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "Typst",
+      "desc": "تنضيد",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "39",
+      "section": "أدوات التصور والتقارير",
+      "name": "LaTeX",
+      "desc": "تنضيد",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "OpenAPI",
+      "desc": "مواصفات API",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "GraphQL",
+      "desc": "استعلام API",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "gRPC",
+      "desc": "اتصال خدمات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "Webhooks",
+      "desc": "إشعارات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "STIX 2.1",
+      "desc": "تبادل استخبارات التهديدات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "MISP Format",
+      "desc": "تبادل استخبارات التهديدات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "GraphML",
+      "desc": "تبادل الرسوم البيانية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "GEXF",
+      "desc": "تبادل الرسوم البيانية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "PROV-O",
+      "desc": "تتبع المصادر",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "wings",
+      "sec": "40",
+      "section": "أدوات التكامل والتشغيل البيني",
+      "name": "FtM",
+      "desc": "تتبع الأموال",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "Gqrx",
+      "desc": "مستقبل SDR",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "SDR++",
+      "desc": "مستقبل SDR",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "Universal Radio Hacker",
+      "desc": "تحليل بروتوكولات لاسلكية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "rtl_433",
+      "desc": "فك أجهزة ISM",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "SatDump",
+      "desc": "فك بيانات الأقمار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "Gpredict",
+      "desc": "تتبع الأقمار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "Kismet",
+      "desc": "كشف الشبكات اللاسلكية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "dump1090",
+      "desc": "فك ADS-B",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "readsb",
+      "desc": "فك ADS-B",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "tar1090",
+      "desc": "واجهة ADS-B",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "41",
+      "section": "أدوات SDR (Software Defined Radio)",
+      "name": "AIS-catcher",
+      "desc": "استقبال AIS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "Cellebrite",
+      "desc": "استخراج البيانات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "Magnet AXIOM",
+      "desc": "تحليل forensics",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "Oxygen Forensic Detective",
+      "desc": "تحليل forensics",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "Mobiledit",
+      "desc": "استخراج",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "ALEAPP",
+      "desc": "تحليل Android",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "iLEAPP",
+      "desc": "تحليل iOS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "Andriller",
+      "desc": "تحليل Android",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "42",
+      "section": "أدوات التحليل الجنائي للهواتف",
+      "name": "libimobiledevice",
+      "desc": "أدوات iOS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "Ghidra",
+      "desc": "هندسة عكسية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "radare2",
+      "desc": "هندسة عكسية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "IDA Free",
+      "desc": "هندسة عكسية",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "Binary Ninja",
+      "desc": "هندسة عكسية",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "x64dbg",
+      "desc": "تصحيح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "OllyDbg",
+      "desc": "تصحيح",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "dnSpy",
+      "desc": "تصحيح .NET",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "JADX",
+      "desc": "فك Android",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "43",
+      "section": "أدوات تحليل الشيفرة العكسية",
+      "name": "apktool",
+      "desc": "فك APK",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Cuckoo Sandbox",
+      "desc": "تحليل آلي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "CAPE Sandbox",
+      "desc": "تحليل آلي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Any.Run",
+      "desc": "تحليل تفاعلي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Hybrid Analysis",
+      "desc": "تحليل آلي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Joe Sandbox",
+      "desc": "تحليل آلي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Triage",
+      "desc": "تحليل آلي",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "VirusTotal",
+      "desc": "تحليل متعدد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Intezer",
+      "desc": "تحليل الشيفرة",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "44",
+      "section": "أدوات تحليل البرمجيات الخبيثة",
+      "name": "Malpedia",
+      "desc": "موسوعة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Wireshark",
+      "desc": "تحليل الحزم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "tcpdump",
+      "desc": "تحليل الحزم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Zeek",
+      "desc": "مراقبة الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Suricata",
+      "desc": "كشف التسلل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Snort",
+      "desc": "كشف التسلل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "NetworkMiner",
+      "desc": "تحليل الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Ntopng",
+      "desc": "مراقبة الشبكة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Arkime",
+      "desc": "تحليل الحزم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "45",
+      "section": "أدوات تحليل الشبكات المتقدمة",
+      "name": "Moloch",
+      "desc": "تحليل الحزم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Elastic Stack",
+      "desc": "تحليل السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Splunk",
+      "desc": "تحليل السجلات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Graylog",
+      "desc": "تحليل السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Loki",
+      "desc": "تسجيل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Fluentd",
+      "desc": "جمع السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Filebeat",
+      "desc": "شحن السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Logstash",
+      "desc": "معالجة السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "special",
+      "sec": "46",
+      "section": "أدوات تحليل السجلات",
+      "name": "Vector",
+      "desc": "معالجة السجلات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "GnuPG",
+      "desc": "تشفير",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "OpenSSL",
+      "desc": "تشفير",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "libsodium",
+      "desc": "تشفير",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "age",
+      "desc": "تشفير حديث",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "VeraCrypt",
+      "desc": "تشفير الأقراص",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "LUKS",
+      "desc": "تشفير Linux",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "BitLocker",
+      "desc": "تشفير Windows",
+      "lic": ["free"]
+    },
+    {
+      "layer": "protect",
+      "sec": "47",
+      "section": "أدوات التشفير",
+      "name": "FileVault",
+      "desc": "تشفير macOS",
+      "lic": ["free"]
+    },
+    {
+      "layer": "protect",
+      "sec": "48",
+      "section": "أدوات إدارة الأسرار",
+      "name": "HashiCorp Vault",
+      "desc": "إدارة الأسرار",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "48",
+      "section": "أدوات إدارة الأسرار",
+      "name": "Bitwarden",
+      "desc": "إدارة كلمات المرور",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "48",
+      "section": "أدوات إدارة الأسرار",
+      "name": "KeePassXC",
+      "desc": "إدارة كلمات المرور",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "48",
+      "section": "أدوات إدارة الأسرار",
+      "name": "1Password",
+      "desc": "إدارة كلمات المرور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "protect",
+      "sec": "48",
+      "section": "أدوات إدارة الأسرار",
+      "name": "SOPS",
+      "desc": "تشفير الملفات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "48",
+      "section": "أدوات إدارة الأسرار",
+      "name": "Sealed Secrets",
+      "desc": "أسرار Kubernetes",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "Tor",
+      "desc": "شبكة مجهولة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "Tails",
+      "desc": "نظام تشغيل مجهول",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "Whonix",
+      "desc": "نظام تشغيل مجهول",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "Qubes OS",
+      "desc": "نظام تشغيل آمن",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "MAT2",
+      "desc": "تنقية البيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "ExifCleaner",
+      "desc": "إزالة البيانات الوصفية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "OONI Probe",
+      "desc": "قياس الرقابة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "protect",
+      "sec": "49",
+      "section": "أدوات الخصوصية",
+      "name": "Privacy Badger",
+      "desc": "حماية المتصفح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Llama",
+      "desc": "3 نموذج مفتوح من Meta",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Mistral",
+      "desc": "نموذج مفتوح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Qwen",
+      "desc": "نموذج مفتوح من Alibaba",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Gemma",
+      "desc": "نموذج من Google",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Phi",
+      "desc": "نموذج من Microsoft",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "DeepSeek",
+      "desc": "نموذج مفتوح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Falcon",
+      "desc": "نموذج من TII",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "50",
+      "section": "نماذج LLM للتشغيل المحلي",
+      "name": "Yi",
+      "desc": "نموذج من 01.AI",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "LlamaIndex",
+      "desc": "إطار RAG",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "LangChain",
+      "desc": "إطار RAG",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "Haystack",
+      "desc": "إطار RAG",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "Chroma",
+      "desc": "قاعدة بيانات متجهات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "Pinecone",
+      "desc": "قاعدة بيانات متجهات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "Weaviate",
+      "desc": "قاعدة بيانات متجهات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "Qdrant",
+      "desc": "قاعدة بيانات متجهات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "Milvus",
+      "desc": "قاعدة بيانات متجهات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "52",
+      "section": "أدوات RAG (Retrieval Augmented Generation)",
+      "name": "FAISS",
+      "desc": "بحث تشابه",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "53",
+      "section": "أدوات تحليل المشاعر والتصنيف",
+      "name": "Hugging Face Transformers",
+      "desc": "نماذج متعددة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "53",
+      "section": "أدوات تحليل المشاعر والتصنيف",
+      "name": "VADER",
+      "desc": "تحليل المشاعر",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "53",
+      "section": "أدوات تحليل المشاعر والتصنيف",
+      "name": "TextBlob",
+      "desc": "تحليل النصوص",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "Google Vision",
+      "desc": "API تحليل الصور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "AWS Rekognition",
+      "desc": "تحليل الصور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "Azure Vision",
+      "desc": "تحليل الصور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "Clarifai",
+      "desc": "تحليل الصور",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "OpenCV",
+      "desc": "رؤية حاسوبية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "YOLO",
+      "desc": "كشف الأشياء",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "Detectron2",
+      "desc": "كشف الأشياء",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "ai",
+      "sec": "54",
+      "section": "أدوات تحليل الصور بالذكاء الاصطناعي",
+      "name": "Segment Anything",
+      "desc": "تجزئة الصور",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "55",
+      "section": "أدوات إدارة الحالة والقضايا",
+      "name": "TheHive",
+      "desc": "إدارة الحوادث",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "collab",
+      "sec": "55",
+      "section": "أدوات إدارة الحالة والقضايا",
+      "name": "DFIR IRIS",
+      "desc": "إدارة التحقيقات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "55",
+      "section": "أدوات إدارة الحالة والقضايا",
+      "name": "Casebox",
+      "desc": "إدارة القضايا",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "55",
+      "section": "أدوات إدارة الحالة والقضايا",
+      "name": "RTIR",
+      "desc": "إدارة الحوادث",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "55",
+      "section": "أدوات إدارة الحالة والقضايا",
+      "name": "OpenCTI",
+      "desc": "إدارة المعرفة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "56",
+      "section": "أدوات التعاون",
+      "name": "Mattermost",
+      "desc": "تعاون الفريق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "56",
+      "section": "أدوات التعاون",
+      "name": "Rocket.Chat",
+      "desc": "تعاون الفريق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "56",
+      "section": "أدوات التعاون",
+      "name": "Element/Matrix",
+      "desc": "تعاون مشفر",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "56",
+      "section": "أدوات التعاون",
+      "name": "Nextcloud",
+      "desc": "تخزين وتعاون",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "56",
+      "section": "أدوات التعاون",
+      "name": "CryptPad",
+      "desc": "تعاون مشفر",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "56",
+      "section": "أدوات التعاون",
+      "name": "HedgeDoc",
+      "desc": "تحرير تعاوني",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "Obsidian",
+      "desc": "قاعدة معرفة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "Logseq",
+      "desc": "قاعدة معرفة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "Notion",
+      "desc": "توثيق",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "Confluence",
+      "desc": "توثيق",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "BookStack",
+      "desc": "توثيق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "Wiki.js",
+      "desc": "ويكي",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "Docusaurus",
+      "desc": "موقع توثيق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "57",
+      "section": "أدوات التوثيق والمعرفة",
+      "name": "VitePress",
+      "desc": "موقع توثيق",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "Jira",
+      "desc": "إدارة المشاريع",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "Linear",
+      "desc": "إدارة المهام",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "GitHub Issues",
+      "desc": "تتبع المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "GitLab Issues",
+      "desc": "تتبع المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "Kanboard",
+      "desc": "إدارة المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "Vikunja",
+      "desc": "إدارة المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "collab",
+      "sec": "58",
+      "section": "أدوات إدارة المهام",
+      "name": "Focalboard",
+      "desc": "إدارة المهام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "h8mail",
+      "desc": "بحث في التسريبات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "Mosint",
+      "desc": "استخبارات البريد",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "EmailHarvester",
+      "desc": "جمع البريد",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "theHarvester",
+      "desc": "جمع البريد",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "Hunter.io",
+      "desc": "البحث عن البريد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "Emailrep.io",
+      "desc": "سمعة البريد",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "Holehe",
+      "desc": "التحقق من التسجيل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "59",
+      "section": "أدوات تحليل البريد الإلكتروني",
+      "name": "GHunt",
+      "desc": "OSINT من Google",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "60",
+      "section": "أدوات تحليل الهاتف",
+      "name": "PhoneInfoga",
+      "desc": "تحليل الهاتف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "60",
+      "section": "أدوات تحليل الهاتف",
+      "name": "Numverify",
+      "desc": "التحقق",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "60",
+      "section": "أدوات تحليل الهاتف",
+      "name": "AbstractAPI",
+      "desc": "التحقق",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "60",
+      "section": "أدوات تحليل الهاتف",
+      "name": "Twilio Lookup",
+      "desc": "معلومات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "extra",
+      "sec": "60",
+      "section": "أدوات تحليل الهاتف",
+      "name": "libphonenumber",
+      "desc": "تحليل الأرقام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "Amass",
+      "desc": "اكتشاف سطح الهجوم",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "Subfinder",
+      "desc": "نطاقات فرعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "Sublist3r",
+      "desc": "نطاقات فرعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "Findomain",
+      "desc": "نطاقات فرعية",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "dnsx",
+      "desc": "أدوات DNS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "MassDNS",
+      "desc": "DNS سريع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "dnstwist",
+      "desc": "نطاقات مشابهة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "dnsrecon",
+      "desc": "استطلاع DNS",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "61",
+      "section": "أدوات تحليل النطاقات",
+      "name": "theHarvester",
+      "desc": "جمع",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "Shodan",
+      "desc": "بحث الأجهزة",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "Censys",
+      "desc": "بحث الإنترنت",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "IPinfo",
+      "desc": "معلومات IP",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "IPGeolocation",
+      "desc": "تحديد الموقع",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "MaxMind",
+      "desc": "قواعد بيانات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "RIPEstat",
+      "desc": "إحصاءات",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "62",
+      "section": "أدوات تحليل IP",
+      "name": "PeeringDB",
+      "desc": "تصيير",
+      "lic": ["free"]
+    },
+    {
+      "layer": "extra",
+      "sec": "63",
+      "section": "أدوات تحليل الثغرات",
+      "name": "Nuclei",
+      "desc": "فحص الثغرات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "63",
+      "section": "أدوات تحليل الثغرات",
+      "name": "Nmap",
+      "desc": "مسح المنافذ",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "63",
+      "section": "أدوات تحليل الثغرات",
+      "name": "OpenVAS",
+      "desc": "فحص الثغرات",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "63",
+      "section": "أدوات تحليل الثغرات",
+      "name": "Nessus",
+      "desc": "فحص الثغرات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "extra",
+      "sec": "63",
+      "section": "أدوات تحليل الثغرات",
+      "name": "Qualys",
+      "desc": "فحص الثغرات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "extra",
+      "sec": "63",
+      "section": "أدوات تحليل الثغرات",
+      "name": "Rapid7 InsightVM",
+      "desc": "فحص الثغرات",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "Velociraptor",
+      "desc": "استجابة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "GRR",
+      "desc": "استجابة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "Osquery",
+      "desc": "استعلام",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "Wazuh",
+      "desc": "كشف واستجابة",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "Sigma",
+      "desc": "قواعد كشف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "YARA",
+      "desc": "قواعد كشف",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "TheHive",
+      "desc": "إدارة",
+      "lic": ["paid"]
+    },
+    {
+      "layer": "extra",
+      "sec": "64",
+      "section": "أدوات الاستجابة للحوادث",
+      "name": "Cortex",
+      "desc": "تحليل",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "65",
+      "section": "أدوات SOAR (Security Orchestration, Automation, and Response)",
+      "name": "Shuffle SOAR",
+      "desc": "مفتوح",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "extra",
+      "sec": "65",
+      "section": "أدوات SOAR (Security Orchestration, Automation, and Response)",
+      "name": "n8n",
+      "desc": "أتمتة",
+      "lic": ["oss"]
+    }
+  ]
+}
