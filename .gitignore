@@ -55,3 +55,4 @@ Thumbs.db
 
 # Tool catalog raw-source cache (tools/catalog/build.py --cache)
 tools/catalog/.cache/
+__pycache__/
