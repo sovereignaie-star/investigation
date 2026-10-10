@@ -1,7 +1,10 @@
 import { ulidFactory, isoNow, systemClock, type Clock } from "@ir/core";
 import { Evidence, REDACTED_HEADERS } from "@ir/schema";
 import { BlobIntegrityError, type BlobStore } from "./blobs.ts";
-import type { Entry, Ledger } from "./ledger.ts";
+import type { Entry, Kind } from "./ledger.ts";
+
+/** Anything that appends to the chain: a Ledger, or a case that seals payloads before appending (P1-014). */
+export type Appender = { append(kind: Kind, payload: unknown): unknown };
 
 /** Query parameters and header names that carry credentials; their values never reach the ledger (5.5 privacy). */
 const SECRET_PARAM =
@@ -48,7 +51,7 @@ export interface StoreEvidenceInput {
  * response, no source" half of D-036). Returns the Evidence record that observations should cite.
  */
 export function storeEvidence(
-  ledger: Ledger,
+  ledger: Appender,
   blobs: BlobStore,
   input: StoreEvidenceInput,
   opts: { clock?: Clock; newId?: () => string } = {},

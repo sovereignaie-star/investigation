@@ -114,4 +114,30 @@ describe("ir verify (P1-012)", () => {
     expect(run(["verify", "/nonexistent-case-dir"]).code).toBe(2);
     expect(run(["--help"]).code).toBe(0);
   });
+
+  it("encrypted case: SKIP without a passphrase, full check with --passphrase-file", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-verify-enc-"));
+    dirs.push(dir);
+    const c = openCase(dir, { actor: "a", passphrase: "passphrase for tests", kdf: { memoryKiB: 256, passes: 1, parallelism: 1 } });
+    c.append("case.created", { purpose: "p" });
+    c.addEvidence({
+      bytes: new TextEncoder().encode("x"),
+      mime: "text/plain",
+      request: { method: "LOCAL", url: "file:x" },
+      transformId: "tr-local",
+      version: "1.0.0",
+    });
+    c.close();
+    const pf = `${dir}.pass`;
+    dirs.push(pf);
+    writeFileSync(pf, "passphrase for tests\n");
+    const locked = run(["verify", dir]);
+    expect(locked.code).toBe(0);
+    expect(locked.text).toContain("evidence  SKIP  encrypted case");
+    const open = run(["verify", dir, "--passphrase-file", pf]);
+    expect(open.code).toBe(0);
+    expect(open.text).toContain("evidence  PASS  1 blobs re-hashed");
+    writeFileSync(pf, "wrong passphrase!");
+    expect(run(["verify", dir, "--passphrase-file", pf]).code).toBe(2);
+  });
 });
