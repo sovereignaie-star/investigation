@@ -93,7 +93,7 @@
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
 | P1-024 | إزالة الاعتماد على منصة الاستضافة السابقة وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | legacy hosting files removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
 | P1-025 | إغلاق تنبيهات CodeQL القديمة على main (S) | done | set-status.mjs: IDs validated (D-nnn, G-nn, Pn-nnn) and escaped before RegExp; custom-fetch: linear trailing-slash trim; alerts 1,3-6 resolved, 13-15 (localStorage keys) left for P1-015 |
-| P1-026 | حصر حدود الوصول للخزنة والاستعلامات المموّلة بالمفاتيح (M) | done | token إلزامي، CORS مغلق، lookup POST منقح، وسياسة HOST مختبرة؛ lint/typecheck/test/build خضراء تحت Node 24.21.0. |
+| P1-026 | حصر حدود الوصول للخزنة والاستعلامات المموّلة بالمفاتيح (M) | done | token إلزامي، CORS مغلق، lookup POST منقح، سياسة HOST مختبرة، وفحص Docker محدث لرمز الإدارة؛ lint/typecheck/test/build خضراء تحت Node 24.21.0. |
 
 ### المرحلة 2: المحرّك والمحوّلات
 
