@@ -1,0 +1,8 @@
+# gitleaks configuration (P0-017). Default rules plus one reviewed allowlist entry.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "identifierList.ts entry 'ssl_private_key' holds a detection regex and a PEM header example only, no key material (reviewed 2026-10-10, P0-017)"
+regexTarget = "line"
+regexes = ['''id: 'ssl_private_key'.*examples: \['-----BEGIN RSA PRIVATE KEY-----'\]''']
