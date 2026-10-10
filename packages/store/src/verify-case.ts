@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import type { DatabaseSync } from "node:sqlite";
 import {
   verify,
   verifyCheckpoint,
@@ -29,6 +30,8 @@ export interface CaseReport {
   /** Sealed payloads that fail AES-GCM authentication (encrypted cases opened with the passphrase). */
   sealed: { unopenable: number[] };
   evidence: { checked: number; skipped: boolean; problems: EvidenceProblem[] };
+  /** The audit index (audit_events) must mirror the audit.event entries of the chain (P1-017). */
+  audit: { events: number; problems: string[] };
   checkpoints: { embedded: number; verified: boolean; problems: { index: number; errors: CheckpointError[] }[] };
   external: { checked: boolean; errors: CheckpointError[] } | null;
 }
@@ -54,8 +57,31 @@ function checkSignatures(
   return { cp, external };
 }
 
+function checkAudit(db: DatabaseSync, chainEvents: readonly Entry[], opened: readonly Entry[] | null): CaseReport["audit"] {
+  const rows = db.prepare("SELECT id, at, actor, action FROM audit_events ORDER BY rowid").all() as {
+    id: string;
+    at: string;
+    actor: string;
+    action: string;
+  }[];
+  const problems: string[] = [];
+  if (rows.length !== chainEvents.length) problems.push(`index has ${rows.length} rows, chain has ${chainEvents.length} audit entries`);
+  if (opened) {
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    for (const e of opened) {
+      const p = e.payload as { id?: string; at?: string; actor?: string; action?: string };
+      const r = byId.get(p.id ?? "");
+      if (!r) problems.push(`entry ${e.seq}: audit event ${p.id ?? "?"} missing from the index`);
+      else if (r.at !== p.at || r.actor !== p.actor || r.action !== p.action)
+        problems.push(`entry ${e.seq}: index row ${r.id} differs from the chain`);
+    }
+  }
+  return { events: chainEvents.length, problems };
+}
+
 const allGood = (r: Omit<CaseReport, "ok">): boolean =>
   r.chain.ok &&
+  r.audit.problems.length === 0 &&
   r.sealed.unopenable.length === 0 &&
   r.evidence.problems.length === 0 &&
   r.checkpoints.problems.length === 0 &&
@@ -87,6 +113,11 @@ export function verifyCase(dir: string, opts: VerifyCaseOptions = {}): CaseRepor
         skipped: c.locked,
         problems: c.locked ? [] : verifyEvidence(opened.entries, c.blobs),
       },
+      audit: checkAudit(
+        c.db,
+        entries.filter((e) => e.kind === "audit.event"),
+        c.locked ? null : opened.entries.filter((e) => e.kind === "audit.event"),
+      ),
       checkpoints: {
         embedded: entries.filter((e) => e.kind === "checkpoint").length,
         verified: Boolean(opts.publicKeyPem),
@@ -116,6 +147,8 @@ export function formatReport(r: CaseReport): string {
       ? "evidence  SKIP  encrypted case (pass --passphrase-file to re-hash blobs)"
       : `evidence  ${mark(r.evidence.problems.length === 0)}  ${r.evidence.checked} blobs re-hashed`,
     ...r.evidence.problems.map((p) => `          - [${p.reason}] entry ${p.index}, evidence ${p.id}, sha256 ${p.sha256}`),
+    `audit     ${mark(r.audit.problems.length === 0)}  ${r.audit.events} events`,
+    ...r.audit.problems.map((p) => `          - ${p}`),
     r.checkpoints.verified
       ? `signed    ${mark(r.checkpoints.problems.length === 0)}  ${r.checkpoints.embedded} embedded checkpoints`
       : `signed    SKIP  ${r.checkpoints.embedded} embedded checkpoints (pass --key to check signatures)`,

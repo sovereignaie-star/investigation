@@ -16,6 +16,7 @@ const tmp = () => {
 afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
+const CREATE = { title: "اختبار", purpose: "تحقق من بنية تحتية لنطاق", legalBasis: "due_diligence" } as const;
 const clock = () => manualClock("2026-10-10T12:00:00.000Z");
 /** Normalized schema (tables, indexes, triggers) for comparing databases migrated by different paths. */
 const schemaOf = (db: DatabaseSync) =>
@@ -86,8 +87,7 @@ describe("case directory (P1-013)", () => {
     const dir = tmp();
     const c = clock();
     const newId = ulidFactory(c, seededRandom(3));
-    const a = openCase(dir, { actor: "analyst", clock: c });
-    a.ledger.append("case.created", { purpose: "تحقق من بنية تحتية لنطاق", scope: ["example.com"] });
+    const a = openCase(dir, { actor: "analyst", clock: c, create: CREATE });
     const ev = a.addEvidence(
       {
         bytes: new TextEncoder().encode('{"ns":["a.iana-servers.net"]}'),
@@ -103,11 +103,11 @@ describe("case directory (P1-013)", () => {
     a.close();
 
     const b = openCase(dir, { actor: "analyst", clock: c });
-    expect(b.ledger.length).toBe(3);
+    expect(b.ledger.length).toBe(5); // created, audit, evidence, audit, observation
     expect(b.ledger.head()).toBe(head);
     expect(verify(b.ledger.entries()).ok).toBe(true);
     expect(verifyEvidence(b.ledger.entries(), b.blobs)).toEqual([]);
-    expect(b.db.prepare("SELECT id, ledger_seq FROM evidence").all()).toEqual([{ id: ev.id, ledger_seq: 1 }]);
+    expect(b.db.prepare("SELECT id, ledger_seq FROM evidence").all()).toEqual([{ id: ev.id, ledger_seq: 2 }]);
     b.close();
 
     const ro = openCase(dir, { actor: "verifier", readOnly: true });
@@ -119,13 +119,12 @@ describe("case directory (P1-013)", () => {
   it("a case whose ledger was edited behind the triggers' back is refused on open", () => {
     const dir = tmp();
     const c = clock();
-    const a = openCase(dir, { actor: "analyst", clock: c });
-    a.ledger.append("case.created", { purpose: "p" });
+    const a = openCase(dir, { actor: "analyst", clock: c, create: CREATE });
     a.ledger.append("note.added", { text: "original" });
     a.close();
     const raw = new DatabaseSync(path.join(dir, CASE_DB));
     raw.exec("DROP TRIGGER ledger_no_update");
-    raw.exec(`UPDATE ledger SET payload = '{"text":"forged"}' WHERE seq = 1`);
+    raw.exec(`UPDATE ledger SET payload = '{"text":"forged"}' WHERE seq = 2`);
     raw.close();
     expect(() => openCase(dir, { actor: "analyst", clock: c })).toThrow(/corrupt/);
   });

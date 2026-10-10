@@ -35,7 +35,9 @@
         "merge.decided",
         "merge.reverted",
         "checkpoint",
-        "note.added"
+        "note.added",
+        "case.updated",
+        "audit.event"
       ]
     },
     "payload": {},

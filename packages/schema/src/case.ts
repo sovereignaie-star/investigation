@@ -36,3 +36,12 @@ export const Case = z.object({
   tags: z.array(Slug).default([]),
 });
 export type Case = z.infer<typeof Case>;
+
+/** What a caller supplies to open a new case (P1-018); id, createdAt and defaults are filled in by the store. */
+export const CaseInit = Case.omit({ id: true, createdAt: true, ownerId: true, retention: true, sensitivity: true, tags: true }).extend({
+  ownerId: z.string().min(1).optional(),
+  retention: Retention.optional(),
+  sensitivity: CaseSensitivity.optional(),
+  tags: z.array(Slug).optional(),
+});
+export type CaseInit = z.input<typeof CaseInit>;
