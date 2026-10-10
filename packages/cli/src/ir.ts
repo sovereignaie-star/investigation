@@ -88,7 +88,7 @@ function summary(p: Projection, hash: string): string {
   ].join("\n");
 }
 
-/** `ir project` (P1-016, T-LED-016): offline rebuild of the views from the chain. */
+/** `ir project` (P1-016, toward T-LED-020): offline rebuild of the views from the chain. */
 function runProject(
   dir: string,
   v: { at?: string | undefined; expect?: string | undefined; json?: boolean | undefined; "passphrase-file"?: string | undefined },

@@ -14,12 +14,15 @@
     "governance": "node scripts/governance/check.mjs --last && node scripts/governance/check.mjs --consistency",
     "governance:test": "node --test scripts/governance/check.test.mjs",
     "audit:measure": "node scripts/audit/measure.mjs --full",
+    "gates:phase1": "scripts/node_modules/.bin/tsx scripts/gates/phase1.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@vitest/coverage-v8": "5.0.3",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^17.13.0",

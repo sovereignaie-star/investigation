@@ -4,7 +4,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { manualClock } from "@ir/core";
-import { CASE_DB, NoCaseError, openCase, verifyCase } from "./index.ts";
+import { CASE_DB, CASE_KEY, formatReport, IncompleteCaseError, NoCaseError, openCase, verifyCase } from "./index.ts";
 
 const dirs: string[] = [];
 const tmp = () => {
@@ -111,5 +111,68 @@ describe("audit log (P1-017)", () => {
     const r = verifyCase(dir);
     expect(r.ok).toBe(false);
     expect(r.audit.problems.join("\n")).toMatch(/index has 1 rows, chain has 2|missing from the index/);
+  });
+
+  describe("D-052: creation is atomic, and a chain without case.created is never a usable case", () => {
+    /** A clock that fails on its n-th reading: a crash at every point of openCase(create). */
+    const crashingClock = (n: number) => {
+      const base = manualClock("2026-10-10T08:00:00.000Z");
+      let calls = 0;
+      return {
+        now: () => {
+          if (++calls === n) throw new Error(`simulated crash at clock read ${n}`);
+          return base.now();
+        },
+      };
+    };
+
+    for (const encrypted of [false, true])
+      it(`${encrypted ? "encrypted" : "plain"}: a creation that fails at any step leaves no case, and can be redone`, () => {
+        let failures = 0;
+        for (let n = 1; n <= 40; n++) {
+          const dir = tmp();
+          const enc = encrypted ? { passphrase: "long passphrase", kdf: FAST } : {};
+          try {
+            openCase(dir, { actor: "a", clock: crashingClock(n), create: CREATE, ...enc }).close();
+            continue; // the crash point is after creation finished
+          } catch (x) {
+            expect(String(x)).toMatch(/simulated crash/);
+            failures++;
+          }
+          expect(() => openCase(dir, { actor: "a", ...enc })).toThrow(NoCaseError);
+          expect(existsSync(path.join(dir, CASE_KEY))).toBe(false);
+          if (existsSync(path.join(dir, CASE_DB))) expect(verifyCase(dir).ok).toBe(false);
+          const again = openCase(dir, { actor: "a", create: CREATE, ...enc });
+          expect(again.ledger.entries()[0]?.kind).toBe("case.created");
+          again.close();
+          expect(verifyCase(dir, encrypted ? { passphrase: "long passphrase" } : {}).ok).toBe(true);
+        }
+        expect(failures).toBeGreaterThan(2); // the crash really hit points inside creation
+      });
+
+    it("a directory left by an interrupted creation of an older build is refused for writing and fails verification", () => {
+      const dir = tmp();
+      expect(() => openCase(dir, { actor: "a", clock: crashingClock(5), create: CREATE })).toThrow(/simulated crash/);
+      const db = new DatabaseSync(path.join(dir, CASE_DB));
+      db.exec(
+        "INSERT INTO meta (key, value) VALUES ('case_id', '01J00000000000000000000000'), ('created_at', '2026-10-10T08:00:00.000Z'), ('encryption', 'none')",
+      );
+      db.close(); // the state pre-P1-028 builds could leave: identity rows, empty chain
+      expect(() => openCase(dir, { actor: "a" })).toThrow(IncompleteCaseError);
+      expect(() => openCase(dir, { actor: "a", create: CREATE })).toThrow(IncompleteCaseError);
+      const r = verifyCase(dir);
+      expect(r).toMatchObject({ ok: false, purpose: { ok: false, checked: "record" } });
+      expect(formatReport(r)).toMatch(/purpose\s+FAIL/);
+    });
+
+    it("verification checks the purpose record when readable, and the first entry's kind when locked", () => {
+      const plain = tmp();
+      openCase(plain, { actor: "a", create: CREATE }).close();
+      expect(verifyCase(plain).purpose).toEqual({ ok: true, checked: "record", problem: null });
+      const enc = tmp();
+      openCase(enc, { actor: "a", passphrase: "long passphrase", kdf: FAST, create: CREATE }).close();
+      expect(verifyCase(enc).purpose).toEqual({ ok: true, checked: "kind", problem: null });
+      expect(verifyCase(enc, { passphrase: "long passphrase" }).purpose).toEqual({ ok: true, checked: "record", problem: null });
+    });
   });
 });

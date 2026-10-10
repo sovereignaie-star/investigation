@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { InvestigationEdge, InvestigationNode } from "../types";
-import { useInvestigationStore as store } from "./investigationStore";
+import { DuplicateIdError, useInvestigationStore as store } from "./investigationStore";
 
 const node = (id: string, depth = 0, identifierType = "email"): InvestigationNode => ({
   id,
@@ -63,6 +63,63 @@ describe("P1-022: id indexes in the view store (D-034)", () => {
       ["b", "error"],
       ["c", "done"],
     ]);
+  });
+
+  it("ADR-25: loadInvestigation refuses repeated node or edge ids and leaves the view unchanged", () => {
+    const s = store.getState();
+    s.addNodes([node("keep")]);
+    const before = store.getState();
+    const stats = { ...before.stats };
+    expect(() => s.loadInvestigation([node("x"), node("y"), node("x")], [], stats)).toThrow(DuplicateIdError);
+    expect(() => s.loadInvestigation([node("x")], [edge("e"), edge("e", "p", "q")], stats)).toThrow(/edge ids must be unique; repeated: e/);
+    expect(store.getState()).toBe(before);
+  });
+
+  it("ADR-25: no sequence of store operations produces a repeated id, and updateNode matches the previous implementation", () => {
+    // reference: the store before P1-022 (linear find on add, map over all nodes on update)
+    type M = { nodes: InvestigationNode[]; edges: InvestigationEdge[] };
+    const ref = {
+      addNode: (m: M, n: InvestigationNode): M => (m.nodes.find((x) => x.id === n.id) ? m : { ...m, nodes: [...m.nodes, n] }),
+      addEdge: (m: M, e: InvestigationEdge): M => (m.edges.find((x) => x.id === e.id) ? m : { ...m, edges: [...m.edges, e] }),
+      updateNode: (m: M, id: string, u: Partial<InvestigationNode>): M => ({
+        ...m,
+        nodes: m.nodes.map((n) => (n.id === id ? { ...n, ...u } : n)),
+      }),
+    };
+    let seed = 12345;
+    const r = (n: number) => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) >>> 0) % n;
+    const s = store.getState();
+    let m: M = { nodes: [], edges: [] };
+    for (let i = 0; i < 3000; i++) {
+      const id = `n${r(60)}`;
+      const k = r(10);
+      if (k < 3) {
+        s.addNode(node(id, r(5)));
+        m = ref.addNode(m, node(id, 0));
+      } else if (k < 5) {
+        const batch = Array.from({ length: r(6) }, () => node(`n${r(60)}`));
+        s.addNodes(batch);
+        for (const n of batch) m = ref.addNode(m, n);
+      } else if (k < 7) {
+        const e = edge(`e${r(40)}`, id, `n${r(60)}`);
+        s.addEdge(e);
+        m = ref.addEdge(m, e);
+      } else if (k < 9) {
+        const u = { label: `l${i}`, status: (["pending", "fetching", "done", "error"] as const)[r(4)] };
+        s.updateNode(id, u);
+        m = ref.updateNode(m, id, u);
+      } else {
+        const [cn, ce] = [r(3), r(3)];
+        const st = store.getState();
+        s.loadInvestigation(st.nodes.slice(cn), st.edges.slice(ce), st.stats);
+        m = { nodes: m.nodes.slice(cn), edges: m.edges.slice(ce) };
+      }
+      const st = store.getState();
+      expect(new Set(st.nodes.map((n) => n.id)).size).toBe(st.nodes.length);
+      expect(new Set(st.edges.map((e) => e.id)).size).toBe(st.edges.length);
+      expect(st.nodes.map((n) => [n.id, n.label, n.status])).toEqual(m.nodes.map((n) => [n.id, n.label, n.status]));
+      expect(st.edges).toEqual(m.edges);
+    }
   });
 
   it("the index follows arrays replaced outside the store's own appends (load, setState)", () => {

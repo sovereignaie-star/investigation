@@ -23,6 +23,7 @@ interface InvestigationStore {
   updateStats: (stats: Partial<InvestigationStats>) => void;
   setSelectedNode: (id: string | null) => void;
   clearInvestigation: () => void;
+  /** Replaces the view; throws DuplicateIdError (state unchanged) if a node or edge id repeats (ADR-25). */
   loadInvestigation: (nodes: InvestigationNode[], edges: InvestigationEdge[], stats: InvestigationStats) => void;
   setShowApiKeys: (value: boolean) => void;
   setShowSaved: (value: boolean) => void;
@@ -42,9 +43,32 @@ const defaultStats: InvestigationStats = {
 };
 
 /**
+ * ADR-25: a node id is its canonical key (P1-007, D-020) and an edge id names its two ends, so ids are unique in the
+ * view store. addNode/addNodes/addEdge/addEdges skip ids already present; loadInvestigation, the only other way
+ * data enters, refuses lists with repeated ids instead of silently dropping or merging them. Under this invariant
+ * "the node with this id" is one node, and updateNode changes exactly that node.
+ */
+export class DuplicateIdError extends Error {
+  constructor(
+    readonly kind: "node" | "edge",
+    readonly ids: string[],
+  ) {
+    super(`ADR-25: ${kind} ids must be unique; repeated: ${ids.slice(0, 5).join(", ")}${ids.length > 5 ? ", ..." : ""}`);
+    this.name = "DuplicateIdError";
+  }
+}
+
+function assertUniqueIds(kind: "node" | "edge", list: readonly { id: string }[]): void {
+  const seen = new Set<string>();
+  const repeated = new Set<string>();
+  for (const { id } of list) (seen.has(id) ? repeated : seen).add(id);
+  if (repeated.size) throw new DuplicateIdError(kind, [...repeated]);
+}
+
+/**
  * Id -> position index for one array (P1-022, D-034). It is tied to the array it was built from: when the store
  * replaces that array (append below) the index follows in O(1) per item; any other replacement (load, clear,
- * setState from outside) is detected by reference and the index is rebuilt once. First occurrence wins, like `find`.
+ * setState from outside) is detected by reference and the index is rebuilt once. Ids are unique (ADR-25).
  */
 class IdIndex<T extends { id: string }> {
   #of: readonly T[] | null = null;
@@ -171,6 +195,8 @@ export const useInvestigationStore = create<InvestigationStore>()((set, get) => 
   },
 
   loadInvestigation: (nodes, edges, stats) => {
+    assertUniqueIds("node", nodes);
+    assertUniqueIds("edge", edges);
     set({ nodes, edges, stats, isInvestigating: false, selectedNodeId: null });
   },
 

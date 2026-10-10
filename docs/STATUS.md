@@ -7,17 +7,17 @@
 | البند | القيمة |
 |---|---|
 | آخر تحديث | 2026-10-10 |
-| المرحلة الحالية | 1 — النواة والسجل (المهام منجزة؛ بقي قياس بوابات الخروج G-08..G-13 قبل المرحلة 2) |
+| المرحلة الحالية | 1 — النواة والسجل مكتملة وبواباتها مقيسة؛ المرحلة 2 جاهزة للبدء (P2-001) ولم تبدأ |
 | الإصدار | لا إصدار بعد (`0.0.0`) |
 | آخر إيداع محدِّث | `git log -1 -- docs/STATUS.md` |
-| ملخص الحالة | المرحلة 0 مكتملة (29/29)؛ المرحلة 1: مهامها كلها منجزة (26/26) وبوابات خروجها G-08..G-13 لم تُقَس بعد؛ P1-022 أغلق D-034 وD-051 (فهرس دمج تزايدي، الإسقاط الحي = إعادة البناء)؛ الخطة الشاملة والمراجع مدمجة ومصنّفة (القسم 14)؛ lint وtypecheck وbuild وtest خضراء؛ CodeQL وgitleaks وDependabot مفعّلة |
+| ملخص الحالة | المرحلة 0 مكتملة (29/29)؛ المرحلة 1 مكتملة (28/28) وبواباتها G-08..G-13 مقيسة بـ pnpm run gates:phase1 ومتحققة، وG-10 لنطاقها (T-LED-020 مع P2-018)؛ P1-028 أغلق D-052 (إنشاء القضية ذرّي)؛ ADR-25 يثبت تفرد معرّفات مخزن العرض؛ lint وtypecheck وbuild وtest والتغطية خضراء؛ CodeQL وgitleaks وDependabot مفعّلة |
 
 ## تقدم المراحل
 
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 26 | 26 | 0 |
+| 1 | النواة والسجل | 28 | 28 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -89,11 +89,13 @@
 | P1-019 | ساعة ومولّد قابلان للحقن (S) | done | packages/core: Clock (system/manual), Random (crypto/seeded), monotonic ULID factory; 6 tests; ESLint bans Date.now/new Date()/Math.random in core, schema, ledger |
 | P1-020 | مجموعة ذهبية للكشف (5,000 مثال) (M) | done | fixtures/detect/golden.jsonl: 5,000 snippets (ar/en), 6,533 deterministic + 3,025 other entities, 800 near misses; independent generator self-checked on published vectors; golden.test.ts second review + extractor scores: deterministic precision 99.97%, recall 99.97%, near misses 0 accepted, other recall 97.5%; linear punctuation trimming (CodeQL #25 fixed in code) |
 | P1-021 | إزالة `persist` من Zustand لبيانات المجال (M) | done | apps/web store is in-memory (no zustand persist); storagePolicy.purgeLegacyCaseStorage() deletes 'investigation-store' at start-up; investigationStore.test.ts: no localStorage/sessionStorage writes, purge, source guard; verified in headless Chromium (keys after reload: []) |
-| P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | done | PR (هذا الفرع): Projector merge index = incremental union-find with path compression, rebuilt only on revert or a late alias of a merge-named id; web store IdIndex (O(1) lookup) + addNodes/addEdges; 100,000 nodes projected in 0.47 s, 5,000 chained merges 0.02 s (was 76 s for 2,000), web batch 100k nodes + edges < 2 s; live == rebuild with late aliases (D-051) |
+| P1-022 | فهارس O(1) للعقد والحواف في الإسقاطات (S) | done | PR #36 (9a43aeb); updateNode contract = ADR-25 (P1-027 PR): Projector merge index = incremental union-find with path compression, rebuilt only on revert or a late alias of a merge-named id; web store IdIndex (O(1) lookup) + addNodes/addEdges; 100,000 nodes projected in 0.47 s, 5,000 chained merges 0.02 s (was 76 s for 2,000), web batch 100k nodes + edges < 2 s; live == rebuild with late aliases (D-051) |
 | P1-023 | إصلاح تنبيهات CodeQL الموروثة في الكود المنقول (S) | done | VideoNode hostname check; sandbox preview escaping; normalize.ts family regexes split into fully anchored patterns (js/regex/missing-regexp-anchor) |
 | P1-024 | إزالة الاعتماد على منصة الاستضافة السابقة وتشغيل مستقل عبر Docker وRender وRailway وجهاز محلي (S) | done | legacy hosting files removed; Dockerfile + render.yaml + railway.json; server serves web build (rate-limited 600/min/client); CI docker job green |
 | P1-025 | إغلاق تنبيهات CodeQL القديمة على main (S) | done | set-status.mjs: IDs validated (D-nnn, G-nn, Pn-nnn) and escaped before RegExp; custom-fetch: linear trailing-slash trim; alerts 1,3-6 resolved, 13-15 (localStorage keys) left for P1-015 |
 | P1-026 | حصر حدود الوصول للخزنة والاستعلامات المموّلة بالمفاتيح (M) | done | token إلزامي، CORS مغلق، lookup POST منقح، سياسة HOST مختبرة، وفحص Docker محدث لرمز الإدارة؛ lint/typecheck/test/build خضراء تحت Node 24.21.0. |
+| P1-027 | قياس بوابات خروج المرحلة 1 (G-08..G-13) وأتمتتها | done | PR (هذا الفرع): scripts/gates/phase1.ts (pnpm run gates:phase1) measures G-08..G-13 on a real build; test:coverage enforces 85% lines per core package in CI; negative controls: coverage 99.9% -> exit 1, injected browser key call -> G-11 FAIL |
+| P1-028 | إنشاء القضية ذرّياً والتحقق من سجل الغرض | done | PR (هذا الفرع): case identity + case.created + audit in one transaction; IncompleteCaseError on writable open of a chain without case.created; ir verify reports purpose; crash at every clock read 1..40, plain and encrypted, leaves no case and no key file |
 
 ### المرحلة 2: المحرّك والمحوّلات
 
@@ -297,12 +299,12 @@
 | G-05 | P9 | حارس الحوكمة مفعل محلياً وفي CI، و`main` محمي | 0 | متحققة |
 | G-06 | P9 | كل مهمة في الخارطة لها سطر حالة | 0 | متحققة (`--consistency`) |
 | G-07 | P4 | لا أسرار في المستودع (gitleaks) | 0 | متحققة (P0-017: gitleaks على كامل التاريخ نظيف) |
-| G-08 | P2 | 100% من الأمثلة الإيجابية تطابق نوعها | 1 | لم تتحقق |
-| G-09 | P2 | دقة الكشف الحتمي ≥ 99% | 1 | لم تتحقق |
-| G-10 | P3 | T-LED كلها خضراء | 1 | لم تتحقق |
-| G-11 | P4 | المفاتيح لا تغادر الخادم | 1 | لم تتحقق |
-| G-12 | P5 | لا قضية بلا غرض | 1 | لم تتحقق |
-| G-13 | P8 | تغطية النواة ≥ 85% | 1 | لم تتحقق |
+| G-08 | P2 | 100% من الأمثلة الإيجابية تطابق نوعها | 1 | متحققة (P1-027: 377/377 مثالاً إيجابياً لـ 371 نوعاً = 100%؛ وdetect يسرد النوع نفسه 377/377) |
+| G-09 | P2 | دقة الكشف الحتمي ≥ 99% | 1 | متحققة (P1-027: golden 5,000 مقتطف، 6,533 وسماً حتمياً؛ الدقة 99.97% والاستدعاء 99.97%، 2 إيجاب كاذب) |
+| G-10 | P3 | T-LED كلها خضراء | 1 | متحققة لنطاق المرحلة 1 (T-LED-001..019 كلها مغطاة وخضراء)؛ T-LED-020 (إعادة بلا شبكة) محجوبة على P2-018 |
+| G-11 | P4 | المفاتيح لا تغادر الخادم | 1 | متحققة (P1-027: 8 اختبارات وحدة؛ خادم مبني: 15 طلباً بلا ظهور المفتاح في رد أو ترويسة أو سجل أو ملف الخزنة؛ المتصفح لا يستدعي مزوداً بمفتاح ولا تخزين متصفح) |
+| G-12 | P5 | لا قضية بلا غرض | 1 | متحققة بعد إصلاح D-052 (P1-028: 9 اختبارات، منها 4 لـ D-052؛ لا فتح لقاعدة القضية خارج case.ts) |
+| G-13 | P8 | تغطية النواة ≥ 85% | 1 | متحققة (P1-027: core 99.27% وledger 98.82% أسطراً؛ engine وegress لم تُنشآ؛ مفروضة في CI) |
 | G-14 | P4 | SSRF suite خضراء | 2 | لم تتحقق |
 | G-15 | P4 | T-SBX خضراء | 2 | لم تتحقق |
 | G-16 | P1 | 40 محوّلاً على الأقل منفذة ومعتمدة | 2 | لم تتحقق |
@@ -396,3 +398,4 @@
 | D-049 | عالٍ | مفتوح | — |
 | D-050 | متوسط | مفتوح جزئياً | P1-017 + P1-018: سجل التدقيق وغرض القضية منفّذان؛ تمييز الأشخاص الطبيعيين يأتي مع P2-013 |
 | D-051 | عالٍ | مُصلح | P1-022: incremental merge index, invalidated on revert or late alias; D-051 tests fail on the old code |
+| D-052 | عالٍ | مُصلح | P1-028: meta + case.created + audit in one transaction; IncompleteCaseError; `ir verify` checks purpose; 4 D-052 tests fail on the old code |

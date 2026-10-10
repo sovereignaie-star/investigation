@@ -35,7 +35,21 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      - name: Test with the core coverage ceiling (ROADMAP 8.5, G-13)
+        run: pnpm run test:coverage
+  gates:
+    # P1-027: phase 1 exit gates G-08..G-13 measured on a real build (scripts/gates/phase1.ts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run gates:phase1
   docker:
     # P1-024: the single-service image must build and answer its health check.
     runs-on: ubuntu-latest

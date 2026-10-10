@@ -12,7 +12,8 @@ import {
   type SignedCheckpoint,
   type VerifyError,
 } from "@ir/ledger";
-import { CASE_DB, openCase } from "./case.ts";
+import { Case as CaseRecord } from "@ir/schema";
+import { CASE_DB, openCase, startsWithPurpose } from "./case.ts";
 import { LATEST_VERSION, userVersion } from "./migrations.ts";
 
 /**
@@ -32,6 +33,8 @@ export interface CaseReport {
   evidence: { checked: number; skipped: boolean; problems: EvidenceProblem[] };
   /** The audit index (audit_events) must mirror the audit.event entries of the chain (P1-017). */
   audit: { events: number; problems: string[] };
+  /** The chain starts with `case.created` and, when readable, it is a valid purpose record (P1-018, D-052). */
+  purpose: { ok: boolean; checked: "record" | "kind"; problem: string | null };
   checkpoints: { embedded: number; verified: boolean; problems: { index: number; errors: CheckpointError[] }[] };
   external: { checked: boolean; errors: CheckpointError[] } | null;
 }
@@ -55,6 +58,22 @@ function checkSignatures(
     ? { checked: true, errors: verifyCheckpoint(entries, opts.checkpoint, opts.publicKeyPem) }
     : { checked: false, errors: [] };
   return { cp, external };
+}
+
+/** Locked cases can only show the first entry's kind; unlocked and plain cases have their purpose record parsed. */
+function checkPurpose(entries: readonly Entry[], opened: readonly Entry[] | null): CaseReport["purpose"] {
+  const checked = opened ? "record" : "kind";
+  if (!startsWithPurpose(entries))
+    return { ok: false, checked, problem: "the chain does not start with case.created: no stated purpose (E-01)" };
+  if (!opened) return { ok: true, checked, problem: null };
+  const r = CaseRecord.safeParse(opened[0]?.payload);
+  return r.success
+    ? { ok: true, checked, problem: null }
+    : {
+        ok: false,
+        checked,
+        problem: `case.created is not a valid purpose record: ${r.error.issues.map((i) => i.path.join(".")).join(", ")}`,
+      };
 }
 
 function checkAudit(db: DatabaseSync, chainEvents: readonly Entry[], opened: readonly Entry[] | null): CaseReport["audit"] {
@@ -82,6 +101,7 @@ function checkAudit(db: DatabaseSync, chainEvents: readonly Entry[], opened: rea
 const allGood = (r: Omit<CaseReport, "ok">): boolean =>
   r.chain.ok &&
   r.audit.problems.length === 0 &&
+  r.purpose.ok &&
   r.sealed.unopenable.length === 0 &&
   r.evidence.problems.length === 0 &&
   r.checkpoints.problems.length === 0 &&
@@ -118,6 +138,7 @@ export function verifyCase(dir: string, opts: VerifyCaseOptions = {}): CaseRepor
         entries.filter((e) => e.kind === "audit.event"),
         c.locked ? null : opened.entries.filter((e) => e.kind === "audit.event"),
       ),
+      purpose: checkPurpose(entries, c.locked ? null : opened.entries),
       checkpoints: {
         embedded: entries.filter((e) => e.kind === "checkpoint").length,
         verified: Boolean(opts.publicKeyPem),
@@ -149,6 +170,8 @@ export function formatReport(r: CaseReport): string {
     ...r.evidence.problems.map((p) => `          - [${p.reason}] entry ${p.index}, evidence ${p.id}, sha256 ${p.sha256}`),
     `audit     ${mark(r.audit.problems.length === 0)}  ${r.audit.events} events`,
     ...r.audit.problems.map((p) => `          - ${p}`),
+    `purpose   ${mark(r.purpose.ok)}  ${r.purpose.checked === "record" ? "case.created record" : "case.created present (locked: record not read)"}`,
+    ...(r.purpose.problem ? [`          - ${r.purpose.problem}`] : []),
     r.checkpoints.verified
       ? `signed    ${mark(r.checkpoints.problems.length === 0)}  ${r.checkpoints.embedded} embedded checkpoints`
       : `signed    SKIP  ${r.checkpoints.embedded} embedded checkpoints (pass --key to check signatures)`,
