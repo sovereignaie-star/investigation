@@ -1,0 +1,22 @@
+[
+  {"name": "Shodan InternetDB", "url": "https://internetdb.shodan.io/", "cat": "Internet-wide scanning", "desc": "Keyless IP lookup: open ports, hostnames, tags, CPEs and CVE identifiers from Shodan scan data."},
+  {"name": "Quake (360)", "url": "https://quake.360.net/", "cat": "Internet-wide scanning", "desc": "Internet asset search engine (hosts, services, certificates)."},
+  {"name": "ReversingLabs", "url": "https://www.reversinglabs.com/", "cat": "Threat intel & malware", "desc": "File reputation and malware analysis platform (commercial)."},
+  {"name": "Feodo Tracker", "url": "https://feodotracker.abuse.ch/", "cat": "Threat intel & malware", "desc": "abuse.ch tracker of malware command-and-control servers, with blocklists."},
+  {"name": "SSL Blacklist (SSLBL)", "url": "https://sslbl.abuse.ch/", "cat": "Threat intel & malware", "desc": "abuse.ch list of malicious SSL certificates and JA3 fingerprints."},
+  {"name": "YARA", "url": "https://github.com/VirusTotal/yara", "cat": "Threat intel & malware", "desc": "Pattern matching engine for malware identification rules."},
+  {"name": "YARA Forge", "url": "https://github.com/YARAHQ/yara-forge", "cat": "Threat intel & malware", "desc": "Curated, quality-checked YARA rule packages from public repositories."},
+  {"name": "Elastic Detection Rules", "url": "https://github.com/elastic/detection-rules", "cat": "Threat intel & malware", "desc": "Open detection rules mapped to MITRE ATT&CK."},
+  {"name": "Splunk Security Content", "url": "https://github.com/splunk/security_content", "cat": "Threat intel & malware", "desc": "Open analytic stories and detections mapped to ATT&CK."},
+  {"name": "MITRE CAPEC", "url": "https://capec.mitre.org/", "cat": "Threat intel & malware", "desc": "Common Attack Pattern Enumeration and Classification knowledge base."},
+  {"name": "MITRE D3FEND", "url": "https://d3fend.mitre.org/", "cat": "Threat intel & malware", "desc": "Knowledge graph of defensive countermeasures."},
+  {"name": "DNSGrep", "url": "https://github.com/erbbysam/DNSGrep", "cat": "Domains, DNS & certificates", "desc": "Fast search over large DNS datasets."},
+  {"name": "Findomain", "url": "https://github.com/Findomain/Findomain", "cat": "Domains, DNS & certificates", "desc": "Passive subdomain enumeration from certificate transparency and public APIs."},
+  {"name": "IANA", "url": "https://www.iana.org/", "cat": "Domains, DNS & certificates", "desc": "Root zone database, RDAP bootstrap and number resource registries."},
+  {"name": "Whale Alert", "url": "https://whale-alert.io/", "cat": "Crypto & blockchain", "desc": "Large blockchain transaction tracking and alerts across chains."},
+  {"name": "NeverBounce", "url": "https://neverbounce.com/", "cat": "Email verification", "desc": "Email address deliverability verification API."},
+  {"name": "ZeroBounce", "url": "https://www.zerobounce.net/", "cat": "Email verification", "desc": "Email address validation and deliverability API."},
+  {"name": "Shuffle", "url": "https://github.com/Shuffle/Shuffle", "cat": "Automation & workflow", "desc": "Open-source security automation (SOAR) workflows."},
+  {"name": "n8n", "url": "https://github.com/n8n-io/n8n", "cat": "Automation & workflow", "desc": "Workflow automation platform with self-hosting."},
+  {"name": "CIRCL Passive DNS", "url": "https://www.circl.lu/services/passive-dns/", "cat": "Domains, DNS & certificates", "desc": "Historical DNS resolutions collected by CIRCL; access on request for security teams."}
+]

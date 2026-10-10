@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **246**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **247**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -244,6 +244,7 @@
 | TL-9bc68a62 | [Wannabe1337 Toolkit](https://wannabe1337.xyz/) | أساسية | web | — | reachable | — | This site has dozens of free online tools (many of which will be useful for #osint): - website and network info gathering tools; - code, text and image processi |
 | TL-b09ff8ed | [Watchdata](https://docs.watchdata.io) | داعمة | api | — | reachable | apiKey | Provide simple and reliable API access to Ethereum blockchain |
 | TL-02d00f1f | [web3 username search](https://app.ens.domains/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-b1f87f2a | [Whale Alert](https://whale-alert.io/) | داعمة | web | — | reachable | — | Large blockchain transaction tracking and alerts across chains. |
 | TL-431cc46a | [Words](https://www.wordsapi.com/docs/) | داعمة | api | — | reachable | apiKey | Definitions and synonyms for more than 150,000 words |
 | TL-7e35e2bc | [WordSoHard](https://wordsohard.com/api) | داعمة | api | — | reachable | No | Word definitions with Scrabble validity and tile score in one call, built for word games |
 | TL-41dd9bb7 | [XMR SCAN](https://xmrscan.org/) | أساسية | web | — | reachable | — | — |

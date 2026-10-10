@@ -2,7 +2,7 @@
 
 > مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **593**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **599**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -81,6 +81,7 @@
 | TL-4b04883e | [Chismodon](https://github.com/chiasmod0n/chiasmodon) | أساسية | oss | بوابة الأشخاص | restricted | — | Command line #osint toolkit for domain information gathering. Search by domain name, Google Play Store ID, CIDR/ASN, email/username/password. Partly free. |
 | TL-428f2bbd | [Chrome Open Multiple URLs](https://chromewebstore.google.com/detail/open-multiple-urls/oifijhaokejakekmnjmphonojcfkpbbh?hl=de) | أساسية | web | — | reachable | — | Browser extension: opens multiple URLs and also extracts URLs from text. |
 | TL-b7de3982 | [CIDR Conveter](http://magic-cookie.co.uk/iplist.html) | أساسية | web | — | reachable | — | — |
+| TL-458dc021 | [CIRCL Passive DNS](https://www.circl.lu/services/passive-dns/) | داعمة | web | — | reachable | — | Historical DNS resolutions collected by CIRCL; access on request for security teams. |
 | TL-1971628c | [Cisco Talos](https://talosintelligence.com/) | أساسية | web | — | reachable | — | — |
 | TL-24682183 | [Cisco Umbrella Popularity List](https://s3-us-west-1.amazonaws.com/umbrella-static/index.html) | أساسية | web | — | reachable | — | — |
 | TL-abe54a54 | [CleanURI](https://cleanuri.com/docs) | داعمة | api | — | unreachable | No | URL shortener service |
@@ -134,6 +135,7 @@
 | TL-b25378f3 | [DNS Sinkhole](https://malc0de.com/bl/) | أساسية | web | — | unreachable | — | — |
 | TL-44f52faf | [DNS Spy](https://dnsspy.io) | أساسية | web | — | reachable | — | — |
 | TL-53b2af23 | [DNS Twist (T)](https://github.com/elceef/dnstwist) | أساسية | oss | — | reachable | — | — |
+| TL-33601d40 | [DNSGrep](https://github.com/erbbysam/DNSGrep) | داعمة | oss | — | reachable | — | Fast search over large DNS datasets. |
 | TL-f1c6e2f2 | [dnspop (T)](https://github.com/bitquark/dnspop) | أساسية | oss | — | reachable | — | — |
 | TL-b72be708 | [dnsReaper](https://github.com/punk-security/dnsReaper) | أساسية | oss | — | restricted | — | TwiSub-domain takeover tool |
 | TL-76fd0bc9 | [DNSSEC Analyzer](https://dnssec-analyzer.verisignlabs.com/) | أساسية | web | — | reachable | — | — |
@@ -188,6 +190,7 @@
 | TL-3aa0d377 | [Fierce Domain Scanner (T)](https://github.com/davidpepper/fierce-domain-scanner) | أساسية | oss | — | reachable | — | — |
 | TL-4d7db037 | [Filesearching](https://filesearching.com) | أساسية | web | — | unreachable | — | old FTP servers search engine with filter by top-level domain name and filetype |
 | TL-1bf0f89f | [FindMyAss (HostSpider)](https://github.com/h3x0crypt/HostSpider) | أساسية | oss | — | restricted | — | Domain investigations toolkit |
+| TL-ce3268a4 | [Findomain](https://github.com/Findomain/Findomain) | داعمة | oss | — | reachable | — | Passive subdomain enumeration from certificate transparency and public APIs. |
 | TL-08f1e0e7 | [FindSubDomains](https://findsubdomains.com/) | أساسية | web | — | unreachable | — | — |
 | TL-32c13728 | [FireHOL IP Lists](https://iplists.firehol.org/) | أساسية | web | — | reachable | — | — |
 | TL-7ebd3968 | [fofa.so](https://fofa.so/) | أساسية | web | — | restricted | — | — |
@@ -247,6 +250,7 @@
 | TL-0242c306 | [Hunting-New-Registered-Domains (T)](https://github.com/gfek/Hunting-New-Registered-Domains) | أساسية | oss | — | reachable | — | — |
 | TL-b7e964ca | [Hurricane Electric BGP Toolkit](https://bgp.he.net/) | أساسية | web | — | reachable | — | — |
 | TL-63ed35af | [Hussh](https://github.com/harshnandwana/hussh) | أساسية | oss | — | restricted | — | shell script for domain analyzing |
+| TL-4c209a0f | [IANA](https://www.iana.org/) | داعمة | web | — | reachable | — | Root zone database, RDAP bootstrap and number resource registries. |
 | TL-feecd39d | [ican whois](https://lookup.icann.org/en) | أساسية | web | — | reachable | — | — |
 | TL-47509b41 | [Icanhazip](https://major.io/icanhazip-com-faq/) | داعمة | api | بوابة الأشخاص | reachable | No | IP Address API |
 | TL-f01f735d | [ID LPSE LKPP](https://lpse.lkpp.go.id/eproc4/lelang) | أساسية | web | — | unreachable | — | Tips you can search by province, institution or regency (subdomain) |
@@ -350,6 +354,7 @@
 | TL-d1eb6257 | [MY IP](https://www.myip.com/api-docs/) | داعمة | api | بوابة الأشخاص | reachable | No | Get IP address information |
 | TL-9ce01a26 | [MyIPNeighbors](https://www.my-ip-neighbors.com/) | أساسية | web | — | reachable | — | — |
 | TL-3ae83e78 | [MyIPRightNow](https://myiprightnow.com) | داعمة | api | بوابة الأشخاص | reachable | No | Public IP address with network, location, and connection details |
+| TL-ba28d566 | [n8n](https://github.com/n8n-io/n8n) | داعمة | oss | — | reachable | — | Workflow automation platform with self-hosting. |
 | TL-521f9401 | [Natural Earth](http://www.naturalearthdata.com/) | داعمة | web | — | reachable | — | This site offers public domain map data sets that contain both raster and vector data. |
 | TL-0a541ed3 | [Neo4j @ Graphene](https://www.graphenedb.com/) | داعمة | web | — | reachable | — | — |
 | TL-07c64ed2 | [netbootcamp.org/websitetool.html](https://netbootcamp.org/websitetool.html) | أساسية | web | — | unreachable | — | access to 74 #tools to collect domain information from a single page |
@@ -413,6 +418,7 @@
 | TL-85c294d8 | [pymartini](https://github.com/kylebarron/pymartini) | داعمة | oss | — | restricted | — | A Cython port of Martini for fast RTIN terrain mesh generation |
 | TL-0e4f59a0 | [PYMETA](https://github.com/m8sec/pymeta) | أساسية | oss | — | restricted | — | A tool that searches (using Google, Bing etc.) for documents in the domain, analyses their metadata and generate a report in CSV format. |
 | TL-9230c959 | [QR code](https://www.qrtag.net/api/) | داعمة | api | — | reachable | No | Create an easy to read QR code and URL shortener |
+| TL-402d2f4b | [Quake (360)](https://quake.360.net/) | داعمة | web | — | reachable | — | Internet asset search engine (hosts, services, certificates). |
 | TL-2a3644d2 | [RADB](http://radb.net/query) | أساسية | web | — | reachable | — | Provides information collected from all the registries that form part of the Internet Routing Registry |
 | TL-ffa646b7 | [Rasdaman](http://www.rasdaman.org/) | داعمة | web | — | reachable | — | Array database that allows storing and querying massive multi-dimensional arrays, such as sensor, image, simulation, and statistics data appearing in domains li |
 | TL-e60d71c7 | [Raymond](https://github.com/hamza07-w/raymond) | أساسية | oss | — | restricted | — | Framework for gathering information about website |

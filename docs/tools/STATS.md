@@ -4,16 +4,16 @@
 
 | المقياس | القيمة |
 |---|---|
-| إجمالي الأدوات الفريدة (بعد إزالة التكرار) | **10814** |
-| روابط تستجيب (2xx/3xx) | 7221 |
-| روابط موجودة لكنها مقيّدة للفحص الآلي (401/403/429…) | 2471 |
-| المجموع القابل للمتابعة (تستجيب + مقيّدة) | **9692** |
-| روابط لم تستجب وقت الفحص | 1122 |
+| إجمالي الأدوات الفريدة (بعد إزالة التكرار) | **10834** |
+| روابط تستجيب (2xx/3xx) | 7239 |
+| روابط موجودة لكنها مقيّدة للفحص الآلي (401/403/429…) | 2472 |
+| المجموع القابل للمتابعة (تستجيب + مقيّدة) | **9711** |
+| روابط لم تستجب وقت الفحص | 1123 |
 | طبقة أساسية (من قوائم OSINT المتخصصة) | 6557 |
-| طبقة داعمة (واجهات وجغرافيا وتحليل شبكات وأمن) | 4257 |
+| طبقة داعمة (واجهات وجغرافيا وتحليل شبكات وأمن) | 4277 |
 | مستبعدة بسياسة المنتج (أدوات هجومية أو مراقبة أشخاص) | 199 |
 | مستبعدة لعدم الصلة (فئات واجهات ترفيهية وغيرها) | 591 |
-| موسومة ببوابة الأشخاص الطبيعيين | 1863 |
+| موسومة ببوابة الأشخاص الطبيعيين | 1865 |
 
 ## حسب المجال
 
@@ -23,20 +23,20 @@
 | `general` | عام ومتنوع | 1392 | [domains/general.md](domains/general.md) |
 | `media` | الصور والفيديو والتحقق البصري | 916 | [domains/media.md](domains/media.md) |
 | `social` | وسائل التواصل الاجتماعي والمراسلة | 775 | [domains/social.md](domains/social.md) |
-| `domain` | النطاقات وIP وDNS والشهادات | 593 | [domains/domain.md](domains/domain.md) |
+| `domain` | النطاقات وIP وDNS والشهادات | 599 | [domains/domain.md](domains/domain.md) |
+| `threat` | استخبارات التهديدات والبرمجيات الخبيثة | 517 | [domains/threat.md](domains/threat.md) |
 | `company` | الشركات والسجلات والعقود والعقوبات | 509 | [domains/company.md](domains/company.md) |
-| `threat` | استخبارات التهديدات والبرمجيات الخبيثة | 507 | [domains/threat.md](domains/threat.md) |
 | `documents` | الوثائق والبيانات المفتوحة | 439 | [domains/documents.md](domains/documents.md) |
 | `archive` | أرشفة الويب واللقطات | 429 | [domains/archive.md](domains/archive.md) |
 | `transport` | النقل: طيران وسفن ومركبات | 402 | [domains/transport.md](domains/transport.md) |
-| `code` | الكود والمطورون والبنية التقنية | 367 | [domains/code.md](domains/code.md) |
+| `code` | الكود والمطورون والبنية التقنية | 368 | [domains/code.md](domains/code.md) |
 | `search` | محركات البحث والاستعلام | 365 | [domains/search.md](domains/search.md) |
-| `email_phone` | البريد الإلكتروني والهاتف | 342 | [domains/email_phone.md](domains/email_phone.md) |
+| `email_phone` | البريد الإلكتروني والهاتف | 344 | [domains/email_phone.md](domains/email_phone.md) |
 | `forensics` | الجنائيات الرقمية والاستجابة للحوادث | 339 | [domains/forensics.md](domains/forensics.md) |
 | `people` | الأشخاص وأسماء المستخدمين | 270 | [domains/people.md](domains/people.md) |
 | `language` | العربية واللغويات والترجمة | 259 | [domains/language.md](domains/language.md) |
 | `news` | الأخبار والإعلام والتحقق من المعلومات | 258 | [domains/news.md](domains/news.md) |
-| `crypto` | العملات الرقمية وسلاسل الكتل | 246 | [domains/crypto.md](domains/crypto.md) |
+| `crypto` | العملات الرقمية وسلاسل الكتل | 247 | [domains/crypto.md](domains/crypto.md) |
 | `darkweb` | الويب المظلم وTor | 224 | [domains/darkweb.md](domains/darkweb.md) |
 | `graph` | تحليل الشبكات والرسوم البيانية | 211 | [domains/graph.md](domains/graph.md) |
 | `public_api` | واجهات برمجية عامة (اتصالات) | 145 | [domains/public_api.md](domains/public_api.md) |
@@ -46,9 +46,9 @@
 
 | النوع | المعنى | العدد |
 |---|---|---|
-| `web` | خدمة ويب | 6713 |
-| `oss` | مستودع مفتوح المصدر | 2494 |
-| `api` | واجهة برمجية | 1473 |
+| `web` | خدمة ويب | 6723 |
+| `oss` | مستودع مفتوح المصدر | 2502 |
+| `api` | واجهة برمجية | 1475 |
 | `dataset` | مجموعة بيانات | 134 |
 
 ## حسب القائمة المصدر
@@ -72,3 +72,4 @@
 | [jbmusso/awesome-graph](https://github.com/jbmusso/awesome-graph) | 50 |
 | [jivoi/awesome-osint](https://github.com/jivoi/awesome-osint) | 34 |
 | [tracelabs/awesome-osint](https://github.com/tracelabs/awesome-osint) | 25 |
+| [investigation-room/curated](https://github.com/sovereignaie-star/investigation/blob/main/tools/catalog/curated.json) | 20 |
