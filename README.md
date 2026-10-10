@@ -14,6 +14,8 @@
 | [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md) | الخطة الشاملة: الرؤية والاستراتيجية والآفاق البعيدة |
 | [`docs/STATUS.md`](docs/STATUS.md) | الحالة الحية لكل مهمة وعيب وبوابة |
 | [`docs/WORKLOG.md`](docs/WORKLOG.md) | سجل العمل: ما تم، بأدلته |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | مدخل مختصر إلى المعمارية (يحيل إلى القسم 5 وسجلات القرار) |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | دليل التطوير والتشغيل المحلي |
 | [`docs/tools/`](docs/tools/) | كتالوج الأدوات والمصادر (10,834 أداة) |
 
 ## القاعدة الأولى
