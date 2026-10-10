@@ -17,7 +17,7 @@
 | المرحلة | العنوان | المهام | منجزة | قيد التنفيذ |
 |---|---|---|---|---|
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
-| 1 | النواة والسجل | 23 | 5 | 0 |
+| 1 | النواة والسجل | 23 | 6 | 0 |
 | 2 | المحرّك والمحوّلات | 31 | 0 | 0 |
 | 3 | محطة العمل | 25 | 0 | 0 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
@@ -76,7 +76,7 @@
 | P1-006 | محرك الكشف متعدد المرشحين بدرجات وسياق (M) | todo | — |
 | P1-007 | التطبيع والمفتاح القانوني (M) | done | packages/core/src/normalize.ts: normalize()/canonicalKey() for 371 type ids by family; 100,000 distinct inputs -> 100,000 keys, all variants map back; smartInvestigator uses it |
 | P1-008 | تصنيف الحساسية لكل نوع (M) | todo | — |
-| P1-009 | `@ir/ledger`: سلسلة تجزئة + JCS (M) | todo | — |
+| P1-009 | `@ir/ledger`: سلسلة تجزئة + JCS (M) | done | packages/ledger: RFC 8785 JCS, SHA-256 hash chain (ADR-06), append-only Ledger, verify(); T-LED-001..010 green (28 tests, 993 single-char edits all detected) |
 | P1-010 | مخزن الأدلة بعنونة المحتوى (M) | todo | — |
 | P1-011 | التوقيع بـ Ed25519 ونقاط التثبيت (M) | todo | — |
 | P1-012 | أمر `ir verify` (M) | todo | — |
