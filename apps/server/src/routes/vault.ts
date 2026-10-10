@@ -1,4 +1,4 @@
-import express, { Router, type IRouter } from "express";
+import express, { Router, type IRouter, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { validate } from "@ir/core/validate";
 import { assertVaultName, type Vault } from "@ir/store";
@@ -7,6 +7,10 @@ import { KNOWN_PROVIDERS, lookupBreaches, lookupIp, testProviderKey, type FetchL
 
 /** Express 5 types route params as string | string[]; routes here take one segment each. */
 const param = (v: string | string[] | undefined): string => (typeof v === "string" ? v : "");
+const bodyString = (req: Request, key: "email" | "ip"): string => {
+  const value: unknown = (req.body as Record<string, unknown> | undefined)?.[key];
+  return typeof value === "string" ? value : "";
+};
 const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,253}$/;
 
 /** Key vault and keyed lookups (P1-015). No route ever responds with a secret. */
@@ -15,9 +19,12 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env);
   const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
-  router.use(["/vault", "/lookup"], limiter);
 
-  router.get("/vault", admin, (_req, res) => {
+  // Vault writes and provider-funded lookups are not browser-public APIs. Parsing, throttling and authentication are
+  // applied as one boundary so an unauthenticated request cannot reach a provider.
+  router.use(["/vault", "/lookup"], express.json({ limit: "8kb" }), limiter, admin);
+
+  router.get("/vault", (_req, res) => {
     const configured = new Map(
       getVault()
         .list()
@@ -27,7 +34,7 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
     res.json({ entries: names.map((name) => ({ name, configured: configured.has(name), updatedAt: configured.get(name) ?? null })) });
   });
 
-  router.put("/vault/:name", admin, express.json({ limit: "8kb" }), (req, res) => {
+  router.put("/vault/:name", (req, res) => {
     const name = param(req.params["name"]);
     const secret: unknown = (req.body as { secret?: unknown } | undefined)?.secret;
     try {
@@ -40,11 +47,11 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
     }
   });
 
-  router.delete("/vault/:name", admin, (req, res) => {
+  router.delete("/vault/:name", (req, res) => {
     res.status(getVault().delete(param(req.params["name"])) ? 204 : 404).end();
   });
 
-  router.post("/vault/:name/test", admin, async (req, res) => {
+  router.post("/vault/:name/test", async (req, res) => {
     try {
       res.json(await testProviderKey(param(req.params["name"]), getVault(), f));
     } catch {
@@ -52,8 +59,8 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
     }
   });
 
-  router.get("/lookup/ip/:ip", async (req, res) => {
-    const ip = param(req.params["ip"]);
+  router.post("/lookup/ip", async (req, res) => {
+    const ip = bodyString(req, "ip");
     if (!(validate("ipv4", ip)?.valid || validate("ipv6", ip)?.valid)) {
       res.status(400).json({ error: "invalid IP address" });
       return;
@@ -66,8 +73,8 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
     }
   });
 
-  router.get("/lookup/breaches/:email", async (req, res) => {
-    const email = param(req.params["email"]);
+  router.post("/lookup/breaches", async (req, res) => {
+    const email = bodyString(req, "email");
     if (!EMAIL.test(email)) {
       res.status(400).json({ error: "invalid email" });
       return;

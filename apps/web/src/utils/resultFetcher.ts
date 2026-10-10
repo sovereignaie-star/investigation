@@ -35,7 +35,11 @@ function buildNode(
 // P1-015: keyed providers are called by the server, which holds the keys; the browser never sees them.
 async function fetchIP(value: string): Promise<FetchResult> {
   try {
-    const res = await fetch(`/api/lookup/ip/${encodeURIComponent(value)}`);
+    const res = await fetch("/api/lookup/ip", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ip: value }),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const children: Array<{ value: string; type: string }> = [];
@@ -94,7 +98,11 @@ async function fetchEmail(value: string): Promise<FetchResult> {
   if (domain) children.push({ value: domain, type: "domain" });
 
   try {
-    const res = await fetch(`/api/lookup/breaches/${encodeURIComponent(value)}`);
+    const res = await fetch("/api/lookup/breaches", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: value }),
+    });
     if (res.ok) {
       const { breaches } = (await res.json()) as { breaches: unknown[] };
       results.breaches = breaches;

@@ -1,18 +1,15 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { resolveHost, resolvePort } from "./lib/runtime";
 
-// Render, Railway and most hosts inject PORT; 8080 is the local default.
-const port = Number(process.env["PORT"] ?? 8080);
+const port = resolvePort();
+const host = resolveHost();
 
-if (!Number.isInteger(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${process.env["PORT"]}"`);
-}
-
-app.listen(port, (err) => {
+app.listen(port, host, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
 
-  logger.info({ port }, "Server listening");
+  logger.info({ host, port }, "Server listening");
 });

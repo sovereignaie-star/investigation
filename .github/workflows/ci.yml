@@ -43,13 +43,13 @@ jobs:
       - uses: actions/checkout@v7
       - run: docker build -t investigation-room .
       - run: |
-          docker run -d --name ir -p 8080:8080 investigation-room
+          docker run -d --name ir -p 8080:8080 -e IR_ADMIN_TOKEN=ci-admin-token investigation-room
           for i in $(seq 1 30); do curl -fsS http://localhost:8080/api/healthz && break; sleep 1; done
           curl -fsS http://localhost:8080/api/healthz
           curl -fsS http://localhost:8080/ | grep -q '<html lang="ar" dir="rtl">'
           docker logs ir
           docker run --rm investigation-room node ir.mjs --help
-          # from the host the client is not loopback and no IR_ADMIN_TOKEN is set: vault management is refused
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/vault)" = 403
-          # vault from inside the container (loopback): store a key, list status, and the secret never comes back
-          docker exec ir node -e "const b='http://127.0.0.1:8080/api/vault';fetch(b+'/ipinfo',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({secret:'ci-secret-value-1'})}).then(r=>{if(!r.ok)process.exit(1);return fetch(b)}).then(r=>r.text()).then(t=>{if(t.includes('ci-secret-value-1')||!t.includes('\"configured\":true'))process.exit(1)})"
+          # a request without the explicitly configured token is refused, even from the container loopback
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/vault)" = 401
+          # the configured token is required for vault management; the secret never comes back
+          docker exec ir node -e "const b='http://127.0.0.1:8080/api/vault';const h={'content-type':'application/json',authorization:'Bearer ci-admin-token'};fetch(b+'/ipinfo',{method:'PUT',headers:h,body:JSON.stringify({secret:'ci-secret-value-1'})}).then(r=>{if(!r.ok)process.exit(1);return fetch(b,{headers:{authorization:'Bearer ci-admin-token'}})}).then(r=>r.text()).then(t=>{if(t.includes('ci-secret-value-1')||!t.includes('\"configured\":true'))process.exit(1)})"

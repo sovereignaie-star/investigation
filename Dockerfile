@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile && pnpm run build
 
 FROM node:24-slim
 WORKDIR /app
-ENV NODE_ENV=production PORT=8080 IR_DATA_DIR=/data
+ENV NODE_ENV=production PORT=8080 HOST=0.0.0.0 IR_DATA_DIR=/data
 COPY --from=build /app/apps/server/dist apps/server/dist
 COPY --from=build /app/apps/web/dist/public apps/web/dist/public
 # Integrity checker (P1-012): docker run --rm -v "$PWD/case:/case" investigation-room node ir.mjs verify /case
