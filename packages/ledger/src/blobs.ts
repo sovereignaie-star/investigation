@@ -14,8 +14,9 @@ export class BlobIntegrityError extends Error {
   constructor(
     readonly sha256: string,
     readonly reason: "missing" | "corrupt" | "mismatch",
+    detail?: string,
   ) {
-    super(`blob ${sha256}: ${reason}`);
+    super(detail ? `blob ${sha256}: ${reason} (${detail})` : `blob ${sha256}: ${reason}`);
     this.name = "BlobIntegrityError";
   }
 }
@@ -63,23 +64,25 @@ function parseZstdFrameHeader(buf: Uint8Array): ZstdFrameHeader {
   if (buf[0] !== 0x28 || buf[1] !== 0xb5 || buf[2] !== 0x2f || buf[3] !== 0xfd) {
     throw new Error("bad magic");
   }
-  // Frame_Header_Descriptor (byte 4) per RFC 8878:
-  //   bits [7:6] Frame_Content_Size_code, bit [5] Single_Segment_flag,
-  //   bit [4] (unused), bit [3] Content_Checksum_flag, bit [2] Dictionary_ID_flag,
-  //   bits [1:0] Frame_Header_Size_code.
+  // Frame_Header_Descriptor (byte 4) per RFC 8878, Table 3 (bit 7 highest):
+  //   bits [7:6] Frame_Content_Size_Flag, bit [5] Single_Segment_Flag,
+  //   bit [4] (unused), bit [3] (reserved), bit [2] Content_Checksum_Flag,
+  //   bits [1:0] Dictionary_ID_Flag.
   const fhd = buf[4];
   const fcsCode = (fhd >> 6) & 0b11;
   const singleSegment = (fhd >> 5) & 1;
-  const checksum = (fhd >> 3) & 1;
-  // Dictionary_ID_flag is 1 bit; when set the Dictionary_ID field is exactly 4 bytes.
-  const dictId = (fhd >> 2) & 1;
-  // RFC 8878 Table: FCS field size; code 0 means "absent" EXCEPT when
-  // Single_Segment_flag is set, in which case it is 1 byte.
+  const checksum = (fhd >> 2) & 1;
+  // Dictionary_ID_Flag is 2 BITS; DID_Field_Size per RFC 8878 Table 6:
+  // 0 => 0 bytes, 1 => 1 byte, 2 => 2 bytes, 3 => 4 bytes.
+  const dictIdCode = fhd & 0b11;
+  // RFC 8878 Table 4: FCS_Field_Size; flag 0 means "absent" EXCEPT when
+  // Single_Segment_Flag is set, in which case it is 1 byte.
   const fcsBytes = fcsCode === 0 ? (singleSegment ? 1 : 0) : fcsCode === 1 ? 2 : fcsCode === 2 ? 4 : 8;
   // RFC 8878: Window_Descriptor (1 byte) is present ONLY when Single_Segment_flag = 0.
   const windowDescriptorBytes = singleSegment ? 0 : 1;
-  // The frame header is: magic (4) + descriptor (1) + [Window_Descriptor if !SS] + FCS + optional Dictionary_ID.
-  const headerSize = windowDescriptorBytes + fcsBytes + (dictId ? 4 : 0);
+  // The frame header is: magic (4) + descriptor (1) + [Window_Descriptor if !SS] + FCS + [Dictionary_ID].
+  const dictIdBytes = dictIdCode === 0 ? 0 : dictIdCode === 1 ? 1 : dictIdCode === 2 ? 2 : 4;
+  const headerSize = windowDescriptorBytes + fcsBytes + dictIdBytes;
   return { firstBlockOffset: 5 + headerSize, checksumLen: checksum ? 4 : 0 };
 }
 
@@ -131,12 +134,29 @@ function assertZstdFrameIntact(buf: Uint8Array): void {
 /** Shared read path: decompress, re-hash, compare. Any failure is an integrity error, never silent data. */
 function verified(sha256: string, compressed: Uint8Array | undefined): Uint8Array {
   if (!compressed) throw new BlobIntegrityError(sha256, "missing");
-  let raw: Uint8Array;
+  // Structural integrity is its own check: a frame that fails the RFC 8878 walk
+  // is "corrupt" regardless of whether the library could still decode some bytes.
+  // Decompression failure is a SEPARATE corruption: the library refused the frame.
+  // Both are "corrupt" but they are distinguished in the message for debugging.
+  let structuralError: unknown;
   try {
     assertZstdFrameIntact(compressed);
+  } catch (e) {
+    structuralError = e;
+  }
+  let raw: Uint8Array;
+  try {
     raw = new Uint8Array(zstd().decompress(compressed));
-  } catch {
-    throw new BlobIntegrityError(sha256, "corrupt");
+  } catch (e) {
+    throw new BlobIntegrityError(
+      sha256,
+      "corrupt",
+      structuralError ? `frame invalid: ${(structuralError as Error).message}` : `decompression failed: ${(e as Error).message}`,
+    );
+  }
+  if (structuralError) {
+    // The frame parsed by the library but failed our stricter structural walk.
+    throw new BlobIntegrityError(sha256, "corrupt", `frame invalid: ${(structuralError as Error).message}`);
   }
   if (sha256Hex(raw) !== sha256) throw new BlobIntegrityError(sha256, "mismatch");
   return raw;

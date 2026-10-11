@@ -1,5 +1,6 @@
 import zlib from "node:zlib";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -27,6 +28,43 @@ afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 const enc = (s: string) => new TextEncoder().encode(s);
+
+/** Builds a minimal but RFC 8878-valid one-Raw-block zstd frame for the given header variant. */
+function buildSyntheticZstdFrame(opts: {
+  checksum: boolean;
+  dictIdCode: 0 | 1 | 2 | 3;
+  singleSegment: boolean;
+  fcsCode: 0 | 1 | 2 | 3;
+}): Buffer {
+  const fcsBytes = opts.fcsCode === 0 ? (opts.singleSegment ? 1 : 0) : [0, 2, 4, 8][opts.fcsCode];
+  const dictIdBytes = [0, 1, 2, 4][opts.dictIdCode];
+  // descriptor: fcsCode<<6 | SS<<5 | checksum<<2 | dictIdCode
+  const fhd = (opts.fcsCode << 6) | (opts.singleSegment ? 0x20 : 0) | (opts.checksum ? 0x04 : 0) | opts.dictIdCode;
+  const header = Buffer.from([0x28, 0xb5, 0x2f, 0xfd, fhd]);
+  // RFC 8878 FCS encoding: 2-byte FCS stores value-256; 4/8-byte store as-is.
+  // Codes 1 and 2 need a body large enough for the offset, so they use a
+  // bigger Raw block body (300 bytes for code 1; 70000 for code 2).
+  const bodySize = opts.fcsCode === 1 ? 300 : opts.fcsCode === 2 ? 70_000 : 4;
+  const fcsOffset = opts.fcsCode === 1 ? 256 : 0;
+  const fcsValue = Buffer.alloc(fcsBytes);
+  if (fcsBytes === 8) fcsValue.writeBigUInt64LE(BigInt(bodySize - fcsOffset), 0);
+  else if (fcsBytes > 0) fcsValue.writeUIntLE(bodySize - fcsOffset, 0, fcsBytes);
+  // RFC 8878 order: [Window_Descriptor] then Frame_Content_Size then [Dictionary_ID].
+  // Window_Descriptor 0x70 => a 16 MB window, enough for the 70_000-byte body.
+  const windowDescriptor = Buffer.from([0x70]);
+  const extra = Buffer.concat([
+    opts.singleSegment ? Buffer.alloc(0) : windowDescriptor,
+    fcsValue,
+    // A dictionary id of 0 in a present field is invalid; use a nonzero id.
+    dictIdBytes > 0 ? Buffer.alloc(dictIdBytes, 0x42) : Buffer.alloc(0),
+  ]);
+  // Raw block, last=1, type=0(Raw), size=bodySize: header = 1 | (0<<1) | (bodySize<<3)
+  const hdrVal = 1 | (0 << 1) | (bodySize << 3);
+  const blockHeader = Buffer.from([hdrVal & 0xff, (hdrVal >> 8) & 0xff, (hdrVal >> 16) & 0xff]);
+  const blockBody = Buffer.alloc(bodySize, 0x5a);
+  const checksumBytes = opts.checksum ? Buffer.from([0, 0, 0, 0]) : Buffer.alloc(0);
+  return Buffer.concat([header, extra, blockHeader, blockBody, checksumBytes]);
+}
 
 describe("content-addressed blob store (P1-010)", () => {
   it("T-LED-016: every changed byte of a stored blob is detected on read", () => {
@@ -207,6 +245,64 @@ describe("content-addressed blob store (P1-010)", () => {
     expect(() => store.get(sha256)).toThrow(expect.objectContaining({ reason: "corrupt" }));
     writeFileSync(file, stored);
     expect(store.get(sha256)).toEqual(body);
+  });
+
+  it("T-LED-016: the validator computes the first-block offset for every RFC 8878 header variant (checksum, dictionary sizes, no-Single_Segment)", () => {
+    // The store's own frames are always Single_Segment with no dictionary, so the
+    // offset math for those variants is not exercised by the other tests. This test
+    // builds minimal SYNTHETIC frames for each variant and asserts the validator
+    // finds the block at the right offset: a valid one-block Raw frame is ACCEPTED
+    // and a one-byte-shortened one is REJECTED as corrupt, for each header shape.
+    const root = tmp();
+    const store = fsBlobStore(root);
+
+    const buildAndCheck = (opts: { checksum: boolean; dictIdCode: 0 | 1 | 2 | 3; singleSegment: boolean; fcsCode: 0 | 1 | 2 | 3 }) => {
+      const frame = buildSyntheticZstdFrame(opts);
+      const sha256 = createHash("sha256").update(frame).digest("hex");
+      const file = path.join(root, ...blobPath(sha256).split("/"));
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, frame);
+      // (1) The full frame is structurally VALID: the validator must accept it.
+      //     - With NO dictionary (dictIdCode 0) the library decompresses it, so
+      //       get() fails on the hash comparison: reason "mismatch", NOT "corrupt".
+      //     - With a dictionary id the library cannot decompress (we do not own the
+      //       dictionary), so the reason is "corrupt" — but the STRUCTURAL part can
+      //       still be proven: the validator accepted the frame (no structural
+      //       error in the message) and only the decompression failed.
+      let reason = "";
+      let detail = "";
+      try {
+        store.get(sha256);
+      } catch (e) {
+        reason = (e as { reason?: string }).reason ?? "";
+        detail = (e as Error).message;
+      }
+      if (opts.dictIdCode === 0 && !opts.checksum) {
+        expect(reason, JSON.stringify(opts)).toBe("mismatch");
+      } else {
+        // Decompression failure (no dictionary / bad checksum bytes), NOT a
+        // structural rejection: the validator accepted the frame and only the
+        // library refused it. Both facts are asserted.
+        expect(reason, JSON.stringify(opts)).toBe("corrupt");
+        expect(detail, JSON.stringify(opts)).toContain("decompression failed");
+        expect(detail, JSON.stringify(opts)).not.toContain("frame invalid");
+      }
+      // (2) Truncate one byte from the end: the validator must reject corrupt.
+      writeFileSync(file, frame.subarray(0, frame.length - 1));
+      expect(() => store.get(sha256), JSON.stringify(opts)).toThrow(expect.objectContaining({ reason: "corrupt" }));
+    };
+
+    // Every combination of the RFC 8878 header variants that can appear:
+    for (const checksum of [false, true]) {
+      for (const dictIdCode of [0, 1, 2, 3] as const) {
+        for (const singleSegment of [true, false]) {
+          // fcsCode 0 needs the Single_Segment interaction; also exercise 1..3.
+          for (const fcsCode of [0, 1, 2, 3] as const) {
+            buildAndCheck({ checksum, dictIdCode, singleSegment, fcsCode });
+          }
+        }
+      }
+    }
   });
 
   it("T-LED-016: a blob replaced by other valid content, or missing, is rejected with its reason", () => {
