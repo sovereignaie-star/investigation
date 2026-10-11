@@ -1138,3 +1138,13 @@
 - **فحص جديد GR-20 (في `scripts/governance/check.mjs`):** يفحص `--consistency` الآن **أي** علامة تعارض (`<<<<<<<` أو `>>>>>>>` أو `=======` منفرد) في `docs/ROADMAP.md` و`docs/STATUS.md` و`docs/WORKLOG.md` و`docs/MASTER_PLAN.md` وكل ملفات `docs/adr/*.md` و`docs/adr/reference/*.md`. يتجاهل الكتل المسورة (fenced code blocks). يُرجع أرقام الأسطر لتحديد موضع الخطأ بدقة.
 - **الفحوص المحلية:** `node scripts/governance/check.mjs --consistency` → `ROADMAP, STATUS and MASTER_PLAN are consistent.` (نجاح بعد الإصلاح). `grep -c` لعلامات التعارض في `ADR-08`/`WORKLOG`/`STATUS`/`ROADMAP` → `0` في كل منها.
 - **تأكيد GR-09:** لم يُحذف أي إدخال من `WORKLOG.md`؛ الحل أضاف/دمج فقط.
+
+### 2026-10-11 — [P2-003] تنفيذ بوابة الخروج @ir/egress بمحاكاة فقط + 111 اختباراً [P1-031]
+- **المنفّذ:** وكيل آلي (Perplexity Computer). توجيه المالك 2026-10-11 (الدورة الشاملة).
+- **ما نُفّذ:** حزمة `@ir/egress` الجديدة في `packages/egress/` مع:
+  - `address-policy.ts`: مصنّف عناوين مُستمد من جداول IANA (IPv4/IPv6) — **ليس blocklist يدوياً**. مطابقة أطول بادئة، استخراج صريح لـ IPv4 المضمّن (IPv4-mapped وNAT64 العام)، رفض NAT64 المحلي و6to4 وTeredo بقرار سياسة ADR-08. **رفض افتراضي** عند غياب التصنيف. محلّل صارم (يرفض zone IDs والأصفار البادئة وسداسيات عشريّة ببقايا).
+  - `egress.ts`: بوابة الخروج بمحاكاة فقط — **لا يوجد adapter شبكي حقيقي ولا resolver حقيقي ولا flag يفعّل الشبكة**. النقل وDNS يُحقنان في الاختبارات فقط. سلسلة: فحوص ما قبل DNS (offline، no_case، natural_person، unclassified_data، undeclared_data، missing_manifest) → تطبيع URL → فحص scheme/port/credentials/headers → حل DNS مُحقن → تصنيف كل العنوان → تثبيت IP (منع DNS rebinding) → نقل مُحقن → إعادة توجيه يدوية مع فحص كامل لكل قفزة (حد 3) → فحص حجم الاستجابة.
+  - `egress.test.ts`: **111 اختباراً** تغطي T-SEC-SSRF-001..005 و007 و010..015 و022 (loopback IPv4/IPv6، IPv4-mapped، metadata 169.254.169.254، الشبكات الخاصة، IP بصيغ بديلة، mixed A records، DNS rebinding، redirects إلى private وpublic، https→http، حد redirects، size limit).
+  - `address-policy.test.ts`: 78 اختباراً (حالات IPv4/IPv6 الحدّية، strict parsing، embedded IPv4، NAT64، Teredo).
+- **الفحوص المحلية:** `pnpm vitest run packages/egress` → **111/111**. `pnpm lint` → 0 أخطاء. `node scripts/governance/check.mjs --consistency` → متسقة.
+- **الحدود:** **لا يوجد مسار شبكي حقيقي**. ADR-08 لا يزال `proposed — validation complete, owner decision pending`. لا يُدمج على main دون قرار المالك.
