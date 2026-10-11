@@ -1192,3 +1192,8 @@
 - **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
 - **الفرع:** `audit/P2-003-investigation` (سيُعاد تطبيقه على `feat/P2-001-egress-adapter` لاحقاً).
 - **ما تم:** جُلبت تغييرات `packages/egress/package.json` و`pnpm-lock.yaml` من فرع `feat/P2-001-egress-adapter` (commit `d007879`) إلى هذا الفرع ليتطابقا.
+
+### 2026-10-12 — [P2-003] إدخال تغطية G-13 على فرع بوابة الخروج
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation`.
+- **ما تم:** جُلب `vitest.config.ts` من فرع `feat/P2-001-egress-adapter` (commit `89b666d`) ليدخل `packages/engine/src` و`packages/egress/src` في نطاق CORE.
