@@ -1329,3 +1329,9 @@
 - **الأدلة:** `corepack pnpm vitest run packages/engine packages/egress` → 239/239 ناجح. `corepack pnpm lint` → نظيف. `corepack pnpm typecheck` → نظيف (جذر + حزم). `node scripts/governance/check.mjs --consistency` → consistent.
 - **ما لم يُنفّذ:** جلب جسم الاستجابة عبر `EgressTransport.fetch` إلى المحرك، إدخال `packages/engine` في نطاق تغطية G-13، تشغيل CI فعلي على هذا الفرع.
 - **الالتزامات الحاكمة:** لا دفع مباشر إلى main، لا force push، لا --no-verify، لا دمج PR.
+
+### 2026-10-12 — [P2-003] إصلاح فشل CI: @types/node مفقود في حزمة egress
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `feat/P2-001-egress-adapter` (سيُعاد تطبيقه على `audit/P2-003-investigation` في commit تالٍ).
+- **ما تم:** فحص CI على PR #60 كشف أن سكربت `typecheck` الجديد في `packages/egress/package.json` يفشل في CI لأن `@types/node` غير مثبت (tsconfig يحتاج `types: [\"node\"]`). أضيفت `@types/node: catalog:` إلى `devDependencies` في `packages/egress/package.json` وتحديث `pnpm-lock.yaml`.
+- **الأدلة:** `corepack pnpm install` نظيف محلياً و`packages/egress typecheck` يمر.
