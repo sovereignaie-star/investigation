@@ -9,7 +9,14 @@ const CORE = ["packages/core/src", "packages/ledger/src"];
 // P0-010 (ADR-13): one root Vitest run for the whole workspace.
 export default defineConfig({
   test: {
-    include: ["lib/**/*.test.ts", "packages/**/*.test.ts", "apps/**/*.test.ts"],
+    include: [
+      "lib/**/*.test.ts",
+      "packages/**/*.test.ts",
+      "apps/**/*.test.ts",
+      // ADR-08 reference data (IANA registry snapshot): verification tests live next
+      // to the snapshot they verify; they run in the same root Vitest run (P0-010).
+      "docs/adr/reference/**/*.test.ts",
+    ],
     exclude: ["**/node_modules/**", "**/dist/**", "apps/sandbox/**"],
     environment: "node",
     coverage: {
