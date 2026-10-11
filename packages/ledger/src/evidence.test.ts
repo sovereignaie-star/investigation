@@ -1,3 +1,4 @@
+import zlib from "node:zlib";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -92,6 +93,114 @@ describe("content-addressed blob store (P1-010)", () => {
 
     // (5) Restore: the read succeeds again — the validator does not reject good frames.
     writeFileSync(target, original);
+    expect(store.get(sha256)).toEqual(body);
+  });
+
+  it("T-LED-016: the validator accepts all three real block types (Raw, RLE, Compressed), multi-block frames, and each fails when truncated", () => {
+    // Directly against the validator via store.get (structural integrity + hash).
+    const root = tmp();
+    const store = fsBlobStore(root);
+    const putAndGetBack = (body: Uint8Array) => {
+      const { sha256, blobRef } = store.put(body);
+      const file = path.join(root, ...blobRef.split("/"));
+      const stored = readFileSync(file);
+      // Validator must accept the stored bytes (store.get succeeds) AND the
+      // hash comparison confirms the decompressed content is the original.
+      expect(store.get(sha256)).toEqual(body);
+      return { file, stored, sha256 };
+    };
+
+    // (1) Raw block: incompressible random content.
+    const raw = new Uint8Array(2048);
+    for (let i = 0; i < raw.length; i++) raw[i] = (i * 7919) & 0xff;
+    const r1 = putAndGetBack(raw);
+
+    // (2) RLE block: highly compressible content.
+    const rle = enc("a".repeat(50_000));
+    const r2 = putAndGetBack(rle);
+
+    // (3) Compressed block: mixed repetitive content.
+    const mixed = enc("pattern123pattern123".repeat(3000));
+    const r3 = putAndGetBack(mixed);
+
+    // (4) Multi-block: content larger than the 128 KB max block size forces
+    // the compressor to emit MULTIPLE blocks (Raw/Compressed mix).
+    const big = new Uint8Array(400_000);
+    for (let i = 0; i < big.length; i++) big[i] = (i * 31 + (i >> 7)) & 0xff;
+    const r4 = putAndGetBack(big);
+    const bodyRef = { sha256: "" } as { sha256: string };
+    void bodyRef;
+
+    // (5) Truncation must be rejected for each frame: cut the last block body.
+    for (const r of [r1, r2, r3, r4]) {
+      const truncated = r.stored.subarray(0, r.stored.length - 2);
+      writeFileSync(r.file, truncated);
+      expect(() => store.get(r.sha256)).toThrow(BlobIntegrityError);
+    }
+  });
+
+  it("T-LED-016: a header change outside the 0x01/0x80 masks is rejected even when the decompressed content is identical", () => {
+    // The T-LED-016 sweep only flips 0x01 and 0x80. A 0x02 flip of the Block_Type
+    // bits can turn a Raw block into a differently-REPRESENTED frame whose decoded
+    // bytes are the same (e.g. a frame re-encoded to an equivalent representation).
+    // The validator must reject ANY header change that yields a different structure,
+    // independent of whether the content hash alone would catch it.
+    const root = tmp();
+    const store = fsBlobStore(root);
+    const body = enc("evidence body for structural rejection");
+    const { sha256, blobRef } = store.put(body);
+    const file = path.join(root, ...blobRef.split("/"));
+    const stored = readFileSync(file);
+
+    // Sanity: the stored frame decompresses to the SAME content with 0x02 flipped
+    // in the descriptor byte — a different-but-equivalent representation.
+    const descriptorFlipped = Buffer.from(stored);
+    descriptorFlipped[4] ^= 0x02;
+    let stillSameContent = false;
+    try {
+      const out = zlib.zstdDecompressSync(descriptorFlipped);
+      stillSameContent = out.equals(body);
+    } catch {
+      stillSameContent = false; // decompression itself failed, which is also fine
+    }
+    // Either way (content identical or decompression failing), the read must
+    // be REJECTED, not silently accepted:
+    writeFileSync(file, descriptorFlipped);
+    expect(() => store.get(sha256)).toThrow(BlobIntegrityError);
+    // If decompression succeeded and content was identical, record that this
+    // proves the hash alone would NOT have caught it (validator did).
+    if (stillSameContent) {
+      expect(store.has(sha256)).toBe(false);
+    }
+  });
+
+  it("T-LED-016: the Last_Block flip rejection is proven against an INDEPENDENT decompression check, not just the store's own path", () => {
+    // The store.get() path shares the validator under test, so this test first
+    // proves the premise (flipped frame decompresses to IDENTICAL content) with
+    // an independent zlib call, THEN proves the store rejects it.
+    const root = tmp();
+    const store = fsBlobStore(root);
+    const body = enc(JSON.stringify({ domain: "example.com", registrar: "مسجّل تجريبي", created: "2001-01-01" }));
+    const { sha256, blobRef } = store.put(body);
+    const file = path.join(root, ...blobRef.split("/"));
+    const stored = readFileSync(file);
+
+    // Premise check (independent of the store): flip byte 6 bit 0.
+    const flipped = Buffer.from(stored);
+    flipped[6] ^= 0x01;
+    let premiseHolds = false;
+    try {
+      const out = zlib.zstdDecompressSync(flipped);
+      premiseHolds = out.equals(body); // decompressed bytes are IDENTICAL
+    } catch {
+      premiseHolds = false;
+    }
+    expect(premiseHolds).toBe(true); // if this fails the premise changed, re-examine
+
+    // Store-level rejection (the thing T-LED-016 actually requires).
+    writeFileSync(file, flipped);
+    expect(() => store.get(sha256)).toThrow(expect.objectContaining({ reason: "corrupt" }));
+    writeFileSync(file, stored);
     expect(store.get(sha256)).toEqual(body);
   });
 

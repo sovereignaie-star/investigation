@@ -71,13 +71,15 @@ function parseZstdFrameHeader(buf: Uint8Array): ZstdFrameHeader {
   const fcsCode = (fhd >> 6) & 0b11;
   const singleSegment = (fhd >> 5) & 1;
   const checksum = (fhd >> 3) & 1;
+  // Dictionary_ID_flag is 1 bit; when set the Dictionary_ID field is exactly 4 bytes.
   const dictId = (fhd >> 2) & 1;
   // RFC 8878 Table: FCS field size; code 0 means "absent" EXCEPT when
   // Single_Segment_flag is set, in which case it is 1 byte.
   const fcsBytes = fcsCode === 0 ? (singleSegment ? 1 : 0) : fcsCode === 1 ? 2 : fcsCode === 2 ? 4 : 8;
-  // The frame header is: magic (4) + descriptor (1) + FCS + optional Dictionary_ID.
-  // `headerSize` below counts ONLY the bytes after the descriptor byte itself.
-  const headerSize = fcsBytes + (dictId ? 4 : 0);
+  // RFC 8878: Window_Descriptor (1 byte) is present ONLY when Single_Segment_flag = 0.
+  const windowDescriptorBytes = singleSegment ? 0 : 1;
+  // The frame header is: magic (4) + descriptor (1) + [Window_Descriptor if !SS] + FCS + optional Dictionary_ID.
+  const headerSize = windowDescriptorBytes + fcsBytes + (dictId ? 4 : 0);
   return { firstBlockOffset: 5 + headerSize, checksumLen: checksum ? 4 : 0 };
 }
 
@@ -93,7 +95,10 @@ function readZstdBlockHeader(buf: Uint8Array, offset: number, checksumLen: numbe
   const lastBlock = (b0 & 0b0000_0001) !== 0;
   // RFC 8878 Block_Type: 0 = Raw_Block, 1 = RLE_Block, 2 = Compressed_Block, 3 = Reserved.
   const blockType = (b0 >> 1) & 0b11;
-  const blockSize = (b0 >> 3) | (b1 << 5) | ((b2 & 0b0111_1111) << 13);
+  // Block_Size is bits 23:3 (21 bits); b2's bit 7 is the 21st bit. Valid zstd
+  // blocks are at most 128 KB (2^17) so that bit is never set in practice, but
+  // we read all 21 bits so a tampered value is compared exactly against the body.
+  const blockSize = (b0 >> 3) | (b1 << 5) | ((b2 & 0xff) << 13);
   if (blockType === 3 /* Reserved */) throw new Error("reserved block type");
   if (blockType === 1 /* RLE */) {
     // An RLE block is exactly ONE repeated byte; Block_Size is the
