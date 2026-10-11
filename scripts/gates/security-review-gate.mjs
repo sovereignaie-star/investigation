@@ -14,6 +14,7 @@ export const REVIEWER = Object.freeze({ login: "xuuux-voox", id: 334893315 });
 /** D-8 paths. Directories end with "/"; anything else is an exact file. Mirrored in .github/CODEOWNERS (tested). */
 export const D8_PATHS = Object.freeze([
   "packages/egress/",
+  "packages/transforms/",
   "apps/server/",
   "packages/store/",
   ".github/workflows/",

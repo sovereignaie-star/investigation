@@ -975,3 +975,13 @@
 - **ما قيس [مُقاس]:** 16 من 28 طلباً مدمجاً مسّت مسارات D-8.
 - **ما بقي [للتحقق]:** هل تكفي 0 موافقات مع «مراجعة مالكي الكود»؛ مصادر GitHub متعارضة، ويحتاج قياساً على فرع تجريبي بإذن المالك.
 - **ما لم يُفعل:** لم تتغير أي حماية، ولم يُسجَّل تطبيق، ولم يُدمج #42. دعوة المراجع ما زالت معلّقة.
+
+### 2026-10-11 — [P1-031] توسيع نطاق D-8 ليشمل `packages/transforms/` وفق النطاق المتفق عليه
+- **المنفّذ:** وكيل آلي (Perplexity Computer) بتفويض المالك.
+- **الحالة قبل التغيير [مُتحقَّق]:** مسارات D-8 في `D8_PATHS` وCODEOWNERS لا تشمل `packages/transforms/`، بينما `docs/security/REVIEW_SCOPE.md` (P1-031) ينص أن نطاق بيانات المحوّلات وسجلاتها يدخل في نطاق D-8، بما يشمل `packages/transforms/**/manifest.*`.
+- **ما تم:**
+  - إضافة `packages/transforms/` إلى `D8_PATHS` في `scripts/gates/security-review-gate.mjs` وإلى قائمة مراجعة D-8 في `.github/CODEOWNERS`.
+  - تشغيل اختبار التناسق `CODEOWNERS names the reviewer for every D-8 path` الذي يقارن القائمتين: ناجح ضمن 13/13 اختباراً في `security-review-gate.test.mjs`.
+- **الأدلة [مُقاس محلياً]:** `node --test scripts/gates/security-review-gate.test.mjs` => 13/13 (بما فيه اختبارا تطابق CODEOWNERS مع D8_PATHS في الاتجاهين).
+- **ما لم يتم:** اختيار آلية الفرض (تطبيق GitHub مستقل أو مراجعة مالكي الكود) يبقى قراراً للمالك (`docs/security/D8_ENFORCEMENT_OPTIONS.md`)، وتفعيل الفرض يتطلب تغيير حماية `main` وهذا محجوز للمالك. الفحص يبقى استشارياً.
+- **التالي:** إيداع مطابق للحوكمة ودفع هذا التحديث إلى فرع `ci/P1-031-security-review-gate` وتحديث PR #42.

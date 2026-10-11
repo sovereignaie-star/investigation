@@ -13,6 +13,7 @@
 # or native code-owner review after removing the catch-all lines) await the owner: docs/security/D8_ENFORCEMENT_OPTIONS.md.
 # Keep this list identical to D8_PATHS in that script (a unit test compares them).
 /packages/egress/                   @xuuux-voox @sovereignaie-star
+/packages/transforms/               @xuuux-voox @sovereignaie-star
 /apps/server/                       @xuuux-voox @sovereignaie-star
 /packages/store/                    @xuuux-voox @sovereignaie-star
 /.github/workflows/                 @xuuux-voox @sovereignaie-star
