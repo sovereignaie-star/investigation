@@ -1197,3 +1197,12 @@
 - **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
 - **الفرع:** `audit/P2-003-investigation`.
 - **ما تم:** جُلب `vitest.config.ts` من فرع `feat/P2-001-egress-adapter` (commit `89b666d`) ليدخل `packages/engine/src` و`packages/egress/src` في نطاق CORE.
+
+### 2026-10-12 — [P2-003] تدقيق مسارات الخروج في الخادم: فجوة /api/vault/:name/test موثقة
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation`.
+- **ما تم:** فحص `apps/server/src/routes/vault.ts` و`apps/server/src/lib/providers.ts`:
+  - `/api/lookup/*` مُقيَّد بمتغيرات البيئة (`lookupsEnabled`) + مصادقة admin + حد معدل — سليم.
+  - **فجوة موثقة:** `/api/vault/:name/test` (POST) يستدعي `testProviderKey()` الذي يستخدم `fetch` مباشرة إلى `https://ipinfo.io/8.8.8.8` و`https://www.virustotal.com/api/v3/...` **بلا** فحص `IR_OFFLINE` وبلا بوابة egress. المفتاح يُقرأ من الـ vault ولا يعود في الاستجابة (سليم)، لكن الوجهة ثابتة داخل الكود (hardcoded) والطلب يخرج مباشرة من الخادم. الفجوة نفسها تُوثَّق هنا ولا تُصلح في هذه الدورة لأن أي إصلاح يتطلب قرار المالك (بوابة egress حقيقية على الخادم، أو تعطيل المسار، أو قائمة مزودين مُدارة). لا يُوسَّع نطاق الاتصال العام بأي شكل.
+  - `apps/web/src/utils/resultFetcher.ts` يحتوي كود `fetch` مباشر غير مُستورد (D-5، موثق سابقاً) — لم يُلمس.
+- **الأدلة:** قراءة الكود المباشرة أعلاه. لا تغيير في `providers.ts` أو `vault.ts` في هذه الدورة (قرار معلَّق على المالك).
