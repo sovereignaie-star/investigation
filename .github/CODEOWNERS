@@ -6,9 +6,17 @@
 /scripts/governance/      @sovereignaie-star
 /.github/                 @sovereignaie-star
 /SECURITY.md              @sovereignaie-star
-# D-8 (owner decision, 2026-10-10): human review for security and egress paths. Scope: docs/security/REVIEW_SCOPE.md.
-# Enforcement in branch protection is pending the owner's choice there (self-approval is impossible today).
-/packages/egress/         @sovereignaie-star
-/apps/server/             @sovereignaie-star
-/packages/store/          @sovereignaie-star
-/scripts/gates/           @sovereignaie-star
+# D-8 (owner decision, 2026-10-10; reviewer approved by the owner: @xuuux-voox). Security and egress paths.
+# CODEOWNERS is last-match-wins, so these lines come after the broader ones above and keep the owner listed.
+# Not enforced yet: the Actions check `security-review-advisory` (P1-031) is advisory, because any same-repository
+# workflow can publish a result under the github-actions app. The tamper-resistant options (a separate GitHub App,
+# or native code-owner review after removing the catch-all lines) await the owner: docs/security/D8_ENFORCEMENT_OPTIONS.md.
+# Keep this list identical to D8_PATHS in that script (a unit test compares them).
+/packages/egress/                   @xuuux-voox @sovereignaie-star
+/packages/transforms/               @xuuux-voox @sovereignaie-star
+/apps/server/                       @xuuux-voox @sovereignaie-star
+/packages/store/                    @xuuux-voox @sovereignaie-star
+/.github/workflows/                 @xuuux-voox @sovereignaie-star
+/scripts/gates/                     @xuuux-voox @sovereignaie-star
+/.github/CODEOWNERS                 @xuuux-voox @sovereignaie-star
+/docs/adr/ADR-08-egress-gateway.md  @xuuux-voox @sovereignaie-star
