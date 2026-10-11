@@ -1083,3 +1083,9 @@
 - **الفرع:** `test/d8-enforcement-review` (قاعدته `test/d8-enforcement` — فرع تجريبي محمي).
 - **التغيير:** إضافة سطر تعليقي في `apps/server/src/lib/logger.ts` — ملف داخل مسار code-owner للمراجع @xuuux-voox.
 - **الغرض:** طلب مراجعة رسمي من @xuuux-voox وتوثيق استجابته الفعلية من GitHub.
+
+### 2026-10-11 — [P1-031] اختبار تطبيق D-8 — المرحلة 2: إيداع جديد بعد الموافقة الفعلية
+- **المنفّذ:** وكيل آلي (Perplexity Computer). **فرع تجريبي فقط — لا يُدمج.**
+- **الحالة قبل هذا الإيداع:** موافقة فعلية من @xuuux-voox على الرأس e9cabbb772edba053d15a9fa43fb2f23a9e201d7، مسجلة 2026-10-11T15:59:07Z، حالة GitHub: review=APPROVED state=CLEAN.
+- **هذا الإيداع:** تغيير جديد في نفس الملف داخل مسار D-8 (apps/server/src/lib/logger.ts). **الغرض:** إثبات أن الموافقة القديمة تُلغى (dismiss_stale_reviews=true) وأن GitHub يطلب مراجعة جديدة.
+- **ما سيُوثّق بعد هذا الإيداع:** حالة reviewDecision الجديدة من GitHub، ورسالة رفض الدمج الفعلية من API (HTTP status + رسالة).

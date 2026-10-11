@@ -18,3 +18,4 @@ export const logger = pino({
       }),
 });
 // D-8 review request test comment [P1-031]
+// Phase 2: NEW commit AFTER approval — this must DISMISS the stale review [P1-031]
