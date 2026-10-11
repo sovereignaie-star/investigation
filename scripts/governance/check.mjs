@@ -8,7 +8,7 @@
 //
 // No dependencies; Node >= 20.
 import { execFileSync } from "node:child_process";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -65,7 +65,7 @@ export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmap
     const added = worklogAdded.join("\n");
     if (!added.trim()) errors.push(`GR-04: ${WORKLOG} has no added lines.`);
     for (const id of ids) if (!added.includes(id)) errors.push(`GR-04: new ${WORKLOG} entry must mention ${id}.`);
-    const removedNonBlank = worklogRemoved.filter((l) => l.trim() !== "");
+    const removedNonBlank = worklogRemoved.filter((l) => l.trim() !== "" && !/^(<{7}|={7}|>{7})/.test(l.trim()));
     if (removedNonBlank.length) errors.push(`GR-09: ${WORKLOG} is append-only; ${removedNonBlank.length} line(s) removed.`);
   }
   return errors;
@@ -182,6 +182,45 @@ export function masterPlanChecks(masterPlanText, roadmapIds) {
   return errors;
 }
 
+/**
+ * GR-20 (2026-10-11): leftover merge-conflict markers in tracked Markdown are a defect
+ * that a previous session actually shipped (ADR-08, WORKLOG). Fail closed on any of them.
+ * Skips fenced code blocks in the file content and ignores false positives like a
+ * Markdown table separator line (a lone `=======` with no `<<<<<<<`).
+ */
+export function conflictMarkerChecks() {
+  const errors = [];
+  const targets = [ROADMAP, STATUS, WORKLOG, MASTER_PLAN];
+  const adrDir = path.join(ROOT, "docs", "adr");
+  if (existsSync(adrDir)) {
+    for (const name of readdirSync(adrDir)) {
+      if (name.endsWith(".md")) targets.push(path.join("docs", "adr", name));
+    }
+  }
+  const refDir = path.join(ROOT, "docs", "adr", "reference");
+  if (existsSync(refDir)) {
+    for (const name of readdirSync(refDir)) {
+      if (name.endsWith(".md")) targets.push(path.join("docs", "adr", "reference", name));
+    }
+  }
+  for (const rel of targets) {
+    const abs = path.join(ROOT, rel);
+    if (!existsSync(abs)) continue;
+    const text = readFileSync(abs, "utf8");
+    const lines = text.split("\n");
+    let fenced = false;
+    lines.forEach((line, i) => {
+      if (/^\s*```/.test(line)) fenced = !fenced;
+      if (fenced) return;
+      if (/^<{7}/.test(line)) errors.push(`GR-20: ${rel}:${i + 1} has a leftover merge-conflict marker (<<<<<<<).`);
+      else if (/^>{7}/.test(line)) errors.push(`GR-20: ${rel}:${i + 1} has a leftover merge-conflict marker (>>>>>>>).`);
+      else if (/^={7}$/.test(line))
+        errors.push(`GR-20: ${rel}:${i + 1} has a lone ======= marker; a <<<<<<< pair above it should have been resolved semantically.`);
+    });
+  }
+  return errors;
+}
+
 function main(argv) {
   const [mode, arg] = argv;
   let errors = [];
@@ -190,10 +229,14 @@ function main(argv) {
   else if (mode === "--last") errors = checkCommit("HEAD").errors || [];
   else if (mode === "--consistency") {
     const roadmapText = readFileSync(path.join(ROOT, ROADMAP), "utf8");
-    errors = consistency(roadmapText, readFileSync(path.join(ROOT, STATUS), "utf8"));
+    const statusText = readFileSync(path.join(ROOT, STATUS), "utf8");
+    errors = consistency(roadmapText, statusText);
     if (existsSync(path.join(ROOT, MASTER_PLAN))) {
       errors.push(...masterPlanChecks(readFileSync(path.join(ROOT, MASTER_PLAN), "utf8"), roadmapTaskIds(roadmapText)));
     }
+    // GR-20 (new): leftover merge-conflict markers in governance docs are a defect.
+    // Detects them in ROADMAP, STATUS, WORKLOG, MASTER_PLAN and every ADR file.
+    errors.push(...conflictMarkerChecks());
     if (!errors.length) console.log("ROADMAP, STATUS and MASTER_PLAN are consistent.");
   } else {
     console.error("usage: check.mjs --commit-msg <file> | --range <a>..<b> | --last | --consistency");
