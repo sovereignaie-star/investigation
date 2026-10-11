@@ -400,6 +400,6 @@
 | D-049 | عالٍ | مفتوح (مخفف) | P1-030: `/api/lookup/*` معطلة افتراضياً؛ السياسة (غرض وموافقة) مع P2-013 |
 | D-050 | متوسط | مفتوح جزئياً | P1-017 + P1-018: سجل التدقيق وغرض القضية منفّذان؛ تمييز الأشخاص الطبيعيين يأتي مع P2-013 |
 | D-051 | عالٍ | مُصلح | P1-022: incremental merge index, invalidated on revert or late alias; D-051 tests fail on the old code |
-| D-052 | عالٍ | مُصلح | P1-028: meta + case.created + audit in one transaction; IncompleteCaseError; `ir verify` checks purpose; 4 D-052 tests fail on the old code |
+| D-052 | عالٍ | مُصلح | P1-028: meta + case.created + audit in one transaction; IncompleteCaseError; `ir verify` checks purpose; 4 D-052 tests fail on the old code | D-052 timeout (item 8): environmental, diagnosed 2026-10-11 — 40 sequential encrypted creations exceed vitest 5s on slow CI (6672ms); owner decision pending on fix option
 | D-053 | متوسط | مُصلح | P1-027 (PR #38): مهلة صريحة 30 ث ورسالة فشل؛ خمسة تشغيلات `gates` متتالية خضراء على `main` عند `bf114ec`؛ أبطأ اختبار 7,984 ms، واختبار الـ 600 حدث بلغ 4,953 ms |
 | D-054 | عالٍ | مُصلح (فرز كامل) | P1-029 (PR #39): بعد الدمج 4 تنبيهات مفتوحة فقط، كلها في السجل؛ كل تنبيه حرج وعالٍ له قرار ودليل؛ 11 مُصلحة، و#54 (`braces`) استثناء حتى 2026-10-17؛ و3 متوسطة أو منخفضة مؤجلة بسبب موثق |
