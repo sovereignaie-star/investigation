@@ -38,11 +38,97 @@ function zstd(): Zstd {
   return { compress: z.zstdCompressSync, decompress: z.zstdDecompressSync };
 }
 
+/**
+ * Strict structural validation of a zstd frame BEFORE decompression (T-LED-016).
+ *
+ * Why: zstd's per-block header keeps a `Last_Block` flag, and a single-block frame
+ * decompresses to the SAME bytes even when that flag is flipped, so a content hash
+ * alone cannot see the tampering. We therefore parse the frame ourselves and reject:
+ *  - a wrong magic number,
+ *  - a block header that claims `Last_Block` on a block that is not the last one we
+ *    can walk to (or vice versa: a mid-stream block marked last),
+ *  - a block size larger than the remaining bytes,
+ *  - trailing bytes after the final block.
+ * This makes any single-byte change to the frame header (including the `Last_Block`
+ * bit) a `corrupt` rejection, instead of a silent identical-content success.
+ */
+/** Parsed zstd frame header: where the first block starts and how long the trailing checksum is. */
+type ZstdFrameHeader = { firstBlockOffset: number; checksumLen: number };
+
+/** Validates the 4-byte magic and parses the frame-header descriptor (RFC 8878). */
+function parseZstdFrameHeader(buf: Uint8Array): ZstdFrameHeader {
+  const MIN = 5; // 4-byte magic + the descriptor byte
+  if (buf.length < MIN) throw new Error("frame too short");
+  // Magic: 0xFD2FB528 little-endian => bytes 28 B5 2F FD
+  if (buf[0] !== 0x28 || buf[1] !== 0xb5 || buf[2] !== 0x2f || buf[3] !== 0xfd) {
+    throw new Error("bad magic");
+  }
+  // Frame_Header_Descriptor (byte 4) per RFC 8878:
+  //   bits [7:6] Frame_Content_Size_code, bit [5] Single_Segment_flag,
+  //   bit [4] (unused), bit [3] Content_Checksum_flag, bit [2] Dictionary_ID_flag,
+  //   bits [1:0] Frame_Header_Size_code.
+  const fhd = buf[4];
+  const fcsCode = (fhd >> 6) & 0b11;
+  const singleSegment = (fhd >> 5) & 1;
+  const checksum = (fhd >> 3) & 1;
+  const dictId = (fhd >> 2) & 1;
+  // RFC 8878 Table: FCS field size; code 0 means "absent" EXCEPT when
+  // Single_Segment_flag is set, in which case it is 1 byte.
+  const fcsBytes = fcsCode === 0 ? (singleSegment ? 1 : 0) : fcsCode === 1 ? 2 : fcsCode === 2 ? 4 : 8;
+  // The frame header is: magic (4) + descriptor (1) + FCS + optional Dictionary_ID.
+  // `headerSize` below counts ONLY the bytes after the descriptor byte itself.
+  const headerSize = fcsBytes + (dictId ? 4 : 0);
+  return { firstBlockOffset: 5 + headerSize, checksumLen: checksum ? 4 : 0 };
+}
+
+/**
+ * Reads one 3-byte block header and returns its parts plus the number of stored
+ * body bytes that follow it (RLE blocks store exactly one byte).
+ */
+function readZstdBlockHeader(buf: Uint8Array, offset: number, checksumLen: number): { lastBlock: boolean; storedBytes: number } {
+  if (offset + 3 > buf.length) throw new Error("truncated block header");
+  const b0 = buf[offset];
+  const b1 = buf[offset + 1];
+  const b2 = buf[offset + 2];
+  const lastBlock = (b0 & 0b0000_0001) !== 0;
+  // RFC 8878 Block_Type: 0 = Raw_Block, 1 = RLE_Block, 2 = Compressed_Block, 3 = Reserved.
+  const blockType = (b0 >> 1) & 0b11;
+  const blockSize = (b0 >> 3) | (b1 << 5) | ((b2 & 0b0111_1111) << 13);
+  if (blockType === 3 /* Reserved */) throw new Error("reserved block type");
+  if (blockType === 1 /* RLE */) {
+    // An RLE block is exactly ONE repeated byte; Block_Size is the
+    // DECOMPRESSED size it expands to, not the number of stored bytes.
+    return { lastBlock, storedBytes: 1 };
+  }
+  // Raw (0) or Compressed (2): the block body is `blockSize` bytes.
+  if (offset + 3 + blockSize + checksumLen > buf.length) throw new Error("truncated block body");
+  return { lastBlock, storedBytes: blockSize };
+}
+
+function assertZstdFrameIntact(buf: Uint8Array): void {
+  const { firstBlockOffset, checksumLen } = parseZstdFrameHeader(buf);
+  // Walk every block until one says Last_Block, then require no trailing bytes.
+  let offset = firstBlockOffset;
+  let guard = 0;
+  for (;;) {
+    const { lastBlock, storedBytes } = readZstdBlockHeader(buf, offset, checksumLen);
+    offset += 3 + storedBytes;
+    if (lastBlock) {
+      if (offset + checksumLen !== buf.length) {
+        throw new Error("trailing bytes after the final block");
+      }
+      return;
+    }
+    if (++guard > 1_000_000) throw new Error("too many blocks");
+  }
+}
+
 /** Shared read path: decompress, re-hash, compare. Any failure is an integrity error, never silent data. */
 function verified(sha256: string, compressed: Uint8Array | undefined): Uint8Array {
   if (!compressed) throw new BlobIntegrityError(sha256, "missing");
   let raw: Uint8Array;
   try {
+    assertZstdFrameIntact(compressed);
     raw = new Uint8Array(zstd().decompress(compressed));
   } catch {
     throw new BlobIntegrityError(sha256, "corrupt");

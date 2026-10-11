@@ -54,6 +54,47 @@ describe("content-addressed blob store (P1-010)", () => {
     expect(store.get(sha256)).toEqual(body);
   });
 
+  it("T-LED-016: flipping the zstd Last_Block bit is rejected as corrupt even though the decompressed content is identical", () => {
+    // Root cause this test pins: zstd's per-block `Last_Block` flag does not change the
+    // decompressed bytes, so a content hash alone CANNOT see this tampering. The frame
+    // validator must reject it structurally. Same for the frame magic and a truncated
+    // frame: each must fail closed even before the hash comparison runs.
+    const root = tmp();
+    const store = fsBlobStore(root);
+    const body = enc(JSON.stringify({ domain: "example.com", registrar: "مسجّل تجريبي", created: "2001-01-01" }));
+    const { sha256 } = store.put(body);
+    const file = path.join(root, ...store.put(enc("probe")).blobRef.split("/"));
+    void file;
+    const target = path.join(root, "blobs", sha256.slice(0, 2), sha256);
+    const original = readFileSync(target);
+
+    // (1) Flip the Last_Block bit in the first block header (byte 6, bit 0).
+    // The decompressed bytes are IDENTICAL, so only the frame check can catch it.
+    const lastBlockFlipped = Buffer.from(original);
+    lastBlockFlipped[6] ^= 0x01;
+    writeFileSync(target, lastBlockFlipped);
+    expect(() => store.get(sha256)).toThrow(expect.objectContaining({ reason: "corrupt" }));
+
+    // (2) Corrupt the frame magic: must be corrupt, not mismatch.
+    const magicFlipped = Buffer.from(original);
+    magicFlipped[0] ^= 0xff;
+    writeFileSync(target, magicFlipped);
+    expect(() => store.get(sha256)).toThrow(expect.objectContaining({ reason: "corrupt" }));
+
+    // (3) Truncate the frame mid-body: corrupt, not missing.
+    writeFileSync(target, original.subarray(0, Math.max(6, Math.floor(original.length / 2))));
+    expect(() => store.get(sha256)).toThrow(expect.objectContaining({ reason: "corrupt" }));
+
+    // (4) Append trailing bytes after the final block: corrupt.
+    const trailing = Buffer.concat([original, Buffer.from([0x00, 0x01])]);
+    writeFileSync(target, trailing);
+    expect(() => store.get(sha256)).toThrow(expect.objectContaining({ reason: "corrupt" }));
+
+    // (5) Restore: the read succeeds again — the validator does not reject good frames.
+    writeFileSync(target, original);
+    expect(store.get(sha256)).toEqual(body);
+  });
+
   it("T-LED-016: a blob replaced by other valid content, or missing, is rejected with its reason", () => {
     const store = memoryBlobStore();
     const a = store.put(enc("evidence A"));
