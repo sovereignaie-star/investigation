@@ -1181,3 +1181,9 @@
 - **الأدلة:** `corepack pnpm vitest run packages/egress` → 193/193 ناجح. `corepack pnpm typecheck` → نظيف. `corepack pnpm lint` → نظيف. `node scripts/governance/check.mjs --consistency` → consistent.
 - **ما لم يُنفّذ بعد:** محوّل المحرك (P2-001) إلى البوابة، تعديل ADR-08 §4 لتوحيد موقف 192.0.0.9/10 مع الكود، دمج `packages/egress` في نطاق تغطية G-13، CI تشغيل فعلي على GitHub Actions.
 - **الالتزامات الحاكمة:** لا دفع مباشر إلى main، لا force push، لا --no-verify، لا دمج PR.
+
+### 2026-10-12 — [P2-003] توثيق استثناءات أطول بادئة في ADR-08 §4
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation`.
+- **ما تم:** أضيفت فقرة موثقة في `docs/adr/ADR-08-egress-gateway.md` §4 تشرح أن `192.0.0.9/32` و`192.0.0.10/32` صفوف IANA مستقلة بقيمة GR=True فتُقبل بقاعدة أطول بادئة، مع ذكر `192.175.48.0/24` كقرار سياسة أمنية موثق.
+- **الأدلة:** `node scripts/governance/check.mjs --consistency` → consistent.
