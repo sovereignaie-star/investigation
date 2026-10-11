@@ -9,6 +9,7 @@
     "./providers": "./src/providers/index.ts"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }

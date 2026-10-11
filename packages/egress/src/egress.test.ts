@@ -21,14 +21,23 @@ function fakeTransport(
   return t;
 }
 
-const BASE = {
+interface TestBase {
+  caseId: string;
+  purposeRef: string;
+  transform: string;
+  url: string;
+  sends: string[];
+  sensitivity: string;
+}
+
+const BASE: TestBase = {
   caseId: "c1",
   purposeRef: "p1",
   transform: "web.fetch@1",
   url: "https://example.com/x",
   sends: ["domain"],
   sensitivity: "normal",
-} as const;
+};
 
 function gateway(resolver: DnsResolver, transport: EgressTransport, offline = false) {
   return createEgressGateway({ resolver, transport, offline });

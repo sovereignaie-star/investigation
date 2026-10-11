@@ -1,10 +1,12 @@
-export { createEgressGateway } from "./egress";
+export { createEgressGateway, EGRESS_DENY_CODE } from "./egress";
 export type {
   EgressRequest,
   EgressResult,
   EgressOptions,
   DnsResolver,
   EgressTransport,
+  EgressAuditSink,
+  EgressAuditEvent,
   EgressDenyCode,
   EgressReason,
   EgressLimits,

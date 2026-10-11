@@ -52,12 +52,14 @@ const V4: Array<[string, AddressClass]> = [
   ["172.16.0.0/12", "private"],
   ["192.0.0.0/24", "reserved"], // IETF Protocol Assignments
   ["192.0.0.0/29", "reserved"], // IPv4 Service Continuity
-  ["192.0.0.9/32", "reserved"], // Port Control Protocol Anycast
-  ["192.0.0.10/32", "reserved"], // Traversal Using Relays around NAT Anycast
+  // GR=True per IANA snapshot; longest-prefix wins over the /24 above.
+  ["192.0.0.9/32", "public"], // Port Control Protocol Anycast
+  ["192.0.0.10/32", "public"], // Traversal Using Relays around NAT Anycast
   ["192.0.2.0/24", "reserved"], // TEST-NET-1
-  ["192.31.196.0/24", "reserved"], // AS112
-  ["192.52.193.0/24", "reserved"], // AMT
+  ["192.31.196.0/24", "public"], // AS112 — GR=True
+  ["192.52.193.0/24", "public"], // AMT — GR=True
   ["192.88.99.0/24", "reserved"], // 6to4 Relay Anycast (deprecated)
+  ["192.175.48.0/24", "reserved"], // AS112 v4 anycast — v6 counterpart is a policy refusal (see V6)
   ["192.168.0.0/16", "private"],
   ["198.18.0.0/15", "reserved"], // Benchmarking
   ["198.51.100.0/24", "reserved"], // TEST-NET-2

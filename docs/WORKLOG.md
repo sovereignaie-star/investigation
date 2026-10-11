@@ -1157,3 +1157,27 @@
 - **الأدلة:** `node scripts/governance/check.mjs --consistency` → `ROADMAP, STATUS and MASTER_PLAN are consistent.`
 - **ما لم يُنفذ بعد:** تحقّق وقت التشغيل للبوابة، حدود مهلة/معدل، سقف حجم تدفقي، اختبار IANA التفاضلي، منفذ تدقيق، محوّل المحرك. لا يوجد commit/PR/فرع جديد لهذه الأعمال بعد.
 - **التالي:** تنفيذ تحقّق وقت التشغيل في `egress.ts` ثم حدود المهلة/المعدل/الحجم التدفقي.
+
+### 2026-10-12 — [P2-003] تحقّق وقت التشغيل + حدود فعلية + اختبار تفاضلي IANA + منفذ تدقيق
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation` (رأس `c0c5d50` = رأس PR #47).
+- **ما تم:**
+  - `packages/egress/src/egress.ts` أعيدت كتابته لينفّذ فعلياً:
+    - تحقّق وقت تشغيل لعقد الطلب (رفض الحقول المجهولة، الأنواع الخاطئة، الحقول الإلزامية الناقصة) قبل أي DNS.
+    - مهلة كلية + مهلة اتصال لكل hop مع AbortController يُمرَّر للنقل.
+    - حد معدل لكل مضيف (token bucket قابل للاختبار بساعة وهمية).
+    - سقف حجم استجابة (يقرأ contentLength المُبلَّغ، ويرفض قبل تجميع الجسم كاملاً).
+    - تثبيت مضيف (pinnedHost) يرفض الطلب/التحويلات خارج النطاق، وربط السر بـ secretProvider.
+    - منفذ تدقيق `EgressAuditSink` يسجّل المقبول/المرفوض/أخطاء الشبكة/المهلات/حد المعدل/تجاوز الحجم، مع إخفاء السر كـ digest (لا يُسجَّل النص الخام).
+    - تصنيف عنوان IP حرفي مباشر بلا DNS (يصلح اختبار `https://[::1]/x` الذي كان ينجح بسبب قائمة DNS فارغة).
+    - إعادة فحص التحويلات: تُعاد فحوص scheme/port/credentials و pinnedHost.
+  - `packages/egress/src/address-policy.ts`: أضيفت القواعد للكتل الأربع GR=True (192.0.0.9/32، 192.0.0.10/32، 192.31.196.0/24، 192.52.193.0/24) وكتلة AS112 v4 anycast (192.175.48.0/24) كقرار سياسة موثق. ADR-08 §4 يبقى يذكر 192.0.0.9/10 كقرار سياسة مستقل — يجب توحيده لاحقاً.
+  - `packages/egress/src/iana-differential.test.ts` (جديد): اختبار تفاضلي آلي بين مصنّف الكود وملفات IANA CSV؛ يفشل إذا انحرف الكود عن المرجع بلا قرار سياسة موثق (52 اختباراً).
+  - `packages/egress/src/egress-limits.test.ts` (جديد): 30 اختباراً على الحدود الفعلية (ساعة وهمية، transport قابل للتحكم، منفذ تدقيق وهمي).
+  - `packages/egress/tsconfig.json` (جديد) + `package.json`: سكربت `typecheck`.
+  - `packages/egress/src/index.ts`: صُدِّر `EGRESS_DENY_CODE` و `EgressAuditSink`/`EgressAuditEvent`/`EgressDenyCode` (توافق خلفي).
+  - `packages/egress/src/{egress,address-policy,iana-differential,egress-limits}.test.ts`: `BASE` صار نوعاً واضحاً بدل `as const` ليصلح typecheck.
+  - تنظيف صفوف `P2-003` المكررة في `docs/STATUS.md` (7 → 1) وتحديث الحالة إلى `in_progress`.
+- **الأدلة:** `corepack pnpm vitest run packages/egress` → 193/193 ناجح. `corepack pnpm typecheck` → نظيف. `corepack pnpm lint` → نظيف. `node scripts/governance/check.mjs --consistency` → consistent.
+- **ما لم يُنفّذ بعد:** محوّل المحرك (P2-001) إلى البوابة، تعديل ADR-08 §4 لتوحيد موقف 192.0.0.9/10 مع الكود، دمج `packages/egress` في نطاق تغطية G-13، CI تشغيل فعلي على GitHub Actions.
+- **الالتزامات الحاكمة:** لا دفع مباشر إلى main، لا force push، لا --no-verify، لا دمج PR.
