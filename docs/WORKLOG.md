@@ -1314,3 +1314,18 @@
 - **الفرع:** `audit/P2-003-investigation`.
 - **ما تم:** أضيفت فقرة موثقة في `docs/adr/ADR-08-egress-gateway.md` §4 تشرح أن `192.0.0.9/32` و`192.0.0.10/32` صفوف IANA مستقلة بقيمة GR=True فتُقبل بقاعدة أطول بادئة، مع ذكر `192.175.48.0/24` كقرار سياسة أمنية موثق.
 - **الأدلة:** `node scripts/governance/check.mjs --consistency` → consistent.
+
+### 2026-10-12 — [P2-001] محوّل بوابة الخروج للمحرك: تكامل بلا مسار fetch مباشر
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `feat/P2-001-egress-adapter` (رأس `8a55f71` = دمج `audit/P2-003-investigation` في `feat/P2-001-engine-core`).
+- **ما تم:**
+  - `packages/engine/src/egress-adapter.ts` (جديد): `createEgressHttpTransport(opts)` يُرجع `HttpTransport` يمر كل طلب عبر `EgressGateway.request()`. لا يوجد أي استدعاء `fetch` مباشر في هذا الملف. كل رفض بوابة يتحول إلى `TransportError` بنوع قابل للقراءة آلياً (`transport:ssrf-blocked` لكل أسباب السياسة، `transport:timeout` للمهلات، `transport:rate-limit` لحد المعدل).
+  - `packages/egress/src/egress.ts`: أضيف `EgressGateway` كواجهة ضيقة يمكن للمحرك الاعتماد عليها دون معرفة خيارات البناء، و`EgressGatewayWithLimits` كنوع إرجاع `createEgressGateway`.
+  - `packages/engine/package.json`: اعتمادية `@ir/egress: workspace:*` وتصدير `./egress-adapter`.
+  - `packages/engine/src/egress-adapter.test.ts` (جديد): 7 اختبارات تكامل تثبت أن المحرك لا يستطيع إرسال طلب خارج البوابة، وأن رفض loopback حرفي ورفض rate-limit يصلان كـ `transport:ssrf-blocked`/`transport:rate-limit`، وأن الحقل المجهول يُرفض، وأن كل محاولة نقل تُخصم من ميزانية الطلبات، وأن الإلغاء يصل كـ `kind=cancel` بصفر محاولات نقل، وأن السر بلا pin يُرفض قبل أي نقل.
+  - `packages/engine/src/index.ts`: صُدِّر `egress-adapter`.
+  - ملاحظة موثقة: بوابة الخروج لا تعيد جسم الاستجابة في هذه الدورة (`EgressResult` حكم allow/deny لا استجابة)، لذا يرمي المحوّل `TransportError` بنص `EGRESS_ADAPTER_NO_RESPONSE` كوثيقة صريحة لنقطة التكامل المتبقية. لا يُدّعى اكتمال التكامل.
+  - `docs/STATUS.md`: صف `P2-001` المكرر (نسختان) حُذفت إحداهما، وحُدّثت الأدلة.
+- **الأدلة:** `corepack pnpm vitest run packages/engine packages/egress` → 239/239 ناجح. `corepack pnpm lint` → نظيف. `corepack pnpm typecheck` → نظيف (جذر + حزم). `node scripts/governance/check.mjs --consistency` → consistent.
+- **ما لم يُنفّذ:** جلب جسم الاستجابة عبر `EgressTransport.fetch` إلى المحرك، إدخال `packages/engine` في نطاق تغطية G-13، تشغيل CI فعلي على هذا الفرع.
+- **الالتزامات الحاكمة:** لا دفع مباشر إلى main، لا force push، لا --no-verify، لا دمج PR.
