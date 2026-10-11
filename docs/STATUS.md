@@ -403,3 +403,4 @@
 | D-052 | عالٍ | مُصلح | P1-028: meta + case.created + audit in one transaction; IncompleteCaseError; `ir verify` checks purpose; 4 D-052 tests fail on the old code | D-052 measurement corrected 2026-10-11: original test unmodified, encrypted variant avg 278ms local, no failure locally; CI failure cause unproven (hypothesis: slow runner or resource contention); owner decision pending — 40 sequential encrypted creations exceed vitest 5s on slow CI (6672ms); owner decision pending on fix option
 | D-053 | متوسط | مُصلح | P1-027 (PR #38): مهلة صريحة 30 ث ورسالة فشل؛ خمسة تشغيلات `gates` متتالية خضراء على `main` عند `bf114ec`؛ أبطأ اختبار 7,984 ms، واختبار الـ 600 حدث بلغ 4,953 ms |
 | D-054 | عالٍ | مُصلح (فرز كامل) | P1-029 (PR #39): بعد الدمج 4 تنبيهات مفتوحة فقط، كلها في السجل؛ كل تنبيه حرج وعالٍ له قرار ودليل؛ 11 مُصلحة، و#54 (`braces`) استثناء حتى 2026-10-17؛ و3 متوسطة أو منخفضة مؤجلة بسبب موثق |
+
