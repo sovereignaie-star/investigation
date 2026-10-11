@@ -1148,3 +1148,12 @@
   - `address-policy.test.ts`: 78 اختباراً (حالات IPv4/IPv6 الحدّية، strict parsing، embedded IPv4، NAT64، Teredo).
 - **الفحوص المحلية:** `pnpm vitest run packages/egress` → **111/111**. `pnpm lint` → 0 أخطاء. `node scripts/governance/check.mjs --consistency` → متسقة.
 - **الحدود:** **لا يوجد مسار شبكي حقيقي**. ADR-08 لا يزال `proposed — validation complete, owner decision pending`. لا يُدمج على main دون قرار المالك.
+
+### 2026-10-12 — [P2-003] دورة تنفيذ بوابة الخروج على فرع `audit/P2-003-investigation` (رأس `c0c5d50`)
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **ما تم (حتى الآن):**
+  - تنظيف تكرار صفوف `P2-003` في `docs/STATUS.md` (7 نسخ → 1 صف موحّد) وتحديث عمودي `آخر تحديث` و`المرحلة الحالية` ليعكسا الواقع: كود موجود على الفروع ولم يُدمج على `main`، و`ADR-08` يبقى `proposed — validation complete, owner decision pending`.
+  - تحديث `scripts/governance/check.mjs --consistency` يعمل بعد كل تغيير.
+- **الأدلة:** `node scripts/governance/check.mjs --consistency` → `ROADMAP, STATUS and MASTER_PLAN are consistent.`
+- **ما لم يُنفذ بعد:** تحقّق وقت التشغيل للبوابة، حدود مهلة/معدل، سقف حجم تدفقي، اختبار IANA التفاضلي، منفذ تدقيق، محوّل المحرك. لا يوجد commit/PR/فرع جديد لهذه الأعمال بعد.
+- **التالي:** تنفيذ تحقّق وقت التشغيل في `egress.ts` ثم حدود المهلة/المعدل/الحجم التدفقي.
