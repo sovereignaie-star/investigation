@@ -34,7 +34,7 @@
 | 44 | متوسط | `baseline-browser-mapping` | أدوات البناء | إصلاح: `2.10.28` -> `2.11.28` |
 | 57 | متوسط | `fast-copy` | `pino-pretty` (تطوير) | إصلاح: `4.0.3` -> `4.1.2` |
 | 58 | متوسط | `postcss-selector-parser` | `@tailwindcss/typography@0.5.20` في `@ir/web` (بناء) | مؤجل: الإصدار مقيد بـ `^6` في الحزمة الأم؛ إعادة مراجعة مع تحديث `@tailwindcss/typography` |
-| 4 | منخفض | `esbuild` | `@ir/server` و`@ir/cli` (بناء) | **مُصلح** (فرع fix/P1-029-esbuild-override): رُفع الـ override في `pnpm-workspace.yaml` من `0.27.3` إلى `0.28.2` (الإصدار الذي تطلبه `package.json` بالفعل، وأحدث إصدار منشور)، فانطبق الإصدار المُصلح `0.28.1` فأحدث على القفل؛ أزيل التعارض بين الـ override والتصريح |
+| 4 | منخفض | `esbuild` | مساحة العمل كاملة عبر الـ override (مباشرة: `@ir/server` و`@ir/cli`؛ وعابرة: `orval` عبر `@workspace/api-spec`، و`drizzle-kit` عبر `@workspace/db`، و`esbuild-plugin-pino`) | **إصلاح مُعدّ ينتظر الفحوص والمراجعة** (فرع `fix/P1-029-esbuild-override`، PR #49): رُفع الـ override من `0.27.3` إلى `0.28.2` (ما تطلبه `package.json` بالفعل وأحدث إصدار منشور)، فانطبق الإصدار المُصلح فأحدث على القفل وزال التعارض؛ لا يُغلق التنبيه إلا بعد الدمج |
 | 5 | منخفض | `@babel/core` | `@vitejs/plugin-react` (بناء) | مؤجل: `7.29.6` و`7.29.7` منشوران وضمن النطاق `^7.29.0`، لكن `pnpm update -r --depth Infinity @babel/core` أبقى `7.29.0` [مُقاس]؛ السبب [للتحقق]. إعادة مراجعة مع تحديث `@vitejs/plugin-react` أو عبر override صريح في مهمة لاحقة |
 
 ### التحقق
