@@ -1187,3 +1187,8 @@
 - **الفرع:** `audit/P2-003-investigation`.
 - **ما تم:** أضيفت فقرة موثقة في `docs/adr/ADR-08-egress-gateway.md` §4 تشرح أن `192.0.0.9/32` و`192.0.0.10/32` صفوف IANA مستقلة بقيمة GR=True فتُقبل بقاعدة أطول بادئة، مع ذكر `192.175.48.0/24` كقرار سياسة أمنية موثق.
 - **الأدلة:** `node scripts/governance/check.mjs --consistency` → consistent.
+
+### 2026-10-12 — [P2-003] تطبيق إصلاح @types/node على فرع بوابة الخروج
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation` (سيُعاد تطبيقه على `feat/P2-001-egress-adapter` لاحقاً).
+- **ما تم:** جُلبت تغييرات `packages/egress/package.json` و`pnpm-lock.yaml` من فرع `feat/P2-001-egress-adapter` (commit `d007879`) إلى هذا الفرع ليتطابقا.
