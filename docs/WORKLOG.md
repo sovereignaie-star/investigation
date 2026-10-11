@@ -1335,3 +1335,12 @@
 - **الفرع:** `feat/P2-001-egress-adapter` (سيُعاد تطبيقه على `audit/P2-003-investigation` في commit تالٍ).
 - **ما تم:** فحص CI على PR #60 كشف أن سكربت `typecheck` الجديد في `packages/egress/package.json` يفشل في CI لأن `@types/node` غير مثبت (tsconfig يحتاج `types: [\"node\"]`). أضيفت `@types/node: catalog:` إلى `devDependencies` في `packages/egress/package.json` وتحديث `pnpm-lock.yaml`.
 - **الأدلة:** `corepack pnpm install` نظيف محلياً و`packages/egress typecheck` يمر.
+### 2026-10-12 — [P2-003] تطبيق إصلاح @types/node على فرع بوابة الخروج
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation` (سيُعاد تطبيقه على `feat/P2-001-egress-adapter` لاحقاً).
+- **ما تم:** جُلبت تغييرات `packages/egress/package.json` و`pnpm-lock.yaml` من فرع `feat/P2-001-egress-adapter` (commit `d007879`) إلى هذا الفرع ليتطابقا.
+
+### 2026-10-12 — [P2-001] مزامنة فرع المحوّل مع فرع بوابة الخروج
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `feat/P2-001-egress-adapter`.
+- **ما تم:** دُمج `audit/P2-003-investigation` (حتى `e3fddff`) في هذا الفرع ليتضمن إصلاح `@types/node` وتوثيق ADR-08 §4. حُلّ تعارض `docs/WORKLOG.md` بدمج الطرفين.
