@@ -4,7 +4,9 @@ import { defineConfig } from "vitest/config";
  * Core packages in the sense of ROADMAP 8.5 (G-13): line coverage >= 85% from phase 1.
  * `engine` and `egress` join this list when their packages exist (P2-001, P2-003).
  */
-const CORE = ["packages/core/src", "packages/ledger/src"];
+// P2-001 + P2-003 (2026-10-12): engine and egress packages now exist on the
+// work branches; they join the G-13 coverage ceiling.
+const CORE = ["packages/core/src", "packages/ledger/src", "packages/engine/src", "packages/egress/src"];
 
 // P0-010 (ADR-13): one root Vitest run for the whole workspace.
 export default defineConfig({

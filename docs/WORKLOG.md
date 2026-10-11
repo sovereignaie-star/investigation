@@ -1344,3 +1344,9 @@
 - **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
 - **الفرع:** `feat/P2-001-egress-adapter`.
 - **ما تم:** دُمج `audit/P2-003-investigation` (حتى `e3fddff`) في هذا الفرع ليتضمن إصلاح `@types/node` وتوثيق ADR-08 §4. حُلّ تعارض `docs/WORKLOG.md` بدمج الطرفين.
+
+### 2026-10-12 — [P2-003] إدخال egress وengine في نطاق تغطية G-13
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `feat/P2-001-egress-adapter`.
+- **ما تم:** حُدّث `vitest.config.ts` ليدخل `packages/engine/src` و`packages/egress/src` في قائمة CORE (حد تغطية الأسطر ≥ 85%). لم يُستثن أي ملف لاجتياز الحد؛ غطيت الحزمتان فعلياً (egress/src 97.05% أسطر، engine/src 92.3% أسطر) والحد الأعلى للمساحة كلها 97.62%.
+- **الأدلة:** `corepack pnpm test:coverage` → exit 0؛ 499/499 اختباراً ناجحاً؛ ملخص الأسطر 97.62%.
