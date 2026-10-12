@@ -58,9 +58,16 @@ jobs:
           } | tee experiment-identity.txt
       - name: Run the paired A/B experiment (D-052)
         run: |
+          # `set -u` (undefined var = error) AND `set +e` (explicitly DISABLE
+          # errexit): GitHub runners may enable `-e` by default; if a vitest
+          # run fails (which is DATA for this experiment, not an error), the
+          # loop must CONTINUE so all pairs complete and the logs carry the
+          # verdict. We restore the original shell opts at the end.
           set -u
+          set +e
           PAIRS="${{ github.event.inputs.pairs || '3' }}"
           mkdir -p d052-results
+          : > d052-results/d052-durations.txt
           for i in $(seq 1 "$PAIRS"); do
             # Alternate the order each pair: pair 1 A-then-B, pair 2 B-then-A, ...
             if [ $(( i % 2 )) -eq 1 ]; then FIRST=a; SECOND=b; else FIRST=b; SECOND=a; fi
@@ -81,6 +88,21 @@ jobs:
               echo "${LABEL} exit=$STATUS" >> d052-results/summary.txt
               # Extract the D-052 line duration from the log for offline analysis.
               grep -E "a creation that fails at any step|plain:|encrypted:" "${LABEL}.log" | head -20 > "${LABEL}-d052.txt" || true
+              # AUTOMATED per-run D-052 duration report (both plain AND
+              # encrypted variants when present; vitest prints ONE line per
+              # run but the variant is file-order-dependent, not branch-dependent).
+              while IFS= read -r D052LINE; do
+                [ -z "$D052LINE" ] && continue
+                # The line looks like: `       ✓ plain: a creation that fails ... 302ms`
+                # Extract variant + duration.
+                VARIANT="none"
+                case "$D052LINE" in
+                  *" plain: "*) VARIANT="plain" ;;
+                  *" encrypted: "*) VARIANT="encrypted" ;;
+                esac
+                DURATION="$(printf '%s' "$D052LINE" | grep -oE '[0-9]+ms$' | tr -d 'ms')"
+                echo "${LABEL} variant=${VARIANT} duration_ms=${DURATION:-unknown}" >> d052-results/d052-durations.txt
+              done < "${LABEL}-d052.txt"
             done
           done
           # Never fail the workflow on the experiment itself: the analysis is the
@@ -94,6 +116,7 @@ jobs:
           path: |
             experiment-identity.txt
             d052-results/summary.txt
+            d052-results/d052-durations.txt
             pair*.log
             pair*-d052.txt
           if-no-files-found: warn

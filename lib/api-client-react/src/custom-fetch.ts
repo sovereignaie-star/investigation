@@ -344,22 +344,33 @@ function assertSameOrigin(input: RequestInfo | URL): void {
   } else {
     currentOrigin = "";
   }
+  // Rule: a RELATIVE path (starts with a single `/` and is NOT `//`) is
+  // same-origin by construction and needs no base configured. Everything
+  // else must carry a scheme (or be a relative path) — if there is no base
+  // URL and the value is not a plain relative path, it is an ABSOLUTE or
+  // PROTOCOL-RELATIVE target and is REFUSED outright. The DEFAULT BASE
+  // (`http://localhost`) is used ONLY to make `new URL(...)` parse the value
+  // for classification; it NEVER authorizes a destination (see below).
   let targetOrigin: string;
   try {
-    // Resolve against the current origin (or a harmless default when none
-    // is configured) so that relative and protocol-relative values both get
-    // an origin to compare against.
     targetOrigin = new URL(url, currentOrigin || "http://localhost").origin;
   } catch {
     throw new TypeError(`customFetch: cannot resolve the origin of ${url}`);
   }
-  if (!currentOrigin && targetOrigin !== "http://localhost") {
-    // No origin is configured and the resolved origin is not the local
-    // default — refuse it. The generated client never does this, but a
-    // hand-rolled call with `//host/...` or a bare absolute URL could.
+  // A plain relative path (starts with one `/`, not `//`) — allowed only
+  // when the resolved origin matches the configured/real origin OR the path
+  // is relative and there is no base (then it resolves against the page).
+  const isPlainRelative = /^\/[^/].*|^\/[^/]*$/.test(url) && !url.startsWith("//");
+  if (!currentOrigin) {
+    if (isPlainRelative) return; // relative path, no base — resolves against the page in a browser
+    // NO base configured and the value is NOT a plain relative path: this is
+    // an absolute, protocol-relative, or scheme-relative URL — REFUSE. The
+    // default base (`http://localhost`) is NOT a real authorization; it is
+    // only used to make `new URL` parse the value so we can report the
+    // destination in the error.
     throw new TypeError(`customFetch: absolute URL refused (${targetOrigin}); configure a base URL or use a relative path.`);
   }
-  if (currentOrigin && targetOrigin !== currentOrigin) {
+  if (targetOrigin !== currentOrigin) {
     throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
   }
 }

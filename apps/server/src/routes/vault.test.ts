@@ -4,6 +4,27 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+
+/**
+ * T-SEC-SSRF-047 canary hook: set BEFORE `../lib/logger.js` is imported
+ * (the `import { createApp } from "../app"` below pulls in
+ * `lib/providers.ts` → `lib/logger.ts`), so that `logger.ts` sees the hook
+ * at LOAD time and routes pino's destination to our capture `Writable`.
+ *
+ * NOTE: the file-local `pinoCaptured` (per-`start`) is the SPY approach; the
+ * GLOBAL hook below captures the ACTUAL serialized NDJSON lines.
+ */
+const PinoCapturedGlobal: string[] = [];
+(
+  globalThis as unknown as {
+    __irLoggerTestHook?: { write?: (l: string) => void };
+  }
+).__irLoggerTestHook = {
+  write: (line: string) => {
+    PinoCapturedGlobal.push(line);
+  },
+};
+
 import { openVault } from "@ir/store";
 import { createApp } from "../app";
 import { LOOKUPS_DISABLED, lookupsEnabled, vaultRouter } from "./vault";
@@ -348,28 +369,49 @@ describe("vault test result honesty (provider status is reported, never fabricat
   });
 
   describe("T-SEC-SSRF-047 (D / canary): the real makeVaultAuditSink does not leak the secret", () => {
-    it("the pino line from the actual audit sink contains the redacted digest but NOT the raw secret", async () => {
+    it("the SERIALIZED pino line from the actual audit sink contains the redacted digest but NOT the raw secret", async () => {
       // Canary test (advisor D): the response-only test proves the HTTP
-      // response doesn't leak the secret, but the AUDIT LOG line could still
-      // contain it. This test runs the full test-key path through the REAL
-      // `makeVaultAuditSink` (which calls `logger.info` on pino) and captures
-      // pino's actual stdout output, then asserts the raw secret is absent.
-      const s = await start(ENABLED, { vaultTransportStatus: 200, capturePino: true });
+      // response doesn't leak the secret; a spy on `logger.info` proves the
+      // OBJECT passed in doesn't leak it. NEITHER proves what pino actually
+      // SERIALIZES to stdout (pino's own redact/serialization could
+      // theoretically differ). This test captures the ACTUAL serialized pino
+      // NDJSON line (the bytes that would hit stdout) and asserts the raw
+      // secret is absent from it.
+      //
+      // Implementation: `globalThis.__irLoggerTestHook` is set BEFORE this
+      // module (and `../lib/logger.js`) is imported — `logger.ts` checks it
+      // at load time and, when present, routes pino's destination to a
+      // `Writable` that records every serialized line.
+      const hook = (
+        globalThis as unknown as {
+          __irLoggerTestHook?: { write?: (l: string) => void };
+        }
+      ).__irLoggerTestHook;
+      expect(hook).toBeDefined();
+      const s = await start(ENABLED, { vaultTransportStatus: 200 });
       expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
       const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
       expect(r).toMatchObject({ ok: true, tested: true, providerStatus: 200 });
-      // The audit sink must have fired. pino serializes the OBJECT (with
-      // `secretDigest`) and the string message into ONE line — capture both
-      // into a single joined line for the assertion.
-      const auditLine = s.pinoCaptured.filter((l) => l.includes("vault egress audit") || l.includes("secretDigest")).join(" | ");
-      expect(auditLine).toContain("vault egress audit");
-      expect(auditLine).toContain("secretDigest");
-      // The raw secret must NOT be in the pino output (the whole capture, not
-      // just the audit line — any line leaking it fails this).
-      expect(s.pinoCaptured.join("\n")).not.toContain(SECRET);
-      // The audit line should carry the redacted HMAC digest, not the raw secret.
-      expect(auditLine).toMatch(/redacted-hmac-sha256-[0-9a-f]{16}/);
-      expect(auditLine).not.toContain(SECRET);
+      // Find the serialized audit line(s) (NDJSON — one JSON object per line).
+      const auditLines = PinoCapturedGlobal.filter((l) => {
+        try {
+          const o = JSON.parse(l) as { msg?: string; secretDigest?: string };
+          return o.msg === "vault egress audit";
+        } catch {
+          return false;
+        }
+      });
+      expect(auditLines.length).toBeGreaterThan(0);
+      // The raw secret must NOT appear in the SERIALIZED output (the whole
+      // capture — any line leaking it fails this).
+      expect(PinoCapturedGlobal.join("\n")).not.toContain(SECRET);
+      // Each serialized audit line must carry the redacted HMAC digest, not
+      // the raw secret.
+      for (const line of auditLines) {
+        expect(line).not.toContain(SECRET);
+        const o = JSON.parse(line) as { secretDigest?: string };
+        expect(o.secretDigest).toMatch(/^redacted-hmac-sha256-[0-9a-f]{16}$/);
+      }
     });
   });
 });

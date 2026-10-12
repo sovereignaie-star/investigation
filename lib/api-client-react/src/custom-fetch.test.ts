@@ -53,4 +53,42 @@ describe("customFetch same-origin guard (P2-003 / C)", () => {
     // will fail (no server listening), which is fine.
     await expect(customFetch("http://127.0.0.1:9999/api/healthz")).rejects.not.toThrow(/cross-origin|absolute URL refused/);
   });
+
+  it("the guard rejects BEFORE fetch is called: a REFUSED input never reaches fetch (spied globalThis.fetch)", async () => {
+    // Advisor C: prove the refusal happens in `customFetch` itself, not that
+    // the (absent) network rejects it. Spy `globalThis.fetch`: the allowed
+    // input must reach it; the refused input must NOT.
+    const calls: string[] = [];
+    const realFetch = globalThis.fetch;
+    const restore: Array<() => void> = [];
+    restore.push(() => {
+      globalThis.fetch = realFetch;
+    });
+    try {
+      globalThis.fetch = (async (input: string | URL | Request, _init?: RequestInit) => {
+        calls.push(typeof input === "string" ? input : String(input));
+        return new Response("ok");
+      }) as typeof fetch;
+
+      // ALLOWED: a relative path with a matching base — fetch IS called.
+      setBaseUrl("http://127.0.0.1:9999");
+      calls.length = 0;
+      const r1 = await customFetch("/api/healthz");
+      expect(r1).toBe("ok");
+      expect(calls.length).toBe(1);
+      expect(calls[0]).toContain("/api/healthz");
+
+      // REFUSED: a cross-origin absolute URL — fetch is NOT called.
+      calls.length = 0;
+      await expect(customFetch("https://evil.example/x")).rejects.toThrow(/cross-origin request refused/);
+      expect(calls.length).toBe(0);
+
+      // REFUSED: protocol-relative with no base — fetch is NOT called.
+      setBaseUrl(null);
+      await expect(customFetch("//evil.example/x")).rejects.toThrow(/absolute URL refused|cross-origin request refused/);
+      expect(calls.length).toBe(0);
+    } finally {
+      for (const r of restore.splice(0)) r();
+    }
+  });
 });

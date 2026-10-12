@@ -28,6 +28,14 @@ export interface SandboxOptions {
   readonly timeoutMs?: number;
   /** Data to write to the child's stdin (the P2-005 IPC channel). */
   readonly stdinData?: string;
+  /**
+   * Round-trip IPC handler. When provided, the child's stdout lines are
+   * parsed as JSON objects; each is passed to this handler which can send a
+   * JSON response back to the child's stdin. This is the P2-005 channel
+   * that lets the parent (which owns the `@ir/egress` gateway) act on behalf
+   * of the sandboxed transform.
+   */
+  readonly ipcHandler?: (message: Record<string, unknown>, stdin: NonNullable<ChildProcess["stdin"]> | undefined) => void;
 }
 
 export interface SandboxResult {
@@ -91,6 +99,10 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
     return { refused: true, reason: "platform_unsupported" };
   }
   const env = buildChildEnv(opts.env, socketBlockerPath);
+  // Keep a live reference to the child's stdin for the ipcHandler — the
+  // handler fires while the promise is still pending, so the parent test
+  // can't use the (unresolved) result to send the response back.
+  let childStdin: import("node:stream").Writable | undefined;
 
   return new Promise((resolve, reject) => {
     const child: ChildProcess = spawn("node", ["--input-type=module", "--eval", source], {
@@ -98,6 +110,7 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
       env,
       stdio: ["pipe", "pipe", "pipe"],
     });
+    childStdin = child.stdin ?? undefined;
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -105,7 +118,28 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
       timedOut = true;
       child.kill("SIGKILL");
     }, opts.timeoutMs ?? 30_000);
-    child.stdout?.on("data", (b: Buffer) => (stdout += b.toString()));
+    // Split stdout by lines so the parent can act on IPC messages BEFORE
+    // the child exits (round-trip via `ipcHandler`).
+    let lineBuf = "";
+    child.stdout?.on("data", (b: Buffer) => {
+      stdout += b.toString();
+      if (!opts.ipcHandler) return;
+      lineBuf += b.toString();
+      const lines = lineBuf.split("\n");
+      lineBuf = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const obj: Record<string, unknown> = JSON.parse(line) as Record<string, unknown>;
+          // Give the handler a live stdin handle (the promise that wraps the
+          // child hasn't resolved yet — the handler runs while the child is
+          // still alive, so `result.stdin` is not usable there).
+          opts.ipcHandler(obj, childStdin);
+        } catch {
+          // Non-JSON stdout line (e.g. `CHILD_SOCKET_BLOCKED`) — not an IPC message.
+        }
+      }
+    });
     child.stderr?.on("data", (b: Buffer) => (stderr += b.toString()));
     child.on("error", (e) => {
       clearTimeout(timeout);
@@ -130,9 +164,12 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
     if (opts.stdinData !== undefined && child.stdin) {
       child.stdin.write(opts.stdinData);
       child.stdin.end();
-    } else if (child.stdin) {
-      // No stdin data requested: close stdin so the child's reads get EOF.
+    } else if (child.stdin && !opts.ipcHandler) {
+      // No stdin data AND no ipc handler: close stdin so the child's reads get EOF.
       child.stdin.end();
+    } else if (child.stdin && opts.ipcHandler) {
+      // Round-trip mode: leave stdin OPEN so the parent can write after
+      // receiving each message.
     }
   });
 }
