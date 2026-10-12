@@ -225,29 +225,15 @@ describe("T-SEC-SSRF-026: real TLS — certificate chain and hostname are verifi
     expect(seen.requests).toBe(0);
   });
 
-  it("negative control: with verification switched off the same mismatched server IS reachable (so the refusals above come from verification)", async () => {
+  it("negative control: the same server and the same trusted CA ARE reachable under the certificate's own name (so the refusals above come from hostname verification, with verification still on)", async () => {
     const { port, seen } = await tlsServer(otherName, (_req, res) => res.end("reached"));
-    const body = await new Promise<string>((resolve, reject) => {
-      const r = https.request(
-        {
-          host: "127.0.0.1",
-          port,
-          path: "/x",
-          servername: HOST,
-          rejectUnauthorized: false,
-          checkServerIdentity: () => undefined,
-          agent: false,
-        },
-        (res) => {
-          let b = "";
-          res.on("data", (c) => (b += c));
-          res.on("end", () => resolve(b));
-        },
-      );
-      r.on("error", reject);
-      r.end();
+    const r = await createNodeTransport({ tlsOptions: { ca: otherName.cert } }).fetch({
+      url: `https://other-name.invalid:${port}/x`,
+      host: `other-name.invalid:${port}`,
+      pinnedIp: "127.0.0.1",
+      method: "GET",
     });
-    expect(body).toBe("reached");
+    expect(r).toMatchObject({ status: 200, body: "reached" });
     expect(seen.requests).toBe(1);
   });
 
