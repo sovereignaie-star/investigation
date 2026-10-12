@@ -221,6 +221,51 @@ export function conflictMarkerChecks() {
   return errors;
 }
 
+/**
+ * D-8 (2026-10-12): the approval state recorded inside the ADR-08 document
+ * and the state recorded in the ROADMAP's ADR table row must agree. When the
+ * owner decision says the design is approved, the ROADMAP row must not still
+ * read "مقترح" — and vice versa. This is what ties the *approval* to the
+ * *enforcement* documentation: an approved ADR carries binding rules (أ–و in
+ * ADR-08), so a ROADMAP row that claims "proposed" while the ADR says
+ * "approved" makes the binding scope ambiguous.
+ *
+ * The ADR-08 document's status table row is the single source of truth for the
+ * approval; the ROADMAP ADR table row is the cross-reference. Both must use
+ * the same vocabulary for the approval state.
+ */
+export function adrStatusConsistency(roadmapText, adrText) {
+  const errors = [];
+  // Extract the ADR-08 status cell from the ADR document's own status table.
+  const adrStatusMatch = adrText.match(/\|\s*الحالة\s*\|\s*([^\n]+?)\s*\|/);
+  const adrStatus = adrStatusMatch ? adrStatusMatch[1] : "";
+  const adrApproved = /معتمد تصميمياً/.test(adrStatus);
+  // Extract the ROADMAP's ADR-08 row (in the ADR table, a `| ADR-08 | ... | state |` row).
+  const rowMatch = roadmapText.match(/^\| ADR-08 \|([^\n]+)\|\s*([^\n|]+?)\s*\|$/m);
+  if (!rowMatch) {
+    errors.push("D-8: no ADR-08 row found in the ROADMAP ADR table.");
+    return errors;
+  }
+  const roadmapState = rowMatch[2].trim();
+  const roadmapApproved = /معتمد/.test(roadmapState);
+  const roadmapProposed = /^مقترح/.test(roadmapState);
+  if (adrApproved && !roadmapApproved) {
+    errors.push(
+      `D-8: ADR-08 says "معتمد تصميمياً" in docs/adr/ADR-08-egress-gateway.md but the ROADMAP row says "${roadmapState}". Update the ROADMAP row to match the approval (D-8: approval and enforcement must reflect each other).`,
+    );
+  } else if (!adrApproved && roadmapApproved) {
+    errors.push(
+      `D-8: the ROADMAP ADR-08 row says "${roadmapState}" but the ADR-08 document does not say "معتمد تصميمياً". Update the ADR-08 document to reflect the approval, or revert the ROADMAP row (D-8).`,
+    );
+  }
+  if (roadmapProposed && adrApproved) {
+    errors.push(
+      "D-8: the ROADMAP ADR-08 row reads as مقترح while the ADR-08 document records the owner's approval. Fix the ROADMAP row (D-8).",
+    );
+  }
+  return errors;
+}
+
 function main(argv) {
   const [mode, arg] = argv;
   let errors = [];
@@ -237,6 +282,11 @@ function main(argv) {
     // GR-20 (new): leftover merge-conflict markers in governance docs are a defect.
     // Detects them in ROADMAP, STATUS, WORKLOG, MASTER_PLAN and every ADR file.
     errors.push(...conflictMarkerChecks());
+    // D-8 (new): ADR-08 approval state and ROADMAP ADR-08 row must agree.
+    const adr08Path = path.join(ROOT, "docs", "adr", "ADR-08-egress-gateway.md");
+    if (existsSync(adr08Path)) {
+      errors.push(...adrStatusConsistency(roadmapText, readFileSync(adr08Path, "utf8")));
+    }
     if (!errors.length) console.log("ROADMAP, STATUS and MASTER_PLAN are consistent.");
   } else {
     console.error("usage: check.mjs --commit-msg <file> | --range <a>..<b> | --last | --consistency");
