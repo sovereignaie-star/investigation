@@ -85,7 +85,9 @@ export function isTestFile(rel: string): boolean {
 
 /** Files that may legitimately contain network primitives (the gateway itself). */
 export function isGatewayFile(rel: string): boolean {
-  return rel.startsWith("packages/egress/src/");
+  // `packages/sandbox` is the T-SBX enforcement package (P2-005): it owns the
+  // OS-level socket blocker and must be allowed to spawn child processes.
+  return rel.startsWith("packages/egress/src/") || rel.startsWith("packages/sandbox/src/");
 }
 
 /**

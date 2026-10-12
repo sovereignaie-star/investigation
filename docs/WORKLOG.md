@@ -1563,3 +1563,14 @@
 - **`apps/server/src/routes/vault.test.ts`:** حُذف `upstream` الميت (لا كود يضيف إليه). استُبدل باختبار HTTP حقيقي: مسار `/api/vault/:name/test` يعمل من البداية للنهاية عبر البوابة المشتركة والقدرة (زائد اختبار موجب: نجاح 200)، مع رصد أن أي اتصال خارجي يفشل.
 - **ملاحظة:** واجهة `resolveUrl` في `lib/api-client-react/src/custom-fetch.ts` فُحصت — تتعامل مع `RequestInfo | URL | string` ولا تقوم بإنشاء `http://` جديد ولا تبديل بروتوكول. الإعفاء `isSameOriginClientFile` يبقى صحيحاً.
 - **الفحوص:** 528/528 ناجحة (44 ملفاً). typecheck نجاح (بما فيها `scripts/checks`). governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-005] [P2-003] إنفاذ عزل T-SBX فعلياً (F) — حزمة packages/sandbox
+
+- **التصميم:** العزل يجب أن يكون إنفاذاً على مستوى نظام التشغيل لا مجرد فحوص ساكنة أو منع استيراد. الحل: `LD_PRELOAD` مع مكتبة C صغيرة تحجب `socket()` لـ`AF_INET/AF_INET6` عند حد النواة (`EACCES`). `AF_UNIX` (IPC المحلي) يبقى. لا يمكن للمحوّل تجاوز الحجب بمحاولة `fetch` أو `node:http` أو `node:net` — كلها تنتهي إلى نفس syscall المحجوب.
+- **`packages/sandbox/src/block-socket.c`:** الملف المصدر (27 سطراً). يُترجم بـ`cc -shared -fPIC` ويُخزن في `/tmp/ir-sandbox-shim/`.
+- **`packages/sandbox/src/build.ts`:** يكتشف المنصة (linux فقط)، يجد مترجم `cc/gcc`، يترجم ويخزن الشيم. المنصات غير المدعومة تُعلَّم `supported: false` — `fail-closed`.
+- **`packages/sandbox/src/enforce.ts`:** `runSandboxedTransform(source, opts)` ينشئ عملية `node` مع `LD_PRELOAD` ويجمع stdout/stderr ويرصد `blockedByKernel` عبر توقيع `[block-socket]` أو `EACCES`. `env` المعطى من المستدعي يُطبَّق بعد `process.env` (لا يمكن تعطيل الحجب).
+- **`packages/sandbox/src/tsbx.test.ts`:** 5 اختبارات: (1) محوّل يحاول اتصال TCP مباشر إلى مستمع محلي مضبوط على `127.0.0.1` → مرفوض بـ`EACCES`/`[block-socket]`. (2) محوّل يحاول `fetch` → مرفوض. (3) المسار المشروع يظل يعمل (لا يفشل التنفيذ العادي). (4) تحكم سلبي: نفس المحاولة بدون الشيم تصل إلى النواة (`ECONNREFUSED` على منفذ مغلق) — يثبت أن الفحص ليس صوريياً. (5) الشيم قابل للتحميل على Linux.
+- **ملاحظة حوكمة:** المنصات غير المدعومة (Windows، macOS بلا LD_PRELOAD) تُعلَّم `supported: false` — `fail-closed` (رفض افتراضي للشبكة) وليس ادعاء عزل.
+- **`scripts/checks/no-direct-network.ts`:** `packages/sandbox/src/` أُضيف إلى `isGatewayFile` — الحزمة هي التي تنفذ الإنفاز (تحتاج `node:child_process` مشروعاً).
+- **الفحوص:** 533/533 ناجحة (45 ملفاً). typecheck نجاح. governance --consistency نجاح. eslint نظيف.
