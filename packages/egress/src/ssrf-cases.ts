@@ -14,7 +14,14 @@
  *
  * TEST-ONLY module: it is not exported from `index.ts` and contains no network code.
  */
-import type { EgressOptions, EgressReason, EgressRequest, EgressResult, createEgressGateway } from "./egress";
+import {
+  EGRESS_DENY_CODE,
+  type EgressOptions,
+  type EgressReason,
+  type EgressRequest,
+  type EgressResult,
+  type createEgressGateway,
+} from "./egress";
 
 export type Factory = typeof createEgressGateway;
 
@@ -116,10 +123,21 @@ export async function executeCase(factory: Factory, c: SsrfCase): Promise<Observ
 }
 
 /** Does the observation match the case's expectation? Returns the list of mismatches (empty = match). */
+/** P2-003 acceptance: a refusal proves its code and reason; an acceptance names its destinations and pinned IPs. */
+function evidenceGaps(c: SsrfCase, o: Observed): string[] {
+  const e = c.expect;
+  if (e.ok) return e.destinations === undefined ? ["an acceptance case must name its destinations and pinned IPs"] : [];
+  const out: string[] = [];
+  if (o.result.code !== EGRESS_DENY_CODE) out.push(`code: expected ${EGRESS_DENY_CODE}, got ${String(o.result.code)}`);
+  if (e.reason === undefined) out.push("a refusal case must name its reason");
+  return out;
+}
+
 export function mismatches(c: SsrfCase, o: Observed): string[] {
   const out: string[] = [];
   const e = c.expect;
   if (o.result.ok !== e.ok) out.push(`ok: expected ${e.ok}, got ${o.result.ok} (${o.result.reason ?? "-"})`);
+  out.push(...evidenceGaps(c, o));
   if (e.reason !== undefined && o.result.reason !== e.reason) out.push(`reason: expected ${e.reason}, got ${o.result.reason ?? "-"}`);
   if (o.transportCalls !== e.transportCalls) out.push(`transport calls: expected ${e.transportCalls}, got ${o.transportCalls}`);
   if (o.result.transportCalls !== e.transportCalls) {
@@ -142,9 +160,9 @@ export const SSRF_CASES: readonly SsrfCase[] = [
   // 001 — loopback literal
   {
     id: "T-SEC-SSRF-001",
-    title: "http://127.0.0.1 (refused for its scheme before any address work)",
+    title: "http://127.0.0.1 is recorded as address_class (literal address precedes the scheme check)",
     req: { url: "http://127.0.0.1/" },
-    expect: denied("scheme", 0, 0),
+    expect: denied("address_class", 0, 0),
   },
   { id: "T-SEC-SSRF-001", title: "https://127.0.0.1", req: { url: "https://127.0.0.1/" }, expect: denied("address_class", 0, 0) },
   // 002 — localhost names
@@ -313,7 +331,17 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     req: { url: "https://example.com/0" },
     dns: { "example.com": [PUB] },
     responses: [...[1, 2, 3].map((i) => redirectTo(`https://example.com/${i}`)), { status: 200, body: "end" }],
-    expect: { ok: true, transportCalls: 4, resolverCalls: 4 },
+    expect: {
+      ok: true,
+      transportCalls: 4,
+      resolverCalls: 4,
+      destinations: [
+        { host: "example.com", pinnedIp: PUB },
+        { host: "example.com", pinnedIp: PUB },
+        { host: "example.com", pinnedIp: PUB },
+        { host: "example.com", pinnedIp: PUB },
+      ],
+    },
   },
   // 014 — mixed answers
   {
@@ -476,7 +504,7 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     title: "control: an explicit :443 is allowed",
     req: { url: "https://example.com:443/" },
     dns: { "example.com": [PUB] },
-    expect: { ok: true, transportCalls: 1, resolverCalls: 1 },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
   },
   // 021 — header injection
   {
@@ -508,7 +536,7 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     options: { limits: { maxSizeBytes: 1024 } },
     dns: { "example.com": [PUB] },
     responses: [{ status: 200, body: "x".repeat(1024), contentLength: 1024 }],
-    expect: { ok: true, transportCalls: 1 },
+    expect: { ok: true, transportCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
   },
   // 024 — rate limit
   {
@@ -574,7 +602,7 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     title: "control: IR_OFFLINE=0 does not deny",
     env: { IR_OFFLINE: "0" },
     dns: { "example.com": [PUB] },
-    expect: { ok: true, transportCalls: 1, resolverCalls: 1 },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
   },
   // 035 — 6to4 (owner decision a: refuse all of 2002::/16)
   ...["2002:7f00:1::", "2002:5db8:d822::"].map((ip) => ({
@@ -601,7 +629,7 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     id: "T-SEC-SSRF-037",
     title: "control: [64:ff9b::808:808] (embedded public) is allowed",
     req: { url: "https://[64:ff9b::808:808]/" },
-    expect: { ok: true, transportCalls: 1, resolverCalls: 0 },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 0, destinations: [{ host: "64:ff9b::808:808", pinnedIp: "64:ff9b::808:808" }] },
   },
   ...["64:ff9b::a00:1", "64:ff9b::7f00:1", "64:ff9b:1::1"].map((ip) => ({
     id: "T-SEC-SSRF-037",
@@ -620,7 +648,7 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     id: "T-SEC-SSRF-038",
     title: "control: a public address inside 2000::/3 is allowed",
     req: { url: "https://[2606:4700::1111]/" },
-    expect: { ok: true, transportCalls: 1, resolverCalls: 0 },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 0, destinations: [{ host: "2606:4700::1111", pinnedIp: "2606:4700::1111" }] },
   },
   // 039 — redirect target shape
   {
@@ -658,8 +686,16 @@ export const SSRF_CASES: readonly SsrfCase[] = [
   },
   {
     id: "T-SEC-SSRF-040",
-    title: "a request field claiming the policy is adopted is refused (unknown field), never allowed",
+    title: "a request field claiming the policy is adopted is still recorded as natural_person (protected category first)",
     req: { sensitivity: "natural_person_gate", naturalPersonPolicyAdopted: true } as unknown as Partial<EgressRequest>,
+    dns: { "example.com": [PUB] },
+    expect: denied("natural_person", 0, 0),
+  },
+  // 042 (closed contract half): the gateway-level part of "any unknown field is refused"
+  {
+    id: "T-SEC-SSRF-042",
+    title: "an unknown request field on a normal request is refused (closed contract) before DNS",
+    req: { extra: 1 } as unknown as Partial<EgressRequest>,
     dns: { "example.com": [PUB] },
     expect: denied("unknown_field", 0, 0),
   },
@@ -741,7 +777,71 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     title: "control: an empty sends list is valid (no case data)",
     req: { sends: [] },
     dns: { "example.com": [PUB] },
-    expect: { ok: true, transportCalls: 1 },
+    expect: { ok: true, transportCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
+  },
+  // 043 — content inspection: what the request carries must match `sends` (content-inventory.ts)
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: an IP in the path while sends declares only domain is refused before DNS",
+    req: { url: "https://example.com/lookup/8.8.8.8", sends: ["domain"] },
+    dns: { "example.com": [PUB] },
+    expect: denied("undeclared_data", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: control: the same path with sends [ip] reaches the pinned address once",
+    req: { url: "https://example.com/lookup/8.8.8.8", sends: ["ip"] },
+    dns: { "example.com": [PUB] },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: an email address in a query value (percent-encoded) is refused as undeclared",
+    req: { url: "https://example.com/search?q=alice%40example.org", sends: ["domain"] },
+    dns: { "example.com": [PUB] },
+    expect: denied("undeclared_data", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: an email address in the fragment is refused as undeclared",
+    req: { url: "https://example.com/#alice@example.org", sends: ["domain"] },
+    dns: { "example.com": [PUB] },
+    expect: denied("undeclared_data", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: an email address in a header value is refused as undeclared",
+    req: { headers: { "x-query": "alice@example.org" }, sends: ["domain"] },
+    dns: { "example.com": [PUB] },
+    expect: denied("undeclared_data", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: a natural-person identifier (passport) in the path is refused as natural_person even when labelled normal",
+    req: { url: "https://example.com/doc/A1234567", sends: ["domain"], sensitivity: "normal" },
+    dns: { "example.com": [PUB] },
+    expect: denied("natural_person", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: declaring the kind does not lift a natural-person refusal (no downgrade by declaration)",
+    req: { url: "https://example.com/doc/A1234567", sends: ["domain", "ip", "asn", "hash", "url", "certificate"] },
+    dns: { "example.com": [PUB] },
+    expect: denied("natural_person", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: there is no body channel; a body field is an unknown field, refused before DNS",
+    req: { body: "alice@example.org" } as unknown as Partial<EgressRequest>,
+    dns: { "example.com": [PUB] },
+    expect: denied("unknown_field", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: control: ordinary path words and numeric query values are not data (no false refusal)",
+    req: { url: "https://example.com/api/v3/items?page=2&limit=10", sends: [] },
+    dns: { "example.com": [PUB] },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
   },
   // 044 — normalisation of the pinned list
   {
@@ -750,7 +850,7 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     options: { allowedHosts: ["allowed.com"] },
     req: { url: "https://Allowed.COM./" },
     dns: { "allowed.com.": [PUB] },
-    expect: { ok: true, transportCalls: 1, resolverCalls: 1 },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "allowed.com.", pinnedIp: PUB }] }, // the allow list compares the normalised name; the transport keeps the URL host
   },
   {
     id: "T-SEC-SSRF-044",

@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SSRF_CASES } from "./ssrf-cases";
+import { TIMING_CASES } from "./ssrf-timing-cases";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const DOC = fs.readFileSync(path.join(REPO, "docs/adr/reference/T-SEC-SSRF-COVERAGE.md"), "utf8");
@@ -16,8 +17,11 @@ const FILES: Record<string, string> = {
   "node-transport-ssrf.test.ts": "packages/egress/src/node-transport-ssrf.test.ts",
   "ssrf-mutation.test.ts": "packages/egress/src/ssrf-mutation.test.ts",
   "vault.test.ts": "apps/server/src/routes/vault.test.ts",
+  "content-inventory.test.ts": "packages/egress/src/content-inventory.test.ts",
+  "iana-reference-differential.test.ts": "docs/adr/reference/iana/iana-reference-differential.test.ts",
 };
-const CASE_TITLES = new Set(SSRF_CASES.map((c) => c.title));
+// the matrix runs the shared case tables (ssrf-cases.ts, ssrf-timing-cases.ts) as its own tests
+const CASE_TITLES = new Set([...SSRF_CASES, ...TIMING_CASES].map((c) => c.title));
 const CITATION = /`([\w.-]+\.test\.ts)` › `([^`]+)`/g;
 
 export function citations(doc: string): Array<{ id: string; file: string; title: string }> {
