@@ -1574,3 +1574,12 @@
 - **ملاحظة حوكمة:** المنصات غير المدعومة (Windows، macOS بلا LD_PRELOAD) تُعلَّم `supported: false` — `fail-closed` (رفض افتراضي للشبكة) وليس ادعاء عزل.
 - **`scripts/checks/no-direct-network.ts`:** `packages/sandbox/src/` أُضيف إلى `isGatewayFile` — الحزمة هي التي تنفذ الإنفاز (تحتاج `node:child_process` مشروعاً).
 - **الفحوص:** 533/533 ناجحة (45 ملفاً). typecheck نجاح. governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] تدقيق D: مصفوفة تغطية SSRF + نطاق HMAC + مسار التدقيق
+
+- **السياق:** المصفوفة `docs/adr/reference/T-SEC-SSRF-COVERAGE.md` كُتبت قبل وجود حزمة `@ir/egress`، فكانت تقول «مطلوب — غير مثبت تنفيذياً» لكل الصفوف. الحزمة موجودة الآن ولديها اختبارات — التوصيف أصبح قديماً لا مبالغاً.
+- **`docs/adr/reference/T-SEC-SSRF-COVERAGE-UPDATE.md` (جديد):** تقرير تدقيق لكل معرّف من T-SEC-SSRF-001..048: أي ملف اختبار يُثبته، موقع الحل/الرفض، وملاحظات. **النتيجة: 45/48 مُثبتة فعلياً.** الفجوات المعروفة الموثقة (غير مُثبتة): T-SEC-SSRF-018 (IDN/homoglyph)، وT-SEC-SSRF-026 (شهادة TLS — يُنفَّذ مع النقل الحقيقي)، وT-SEC-SSRF-033 (ترميزات gzip متراكبة).
+- **`docs/adr/reference/T-SEC-SSRF-COVERAGE.md`:** حُدّث رأس المصفوفة بملاحظة توجيه للتدقيق، مع الحفاظ على الصفوف التاريخية كما هي (سجل تاريخي لا يُعاد كتابته) — الحالة الفعلية المُحدَّثة في ملف التدقيق.
+- **نطاق مفتاح HMAC (موثَّق):** `AUDIT_SECRET_REDACT_KEY` مُولَّد عشوائياً (32 بايت) لكل عملية/مثيل بوابة، لا يُخزَّن، لا يُشارك بين الطلبات، ولا يمكن ربط سجلات عبر إعادة التشغيل. التنقيح `redacted-hmac-sha256-{16 hex}` — لا سر خام ولا جزء منه.
+- **ما يُسجَّل في التدقيق (موثَّق):** `kind` (allowed/denied/transport_error/timeout/rate_limited/size_limit)، و`reason`، و`transform`، و`transportCalls`، و`detail`، و`secretDigest`، وسياق الطلب (caseId، purposeRef، المضيف، hopCount). المسار الحقيقي في الخادم: `makeVaultAuditSink` في `providers.ts` يمر عبر pino logger.
+- **الفحوص:** لا تغييرات كود في هذه الدورة — توثيق فقط. المصفوفة والحوكمة متسقتان (`governance --consistency` نجاح).
