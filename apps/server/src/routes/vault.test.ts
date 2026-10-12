@@ -322,6 +322,20 @@ describe("vault test result honesty (provider status is reported, never fabricat
     });
   }
 
+  it("each provider's key test requests its real API endpoint, with the key only in that provider's header", async () => {
+    const s = await start(ENABLED);
+    expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+    expect((await s.call("/vault/virustotal", put(SECRET))).status).toBe(200);
+    expect((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).status).toBe(200);
+    expect((await s.call("/vault/virustotal/test", withAdmin({ method: "POST" }))).status).toBe(200);
+    const calls = s.vaultTestCalls as Array<{ url: string; host: string; headers?: Record<string, string> }>;
+    expect(calls.map((c) => c.url)).toEqual(["https://ipinfo.io/8.8.8.8", "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8"]);
+    expect(calls[0]?.headers?.["authorization"]).toBe(`Bearer ${SECRET}`);
+    expect(calls[1]?.headers?.["x-apikey"]).toBe(SECRET);
+    expect(calls[1]?.headers?.["authorization"]).toBeUndefined();
+    for (const c of calls) expect(c.url).not.toContain(SECRET);
+  });
+
   it("a 500 from the provider is reported as an upstream fault (ok=false, tested=true)", async () => {
     const s = await start(ENABLED, { vaultTransportStatus: 500 });
     expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);

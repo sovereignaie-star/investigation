@@ -174,7 +174,7 @@ describe("T-SEC-SSRF-030", () => {
 describe("T-SEC-SSRF-042", () => {
   const sink = { record: () => {} };
   function vaultGateway(calls: string[]) {
-    const cap = createVaultKeyValidationCapability({ ipinfo: "ipinfo.io" }, sink);
+    const cap = createVaultKeyValidationCapability({ ipinfo: { hosts: "ipinfo.io", paths: ["/8.8.8.8"] } }, sink);
     const g = createEgressGateway(
       vaultGatewayOptions(
         cap,
@@ -249,9 +249,91 @@ describe("T-SEC-SSRF-042", () => {
   });
 
   it("the capability symbol is module-local: Symbol.for cannot reach it", () => {
-    const cap = createVaultKeyValidationCapability({ ipinfo: "ipinfo.io" }, sink);
+    const cap = createVaultKeyValidationCapability({ ipinfo: { hosts: "ipinfo.io", paths: ["/8.8.8.8"] } }, sink);
     expect(Object.getOwnPropertySymbols(cap).some((s) => s === Symbol.for("ir.egress.vaultKeyValidation"))).toBe(false);
     expect(Object.isFrozen(cap)).toBe(true);
+  });
+});
+
+describe("T-SEC-SSRF-042: a provider secret only reaches that provider's registered key-test path, on every hop", () => {
+  const sink = { record: () => {} };
+  const SECRET = "vt-key-value-0123456789";
+  const PATH = "/api/v3/ip_addresses/8.8.8.8";
+  function setup(redirect?: string, withPaths = true) {
+    const calls: string[] = [];
+    const cap = createVaultKeyValidationCapability({ virustotal: { hosts: "www.virustotal.com", paths: [PATH] } }, sink);
+    const base = vaultGatewayOptions(
+      cap,
+      { resolve: async () => [PUB] },
+      {
+        fetch: async (r) => {
+          calls.push(r.url);
+          return redirect !== undefined && calls.length === 1
+            ? { status: 302, headers: { location: redirect } }
+            : { status: 200, body: "{}" };
+        },
+      },
+    );
+    const opts = withPaths ? base : { ...base, providerPaths: undefined };
+    return { calls, cap, g: createEgressGateway(opts) };
+  }
+  const req = (cap: unknown, url: string) => ({
+    systemContext: true as const,
+    purposeRef: "vault-key-validation",
+    transform: "vault.test@1",
+    url,
+    sends: ["domain"],
+    sensitivity: "normal" as const,
+    pinnedHost: "www.virustotal.com",
+    headers: { "x-apikey": SECRET },
+    secret: SECRET,
+    secretProvider: "virustotal",
+    capability: cap,
+  });
+  const offPath = [
+    "https://www.virustotal.com/8.8.8.8",
+    "https://www.virustotal.com/api/v3/users/me",
+    `https://www.virustotal.com${PATH}?x=1`,
+    `https://www.virustotal.com${PATH}#f`,
+    `https://www.virustotal.com${PATH}/`,
+  ];
+
+  it("control: the registered path is reached, once", async () => {
+    const { calls, cap, g } = setup();
+    expect(await g.request(req(cap, `https://www.virustotal.com${PATH}`))).toMatchObject({ ok: true });
+    expect(calls).toEqual([`https://www.virustotal.com${PATH}`]);
+  });
+
+  for (const url of offPath) {
+    it(`another path on the same host is refused before any transport call: ${url}`, async () => {
+      const { calls, cap, g } = setup();
+      expect(await g.request(req(cap, url))).toMatchObject({ ok: false, reason: "secret_host_mismatch", transportCalls: 0 });
+      expect(calls).toEqual([]);
+    });
+  }
+
+  it("a same-host redirect to another path is refused at the hop (one transport call)", async () => {
+    const { calls, cap, g } = setup("/api/v3/users/me");
+    expect(await g.request(req(cap, `https://www.virustotal.com${PATH}`))).toMatchObject({
+      ok: false,
+      reason: "secret_host_mismatch",
+      transportCalls: 1,
+    });
+    expect(calls).toEqual([`https://www.virustotal.com${PATH}`]);
+  });
+
+  it("negative control: without the path registry the same off-path request and redirect DO reach the transport", async () => {
+    const a = setup(undefined, false);
+    expect(await a.g.request(req(a.cap, offPath[1] as string))).toMatchObject({ ok: true });
+    expect(a.calls).toEqual([offPath[1]]);
+    const b = setup("/api/v3/users/me", false);
+    expect(await b.g.request(req(b.cap, `https://www.virustotal.com${PATH}`))).toMatchObject({ ok: true });
+    expect(b.calls).toHaveLength(2);
+  });
+
+  it("a provider entry without an exact path cannot be registered", () => {
+    expect(() => createVaultKeyValidationCapability({ v: { hosts: "www.virustotal.com", paths: [] } }, sink)).toThrow(RangeError);
+    expect(() => createVaultKeyValidationCapability({ v: { hosts: "www.virustotal.com", paths: ["/a?b=1"] } }, sink)).toThrow(RangeError);
   });
 });
 

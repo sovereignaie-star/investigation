@@ -40,20 +40,34 @@ export interface VaultKeyValidationCapability {
   readonly allowedHosts: readonly string[];
   /** Provider name -> exact hosts. A secret is only sent to a host of its own provider (T-SEC-SSRF-041). */
   readonly providerHosts: Readonly<Record<string, readonly string[]>>;
+  /** Provider name -> exact URL paths the secret may reach (T-SEC-SSRF-042). Every provider must list at least one. */
+  readonly providerPaths: Readonly<Record<string, readonly string[]>>;
   readonly auditSink: EgressAuditSink;
   /** Opaque so external code cannot fabricate one. */
   readonly [CAPABILITY_SYMBOL]: true;
 }
 
+/** A registry entry: exact hosts and the exact paths a key test may request on them. */
+export interface VaultProviderEntry {
+  readonly hosts: string | readonly string[];
+  readonly paths: readonly string[];
+}
+
 /** Build the private vault capability (only this module can). */
 export function createVaultKeyValidationCapability(
-  providerHosts: Readonly<Record<string, string | readonly string[]>>,
+  providers: Readonly<Record<string, VaultProviderEntry>>,
   auditSink: EgressAuditSink,
 ): VaultKeyValidationCapability {
   const registry: Record<string, readonly string[]> = {};
-  for (const [name, hosts] of Object.entries(providerHosts ?? {})) {
-    const list = (typeof hosts === "string" ? [hosts] : [...hosts]).map(normalizeHost).filter((h) => h !== "");
-    if (list.length > 0) registry[name] = Object.freeze([...new Set(list)]);
+  const pathRegistry: Record<string, readonly string[]> = {};
+  for (const [name, entry] of Object.entries(providers ?? {})) {
+    const hosts = entry?.hosts;
+    const list = (typeof hosts === "string" ? [hosts] : [...(hosts ?? [])]).map(normalizeHost).filter((h) => h !== "");
+    const paths = [...(entry?.paths ?? [])].filter((p) => typeof p === "string" && p.startsWith("/") && !/[?#]/.test(p));
+    if (list.length === 0) continue;
+    if (paths.length === 0) throw new RangeError(`vault provider "${name}" needs at least one exact path`);
+    registry[name] = Object.freeze([...new Set(list)]);
+    pathRegistry[name] = Object.freeze([...new Set(paths)]);
   }
   const allowedHosts = [...new Set(Object.values(registry).flat())];
   if (allowedHosts.length === 0) {
@@ -63,6 +77,7 @@ export function createVaultKeyValidationCapability(
     kind: "vault-key-validation",
     allowedHosts: Object.freeze(allowedHosts),
     providerHosts: Object.freeze(registry),
+    providerPaths: Object.freeze(pathRegistry),
     auditSink,
     [CAPABILITY_SYMBOL]: true,
   }) as VaultKeyValidationCapability;
@@ -80,6 +95,7 @@ export function vaultGatewayOptions(
     transport,
     allowedHosts: capability.allowedHosts,
     providerHosts: capability.providerHosts,
+    providerPaths: capability.providerPaths,
     auditSink: capability.auditSink,
     limits,
     capability,

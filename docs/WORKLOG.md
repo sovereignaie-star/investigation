@@ -1782,3 +1782,10 @@
 
 - **القياس** (run 38289840426، مهمة `test`): بعد تثبيت `bubblewrap`: `kernel.apparmor_restrict_unprivileged_userns = 1`، و`bwrap --unshare-all` فشل بـ `Failed RTM_NEWADDR: Operation not permitted`؛ الفحص الحي `full=false`؛ 787 ناجحاً و12 متخطى. ضابط T-SBX-008 الجديد **نجح في CI** (`vm_readv=OK attach=OK` بلا عزل، ثم `EPERM` داخله)، فصار يثبت المرشح هناك.
 - **القرار:** مهمة `test` تضبط `kernel.apparmor_restrict_unprivileged_userns=0` على آلة CI المؤقتة، كما يُضبط على مضيف نشر مدعوم، ليُختبر المستوى `full` فعلاً. هذا متطلب نشر موثق في `docs/security/T-SBX_ENFORCEMENT.md`، لا تعطيل لحماية في المستودع أو المنتج.
+
+### 2026-10-12 — [P2-003] المستوى full مُثبت في CI، وتقييد المسار لكل مزود (042)، وإصلاح D-056
+
+- **T-SBX في CI** (run 38290299428، رأس `f180848`): بعد `kernel.apparmor_restrict_unprivileged_userns=0`: `bwrap: user namespaces available` و`[T-SBX] full=true networkOnly=true`؛ 797 ناجحاً و2 متخطيان، وهو عدد المضيف المحلي نفسه. G-15 ما زالت غير متحققة (لا تدقيق لحالات الرفض في النظام، ولا ربط بالمحوّلات).
+- **D-056 (جديد، موجود على `main`):** اختبار مفتاح VirusTotal يطلب `https://www.virustotal.com/8.8.8.8`، وهو ليس مسار واجهة v3، فلا يمكن أن يؤكد مفتاحاً صالحاً. الإصلاح: `PROVIDER_TESTS` يحدد لكل مزود المضيف والمسار، ومسار VirusTotal صار `/api/v3/ip_addresses/8.8.8.8` مع `x-apikey`.
+- **T-SEC-SSRF-042:** `createVaultKeyValidationCapability` يأخذ لكل مزود `{ hosts, paths }`، ويرفض مزوداً بلا مسار محدد أو بمسار فيه استعلام. البوابة (`providerPaths`) ترفض سر المزود على أي مسار آخر، أو مع استعلام أو جزء، قبل النقل، وفي كل قفزة إعادة توجيه. الضابط السلبي: الطلبات نفسها بلا سجل المسارات تصل إلى النقل. التصنيف: **41 كاملاً، 7 جزئياً، 0 غير مُثبت**.
+- **التحقق المحلي:** lint وtypecheck وbuild نجحت؛ `pnpm test`: 51 ملفاً، 807 ناجحاً و2 متخطيان؛ `test:coverage` نجح.

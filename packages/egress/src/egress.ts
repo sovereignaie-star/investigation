@@ -189,6 +189,12 @@ export interface EgressOptions {
    * request is ever allowed (fail-closed).
    */
   readonly providerHosts?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Provider name -> exact URL paths a secret of that provider may be sent to (T-SEC-SSRF-042). When set, a secret
+   * request whose path (on any hop) is not listed, or that carries a query or fragment, is refused, and a provider
+   * missing from the map is refused too. Unset means no path restriction (hosts are still checked).
+   */
+  readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
@@ -455,6 +461,26 @@ function checkSecretRegistry(req: EgressRequest, opts: EgressOptions): EgressRes
   const pin = normalizeHost(req.pinnedHost);
   if (pin === "" || !hosts.some((h) => normalizeHost(h) === pin)) {
     return deny("secret_host_mismatch", 0, "pinnedHost is not a registered host of secretProvider");
+  }
+  let url: URL;
+  try {
+    url = new URL(req.url);
+  } catch {
+    return null; // the URL shape check reports invalid_url
+  }
+  return checkProviderPath(req, url, opts, 0);
+}
+
+/** T-SEC-SSRF-042: a secret only goes to a registered path of its own provider, on every hop. */
+function checkProviderPath(req: EgressRequest, url: URL, opts: EgressOptions, hop: number): EgressResult | null {
+  const paths = opts.providerPaths;
+  if (paths === undefined || req.secret === undefined || !req.secretProvider) return null;
+  const allowed = Object.prototype.hasOwnProperty.call(paths, req.secretProvider) ? paths[req.secretProvider] : undefined;
+  if (!allowed || allowed.length === 0) {
+    return deny("secret_host_mismatch", hop, "secretProvider has no registered paths");
+  }
+  if (url.search !== "" || url.hash !== "" || !allowed.includes(url.pathname)) {
+    return deny("secret_host_mismatch", hop, "path is not a registered path of secretProvider");
   }
   return null;
 }
@@ -992,6 +1018,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         };
       }
     }
+    const pathErr = checkProviderPath(req, nextUrl, opts, hopCount);
+    if (pathErr) return refuse(pathErr);
     if (now() >= deadline) {
       audit({
         kind: "timeout",
