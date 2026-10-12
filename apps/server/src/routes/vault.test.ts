@@ -82,22 +82,20 @@ describe("vault routes (P1-015, P1-026)", () => {
     const list = JSON.parse((await call("/vault", withAdmin())).text) as { entries: { name: string; configured: boolean }[] };
     expect(list.entries.find((e) => e.name === "ipinfo")).toMatchObject({ configured: true });
     expect(list.entries.find((e) => e.name === "shodan")).toMatchObject({ configured: false });
-    // The vault test is gated by the gateway (T-SEC-SSRF-043/044 proven below)
-    // but `EgressResult` does not carry the provider's response, so the route
-    // honestly reports "not tested" until the response contract expands.
+    // TEMPORARY FAIL-CLOSED: the vault test path is CLOSED until the Q4
+    // conditions are met. The gateway denies the request BEFORE DNS and
+    // transport (reason no_case), so the route honestly reports "not tested".
     expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({
       ok: false,
       tested: false,
-      reason: "provider_response_unavailable",
+      reason: "no_case",
     });
-    // T-SEC-SSRF-043: the vault test path goes through the egress gateway
-    // (pinned host, pinned IP, no direct fetch).
-    expect(vaultTestCalls.length).toBeGreaterThanOrEqual(1);
-    expect(vaultTestCalls[0].host).toBe("ipinfo.io");
-    expect(vaultTestCalls[0].pinnedIp).toBe("93.184.216.34");
-    expect(vaultTestCalls[0].method).toBe("GET");
-    // T-SEC-SSRF-044: the key never appears in the URL.
-    expect(vaultTestCalls.every((c) => !c.url.includes(SECRET))).toBe(true);
+    // TEMPORARY FAIL-CLOSED: the vault test path is CLOSED (Q4 conditions
+    // incomplete) — the gateway denies the request before DNS and transport,
+    // so ZERO transport calls happen. The gateway-level reachability and
+    // redaction (T-SEC-SSRF-043/044) are proven by the gateway's own tests
+    // in packages/egress/src/egress-limits.test.ts and egress.test.ts.
+    expect(vaultTestCalls.length).toBe(0);
     const ip = await call("/lookup/ip", lookup({ ip: "8.8.8.8" }));
     expect(JSON.parse(ip.text)).toMatchObject({ city: "Mountain View" });
     // The key travels only server -> provider in a header, never in a URL or API response.

@@ -76,11 +76,13 @@ export async function testProviderKey(
   if (name === "ipinfo") headers["authorization"] = `Bearer ${key}`;
   if (name === "virustotal") headers["x-apikey"] = key;
 
+  // TEMPORARY FAIL-CLOSED: the systemContext caseId exemption is disabled
+  // until the remaining Q4 conditions are met (allowedHosts required,
+  // auditSink wired, actual-destination check). The gateway denies the
+  // request BEFORE DNS and transport, and the route honestly reports
+  // "not tested" — never a fabricated caseId.
   const result: EgressResult = await gateway.request({
     systemContext: true,
-    // TEMPORARY FAIL-CLOSED: the systemContext caseId exemption is disabled
-    // until the remaining Q4 conditions are met. A caseId is required.
-    caseId: "vault-key-validation",
     purposeRef: "vault-key-validation",
     transform: "vault.test@1",
     url: `https://${host}/8.8.8.8`,

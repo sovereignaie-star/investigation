@@ -1422,3 +1422,18 @@
   - فرض حد المعدل بين استدعاءات المسار (instance مشترك).
   - `AbortSignal` في `egress-adapter.ts`.
 - **الأدلة:** `corepack pnpm vitest run` (كامل) → 507/507. `packages/egress` → 199/199. lint/typecheck/build نظيفة. governance consistency ناجح. اختبار انحدار جديد يثبت أن `systemContext` بدون `caseId` → `no_case` مع 0 استدعاء DNS/نقل.
+
+### 2026-10-12 — [P2-003] إزالة caseId المصطنع — مسار /vault/:name/test مغلق مؤقتاً (مراجعة المستشار الرابعة)
+- **الفرع:** `audit/P2-003-investigation`.
+- **ما تم:** أُزيل `caseId: "vault-key-validation"` المصطنع من `testProviderKey()`. لا يُمرر أي معرّف تحقيق مصطنع. مسار `/vault/:name/test` مغلق مؤقتاً:
+  - البوابة ترفض الطلب بـ`no_case` قبل DNS والنقل (0 استدعاء).
+  - المسار يرد `200 { ok: false, tested: false, reason: "no_case" }`.
+  - اختبار `vault.test.ts` محدّث ليثبت `vaultTestCalls.length === 0`.
+- **تصحيح التوصيف:** الترحيل جزئي وليس مكتملاً. T-SEC-SSRF-043/044/045 مُثبتة على مستوى البوابة (`packages/egress`) وليس على المسار الفعلي. أي توصيف آخر كان مبالغة.
+- **الأدلة:** `corepack pnpm vitest run` (كامل) → 507/507. lint/typecheck/build نظيفة. governance consistency ناجح.
+- **ما يُفتح به المسار (قرار مالك معماري):**
+  1. جعل `allowedHosts` إلزامية لطلبات `systemContext`.
+  2. ربط `auditSink` لمسار الخزنة الفعلي في `testProviderKey`.
+  3. فحص الوجهة الفعلية وأي قفزة إعادة توجيه مقابل القائمة.
+  4. توسيع `EgressResult` لإظهار status المزود (401/403/500).
+  5. فرض حد المعدل بين استدعاءات المسار (instance مشترك).
