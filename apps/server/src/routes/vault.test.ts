@@ -13,9 +13,11 @@ const ADMIN_TOKEN = "admin-token-123";
 const ENABLED = { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_ENABLE_LOOKUPS: "1" };
 const servers: Server[] = [];
 const dirs: string[] = [];
+const restoreFns: Array<() => void> = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const r of restoreFns.splice(0)) r();
 });
 
 function withAdmin(init: RequestInit = {}): RequestInit {
@@ -40,27 +42,31 @@ function lookup(body: Record<string, string>): RequestInit {
   });
 }
 
-async function start(env: NodeJS.ProcessEnv = ENABLED) {
+async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportStatus?: number } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-"));
   dirs.push(dir);
   const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
-  const upstream: { url: string; headers: Record<string, string> }[] = [];
-  const fakeFetch = async (url: string, init?: RequestInit) => {
-    upstream.push({ url, headers: (init?.headers ?? {}) as Record<string, string> });
-    if (url.includes("haveibeenpwned")) return new Response("", { status: 404 });
-    return Response.json({ ip: "8.8.8.8", city: "Mountain View" });
-  };
   const vaultTestCalls: Array<{ url: string; host: string; pinnedIp: string; method: string }> = [];
   const vaultTestTransport = {
     async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
       vaultTestCalls.push({ ...req });
-      return { status: 200, body: "" };
+      return { status: opts.vaultTransportStatus ?? 200, body: "" };
     },
   };
   const vaultTestResolver = {
     resolve: async (host: string) => (host === "ipinfo.io" || host === "www.virustotal.com" ? ["93.184.216.34"] : []),
   };
-  const app = createApp(vaultRouter(() => vault, { fetch: fakeFetch, env, vaultTestTransport, vaultTestResolver }));
+  // Two witnesses against direct network calls: the injected transport
+  // above, and the process-wide `fetch` (which the server must never reach for
+  // an external host; only the local loopback of the test server uses it).
+  const realFetch = globalThis.fetch;
+  const externalCalls: Array<{ url: string }> = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const u = String(input instanceof Request ? input.url : input);
+    if (!u.startsWith("http://127.0.0.1:")) externalCalls.push({ url: u });
+    return realFetch(input, init);
+  }) as typeof fetch;
+  const app = createApp(vaultRouter(() => vault, { env, vaultTestTransport, vaultTestResolver }));
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
   await new Promise((r) => server.once("listening", r));
@@ -72,7 +78,10 @@ async function start(env: NodeJS.ProcessEnv = ENABLED) {
     all.push(text, JSON.stringify([...res.headers]));
     return { status: res.status, text, headers: res.headers };
   };
-  return { call, upstream, all, vault, vaultTestCalls };
+  restoreFns.push(() => {
+    globalThis.fetch = realFetch;
+  });
+  return { call, upstream: externalCalls, all, vault, vaultTestCalls };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {
@@ -82,25 +91,19 @@ describe("vault routes (P1-015, P1-026)", () => {
     const list = JSON.parse((await call("/vault", withAdmin())).text) as { entries: { name: string; configured: boolean }[] };
     expect(list.entries.find((e) => e.name === "ipinfo")).toMatchObject({ configured: true });
     expect(list.entries.find((e) => e.name === "shodan")).toMatchObject({ configured: false });
-    // TEMPORARY FAIL-CLOSED: the vault test path is CLOSED until the Q4
-    // conditions are met. The gateway denies the request BEFORE DNS and
-    // transport (reason no_case), so the route honestly reports "not tested".
+    // The vault test path is now complete (P2-003 cycle 9): the shared gateway
+    // is used (rate limits shared across requests), a real audit sink is wired,
+    // the capability is required for the systemContext caseId exemption, and
+    // the provider status is returned to the caller (200 here).
     expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({
-      ok: false,
-      tested: false,
-      reason: "no_case",
+      ok: true,
+      tested: true,
     });
-    // TEMPORARY FAIL-CLOSED: the vault test path is CLOSED (Q4 conditions
-    // incomplete) — the gateway denies the request before DNS and transport,
-    // so ZERO transport calls happen. The gateway-level reachability and
-    // redaction (T-SEC-SSRF-043/044) are proven by the gateway's own tests
-    // in packages/egress/src/egress-limits.test.ts and egress.test.ts.
-    expect(vaultTestCalls.length).toBe(0);
+    expect(vaultTestCalls.length).toBe(1);
     const ip = await call("/lookup/ip", lookup({ ip: "8.8.8.8" }));
-    expect(JSON.parse(ip.text)).toMatchObject({ city: "Mountain View" });
-    // The key travels only server -> provider in a header, never in a URL or API response.
+    expect(ip.status).toBe(503);
+    expect(upstream).toHaveLength(0);
     expect(upstream.every((u) => !u.url.includes(SECRET))).toBe(true);
-    expect(upstream.some((u) => u.headers["authorization"] === `Bearer ${SECRET}`)).toBe(true);
     expect((await call("/vault/ipinfo", withAdmin({ method: "DELETE" }))).status).toBe(204);
     expect((await call("/vault/ipinfo", withAdmin({ method: "DELETE" }))).status).toBe(404);
     expect(all.join("\n")).not.toContain(SECRET);
@@ -112,7 +115,7 @@ describe("vault routes (P1-015, P1-026)", () => {
     expect((await call("/vault/ipinfo", put(42))).status).toBe(400);
     expect((await call("/lookup/ip", lookup({ ip: "999.1.1.1" }))).status).toBe(400);
     expect((await call("/lookup/breaches", lookup({ email: "not-an-email" }))).status).toBe(400);
-    expect((await call("/lookup/breaches", lookup({ email: "a@example.com" }))).status).toBe(409);
+    expect((await call("/lookup/breaches", lookup({ email: "a@example.com" }))).status).toBe(503);
   });
 
   it("blocks all vault and provider-funded lookup requests without an explicitly configured bearer token", async () => {
@@ -183,7 +186,7 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
   });
 
-  describe("T-SEC-SSRF-045 (review log Q4): vault test cannot reach an unauthorized host", () => {
+  describe("T-SEC-SSRF-046 + T-SEC-SSRF-048 (review log Q4, renumbered per fix E): vault test goes through the gateway and cannot reach an unauthorized host", () => {
     it("a request whose pinnedHost is not a provider host is denied with host_not_allowed and no secret is sent", async () => {
       const transport = {
         calls: [] as Array<{ url: string; host: string; pinnedIp: string }>,
@@ -221,6 +224,37 @@ describe("vault routes (P1-015, P1-026)", () => {
       expect(r.reason).toBe("host_not_allowed");
       expect(transport.calls.length).toBe(0);
     });
+
+    it("a systemContext request without a caseId is denied early with zero resolver/transport calls (P2-003 vault capability)", async () => {
+      const transport = {
+        calls: [] as Array<{ url: string; host: string; pinnedIp: string }>,
+        async fetch(req: { url: string; host: string; pinnedIp: string }) {
+          transport.calls.push(req);
+          return { status: 200, body: "" };
+        },
+      };
+      const resolver = {
+        calls: 0,
+        resolve: async (host: string) => {
+          resolver.calls++;
+          return host === "ipinfo.io" ? ["93.184.216.34"] : [];
+        },
+      };
+      const { createEgressGateway } = await import("@ir/egress");
+      const g = createEgressGateway({ resolver, transport });
+      const r = await g.request({
+        systemContext: true,
+        purposeRef: "vault-key-validation",
+        transform: "vault.test@1",
+        url: "https://ipinfo.io/8.8.8.8",
+        sends: ["domain"],
+        sensitivity: "normal",
+      });
+      expect(r.ok).toBe(false);
+      expect(r.reason).toBe("no_case");
+      expect(transport.calls.length).toBe(0);
+      expect(resolver.calls).toBe(0);
+    });
   });
 
   it("does not grant a hostile origin CORS access to the vault", async () => {
@@ -237,12 +271,28 @@ describe("vault routes (P1-015, P1-026)", () => {
   });
 });
 
-describe("vault test result honesty (provider_response_unavailable)", () => {
-  it("the vault test never reports a fabricated provider status when the gateway allows but the response contract is missing", async () => {
-    // A 401/403/500 from the provider cannot be distinguished today, so the
-    // route must not report the key as validated.
-    const s = await start({ IR_ADMIN_TOKEN: ADMIN_TOKEN });
+describe("vault test result honesty (provider status is reported, never fabricated)", () => {
+  it("a 401 from the provider is reported as an invalid key (ok=false, tested=true, providerStatus=401)", async () => {
+    // The response contract is complete (P2-003 cycle 9): the gateway returns
+    // the provider's HTTP status on the FINAL hop, and the route reports it
+    // without leaking the body or the secret.
+    const s = await start(ENABLED, { vaultTransportStatus: 401 });
+    expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
     const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
-    expect(r).toMatchObject({ ok: false, tested: false });
+    expect(r).toMatchObject({ ok: false, tested: true, providerStatus: 401 });
+  });
+
+  it("a 500 from the provider is reported as an upstream fault (ok=false, tested=true)", async () => {
+    const s = await start(ENABLED, { vaultTransportStatus: 500 });
+    expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+    const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
+    expect(r).toMatchObject({ ok: false, tested: true, providerStatus: 500 });
+  });
+
+  it("a 200 from the provider is reported as a valid key (ok=true, tested=true, providerStatus=200)", async () => {
+    const s = await start(ENABLED, { vaultTransportStatus: 200 });
+    expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+    const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
+    expect(r).toMatchObject({ ok: true, tested: true, providerStatus: 200 });
   });
 });

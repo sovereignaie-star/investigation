@@ -334,7 +334,7 @@ describe("audit sink + secret redaction", () => {
     const allowedEv = c.events[0];
     const deniedEv = c.events[1];
     expect(allowedEv.kind).toBe("allowed");
-    expect(allowedEv.secretDigest).toMatch(/^redacted-[0-9a-f]{8}$/);
+    expect(allowedEv.secretDigest).toMatch(/^redacted-hmac-sha256-[0-9a-f]{16}$/);
     expect(allowedEv.secretDigest).not.toContain("topsecret");
     expect(deniedEv.kind).toBe("denied");
     expect(deniedEv.reason).toBe("host_not_allowed");

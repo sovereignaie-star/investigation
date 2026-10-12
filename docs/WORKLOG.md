@@ -1460,6 +1460,25 @@
 - **ما تم:** صُحّح الاستنتاج السببي في STATUS وWORKLOG. الحقيقة: نجح التشغيل التشخيصي المنفرد (run 38184843591: plain 356ms، encrypted 669ms، 9/9 خلال 1.68s). وفي التشغيل 38193465710 فشل اختبار plain ضمن `test:coverage` بمدة 6366ms ورسالة انتهاء مهلة 5000ms؛ نجح فحص test في تشغيل لاحق. **لم يُحسم السبب الجذري** — لا تثبت النتائج أن التغطية وحدها تسبب الفشل أو أن التشغيل دونها ينجح دائماً (الفرق بينهما في أكثر من عامل). يبقى D-052 عائقاً غير محسوم، مع إبقاء الاختبار وقيوده دون تغيير. **حُذفت خيارات رفع timeout أو فصل التغطية** (رفع المهلة محظور صراحة في هذه الدورة، وفصل التغطية ليس حلاً مفوضاً).
 - **الأدلة:** `corepack pnpm vitest run` (كامل) → 507/507. governance consistency ناجح.
 
+### 2026-10-12 — [P2-001] [P2-003] توحيد فرع العمل لتنفيذ قرارات ADR-08 المعتمدة
+
+- **السياق:** الرأس `f056684` كان حداً مشتركاً لـ`audit/P2-003-investigation` و`feat/P2-001-egress-adapter` (رأسان متطابقان بمحتوى واحد). لا فرق بينهما.
+- **العمل:** أنشئ `feat/P2-003-egress-complete` من `main` ودمج محتوى `f056684` (لا دفع قسري، لا --no-verify). كل عمل التنفيذ القادم سيتم على هذا الفرع ليعيش في مسار واحد قابل للدمج.
+- **الغرض:** تنفيذ القرارات المعتمدة في ADR-08 بعد اعتماده التصميمي: عقد الاستجابة والإلغاء بين البوابة والمحرك، إكمال مسار الخزنة، إغلاق مسارات الشبكة المباشرة، فض تعارض معرفات SSRF، إثبات عزل T-SBX، وحسم D-052 بالقياس.
+- **الفحوص:** merge completed cleanly; WORKLOG is append-only in this commit; STATUS updated.
+
+### 2026-10-12 — [P2-003] استعادة تفاصيل ADR-08 الفارقة وتحديث سجل المراجعة
+
+- **المشكلة:** إيداع اعتماد ADR-08 السابق (7728368) استند إلى نسخة أقدم من ADR-08 (133 سطراً) وأفقد تفاصيل القرارات المعتمدة أ–و (226 سطراً) وسجل المراجعة. صُحح ذلك هنا.
+- **العمل:**
+  - استعادة نص ADR-08 الكامل من رأس PR #47 (`docs/P2-003-adr08-public-egress`) ثم تحديث سطر الحالة إلى «معتمد تصميمياً (2026-10-12)» مع الحفاظ على البنود أ–و في القسم «القرارات المعتمدة»، وتحديث التاريخ، وتعديل سطر «ما يزال مفتوحاً» ليعكس القرار التنفيذي النهائي، وتغيير عنوان القسم إلى «القرارات المعتمدة (توجيه المالك 2026-10-11؛ اعتماد نهائي تنفيذي 2026-10-12)».
+  - تحديث `docs/adr/ADR-08-review-log.md`: إضافة تحديث نهائي موثق يدوّن قرار المالك التنفيذي (الاعتماد التصميمي مع فصل التنفيذ عن القرار).
+- **التحقق:** `node scripts/governance/check.mjs --consistency` → نجاح.
+
+### 2026-10-12 — [P2-003] إعادة تشغيل CI على فرع feat/P2-003-egress-complete (مرة أخرى)
+
+- لم تبدأ سير العمل عند الدفع السابق. أُعيد إيداع حوكمة وإعادة الدفع.
+
 ### 2026-10-12 — [P2-003] اعتماد ADR-08 تصميمياً (قرار المالك التنفيذي) وتحديث الحالة والسجل
 
 - **القرار:** حُسم ADR-08 بتفويض المالك التنفيذي: جوهر التصميم — الوصول الواسع إلى الإنترنت العام عبر بوابة خروج موحدة، لا قائمة عالمية مغلقة من المضيفين — معتمد تصميمياً. **حالة التنفيذ والقبول الأمني منفصلتان عن القرار المعماري** ولا يُدّعى اكتمالهما قبل الأدلة.
@@ -1467,3 +1486,128 @@
   - `docs/adr/ADR-08-egress-gateway.md`: تحديث سطر الحالة إلى «معتمد تصميمياً (2026-10-12)» مع فصل صريح لحالة التنفيذ؛ تحديث العنوان؛ استبدال قسم «أسئلة للمراجع» بإجابات حاسمة محفوظة للمرجع التاريخي؛ إضافة سجل مراجعة D-8 يدوّن قرار المالك التنفيذي وقواعد التصميم المحسومة (الوصول العام الواسع، المسار الموحّد عبر @ir/egress فقط، وضع pinned للأسرار مع مطابقة سجل المزوّد، الربط بقضية وغرض وبيانات معلنة، حماية SSRF وسياسة IANA المؤرخة، إلزام HTTPS وTLS، رفض natural_person الافتراضي مع IR_OFFLINE، الحدود: 5MB/50MB/3 redirects/5s/15s/60s، احترام robots.txt وUser-Agent صريح).
   - `docs/STATUS.md`: تحديث سطر P2-003 ليعكس الاعتماد التصميمي وفصل التنفيذ.
 - **الفحوص:** `node scripts/governance/check.mjs --consistency` → نجاح. لم تُمس أي أقسام قائمة غير الحالة وسجل المراجعة (تعديل إضافي فقط، GR-09).
+
+### 2026-10-12 — [P2-003] مزامنة feat/P2-003-egress-complete مع main (7728368)
+
+- حُلّ تعارض الدمج مع main بحفظ تفاصيل ADR-08 المستعادة (226 سطراً) وسجل المراجعة، مع دمج محتوى main (اعتماد ADR-08 + إغلاق #63). حُفظ كل تغيير فريد.
+- سبب الدمج: دفع main تقدم بعد فتح PR #64/#65، مما جعل الفرع قابلاً للدمج. كانت تعارضات الحوكمة (STATUS/WORKLOG/ADR-08) محفوظة بحل يدوي.
+
+### 2026-10-12 — [P2-001] [P2-003] عقد الاستجابة والإلغاء بين بوابة الخروج والمحرك
+
+- **`packages/egress/src/egress.ts`:**
+  - `EgressRequest.signal?: AbortSignal` — إشارة إلغاء المتصل (المحرك يمررها من رمز التشغيل). دُمجت مع مؤقت كل قفزة وحد المهلة الكلي عبر `AbortController` خاص بالطلب، مع تنظيف المستمعين.
+  - `EgressResult.response?: EgressSuccessResponse` — استجابة النقل الناجحة (status/headers/body/contentLength/host الفعلي) تعاد للخادم والمحرك لاستهلاكها دون جلب ثانٍ.
+  - `EgressReason` أضيف `cancelled` — رفض قابل للقراءة آلياً للإلغاء (قبل DNS، وأثناء النقل، وبعد النقل المتأخر).
+  - استبدال `redactSecret` FNV-1a بـ HMAC-SHA256 بمفتاح عشوائي 32 بايت لكل عملية بوابة (لا يُحفظ) — يمنع الارتباط العكسي بالسر الخام ولا يكشف بصمة قابلة للاستغلال.
+  - فحص الوجهة الفعلية عند إعادة التوجيه: أي قفزة يجب أن تجتاز `allowedHosts` و`pinnedHost` قبل النقل.
+  - طلب ملغى لا ينجح أبداً: تحقق مزدوج قبل النقل وبعده؛ النقل المتأخر يُعاد كـ `cancelled` وليس نجاحاً.
+- **`packages/engine/src/egress-adapter.ts`:**
+  - حذف `EGRESS_ADAPTER_NO_RESPONSE` الوهمي (لا مسار خطأ وهمي بعد الآن).
+  - المحوّل يعيد `TransportResponse` (status/body/contentType) من `result.response` عبر واجهة `HttpTransport` القائمة دون أي جلب إضافي.
+  - `signal` يمرر من المحرك إلى البوابة (كان `void signal` يتجاهله).
+- **`packages/engine/src/transport.ts`:** أضيف `transport:cancelled` كنوع خطأ.
+- **الاختبارات:**
+  - `egress-adapter.test.ts`: اختبار نجاح كامل (استجابة 200 تصل إلى المحرك وتنجح العملية)؛ اختبار رفض rate-limit محسّن (concurrency=1)؛ تحديث اختبار الميزانية.
+  - `egress-limits.test.ts`: تحديث تعبير regular لتنسيق HMAC الجديد.
+- **الفحوص:** `npx vitest run` → 507/507 ناجحة. `pnpm -r --if-present run typecheck` → نجاح. `pnpm run governance --consistency` → نجاح.
+
+
+### 2026-10-12 — [P2-003] إكمال مسار الخزنة (B) وتفعيل القدرة الرمزية الخاصة
+
+- **`packages/egress/src/vault-capability.ts` (جديد):** كائن القدرة `VaultKeyValidationCapability` يُبنى بدالة `createVaultKeyValidationCapability` مع `allowedHosts` (سجل المزودين) و`auditSink`. **غير مُصدَّر من `index.ts`** — الوصول فقط عبر `@ir/egress/vault-capability`. دالة مساعدة `vaultGatewayOptions` تُرجع خيارات البوابة الجاهزة.
+- **`packages/egress/package.json`:** أضيف مسار التصدير `./vault-capability`؛ حُذف `./providers` (غير موجود).
+- **`packages/egress/src/egress.ts`:**
+  - أضيف حقل `capability?: unknown` على `EgressRequest` و`EgressOptions` وفي `REQUEST_FIELDS`.
+  - دالة `hasVaultCapability` تقارن **تطابق الكائن** بين `req.capability` و`opts.capability` — لا يمكن تزويرها.
+  - `preDnsChecks` الآن يتلقى `opts` ويعيد تفعيل إعفاء `systemContext` من `caseId` **شرطياً**: يتطلب قدرة مسجّلة.
+- **`apps/server/src/lib/providers.ts`:**
+  - بوابة مشتركة (مثيل واحد) مع حد معدل لكل مضيف مشترك عبر الطلبات؛ يعاد البناء فقط إذا تغيّر النقل/الحلّال (الهوية).
+  - `auditSink` حقيقي يمر عبر `logger` pino، بدون سر خام أو جسم مزود.
+  - `testProviderKey` يعيد `providerStatus` من `result.response.status` — يميّز 200/401/403/500.
+  - السر في الترويسة المخصصة فقط (`authorization` لـipinfo، `x-apikey` لـvirustotal).
+- **`apps/server/src/routes/vault.test.ts`:**
+  - اختبار إيجابي: نجاح 200 عبر القدرة (ok=true, tested=true, providerStatus=200).
+  - اختبارات سالبة: 401 و500 يُبلَّغان كما هما؛ `no_case` عند غياب القدرة مع صفر استدعاءات resolver/transport؛ `host_not_allowed` قبل أي DNS.
+- **الفحوص:** 515/515 ناجحة. typecheck نجاح. governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] إغلاق مسارات الشبكة المباشرة (C) وفحص AST آلي
+
+- **`apps/server/src/lib/providers.ts`:** حُذفت دالتا `lookupIp` و`lookupBreaches` (استخدما `fetch` مباشرة). حُذف `FetchLike`. أُضيف ثابت `LOOKUPS_GATEWAY_PENDING` مع سبب الرفض.
+- **`apps/server/src/routes/vault.ts`:** حُذف `opts.fetch` من العقد (المسار لا يحتاج ألياً). استبدلت المسارات `/lookup/ip` و`/lookup/breaches` بردهم `503 { error: LOOKUPS_GATEWAY_PENDING }` (fail-closed) — لا مسار شبكة مباشر بعد الآن في الخادم.
+- **`apps/server/src/routes/vault.test.ts`:** تحديث الاختبارات: `/lookup/ip` يردّ 503 وصفر طلبات upstream، و`/lookup/breaches` مع بريد صالح يردّ 503.
+- **`scripts/checks/no-direct-network.ts` (جديد):** محلل AST (TypeScript Compiler API) يمنع في التعليمات البرمجية القابلة للتنفيذ خارج `packages/egress/src`:
+  - `import`/`require`/`import()`/`export * from` لأي من `node:http/https/http2/net/tls/dns/dgram/child_process/cluster/worker_threads` أو `undici/axios/got/node-fetch/cross-fetch/isomorphic-fetch/ws/superagent/request`،
+  - أي `fetch(...)` أو `globalThis.fetch/self.fetch/window.fetch/global.fetch` أو `const f = fetch;` أو `{ fetch }` shorthand،
+  - أي `new XMLHttpRequest()/WebSocket()/EventSource()`،
+  - أي `import` لـ`@ir/egress/*` (باستثناء `vault-capability`)، و`vault-capability` مسموح فقط من `apps/server/src/lib/providers.ts`.
+  - يتجاهل التعليقات والنصوص و`import type` وأسماء الأعضاء/الخصائص/التصريحات المحلية (تثبت تحكمات سلبية).
+  - ملفات الاختبار تُفصل كطبقة منفصلة (قد تفتح مستمعات محلية) ولا تُحسب كمسارات إنتاجية.
+  - استثناء موثق واحد: `lib/api-client-react/src/custom-fetch.ts` (عميل المتصفح للـorigin الخاص، تحدّث عنه أهل الاختصاص ولا يعبر نحو مزود خارجي).
+- **`scripts/checks/no-direct-network.test.ts` (جديد):** اختبارات تحكم سلبية (5) تثبت أن المحلل يكشف فعلاً كل نمط انتهاك — لا يمر أي شيء بالخطأ — واختبار تحكم سلبي واحد على إيجابيات/سلبيات.
+- **`vitest.config.ts`:** أضيف `scripts/checks/**/*.test.ts` إلى `include`.
+- **الفحوص:** 522/522 ناجحة (43 ملفاً). typecheck نجاح. governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] فض تعارض معرفات T-SEC-SSRF-043/044/045 (E) واختبار اتساق آلي
+
+- **التعارض:** كانت أسطر سجل المراجعة D-8 سؤال 4 (`docs/adr/ADR-08-review-log.md` 170-172) تستخدم `T-SEC-SSRF-043/044/045` لمعانٍ (مسار الخزنة عبر البوابة / عدم تسريب السر / رفض مضيف غير مصرح) تختلف كلياً عن المعاني الرسمية التي تحملها المصادر المعتمدة (`docs/ROADMAP.md` §8.3.1 و`docs/adr/reference/T-SEC-SSRF-COVERAGE.md`): 043=بيانات غير معلنة في `sends`، 044=تطبيع مضيف مثبَّت، 045=انحراف سجل IANA.
+- **الحل:** أُعيد ترقيم معانى سؤال 4 إلى `T-SEC-SSRF-046/047/048`، وأُضيفت إلى مصفوفة ROADMAP §8.3.1 كصفوف جديدة مع وصف + آلية إثبات. وُضع تصويب توثيقي في سجل المراجعة يفسر سبب الترقيم.
+- **`scripts/checks/ssrf-id-consistency.test.ts` (جديد):** 4 اختبارات: (1) كل معرف محمي يظهر في مصفوفة ROADMAP الرسمية. (2) لا سطر في `docs/` يربط معرفاً بمعنى يناقض مصدره الرسمي (فشل يظهر الملف/السطر/المعرف). (3) سجل المراجعة يستخدم 046/047/048 للمعانى الخزنية ولم يعد يستخدم 043/044/045 لها. (4) اختبارات الكود (vault.test.ts) تستخدم المعرف الصحيح.
+- **`apps/server/src/routes/vault.test.ts`:** غُيّر وصف `describe` من «T-SEC-SSRF-045 (review log Q4)» إلى «T-SEC-SSRF-046 + T-SEC-SSRF-048 (review log Q4, renumbered per fix E)».
+- **ملاحظة حوكمة:** لم تُعدل مدخلات WORKLOG التاريخية — سجل الإلحاق يحتفظ بالتوصيفات القديمة كما وُثّقت وقتها.
+- **الفحوص:** 526/526 ناجحة (44 ملفاً). governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] تصحيحات ما بعد مراجعة المستشار (F preparation + audit-of-audit)
+
+- **`scripts/checks/no-direct-network.ts`:** نُقلت واجهة `Ctx` من داخل `analyzeSource` إلى مستوى الوحدة (كانت خطأ نطاقياً لا يكشفه Vitest لأنه يزيل الأنواع). أُدرجت `scripts/checks` في `scripts/tsconfig.json` — كانت غير مضمنة في أي فحص TypeScript، فأخطاء النوع لم تكن تُكشف. حُذف `fakeFetch` الميت من `vault.test.ts` واستُبدل بشاهد حقيقي على `globalThis.fetch` مع `restoreFns` (استعادة تلقائية بعد كل اختبار) يرصد أي اتصال خارجي يبدأ من الخادم أثناء طلبات الخزنة وlookup و`IR_ENABLE_LOOKUPS=1`. المحلل يرصد الآن `globalThis["fetch"](...)` و`const f = globalThis.fetch;`، مع تحكمات سلبية لكل نمط.
+- **`scripts/checks/ssrf-id-consistency.test.ts`:** اختبار جديد يرفض تبادل معاني 046/047/048 (كل معنى خزني مرتبط بمعرّفه). يثبت أن مدخلات WORKLOG التاريخية (التي تذكر 043/044/045 بمعانٍ قديمة) تبقى كطبقة تاريخ غير مُعدلة — سجل الإلحاق لا يُعاد كتابته.
+- **`apps/server/src/routes/vault.test.ts`:** حُذف `upstream` الميت (لا كود يضيف إليه). استُبدل باختبار HTTP حقيقي: مسار `/api/vault/:name/test` يعمل من البداية للنهاية عبر البوابة المشتركة والقدرة (زائد اختبار موجب: نجاح 200)، مع رصد أن أي اتصال خارجي يفشل.
+- **ملاحظة:** واجهة `resolveUrl` في `lib/api-client-react/src/custom-fetch.ts` فُحصت — تتعامل مع `RequestInfo | URL | string` ولا تقوم بإنشاء `http://` جديد ولا تبديل بروتوكول. الإعفاء `isSameOriginClientFile` يبقى صحيحاً.
+- **الفحوص:** 528/528 ناجحة (44 ملفاً). typecheck نجاح (بما فيها `scripts/checks`). governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-005] [P2-003] إنفاذ عزل T-SBX فعلياً (F) — حزمة packages/sandbox
+
+- **التصميم:** العزل يجب أن يكون إنفاذاً على مستوى نظام التشغيل لا مجرد فحوص ساكنة أو منع استيراد. الحل: `LD_PRELOAD` مع مكتبة C صغيرة تحجب `socket()` لـ`AF_INET/AF_INET6` عند حد النواة (`EACCES`). `AF_UNIX` (IPC المحلي) يبقى. لا يمكن للمحوّل تجاوز الحجب بمحاولة `fetch` أو `node:http` أو `node:net` — كلها تنتهي إلى نفس syscall المحجوب.
+- **`packages/sandbox/src/block-socket.c`:** الملف المصدر (27 سطراً). يُترجم بـ`cc -shared -fPIC` ويُخزن في `/tmp/ir-sandbox-shim/`.
+- **`packages/sandbox/src/build.ts`:** يكتشف المنصة (linux فقط)، يجد مترجم `cc/gcc`، يترجم ويخزن الشيم. المنصات غير المدعومة تُعلَّم `supported: false` — `fail-closed`.
+- **`packages/sandbox/src/enforce.ts`:** `runSandboxedTransform(source, opts)` ينشئ عملية `node` مع `LD_PRELOAD` ويجمع stdout/stderr ويرصد `blockedByKernel` عبر توقيع `[block-socket]` أو `EACCES`. `env` المعطى من المستدعي يُطبَّق بعد `process.env` (لا يمكن تعطيل الحجب).
+- **`packages/sandbox/src/tsbx.test.ts`:** 5 اختبارات: (1) محوّل يحاول اتصال TCP مباشر إلى مستمع محلي مضبوط على `127.0.0.1` → مرفوض بـ`EACCES`/`[block-socket]`. (2) محوّل يحاول `fetch` → مرفوض. (3) المسار المشروع يظل يعمل (لا يفشل التنفيذ العادي). (4) تحكم سلبي: نفس المحاولة بدون الشيم تصل إلى النواة (`ECONNREFUSED` على منفذ مغلق) — يثبت أن الفحص ليس صوريياً. (5) الشيم قابل للتحميل على Linux.
+- **ملاحظة حوكمة:** المنصات غير المدعومة (Windows، macOS بلا LD_PRELOAD) تُعلَّم `supported: false` — `fail-closed` (رفض افتراضي للشبكة) وليس ادعاء عزل.
+- **`scripts/checks/no-direct-network.ts`:** `packages/sandbox/src/` أُضيف إلى `isGatewayFile` — الحزمة هي التي تنفذ الإنفاز (تحتاج `node:child_process` مشروعاً).
+- **الفحوص:** 533/533 ناجحة (45 ملفاً). typecheck نجاح. governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] تدقيق D: مصفوفة تغطية SSRF + نطاق HMAC + مسار التدقيق
+
+- **السياق:** المصفوفة `docs/adr/reference/T-SEC-SSRF-COVERAGE.md` كُتبت قبل وجود حزمة `@ir/egress`، فكانت تقول «مطلوب — غير مثبت تنفيذياً» لكل الصفوف. الحزمة موجودة الآن ولديها اختبارات — التوصيف أصبح قديماً لا مبالغاً.
+- **`docs/adr/reference/T-SEC-SSRF-COVERAGE-UPDATE.md` (جديد):** تقرير تدقيق لكل معرّف من T-SEC-SSRF-001..048: أي ملف اختبار يُثبته، موقع الحل/الرفض، وملاحظات. **النتيجة: 45/48 مُثبتة فعلياً.** الفجوات المعروفة الموثقة (غير مُثبتة): T-SEC-SSRF-018 (IDN/homoglyph)، وT-SEC-SSRF-026 (شهادة TLS — يُنفَّذ مع النقل الحقيقي)، وT-SEC-SSRF-033 (ترميزات gzip متراكبة).
+- **`docs/adr/reference/T-SEC-SSRF-COVERAGE.md`:** حُدّث رأس المصفوفة بملاحظة توجيه للتدقيق، مع الحفاظ على الصفوف التاريخية كما هي (سجل تاريخي لا يُعاد كتابته) — الحالة الفعلية المُحدَّثة في ملف التدقيق.
+- **نطاق مفتاح HMAC (موثَّق):** `AUDIT_SECRET_REDACT_KEY` مُولَّد عشوائياً (32 بايت) لكل عملية/مثيل بوابة، لا يُخزَّن، لا يُشارك بين الطلبات، ولا يمكن ربط سجلات عبر إعادة التشغيل. التنقيح `redacted-hmac-sha256-{16 hex}` — لا سر خام ولا جزء منه.
+- **ما يُسجَّل في التدقيق (موثَّق):** `kind` (allowed/denied/transport_error/timeout/rate_limited/size_limit)، و`reason`، و`transform`، و`transportCalls`، و`detail`، و`secretDigest`، وسياق الطلب (caseId، purposeRef، المضيف، hopCount). المسار الحقيقي في الخادم: `makeVaultAuditSink` في `providers.ts` يمر عبر pino logger.
+- **الفحوص:** لا تغييرات كود في هذه الدورة — توثيق فقط. المصفوفة والحوكمة متسقتان (`governance --consistency` نجاح).
+
+### 2026-10-12 — [P2-003] تزامن pnpm-lock.yaml مع حزمة sandbox الجديدة
+
+- **السبب:** أنشئت حزمة `packages/sandbox` دون تحديث `pnpm-lock.yaml`. فشلت خطوة `pnpm install --frozen-lockfile` في CI بـ`ERR_PNPM_OUTDATED_LOCKFILE` (الحزم الـ17 صارت 18). أُصلح بـ`pnpm install` محلياً (6 أسطر في القفل) و`git add` + `commit`.
+- **الفحوص:** `pnpm install` نجاح. `git push` نجاح. CI يعاد تشغيله على الدفعة الجديدة.
+
+### 2026-10-12 — [P2-003] تجربة D-052 المضبوطة (G): workflow A/B مزدوج
+
+- **الهدف:** حسم السبب الجذري لفشل D-052 في CI (6366-6672ms مقابل 245-356ms محلياً) بتجربة مضبوطة لا بتخمين.
+- **`.github/workflows/d052-experiment.yml` (جديد):** `workflow_dispatch` فقط (لا يعمل ضمن CI العادي). على نفس SHA ونفس Node 24 ونفس التثبيت ونفس صورة المشغّل: (A) `pnpm run test:coverage` (الأمر المطابق لـCI تماماً)، (B) `pnpm run test:coverage -- --fileParallelism=false` (نفس الأمر مع متغير واحد). 3 أزواج بترتيب متناوب (A/B، B/A، A/B). يرفع السجلات كـartifact مع هوية التجربة.
+- **قيود المالك محترمة:** مهلة 5000ms وKDF لم تتغير، الاختبار لم يُقسَّم، workflow CI العادي لم يُمس.
+- **دلالة النتائج (مكتوبة سلفاً):** A يفشل وB ينجح باستمرار ← الفرضية (تنافس موارد + coverage + توازي) مؤكدة على نفس SHA. كلاهما يفشل أو كلاهما ينجح ← الفرضية مدحوضة، والمرشح المتبقي كلفة أدوات التغطية وحدها. نتائج مختلطة ← تباين تنافس المشغّل؛ السجلات تحمل المدد الخام.
+- **الحالة:** التجربة مُعدّة وتُشغَّل بعد دمج هذه الدورة. لا يُدّعى حسم قبل نتائجها.
+
+### 2026-10-12 — [P2-003] حوكمة D-8: ربط الاعتماد بالإنفاذ آلياً (H)
+
+- **المشكلة:** سطر ADR-08 في جدول ROADMAP كان يقول «مقترح» بينما مستند ADR-08 يسجّل اعتماد المالك التنفيذي (قرار 2026-10-12، PR #63). الاعتماد والإنفاذ لا يعكسان بعضهما — وهذا هو جوهر H.
+- **`docs/ROADMAP.md`:** صُحّح سطر ADR-08 إلى «معتمد تصميمياً؛ التنفيذ جارٍ» مع الإشارة إلى أن عزل `worker_threads` (P2-005) يبقى مقترحاً وأن حالة التنفيذ منفصلة عن القرار المعماري.
+- **`scripts/governance/check.mjs`:** أضيف `adrStatusConsistency()` ويُستدعى في وضع `--consistency`. يستخرج حالة ADR-08 من جدول الحالة في `docs/adr/ADR-08-egress-gateway.md` (المصدر الحاكم للاعتماد) ويقارنها بسطر ADR-08 في جدول ROADMAP (المرجع المتقاطع). يفشل عند: (a) ADR معتمد وROADMAP غير معتمد، (b) ADR غير معتمد وROADMAP معتمد، (c) سطر «مقترح» مع اعتماد موثق، (d) سطر ADR-08 غائب من ROADMAP.
+- **`scripts/governance/check.test.mjs`:** 4 اختبارات وحدة (T-GOV-015..018) تثبت أن الفحص يعمل في الاتجاهين ويرفض الحالات المتضاربة. 19/19 ناجحة.
+- **الدلالة:** «حالة التنفيذ والقبول الأمني منفصلتان عن القرار المعماري» — هذا الفحص يفرض أن *حالة الاعتماد* متطابقة بين المستند والخارطة، لا أن التنفيذ مكتمل. لا يمكن للموافقة والإنفاذ أن يفترقا مرة أخرى دون فشل الحوكمة.
+- **الفحوص:** `pnpm run governance` نجاح (اختبارات check.test.mjs 19/19 + --consistency). `npx vitest run` 533/533. eslint نظيف.
+
+### 2026-10-12 — [P2-005] تصحيح CodeQL: إنشاء ملف آمن في دليل مؤقت لكل عملية
+
+- **السبب:** CodeQL (فحص 7e866cd) رفض بتصنيف عالي الخطورة: «Insecure creation of file in the OS temp dir» على `packages/sandbox/src/build.ts:53`. الشيم كان يُكتب في دليل ثابت `/tmp/ir-sandbox-shim` — قابل لهجوم symlink من مستخدم محلي معاد.
+- **الحل:** دليل لكل عملية عبر `mkdtempSync` (لاحقة عشوائية، `0o700`) + `realpathSync(tmpdir())` لحل الـsymlink في المسار الأب. الملف يُكتب بعلم `wx` (يرفض الكتابة فوق ملف موجود — لا يمكن استبداله بـsymlink مسبق). `chmod 0o600` بعد البناء + تحقق نهائي من الوضع. `fail-closed` على أي شذوذ.
+- **الفحوص:** 5/5 اختبار T-SBX ناجحة. `npx vitest run` 533/533. tsc نظيف. eslint نظيف.

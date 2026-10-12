@@ -5,10 +5,8 @@ import { assertVaultName, type Vault } from "@ir/store";
 import { requireAdmin } from "../lib/admin";
 import {
   KNOWN_PROVIDERS,
-  lookupBreaches,
-  lookupIp,
+  LOOKUPS_GATEWAY_PENDING,
   testProviderKey,
-  type FetchLike,
   type VaultDnsResolver,
   type VaultEgressTransport,
 } from "../lib/providers";
@@ -39,14 +37,13 @@ export const LOOKUPS_DISABLED = {
 export function vaultRouter(
   getVault: () => Vault,
   opts: {
-    fetch?: FetchLike;
     env?: NodeJS.ProcessEnv;
     /** The egress transport + resolver for /vault/:name/test. Injected in tests; never a real socket. */
     vaultTestTransport?: VaultEgressTransport;
     vaultTestResolver?: VaultDnsResolver;
   } = {},
 ): IRouter {
-  const f: FetchLike = opts.fetch ?? ((url, init) => fetch(url, init));
+  const lookupsOn = lookupsEnabled(opts.env ?? process.env);
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env);
   const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
@@ -56,7 +53,7 @@ export function vaultRouter(
   router.use(["/vault", "/lookup"], express.json({ limit: "8kb" }), limiter, admin);
   // checked on every request, after authentication and before the vault or any input is read
   router.use("/lookup", (_req, res, next) => {
-    if (lookupsEnabled(opts.env ?? process.env)) next();
+    if (lookupsOn) next();
     else res.status(403).json(LOOKUPS_DISABLED);
   });
 
@@ -111,12 +108,7 @@ export function vaultRouter(
       res.status(400).json({ error: "invalid IP address" });
       return;
     }
-    try {
-      const r = await lookupIp(ip, getVault(), f);
-      res.status(r.status).json(r.body);
-    } catch {
-      res.status(502).json({ error: "provider unreachable" });
-    }
+    res.status(503).json(LOOKUPS_GATEWAY_PENDING);
   });
 
   router.post("/lookup/breaches", async (req, res) => {
@@ -125,12 +117,7 @@ export function vaultRouter(
       res.status(400).json({ error: "invalid email" });
       return;
     }
-    try {
-      const r = await lookupBreaches(email, getVault(), f);
-      res.status(r.status).json(r.body);
-    } catch {
-      res.status(502).json({ error: "provider unreachable" });
-    }
+    res.status(503).json(LOOKUPS_GATEWAY_PENDING);
   });
 
   return router;

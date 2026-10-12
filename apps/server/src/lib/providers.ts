@@ -11,7 +11,9 @@
  * SIMULATION ONLY in this cycle: the caller injects a fake transport in tests.
  * There is no code path that enables a real socket from this module.
  */
-import { createEgressGateway, type DnsResolver, type EgressTransport, type EgressResult } from "@ir/egress";
+import { createEgressGateway, type EgressAuditEvent, type EgressResult, type DnsResolver, type EgressTransport } from "@ir/egress";
+import { createVaultKeyValidationCapability, vaultGatewayOptions, type VaultKeyValidationCapability } from "@ir/egress/vault-capability";
+import { logger } from "./logger";
 import type { Vault } from "@ir/store";
 
 /** The pinned transport the gateway hands a request to (an EgressTransport). */
@@ -47,40 +49,87 @@ export const KNOWN_PROVIDERS = [
  * The `purposeRef` is a stable, non-case identifier because this is a
  * system-level key validation, not an investigation lookup (review log Q4).
  */
+/**
+ * The server's real vault audit sink. Every allowed/denied/timeout/size/rate
+ * event is recorded as a structured log line (no secret, no raw URL if it
+ * contains a secret-bearing header value). The gateway redacts the secret
+ * itself before this sink is called, and the vault test path never places the
+ * secret in a URL (it is in the designated header only).
+ */
+function makeVaultAuditSink() {
+  return {
+    record(event: EgressAuditEventShape) {
+      // Never log the secret or any raw body from the provider.
+      const safe = {
+        kind: event.kind,
+        reason: event.reason,
+        transform: event.transform,
+        host: event.host,
+        method: event.method,
+        transportCalls: event.transportCalls,
+        detail: event.detail,
+        systemContext: event.systemContext,
+        secretDigest: event.secretDigest,
+      };
+      if (event.kind === "allowed" || event.kind === "transport_error" || event.kind === "rate_limited" || event.kind === "size_limit") {
+        logger.info(safe, "vault egress audit");
+      } else {
+        logger.warn(safe, "vault egress audit");
+      }
+    },
+  };
+}
+
+type EgressAuditEventShape = EgressAuditEvent;
+
+/** Shared gateway so rate limits and the limiter's per-host token bucket are shared across requests. */
+let sharedVaultGateway: ReturnType<typeof createEgressGateway> | undefined;
+/** The capability bound to the shared gateway (so the request can reference the exact same object). */
+let sharedVaultCapability: VaultKeyValidationCapability | undefined;
+/** The transport/resolver the shared gateway was built for (identity). */
+let sharedVaultTransport: VaultEgressTransport | undefined;
+let sharedVaultResolver: VaultDnsResolver | undefined;
+
+function buildSharedVaultGateway(transport: VaultEgressTransport, resolver: VaultDnsResolver): VaultKeyValidationCapability {
+  const cap = createVaultKeyValidationCapability(Object.values(PROVIDER_HOSTS), makeVaultAuditSink());
+  const opts = vaultGatewayOptions(cap, resolver, transport, {
+    maxRedirects: 1,
+    maxSizeBytes: 10_000,
+    timeoutMs: 10_000,
+    connectTimeoutMs: 5_000,
+    rateLimitPerHostPerSecond: 1,
+    rateLimitBurst: 5,
+  });
+  sharedVaultGateway = createEgressGateway(opts);
+  return cap;
+}
+
 export async function testProviderKey(
   name: string,
   vault: Vault,
   transport: VaultEgressTransport,
   resolver: VaultDnsResolver,
-): Promise<{ ok: boolean; tested: boolean; reason?: string }> {
+): Promise<{ ok: boolean; tested: boolean; reason?: string; providerStatus?: number }> {
   const host = PROVIDER_HOSTS[name];
   if (!host) return { ok: true, tested: false };
   const key = vault.reveal(name);
   if (!key) return { ok: false, tested: false };
 
-  const gateway = createEgressGateway({
-    resolver,
-    transport,
-    allowedHosts: Object.values(PROVIDER_HOSTS),
-    limits: {
-      maxRedirects: 1,
-      maxSizeBytes: 10_000,
-      timeoutMs: 10_000,
-      connectTimeoutMs: 5_000,
-      rateLimitPerHostPerSecond: 1,
-      rateLimitBurst: 5,
-    },
-  });
+  if (!sharedVaultGateway || sharedVaultTransport !== transport || sharedVaultResolver !== resolver) {
+    sharedVaultCapability = buildSharedVaultGateway(transport, resolver);
+    sharedVaultTransport = transport;
+    sharedVaultResolver = resolver;
+  }
+  if (!sharedVaultGateway || !sharedVaultCapability) throw new Error("vault gateway failed to build");
+  const gateway = sharedVaultGateway;
+  const cap: VaultKeyValidationCapability = sharedVaultCapability;
 
   const headers: Record<string, string> = { accept: "application/json" };
   if (name === "ipinfo") headers["authorization"] = `Bearer ${key}`;
   if (name === "virustotal") headers["x-apikey"] = key;
 
-  // TEMPORARY FAIL-CLOSED: the systemContext caseId exemption is disabled
-  // until the remaining Q4 conditions are met (allowedHosts required,
-  // auditSink wired, actual-destination check). The gateway denies the
-  // request BEFORE DNS and transport, and the route honestly reports
-  // "not tested" — never a fabricated caseId.
+  // The secret is sent in the designated header only (never URL, never
+  // audit, never evidence). The gateway's own audit redacts the secret.
   const result: EgressResult = await gateway.request({
     systemContext: true,
     purposeRef: "vault-key-validation",
@@ -93,35 +142,29 @@ export async function testProviderKey(
     secret: key,
     pinnedHost: host,
     secretProvider: name,
+    capability: cap,
   });
   if (!result.ok) {
     return { ok: false, tested: false, reason: result.reason };
   }
-  // The gateway allows the request, but `EgressResult` does not carry the
-  // provider's response status, so we cannot report the key as VALIDATED.
-  // Until the response contract is expanded (an owner decision), the honest
-  // result is "not tested" with a reason — never a fabricated status.
-  return { ok: false, tested: false, reason: "provider_response_unavailable" };
+  // The response contract is now complete: the gateway returns the provider's
+  // HTTP status (the FINAL hop, post-redirect). Report the provider status so
+  // the caller can distinguish a valid key (2xx) from an invalid one
+  // (401/403) or an upstream fault (5xx). The body is NOT returned — it may
+  // contain provider-specific data that is out of scope for this route.
+  const status = result.response?.status;
+  if (status === undefined) return { ok: false, tested: false, reason: "provider_response_unavailable" };
+  const ok = status >= 200 && status < 300;
+  return { ok, tested: true, providerStatus: status, reason: ok ? undefined : `provider_status_${status}` };
 }
 
-/** Kept for backward compatibility with the lookup routes (which also need migration). */
-export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
-
-export async function lookupIp(ip: string, vault: Vault, f: FetchLike): Promise<{ status: number; body: unknown }> {
-  const key = vault.reveal("ipinfo");
-  const headers: Record<string, string> = { accept: "application/json", "user-agent": "InvestigationRoom/1.0" };
-  if (key) headers["authorization"] = `Bearer ${key}`;
-  const res = await f(`https://ipinfo.io/${encodeURIComponent(ip)}/json`, { headers, signal: AbortSignal.timeout(10_000) });
-  return { status: res.ok ? 200 : 502, body: res.ok ? await res.json() : { error: `upstream ${res.status}` } };
-}
-
-export async function lookupBreaches(email: string, vault: Vault, f: FetchLike): Promise<{ status: number; body: unknown }> {
-  const key = vault.reveal("haveibeenpwned");
-  if (!key) return { status: 409, body: { error: "haveibeenpwned key not configured" } };
-  const res = await f(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`, {
-    headers: { "hibp-api-key": key, "user-agent": "InvestigationRoom/1.0" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (res.status === 404) return { status: 200, body: { breaches: [] } };
-  return { status: res.ok ? 200 : 502, body: res.ok ? { breaches: (await res.json()) as unknown } : { error: `upstream ${res.status}` } };
-}
+/**
+ * Fail-closed (P2-003 / C): the two keyed lookup routes (ipinfo ip-lookup,
+ * haveibeenpwned breachedaccount) are DISABLED until their dedicated gateway
+ * capability exists. Direct fetch is PROHIBITED anywhere in the server. The
+ * automated check (`scripts/checks/no-direct-network.test.ts`) fails if a new
+ * direct network path appears outside `packages/egress`.
+ */
+export const LOOKUPS_GATEWAY_PENDING = {
+  error: "external lookups are routed through the egress gateway (pending); direct fetch is prohibited",
+} as const;

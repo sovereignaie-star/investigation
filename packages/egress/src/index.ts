@@ -3,6 +3,7 @@ export type { EgressGateway } from "./egress";
 export type {
   EgressRequest,
   EgressResult,
+  EgressSuccessResponse,
   EgressOptions,
   DnsResolver,
   EgressTransport,

@@ -18,7 +18,13 @@ export interface TransportResponse {
 }
 
 export type TransportErrorKind =
-  "transport:network" | "transport:timeout" | "transport:rate-limit" | "transport:dns" | "transport:ssrf-blocked" | "transport:http-error";
+  | "transport:network"
+  | "transport:timeout"
+  | "transport:rate-limit"
+  | "transport:dns"
+  | "transport:ssrf-blocked"
+  | "transport:http-error"
+  | "transport:cancelled";
 
 export class TransportError extends Error {
   readonly kind: TransportErrorKind;

@@ -1,7 +1,7 @@
 // T-GOV-001..T-GOV-008 — unit tests for the governance guard. Run: node --test scripts/governance/check.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { evaluate, consistency, masterPlanChecks, taskIdsInMessage, STATUS, WORKLOG } from "./check.mjs";
+import { evaluate, consistency, masterPlanChecks, taskIdsInMessage, adrStatusConsistency, STATUS, WORKLOG } from "./check.mjs";
 
 const ids = new Set(["P0-004", "P0-005"]);
 const ok = {
@@ -71,4 +71,39 @@ test("T-GOV-013 subject that is not a Conventional Commit is rejected (ADR-22)",
 test("T-GOV-014 scoped and breaking Conventional Commit subjects pass", () => {
   assert.deepEqual(evaluate({ ...ok, message: "feat(web)!: new list [P0-004]" }), []);
   assert.deepEqual(evaluate({ ...ok, message: "docs: notes [P0-004]\n\nbody" }), []);
+});
+
+// T-GOV-015..T-GOV-018 — D-8: ADR-08 approval and ROADMAP row must agree.
+const ADR_APPROVED = "| البند | القيمة |\n|---|---|\n| الحالة | **معتمد تصميمياً (2026-10-12، قرار المالك التنفيذي):** جوهر التصميم |\n";
+const ADR_PROPOSED = "| البند | القيمة |\n|---|---|\n| الحالة | مقترح |\n";
+const ROW_APPROVED = "| ADR-08 | نص | معتمد تصميمياً؛ التنفيذ جارٍ |\n";
+const ROW_PROPOSED = "| ADR-08 | نص | مقترح |\n";
+
+test("T-GOV-015 D-8: approved ADR + approved ROADMAP row passes", () => {
+  assert.deepEqual(adrStatusConsistency(ROW_APPROVED, ADR_APPROVED), []);
+});
+test("T-GOV-016 D-8: approved ADR + proposed ROADMAP row is rejected", () => {
+  const e = adrStatusConsistency(ROW_PROPOSED, ADR_APPROVED);
+  assert.ok(
+    e.some((x) => x.startsWith("D-8")),
+    JSON.stringify(e),
+  );
+  assert.ok(
+    e.some((x) => x.includes("مقترح")),
+    JSON.stringify(e),
+  );
+});
+test("T-GOV-017 D-8: proposed ADR + approved ROADMAP row is rejected", () => {
+  const e = adrStatusConsistency(ROW_APPROVED, ADR_PROPOSED);
+  assert.ok(
+    e.some((x) => x.startsWith("D-8") && x.includes("does not say")),
+    JSON.stringify(e),
+  );
+});
+test("T-GOV-018 D-8: missing ADR-08 row in ROADMAP is reported", () => {
+  const e = adrStatusConsistency("| ADR-07 | x | مقترح |\n", ADR_APPROVED);
+  assert.ok(
+    e.some((x) => x.startsWith("D-8") && x.includes("no ADR-08 row")),
+    JSON.stringify(e),
+  );
 });
