@@ -310,8 +310,53 @@ async function parseSuccessBody(
   }
 }
 
+/**
+ * Same-origin guard (P2-003 / C): the generated API client is the ONLY
+ * consumer of `customFetch`, and it only ever passes relative paths
+ * (`/api/...`). A caller passing an absolute URL to a DIFFERENT origin would
+ * bypass the egress gateway (this is a browser client, not a server-side
+ * proxy), so the guard refuses it outright rather than relying on the
+ * generated client's discipline. This is what makes the `custom-fetch.ts`
+ * exemption in `scripts/checks/no-direct-network.ts` provable.
+ *
+ * In a browser the origin is `location.origin`. In Node/SSR there is no
+ * `location`, so the origin is the configured base URL (or the empty
+ * string, which means only relative paths are allowed).
+ */
+function assertSameOrigin(input: RequestInfo | URL): void {
+  const url = resolveUrl(input);
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) return; // relative path — same origin by construction
+  let currentOrigin: string;
+  if (typeof location !== "undefined" && location.origin) {
+    currentOrigin = location.origin;
+  } else if (_baseUrl) {
+    try {
+      currentOrigin = new URL(_baseUrl).origin;
+    } catch {
+      currentOrigin = "";
+    }
+  } else {
+    currentOrigin = "";
+  }
+  let targetOrigin: string;
+  try {
+    targetOrigin = new URL(url, currentOrigin || undefined).origin;
+  } catch {
+    throw new TypeError(`customFetch: cannot resolve the origin of ${url}`);
+  }
+  if (currentOrigin && targetOrigin !== currentOrigin) {
+    throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
+  }
+  if (!currentOrigin && targetOrigin) {
+    // No origin is configured and the URL is absolute — refuse it. The
+    // generated client never does this, but a hand-rolled call could.
+    throw new TypeError(`customFetch: absolute URL refused (${targetOrigin}); configure a base URL or use a relative path.`);
+  }
+}
+
 export async function customFetch<T = unknown>(input: RequestInfo | URL, options: CustomFetchOptions = {}): Promise<T> {
   input = applyBaseUrl(input);
+  assertSameOrigin(input);
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
   const method = resolveMethod(input, init.method);

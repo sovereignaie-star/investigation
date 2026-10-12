@@ -60,6 +60,7 @@ jobs:
         run: |
           set -u
           PAIRS="${{ github.event.inputs.pairs || '3' }}"
+          mkdir -p d052-results
           for i in $(seq 1 "$PAIRS"); do
             # Alternate the order each pair: pair 1 A-then-B, pair 2 B-then-A, ...
             if [ $(( i % 2 )) -eq 1 ]; then FIRST=a; SECOND=b; else FIRST=b; SECOND=a; fi
@@ -68,11 +69,16 @@ jobs:
               if [ "$WHICH" = "a" ]; then
                 # (a) the exact CI command — no extra flags.
                 pnpm run test:coverage 2>&1 | tee "${LABEL}.log"
+                STATUS="${PIPESTATUS[0]}"
               else
                 # (b) the same command with ONLY --fileParallelism=false added.
-                pnpm run test:coverage -- --fileParallelism=false 2>&1 | tee "${LABEL}.log"
+                # (Called via `pnpm exec` so the flag reaches vitest directly;
+                # `pnpm run x -- --flag` inserts a literal `--` arg.)
+                pnpm exec vitest run --coverage --fileParallelism=false 2>&1 | tee "${LABEL}.log"
+                STATUS="${PIPESTATUS[0]}"
               fi
-              echo "exit=$?" >> "${LABEL}.log"
+              echo "exit=$STATUS" >> "${LABEL}.log"
+              echo "${LABEL} exit=$STATUS" >> d052-results/summary.txt
               # Extract the D-052 line duration from the log for offline analysis.
               grep -E "a creation that fails at any step|plain:|encrypted:" "${LABEL}.log" | head -20 > "${LABEL}-d052.txt" || true
             done
@@ -81,11 +87,13 @@ jobs:
           # deliverable, not a pass/fail gate. The logs carry the verdict.
           exit 0
       - name: Upload the experiment logs (D-052)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: d052-experiment-logs
           path: |
             experiment-identity.txt
+            d052-results/summary.txt
             pair*.log
             pair*-d052.txt
-          if-no-files-found: error
+          if-no-files-found: warn

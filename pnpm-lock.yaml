@@ -731,6 +731,9 @@ importers:
 
   packages/sandbox:
     devDependencies:
+      '@ir/egress':
+        specifier: workspace:*
+        version: link:../egress
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
