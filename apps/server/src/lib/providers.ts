@@ -1,3 +1,4 @@
+// D-8 probe (test branch only, never merged)
 /**
  * Provider registry (P1-015, P2-003). Every outbound call in this module goes
  * through the egress gateway — there is NO direct `fetch` here. This implements
