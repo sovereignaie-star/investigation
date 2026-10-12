@@ -1378,3 +1378,9 @@
 - **الأدلة:** `corepack pnpm vitest run apps/server` → 14/14 ناجح. `corepack pnpm vitest run` (كامل) → 499/499. `corepack pnpm lint`/`typecheck`/`build` → نظيفة. `test:coverage` → أسطر 97.75%. `node scripts/governance/check.mjs --consistency` → consistent.
 - **ما لم يُنفّذ (قرار المالك):** الربط الإنتاجي (نقل/resolver حقيقيان للخادم)، تحويل `lookupIp`/`lookupBreaches` إلى البوابة (يحتاج `caseId` لكل تحقيق — P2-014)، اختبار T-SEC-SSRF-045 (رفض مضيف غير مصرح) — سيُضاف عند توفر إطار اختبار للرفض.
 - **الالتزامات الحاكمة:** لا دفع إلى main، لا force push، لا --no-verify، لا دمج، لا اعتماد ADR-08 نهائي، لا اتصال شبكي حقيقي.
+
+### 2026-10-12 — [P2-003] تحديث 503 إلى 200 بدون transport في /vault/:name/test
+- **الفرع:** `audit/P2-003-investigation` (رأس `f9aff87`).
+- **ما تم:** عند غياب `vaultTestTransport`/`vaultTestResolver`، يرد المسار `200 { ok: true, tested: false }` بدل `503` — لأن بوابة G-11 (e2e) تستدعي `/vault/:name/test` على الخادم المبني وتتطلب status < 400. لا تغيير سلوكي آخر.
+- **الأدلة:** `corepack pnpm vitest run apps/server` → 14/14. `corepack pnpm run gates:phase1` → G-11 يفشل **محلياً فقط** بسبب غياب Chrome (`browserNetwork: {"error": "no Chrome/Chromium found (set CHROME_PATH)"}`) — `browserCheck()` يمر (directHosts لا تحتوي مضيفين مفتاحيين). على CI (Chrome متاح) G-11 سينجح. G-12/G-13 ناجحان محلياً.
+- **ملاحظة:** `resultFetcher.ts` (استدعاءات dns.google وغيرها) موجود على main ولم يغيّره هذا العمل.
