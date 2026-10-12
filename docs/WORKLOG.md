@@ -1583,3 +1583,8 @@
 - **نطاق مفتاح HMAC (موثَّق):** `AUDIT_SECRET_REDACT_KEY` مُولَّد عشوائياً (32 بايت) لكل عملية/مثيل بوابة، لا يُخزَّن، لا يُشارك بين الطلبات، ولا يمكن ربط سجلات عبر إعادة التشغيل. التنقيح `redacted-hmac-sha256-{16 hex}` — لا سر خام ولا جزء منه.
 - **ما يُسجَّل في التدقيق (موثَّق):** `kind` (allowed/denied/transport_error/timeout/rate_limited/size_limit)، و`reason`، و`transform`، و`transportCalls`، و`detail`، و`secretDigest`، وسياق الطلب (caseId، purposeRef، المضيف، hopCount). المسار الحقيقي في الخادم: `makeVaultAuditSink` في `providers.ts` يمر عبر pino logger.
 - **الفحوص:** لا تغييرات كود في هذه الدورة — توثيق فقط. المصفوفة والحوكمة متسقتان (`governance --consistency` نجاح).
+
+### 2026-10-12 — [P2-003] تزامن pnpm-lock.yaml مع حزمة sandbox الجديدة
+
+- **السبب:** أنشئت حزمة `packages/sandbox` دون تحديث `pnpm-lock.yaml`. فشلت خطوة `pnpm install --frozen-lockfile` في CI بـ`ERR_PNPM_OUTDATED_LOCKFILE` (الحزم الـ17 صارت 18). أُصلح بـ`pnpm install` محلياً (6 أسطر في القفل) و`git add` + `commit`.
+- **الفحوص:** `pnpm install` نجاح. `git push` نجاح. CI يعاد تشغيله على الدفعة الجديدة.
