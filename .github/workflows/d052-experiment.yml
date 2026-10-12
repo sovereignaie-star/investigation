@@ -1,0 +1,91 @@
+name: d052-experiment
+# D-052 (P2-003): controlled paired experiment. Runs the full `test:coverage`
+# command at a fixed SHA twice per pair: (a) exactly the CI command, and
+# (b) the same command with ONLY `--fileParallelism=false` added. No other
+# variables change (same checkout, same Node, same install, same runner
+# image). Triggers manually (workflow_dispatch) so it never runs as part of
+# PR CI. Three pairs per invocation (alternating order: A/B, B/A, A/B) to
+# guard against warm-up and cache effects.
+#
+# Owner constraints honoured: the 5000ms timeout and the KDF parameters are
+# NOT changed; the test is NOT split; the regular CI workflow is untouched.
+#
+# Result semantics:
+#   - If (a) fails and (b) passes consistently across pairs, the hypothesis
+#     "V8 coverage + full file parallelism on a shared runner is the cause"
+#     is confirmed at the same SHA.
+#   - If both fail or both pass consistently, the hypothesis is falsified and
+#     the remaining candidate is coverage instrumentation cost alone (or
+#     something else entirely), to be narrowed next.
+#   - Mixed results point to runner contention variance; the pair logs
+#     (uploaded as artifacts) carry the raw durations for offline analysis.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Git SHA to run the experiment at (defaults to the default branch head)"
+        required: false
+        default: ""
+      pairs:
+        description: "Number of A/B pairs (default 3)"
+        required: false
+        default: "3"
+permissions:
+  contents: read
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.sha || github.ref }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Record the experiment identity (D-052)
+        run: |
+          {
+            echo "sha=$(git rev-parse HEAD)"
+            echo "runner_image=$(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2)"
+            echo "node=$(node --version)"
+            echo "pnpm=$(pnpm --version)"
+            echo "cpu_count=$(nproc)"
+            echo "pairs=${{ github.event.inputs.pairs || '3' }}"
+          } | tee experiment-identity.txt
+      - name: Run the paired A/B experiment (D-052)
+        run: |
+          set -u
+          PAIRS="${{ github.event.inputs.pairs || '3' }}"
+          for i in $(seq 1 "$PAIRS"); do
+            # Alternate the order each pair: pair 1 A-then-B, pair 2 B-then-A, ...
+            if [ $(( i % 2 )) -eq 1 ]; then FIRST=a; SECOND=b; else FIRST=b; SECOND=a; fi
+            for WHICH in "$FIRST" "$SECOND"; do
+              LABEL="pair${i}-${WHICH}"
+              if [ "$WHICH" = "a" ]; then
+                # (a) the exact CI command — no extra flags.
+                pnpm run test:coverage 2>&1 | tee "${LABEL}.log"
+              else
+                # (b) the same command with ONLY --fileParallelism=false added.
+                pnpm run test:coverage -- --fileParallelism=false 2>&1 | tee "${LABEL}.log"
+              fi
+              echo "exit=$?" >> "${LABEL}.log"
+              # Extract the D-052 line duration from the log for offline analysis.
+              grep -E "a creation that fails at any step|plain:|encrypted:" "${LABEL}.log" | head -20 > "${LABEL}-d052.txt" || true
+            done
+          done
+          # Never fail the workflow on the experiment itself: the analysis is the
+          # deliverable, not a pass/fail gate. The logs carry the verdict.
+          exit 0
+      - name: Upload the experiment logs (D-052)
+        uses: actions/upload-artifact@v4
+        with:
+          name: d052-experiment-logs
+          path: |
+            experiment-identity.txt
+            pair*.log
+            pair*-d052.txt
+          if-no-files-found: error
