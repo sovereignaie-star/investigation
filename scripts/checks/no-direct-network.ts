@@ -107,10 +107,6 @@ export function analyzeSource(rel: string, text: string): Finding[] {
     findings.push({ file: rel, line: lineOf(n), kind, detail });
   };
 
-  interface Ctx {
-    readonly add: (n: ts.Node, kind: Finding["kind"], detail: string) => void;
-    readonly rel: string;
-  }
   const ctx: Ctx = { add, rel };
   const visit = (node: ts.Node): void => {
     visitImportOrExport(node, ctx);
@@ -118,10 +114,20 @@ export function analyzeSource(rel: string, text: string): Finding[] {
     visitNew(node, ctx);
     // `const f = fetch;`  /  `opts.fetch ?? fetch`  /  `{ fetch }`  — an alias of the ambient fetch
     if (ts.isIdentifier(node) && node.text === "fetch" && isAmbientFetchReference(node)) add(node, "call", "fetch (aliased reference)");
+    // `const f = globalThis.fetch;` — a property read of the ambient fetch
+    if (ts.isExpression(node) && isGlobalFetchAccess(node) && !ts.isCallExpression(node.parent)) {
+      add(node, "call", `${(node.expression as ts.Identifier).text}.fetch (aliased reference)`);
+    }
     ts.forEachChild(node, visit);
   };
   visit(sf);
   return findings;
+}
+
+/** Context passed to the visitor helpers (keeps them testable and under complexity budget). */
+export interface Ctx {
+  readonly add: (n: ts.Node, kind: Finding["kind"], detail: string) => void;
+  readonly rel: string;
 }
 
 /** import x from "node:http" / export ... from "node:http"  (type-only imports are not executable) */
@@ -148,20 +154,37 @@ function visitImportSpec(node: ts.ImportDeclaration, spec: string, typeOnly: boo
 /** require("node:http") / import("node:http") / fetch(...) / globalThis.fetch(...) */
 function visitCall(node: ts.Node, ctx: Ctx): void {
   if (!ts.isCallExpression(node)) return;
-  const callee = node.expression;
-  // require("node:http") / import("node:http")
+  const callee: ts.Expression = node.expression;
+  visitRequireOrImport(node, callee, ctx);
+  visitFetchCall(node, callee, ctx);
+}
+
+/** require("node:http") / dynamic import("node:http") */
+function visitRequireOrImport(node: ts.CallExpression, callee: ts.Expression, ctx: Ctx): void {
   const isRequire = ts.isIdentifier(callee) && callee.text === "require";
   const isDynImport = callee.kind === ts.SyntaxKind.ImportKeyword;
+  if (!isRequire && !isDynImport) return;
   const arg0 = node.arguments[0];
-  if ((isRequire || isDynImport) && arg0 && ts.isStringLiteralLike(arg0)) {
-    if (NETWORK_MODULES.has(normalizeModule(arg0.text))) ctx.add(node, "import", arg0.text);
-    if (arg0.text.startsWith("@ir/egress/") && arg0.text !== "@ir/egress/vault-capability") ctx.add(node, "capability", arg0.text);
-    if (arg0.text === "@ir/egress/vault-capability" && ctx.rel !== "apps/server/src/lib/providers.ts")
-      ctx.add(node, "capability", arg0.text);
-  }
-  // fetch(...)  /  globalThis.fetch(...)  /  self.fetch(...)  /  window.fetch(...)
+  if (!arg0 || !ts.isStringLiteralLike(arg0)) return;
+  if (NETWORK_MODULES.has(normalizeModule(arg0.text))) ctx.add(node, "import", arg0.text);
+  if (arg0.text.startsWith("@ir/egress/") && arg0.text !== "@ir/egress/vault-capability") ctx.add(node, "capability", arg0.text);
+  if (arg0.text === "@ir/egress/vault-capability" && ctx.rel !== "apps/server/src/lib/providers.ts") ctx.add(node, "capability", arg0.text);
+}
+
+/** fetch(...) / globalThis.fetch(...) / globalThis["fetch"](...) / self.fetch(...) */
+function visitFetchCall(node: ts.CallExpression, callee: ts.Expression, ctx: Ctx): void {
   if (ts.isIdentifier(callee) && callee.text === "fetch") ctx.add(node, "call", "fetch()");
   if (isGlobalFetchAccess(callee)) ctx.add(node, "call", `${(callee.expression as ts.Identifier).text}.fetch()`);
+  visitElementFetch(node, callee, ctx);
+}
+
+/** globalThis["fetch"](...) — element access on a global object */
+function visitElementFetch(_node: ts.CallExpression, callee: ts.Expression, ctx: Ctx): void {
+  if (!ts.isElementAccessExpression(callee) || !ts.isIdentifier(callee.expression)) return;
+  if (!ts.isStringLiteralLike(callee.argumentExpression)) return;
+  if (callee.argumentExpression.text !== "fetch") return;
+  if (!["globalThis", "self", "window", "global"].includes(callee.expression.text)) return;
+  ctx.add(_node, "call", `${callee.expression.text}["fetch"]()`);
 }
 
 /** `globalThis.fetch` / `self.fetch` / `window.fetch` / `global.fetch` */

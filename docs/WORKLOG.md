@@ -1555,3 +1555,11 @@
 - **`apps/server/src/routes/vault.test.ts`:** غُيّر وصف `describe` من «T-SEC-SSRF-045 (review log Q4)» إلى «T-SEC-SSRF-046 + T-SEC-SSRF-048 (review log Q4, renumbered per fix E)».
 - **ملاحظة حوكمة:** لم تُعدل مدخلات WORKLOG التاريخية — سجل الإلحاق يحتفظ بالتوصيفات القديمة كما وُثّقت وقتها.
 - **الفحوص:** 526/526 ناجحة (44 ملفاً). governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] تصحيحات ما بعد مراجعة المستشار (F preparation + audit-of-audit)
+
+- **`scripts/checks/no-direct-network.ts`:** نُقلت واجهة `Ctx` من داخل `analyzeSource` إلى مستوى الوحدة (كانت خطأ نطاقياً لا يكشفه Vitest لأنه يزيل الأنواع). أُدرجت `scripts/checks` في `scripts/tsconfig.json` — كانت غير مضمنة في أي فحص TypeScript، فأخطاء النوع لم تكن تُكشف. حُذف `fakeFetch` الميت من `vault.test.ts` واستُبدل بشاهد حقيقي على `globalThis.fetch` مع `restoreFns` (استعادة تلقائية بعد كل اختبار) يرصد أي اتصال خارجي يبدأ من الخادم أثناء طلبات الخزنة وlookup و`IR_ENABLE_LOOKUPS=1`. المحلل يرصد الآن `globalThis["fetch"](...)` و`const f = globalThis.fetch;`، مع تحكمات سلبية لكل نمط.
+- **`scripts/checks/ssrf-id-consistency.test.ts`:** اختبار جديد يرفض تبادل معاني 046/047/048 (كل معنى خزني مرتبط بمعرّفه). يثبت أن مدخلات WORKLOG التاريخية (التي تذكر 043/044/045 بمعانٍ قديمة) تبقى كطبقة تاريخ غير مُعدلة — سجل الإلحاق لا يُعاد كتابته.
+- **`apps/server/src/routes/vault.test.ts`:** حُذف `upstream` الميت (لا كود يضيف إليه). استُبدل باختبار HTTP حقيقي: مسار `/api/vault/:name/test` يعمل من البداية للنهاية عبر البوابة المشتركة والقدرة (زائد اختبار موجب: نجاح 200)، مع رصد أن أي اتصال خارجي يفشل.
+- **ملاحظة:** واجهة `resolveUrl` في `lib/api-client-react/src/custom-fetch.ts` فُحصت — تتعامل مع `RequestInfo | URL | string` ولا تقوم بإنشاء `http://` جديد ولا تبديل بروتوكول. الإعفاء `isSameOriginClientFile` يبقى صحيحاً.
+- **الفحوص:** 528/528 ناجحة (44 ملفاً). typecheck نجاح (بما فيها `scripts/checks`). governance --consistency نجاح. eslint نظيف.

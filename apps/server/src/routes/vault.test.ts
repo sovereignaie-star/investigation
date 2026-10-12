@@ -13,9 +13,11 @@ const ADMIN_TOKEN = "admin-token-123";
 const ENABLED = { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_ENABLE_LOOKUPS: "1" };
 const servers: Server[] = [];
 const dirs: string[] = [];
+const restoreFns: Array<() => void> = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
+  for (const r of restoreFns.splice(0)) r();
 });
 
 function withAdmin(init: RequestInit = {}): RequestInit {
@@ -44,7 +46,6 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-"));
   dirs.push(dir);
   const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
-  const upstream: { url: string; headers: Record<string, string> }[] = [];
   const vaultTestCalls: Array<{ url: string; host: string; pinnedIp: string; method: string }> = [];
   const vaultTestTransport = {
     async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
@@ -55,6 +56,16 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   const vaultTestResolver = {
     resolve: async (host: string) => (host === "ipinfo.io" || host === "www.virustotal.com" ? ["93.184.216.34"] : []),
   };
+  // Two witnesses against direct network calls: the injected transport
+  // above, and the process-wide `fetch` (which the server must never reach for
+  // an external host; only the local loopback of the test server uses it).
+  const realFetch = globalThis.fetch;
+  const externalCalls: Array<{ url: string }> = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const u = String(input instanceof Request ? input.url : input);
+    if (!u.startsWith("http://127.0.0.1:")) externalCalls.push({ url: u });
+    return realFetch(input, init);
+  }) as typeof fetch;
   const app = createApp(vaultRouter(() => vault, { env, vaultTestTransport, vaultTestResolver }));
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
@@ -67,7 +78,10 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
     all.push(text, JSON.stringify([...res.headers]));
     return { status: res.status, text, headers: res.headers };
   };
-  return { call, upstream, all, vault, vaultTestCalls };
+  restoreFns.push(() => {
+    globalThis.fetch = realFetch;
+  });
+  return { call, upstream: externalCalls, all, vault, vaultTestCalls };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {

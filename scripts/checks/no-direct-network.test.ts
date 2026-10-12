@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { analyzeSource, scanRepo } from "./no-direct-network.ts";
+import { analyzeSource, scanRepo } from "./no-direct-network.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -22,11 +22,13 @@ describe("no direct network paths outside @ir/egress (P2-003 / ADR-08 C)", () =>
       expect(f(`import { spawn } from "node:child_process";`)).toHaveLength(1);
       expect(f(`import axios from "axios";`)).toHaveLength(1);
     });
-    it("detects direct fetch calls, globalThis.fetch and aliases", () => {
+    it('detects direct fetch calls, globalThis.fetch, globalThis["fetch"] and aliases', () => {
       expect(f(`await fetch("https://x");`)).toHaveLength(1);
       expect(f(`await globalThis.fetch("https://x");`)).toHaveLength(1);
+      expect(f(`await globalThis["fetch"]("https://x");`)).toHaveLength(1);
       expect(f(`const f = opts.fetch ?? ((u: string) => fetch(u));`).length).toBeGreaterThanOrEqual(1);
       expect(f(`const g = fetch;`)).toHaveLength(1);
+      expect(f(`const h = globalThis.fetch;`)).toHaveLength(1);
     });
     it("detects XMLHttpRequest / WebSocket / EventSource construction", () => {
       expect(f(`new WebSocket("wss://x");`)).toHaveLength(1);

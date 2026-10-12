@@ -74,6 +74,25 @@ describe("T-SEC-SSRF ID consistency (P2-003 / E)", () => {
     expect(misbound, JSON.stringify(misbound, null, 2)).toEqual([]);
   });
 
+  it("rejects an ID/meaning swap among 046/047/048 (each vault meaning is bound to its own ID)", () => {
+    const log = readFileSync(path.join(REPO, "docs", "adr", "ADR-08-review-log.md"), "utf8");
+    const lines = log.split("\n");
+    // 046 = vault path through the gateway. 047 = provider key never logged. 048 = unauthorized host rejected.
+    const findLine = (id: string): string | undefined => lines.find((l) => l.trim().startsWith(`- ${id}:`));
+    expect(findLine("T-SEC-SSRF-046")).toContain("مسار vault يمر بالبوّاب");
+    expect(findLine("T-SEC-SSRF-047")).toContain("مفتاح المزود لا يظهر في أي سجل");
+    expect(findLine("T-SEC-SSRF-048")).toContain("مضيف غير مصرح");
+  });
+
+  it("historical WORKLOG entries are not rewritten by this check (append-only history)", () => {
+    // WORKLOG lines that mention 043/044/045 are historical records written
+    // when the conflict existed; they are preserved as history. This test pins
+    // that this suite does NOT modify WORKLOG and that current-state files
+    // (ROADMAP, review log, source) use the renumbered IDs.
+    const worklog = readFileSync(path.join(REPO, "docs", "WORKLOG.md"), "utf8");
+    expect(worklog.includes("T-SEC-SSRF-043")).toBe(true); // historical, kept
+  });
+
   it("the ADR-08 review log uses 046/047/048 for the vault meanings, not 043/044/045", () => {
     const log = readFileSync(path.join(REPO, "docs", "adr", "ADR-08-review-log.md"), "utf8");
     expect(log.includes("T-SEC-SSRF-046: مسار vault يمر بالبوّاب")).toBe(true);
