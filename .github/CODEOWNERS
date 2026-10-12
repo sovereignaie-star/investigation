@@ -13,11 +13,9 @@
 /packages/sandbox/                        @xuuux-voox
 /packages/engine/                         @xuuux-voox
 /packages/store/                          @xuuux-voox
-/apps/server/                             @xuuux-voox
 /lib/api-client-react/src/custom-fetch.ts @xuuux-voox
 /scripts/gates/                           @xuuux-voox
 /scripts/checks/                          @xuuux-voox
 /.github/workflows/                       @xuuux-voox
-/.github/CODEOWNERS                       @xuuux-voox
 /.github/dependabot.yml                   @xuuux-voox
 /docs/adr/ADR-08-egress-gateway.md        @xuuux-voox
