@@ -16,10 +16,20 @@
  *     own `allowedHosts` option — the union is NOT used),
  *   - and which audit sink must receive the event for this request.
  */
-import { type EgressAuditSink, type EgressLimits, type EgressOptions, type EgressTransport, type DnsResolver } from "./egress.ts";
+import {
+  normalizeHost,
+  type EgressAuditSink,
+  type EgressLimits,
+  type EgressOptions,
+  type EgressTransport,
+  type DnsResolver,
+} from "./egress.ts";
 
-/** Symbol key so no external type can forge the capability by shape alone. */
-const CAPABILITY_SYMBOL = Symbol.for("ir.egress.vaultKeyValidation");
+/**
+ * Module-local symbol (NOT `Symbol.for`, which is a global registry anyone can query). The gateway does not trust
+ * the shape anyway: it compares the request's capability with the gateway's own by identity.
+ */
+const CAPABILITY_SYMBOL = Symbol("ir.egress.vaultKeyValidation");
 
 /**
  * A narrow vault capability object. Constructing one requires the module-private
@@ -28,6 +38,8 @@ const CAPABILITY_SYMBOL = Symbol.for("ir.egress.vaultKeyValidation");
 export interface VaultKeyValidationCapability {
   readonly kind: "vault-key-validation";
   readonly allowedHosts: readonly string[];
+  /** Provider name -> exact hosts. A secret is only sent to a host of its own provider (T-SEC-SSRF-041). */
+  readonly providerHosts: Readonly<Record<string, readonly string[]>>;
   readonly auditSink: EgressAuditSink;
   /** Opaque so external code cannot fabricate one. */
   readonly [CAPABILITY_SYMBOL]: true;
@@ -35,18 +47,25 @@ export interface VaultKeyValidationCapability {
 
 /** Build the private vault capability (only this module can). */
 export function createVaultKeyValidationCapability(
-  allowedHosts: readonly string[],
+  providerHosts: Readonly<Record<string, string | readonly string[]>>,
   auditSink: EgressAuditSink,
 ): VaultKeyValidationCapability {
-  if (!Array.isArray(allowedHosts) || allowedHosts.length === 0) {
-    throw new RangeError("vault capability requires a non-empty allowedHosts list (the provider registry)");
+  const registry: Record<string, readonly string[]> = {};
+  for (const [name, hosts] of Object.entries(providerHosts ?? {})) {
+    const list = (typeof hosts === "string" ? [hosts] : [...hosts]).map(normalizeHost).filter((h) => h !== "");
+    if (list.length > 0) registry[name] = Object.freeze([...new Set(list)]);
   }
-  return {
+  const allowedHosts = [...new Set(Object.values(registry).flat())];
+  if (allowedHosts.length === 0) {
+    throw new RangeError("vault capability requires a non-empty provider registry");
+  }
+  return Object.freeze({
     kind: "vault-key-validation",
-    allowedHosts: [...new Set(allowedHosts.map((h) => h.toLowerCase()))],
+    allowedHosts: Object.freeze(allowedHosts),
+    providerHosts: Object.freeze(registry),
     auditSink,
     [CAPABILITY_SYMBOL]: true,
-  };
+  }) as VaultKeyValidationCapability;
 }
 
 /** Gateway options for a shared vault gateway instance (rate limits are shared). */
@@ -60,6 +79,7 @@ export function vaultGatewayOptions(
     resolver,
     transport,
     allowedHosts: capability.allowedHosts,
+    providerHosts: capability.providerHosts,
     auditSink: capability.auditSink,
     limits,
     capability,

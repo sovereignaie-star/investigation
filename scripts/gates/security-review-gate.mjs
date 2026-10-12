@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// P1-031 (owner decision D-8): a pull request that touches a security or egress path needs an APPROVED review from
+// D-8 (owner decision; tracked under P2-003): a pull request that touches a security or egress path needs an APPROVED review from
 // the designated human reviewer on its current head commit. Everything else passes without that review.
 //
 // The decision is a pure function (`decide`) over data read from the GitHub API, so it is unit-tested without a
@@ -15,11 +15,16 @@ export const REVIEWER = Object.freeze({ login: "xuuux-voox", id: 334893315 });
 export const D8_PATHS = Object.freeze([
   "packages/egress/",
   "packages/transforms/",
-  "apps/server/",
+  "packages/sandbox/",
+  "packages/engine/",
   "packages/store/",
-  ".github/workflows/",
+  "apps/server/",
+  "lib/api-client-react/src/custom-fetch.ts",
   "scripts/gates/",
+  "scripts/checks/",
+  ".github/workflows/",
   ".github/CODEOWNERS",
+  ".github/dependabot.yml",
   "docs/adr/ADR-08-egress-gateway.md",
 ]);
 

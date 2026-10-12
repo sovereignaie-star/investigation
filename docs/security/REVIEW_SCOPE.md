@@ -2,11 +2,11 @@
 
 | البند | القيمة |
 |---|---|
-| المراجع المعيَّن | `@xuuux-voox` (معرّف GitHub الرقمي 334893315)، باعتماد المالك في 2026-10-10. ويبقى `@sovereignaie-star` مالكاً مدرجاً معه |
-| صلاحية المراجع | **Write** فقط، لا Admin ولا Maintain. الدعوة 337118492 أُرسلت في 2026-10-10 وتنتظر قبول صاحب الحساب؛ قبل القبول صلاحيته الفعلية `read` |
-| المسارات | `packages/egress/` و`apps/server/` و`packages/store/` و`.github/workflows/` و`scripts/gates/`، والملفان `.github/CODEOWNERS` و`docs/adr/ADR-08-egress-gateway.md` |
-| الأداة | `.github/CODEOWNERS` يسمي المراجع لهذه المسارات (طلب مراجعة تلقائي). الفحص `security-review-advisory` (P1-031) **استشاري**؛ والفرض غير القابل للتزوير ينتظر اختيار المالك بين بديلين في `D8_ENFORCEMENT_OPTIONS.md` |
-| حالة الفرض | **غير مفروض.** الفحص الاستشاري لا يُجعل مطلوباً لأنه قابل للتزوير. لم تُغيَّر حماية `main` |
+| المراجع المعيَّن | `@xuuux-voox` (معرّف GitHub الرقمي 334893315)، باعتماد المالك في 2026-10-10. وهو **وحده** مالك مسارات D-8 في `CODEOWNERS` بعد PR #68؛ لم يعد `@sovereignaie-star` مدرجاً معه، لأن الوكيل يعمل بهذا الحساب وموافقته ليست مراجعة مستقلة |
+| صلاحية المراجع | **Write** (مُتحقَّق من الواجهة في 2026-10-12: `permission=write`، ولا دعوات معلقة) |
+| المسارات (13) | المجلدات `packages/egress/` و`packages/transforms/` و`packages/sandbox/` و`packages/engine/` و`packages/store/` و`apps/server/` و`scripts/gates/` و`scripts/checks/` و`.github/workflows/`؛ والملفات `lib/api-client-react/src/custom-fetch.ts` و`.github/CODEOWNERS` و`.github/dependabot.yml` و`docs/adr/ADR-08-egress-gateway.md`. القائمة المرجعية `D8_PATHS` في `scripts/gates/security-review-gate.mjs`، واختبار وحدة يطابقها مع `CODEOWNERS` سطراً بسطر |
+| الأداة | البديل 2 من [`D8_ENFORCEMENT_OPTIONS.md`](D8_ENFORCEMENT_OPTIONS.md) (مراجعة مالكي الكود الأصلية) هو الحل المختار لأنه الأقوى والقابل للتطبيق بلا تطبيق خارجي. `CODEOWNERS` أُعدّ له في PR #68. الفحص `security-review-advisory` يبقى **استشارياً** |
+| حالة الفرض على `main` | **غير مفروض بعد** (مُتحقَّق 2026-10-12): `required_approving_review_count=0`، و`require_code_owner_reviews=false`، و`dismiss_stale_reviews=false`، و`require_last_push_approval=false`. تفعيلها قبل دمج `CODEOWNERS` الجديد يوقف كل الدمج (انظر البديل 2). خطوة التفعيل بعد الدمج موثقة في `D8_ENFORCEMENT_OPTIONS.md` |
 
 ## ما يُراجَع في كل طلب دمج يمس هذه المسارات
 
@@ -19,7 +19,9 @@
 7. **الاعتماديات:** أي اعتمادية جديدة في هذه المسارات تحتاج سبباً مكتوباً، وتمر بسياسة التنبيهات (`DEPENDENCY_ALERTS.md`).
 8. **الاختبارات:** لكل ضابط أمني جديد ضابط سلبي يثبت أن الاختبار يفشل بدونه.
 
-## الفحص الاستشاري: `security-review-advisory` (P1-031)
+## الفحص الاستشاري: `security-review-advisory`
+
+> المعرّف `P1-031` المذكور في تعليقات الكود وبعض الوثائق السابقة **ليس مهمة في `docs/ROADMAP.md`**. عمل D-8 يُتتبَّع تحت P2-003 (ADR-08 يربط D-8 بـ P2-003).
 
 - **الملفات:** `.github/workflows/security-review.yml` و`scripts/gates/security-review-gate.mjs`، واختباراته `security-review-gate.test.mjs`.
 - **القاعدة:**

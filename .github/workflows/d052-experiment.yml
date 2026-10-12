@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.sha || github.ref }}
+          ref: ${{ inputs.sha || github.ref }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -47,6 +47,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Record the experiment identity (D-052)
+        env:
+          PAIRS_INPUT: ${{ inputs.pairs || '3' }}
         run: |
           {
             echo "sha=$(git rev-parse HEAD)"
@@ -54,9 +56,12 @@ jobs:
             echo "node=$(node --version)"
             echo "pnpm=$(pnpm --version)"
             echo "cpu_count=$(nproc)"
-            echo "pairs=${{ github.event.inputs.pairs || '3' }}"
+            echo "pairs=${PAIRS_INPUT}"
           } | tee experiment-identity.txt
       - name: Run the paired A/B experiment (D-052)
+        # Inputs reach the shell through env, never by template substitution into the script (no injection).
+        env:
+          PAIRS_INPUT: ${{ inputs.pairs || '3' }}
         run: |
           # `set -u` (undefined var = error) AND `set +e` (explicitly DISABLE
           # errexit): GitHub runners may enable `-e` by default; if a vitest
@@ -65,7 +70,11 @@ jobs:
           # verdict. We restore the original shell opts at the end.
           set -u
           set +e
-          PAIRS="${{ github.event.inputs.pairs || '3' }}"
+          PAIRS="${PAIRS_INPUT}"
+          case "$PAIRS" in
+            ''|*[!0-9]*) echo "::error::pairs must be a positive integer, got '${PAIRS}'"; exit 2 ;;
+          esac
+          if [ "$PAIRS" -lt 1 ] || [ "$PAIRS" -gt 10 ]; then echo "::error::pairs must be 1..10"; exit 2; fi
           mkdir -p d052-results
           : > d052-results/d052-durations.txt
           : > d052-results/d052-expected.txt
@@ -140,19 +149,22 @@ jobs:
               ' "${LABEL}" || echo "${LABEL} json_parse_error" >> d052-results/d052-durations.txt
             done
           done
-          # Verify the report is COMPLETE: every run must have BOTH plain AND
-          # encrypted durations. With N runs, expect 2*N rows (N runs x 2
-          # variants each). If any are missing, record it (do NOT fail the
-          # workflow — the analysis is the deliverable).
-          PAIRS_N=$(( PAIRS * 2 ))
-          ROWS=$(grep -c "duration_ms=" d052-results/d052-durations.txt || echo 0)
-          if [ "$ROWS" -lt "$PAIRS_N" ]; then
-            echo "INCOMPLETE: expected ${PAIRS_N} rows, got ${ROWS}" >> d052-results/d052-durations.txt
-          else
-            echo "COMPLETE: ${ROWS}/${PAIRS_N} rows" >> d052-results/d052-durations.txt
+          # Verify the report is COMPLETE. Each pair has TWO runs (a and b) and each run reports TWO variants
+          # (plain and encrypted), so the expected row count is PAIRS * 4.
+          EXPECTED=$(( PAIRS * 4 ))
+          # grep -c prints the count (0 included) and exits 1 on zero matches; `|| true` keeps ONE number.
+          ROWS=$(grep -c "duration_ms=[0-9]" d052-results/d052-durations.txt || true)
+          FAILED_RUNS=$(grep -cE "^pair[0-9]+-[ab] exit=[1-9]" d052-results/summary.txt || true)
+          echo "runs_with_failures=${FAILED_RUNS} (of $(( PAIRS * 2 )); test failures are DATA for this experiment)" | tee -a d052-results/d052-durations.txt
+          if [ "$ROWS" -ne "$EXPECTED" ]; then
+            echo "INCOMPLETE: expected ${EXPECTED} rows, got ${ROWS}" | tee -a d052-results/d052-durations.txt
+            # A test failure is a result; a MISSING measurement is not. The job fails so an incomplete
+            # experiment is never shown as green. The artifact is still uploaded (if: always()).
+            echo "::error::D-052 experiment incomplete: ${ROWS}/${EXPECTED} duration rows"
+            exit 1
           fi
-          # Never fail the workflow on the experiment itself: the analysis is the
-          # deliverable, not a pass/fail gate. The logs carry the verdict.
+          echo "COMPLETE: ${ROWS}/${EXPECTED} rows" | tee -a d052-results/d052-durations.txt
+          # Test failures do not fail the job: the logs and durations are the deliverable.
           exit 0
       - name: Upload the experiment logs (D-052)
         if: always()

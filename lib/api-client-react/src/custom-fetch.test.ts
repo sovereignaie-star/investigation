@@ -91,4 +91,50 @@ describe("customFetch same-origin guard (P2-003 / C)", () => {
       for (const r of restore.splice(0)) r();
     }
   });
+
+  describe("parser-level bypasses (the guard uses the WHATWG URL parser, not a prefix regex)", () => {
+    const realFetch = globalThis.fetch;
+    const calls: string[] = [];
+    function spy() {
+      calls.length = 0;
+      globalThis.fetch = (async (input: string | URL | Request) => {
+        calls.push(input instanceof Request ? input.url : String(input));
+        return new Response("ok");
+      }) as typeof fetch;
+    }
+    afterEach(() => {
+      globalThis.fetch = realFetch;
+    });
+
+    const hostile = [
+      "//evil.example/x",
+      "/\\evil.example/x",
+      "\\\\evil.example/x",
+      "/\t/evil.example/x",
+      "/\n/evil.example/x",
+      "\t//evil.example/x",
+      " //evil.example/x",
+      "https://evil.example/x",
+      "https:evil.example/x",
+      "HTTPS://EVIL.EXAMPLE/x",
+      "http://127.0.0.1:9999@evil.example/x",
+    ];
+    for (const withBase of [false, true]) {
+      for (const input of hostile) {
+        it(`${JSON.stringify(input)} is refused before fetch (${withBase ? "with" : "without"} a base URL)`, async () => {
+          spy();
+          setBaseUrl(withBase ? "http://127.0.0.1:9999" : null);
+          await expect(customFetch(input)).rejects.toThrow(/absolute URL refused|cross-origin request refused|cannot resolve/);
+          expect(calls).toEqual([]);
+        });
+      }
+    }
+
+    it("negative control: a plain relative path still reaches fetch on the configured origin", async () => {
+      spy();
+      setBaseUrl("http://127.0.0.1:9999");
+      await customFetch("/api/x?q=//evil.example");
+      expect(calls).toEqual(["http://127.0.0.1:9999/api/x?q=//evil.example"]);
+    });
+  });
 });

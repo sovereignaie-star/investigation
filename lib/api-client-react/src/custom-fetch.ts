@@ -74,6 +74,13 @@ function applyBaseUrl(input: RequestInfo | URL): RequestInfo | URL {
   // `//host/...` (protocol-relative) and any value with a scheme are NOT
   // relative — they carry their own origin and must NOT be prefixed.
   if (!/^\/[^/]/.test(url)) return input;
+  // Only a value that stays on the sentinel origin is a plain relative path; anything else (`/\\host`, `/\t/host`)
+  // is left untouched so the same-origin guard sees and refuses it.
+  try {
+    if (new URL(url, NO_ORIGIN_SENTINEL).origin !== NO_ORIGIN_SENTINEL) return input;
+  } catch {
+    return input;
+  }
 
   const absolute = `${_baseUrl}${url}`;
   if (typeof input === "string") return absolute;
@@ -325,15 +332,19 @@ async function parseSuccessBody(
  * `location`, so the origin is the configured base URL (or the empty
  * string, which means only relative paths are allowed).
  */
+/**
+ * Origin used to classify a value when no real origin is known. `.invalid` is reserved (RFC 6761), so it can never
+ * be a real destination; it is NEVER used to authorize anything, only to see whether a value carries its own origin.
+ */
+const NO_ORIGIN_SENTINEL = "http://same-origin.invalid";
+
 function assertSameOrigin(input: RequestInfo | URL): void {
-  // NEVER treat a value as "same origin by construction" just because it
-  // lacks a scheme. `//evil.example/x` (a protocol-relative URL) is
-  // cross-origin when resolved against a real base, and a bare value with
-  // no origin configured at all is only safe if it resolves to the SAME
-  // origin as the resolved base. Always resolve the origin and compare it.
+  // The decision is made by the WHATWG URL parser itself, never by a regex over the raw string: the parser strips
+  // tabs/newlines, treats `\\` like `/` for http(s), and resolves `//host` as protocol-relative. A regex can disagree
+  // with it (`/\\evil.example/x` and `/\t/evil.example/x` both start with a single `/` yet resolve to evil.example).
   const url = resolveUrl(input);
-  let currentOrigin: string;
-  if (typeof location !== "undefined" && location.origin) {
+  let currentOrigin = "";
+  if (typeof location !== "undefined" && location.origin && location.origin !== "null") {
     currentOrigin = location.origin;
   } else if (_baseUrl) {
     try {
@@ -341,38 +352,21 @@ function assertSameOrigin(input: RequestInfo | URL): void {
     } catch {
       currentOrigin = "";
     }
-  } else {
-    currentOrigin = "";
   }
-  // Rule: a RELATIVE path (starts with a single `/` and is NOT `//`) is
-  // same-origin by construction and needs no base configured. Everything
-  // else must carry a scheme (or be a relative path) — if there is no base
-  // URL and the value is not a plain relative path, it is an ABSOLUTE or
-  // PROTOCOL-RELATIVE target and is REFUSED outright. The DEFAULT BASE
-  // (`http://localhost`) is used ONLY to make `new URL(...)` parse the value
-  // for classification; it NEVER authorizes a destination (see below).
+  const base = currentOrigin || NO_ORIGIN_SENTINEL;
   let targetOrigin: string;
   try {
-    targetOrigin = new URL(url, currentOrigin || "http://localhost").origin;
+    targetOrigin = new URL(url, base).origin;
   } catch {
     throw new TypeError(`customFetch: cannot resolve the origin of ${url}`);
   }
-  // A plain relative path (starts with one `/`, not `//`) — allowed only
-  // when the resolved origin matches the configured/real origin OR the path
-  // is relative and there is no base (then it resolves against the page).
-  const isPlainRelative = /^\/[^/].*|^\/[^/]*$/.test(url) && !url.startsWith("//");
+  if (targetOrigin === base) return;
   if (!currentOrigin) {
-    if (isPlainRelative) return; // relative path, no base — resolves against the page in a browser
-    // NO base configured and the value is NOT a plain relative path: this is
-    // an absolute, protocol-relative, or scheme-relative URL — REFUSE. The
-    // default base (`http://localhost`) is NOT a real authorization; it is
-    // only used to make `new URL` parse the value so we can report the
-    // destination in the error.
+    // No origin configured and the value carries its own origin (absolute, protocol-relative, backslash or
+    // whitespace tricks): refuse.
     throw new TypeError(`customFetch: absolute URL refused (${targetOrigin}); configure a base URL or use a relative path.`);
   }
-  if (targetOrigin !== currentOrigin) {
-    throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
-  }
+  throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
 }
 
 export async function customFetch<T = unknown>(input: RequestInfo | URL, options: CustomFetchOptions = {}): Promise<T> {

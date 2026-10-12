@@ -148,8 +148,8 @@ describe("node-transport (REAL TLS against a local pinned server)", () => {
         err = e;
       }
       expect(err).toBeDefined();
-      const msg = String((err as Error)?.message ?? (err as { code?: string })?.code ?? "");
-      expect(/ERR_TLS_CERT_ALTNAME_INVALID|DEPTH_ZERO_SELF_SIGNED_CERT|hostname\/IP/i.test(msg)).toBe(true);
+      // Specifically the hostname mismatch (the CA is trusted here), not any TLS failure.
+      expect((err as { code?: string }).code).toBe("ERR_TLS_CERT_ALTNAME_INVALID");
     } finally {
       close();
     }
@@ -334,10 +334,12 @@ describe("node-transport (REAL TLS against a local pinned server)", () => {
     }
   });
 
-  it("does NOT honour HTTP_PROXY / HTTPS_PROXY (no proxy agent is ever set)", async () => {
+  // In-process sanity check only: without NODE_USE_ENV_PROXY at startup Node ignores these variables anyway, so
+  // this test alone proves little. The real proof (with a control showing the proxy IS active for the default
+  // agent) is T-SEC-SSRF-025 in node-transport-ssrf.test.ts.
+  it("does NOT honour HTTP_PROXY / HTTPS_PROXY (in-process sanity check; see T-SEC-SSRF-025 for the real proof)", async () => {
     process.env.HTTP_PROXY = "http://127.0.0.1:1";
     process.env.HTTPS_PROXY = "http://127.0.0.1:1";
-    process.env.NO_PROXY = "*";
     const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
       res.writeHead(200);
       res.end("direct");
@@ -357,7 +359,6 @@ describe("node-transport (REAL TLS against a local pinned server)", () => {
       await close();
       delete process.env.HTTP_PROXY;
       delete process.env.HTTPS_PROXY;
-      delete process.env.NO_PROXY;
     }
   });
 });

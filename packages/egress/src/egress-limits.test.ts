@@ -327,6 +327,7 @@ describe("audit sink + secret redaction", () => {
       resolver: fakeResolver({ "example.com": ["93.184.216.34"] }),
       transport: t,
       auditSink: c.sink,
+      providerHosts: { prov1: ["example.com"] },
     });
     await g.request({ ...BASE, url: "https://example.com/x", secret: "topsecret", pinnedHost: "example.com", secretProvider: "prov1" });
     await g.request({ ...BASE, url: "https://example.com/y", secret: "topsecret", pinnedHost: "other.com", secretProvider: "prov1" });
@@ -428,6 +429,7 @@ describe("systemContext + audit sink (review log Q4, T-SEC-SSRF-044)", () => {
       resolver: { resolve: async () => ["93.184.216.34"] },
       transport: { fetch: async () => ({ status: 200, body: "" }) },
       auditSink: { record: (e) => events.push({ ...e }) },
+      providerHosts: { ipinfo: ["ipinfo.io"] },
     });
     // TEMPORARY FAIL-CLOSED: systemContext alone does NOT exempt the request
     // from caseId until the Q4 conditions are met, so the caller must supply

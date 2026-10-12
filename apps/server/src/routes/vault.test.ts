@@ -3,27 +3,23 @@ import type { Server } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * T-SEC-SSRF-047 canary hook: set BEFORE `../lib/logger.js` is imported
- * (the `import { createApp } from "../app"` below pulls in
- * `lib/providers.ts` → `lib/logger.ts`), so that `logger.ts` sees the hook
- * at LOAD time and routes pino's destination to our capture `Writable`.
- *
- * NOTE: the file-local `pinoCaptured` (per-`start`) is the SPY approach; the
- * GLOBAL hook below captures the ACTUAL serialized NDJSON lines.
+ * T-SEC-SSRF-047 canary: the server logger is replaced by one built with the SAME production options
+ * (`createLogger` + `LOGGER_OPTIONS`, including redaction) but writing to an in-memory destination, so the test
+ * reads the bytes pino actually serializes. There is no test hook in the production logger module.
  */
-const PinoCapturedGlobal: string[] = [];
-(
-  globalThis as unknown as {
-    __irLoggerTestHook?: { write?: (l: string) => void };
-  }
-).__irLoggerTestHook = {
-  write: (line: string) => {
-    PinoCapturedGlobal.push(line);
-  },
-};
+const PinoCapturedGlobal: string[] = vi.hoisted(() => []);
+vi.mock("../lib/logger", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../lib/logger")>();
+  const destination = {
+    write(line: string) {
+      PinoCapturedGlobal.push(line.replace(/\n$/, ""));
+    },
+  };
+  return { ...real, logger: real.createLogger(destination) };
+});
 
 import { openVault } from "@ir/store";
 import { createApp } from "../app";
@@ -63,7 +59,7 @@ function lookup(body: Record<string, string>): RequestInit {
   });
 }
 
-async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportStatus?: number; capturePino?: boolean } = {}) {
+async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportStatus?: number } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-"));
   dirs.push(dir);
   const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
@@ -71,7 +67,12 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   const vaultTestTransport = {
     async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
       vaultTestCalls.push({ ...req });
-      return { status: opts.vaultTransportStatus ?? 200, body: "" };
+      // The provider body echoes a sensitive marker and the key itself: neither may reach the route's response.
+      return {
+        status: opts.vaultTransportStatus ?? 200,
+        body: `PROVIDER_BODY_MARKER ${SECRET}`,
+        headers: { "content-type": "text/plain" },
+      };
     },
   };
   const vaultTestResolver = {
@@ -88,57 +89,6 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
     return realFetch(input, init);
   }) as typeof fetch;
   const app = createApp(vaultRouter(() => vault, { env, vaultTestTransport, vaultTestResolver }));
-  // Capture the REAL `makeVaultAuditSink` output (advisor D canary test).
-  // `pino-pretty` writes from a worker thread so patching process.stdout
-  // misses it; instead we spy the logger's info/warn methods (the SAME
-  // functions `makeVaultAuditSink` calls) and capture their JSON payloads.
-  // This captures exactly what pino would serialize to stdout.
-  const pinoCaptured: string[] = [];
-  if (opts.capturePino) {
-    const { logger } = await import("../lib/logger.js");
-    // pino's Logger type makes bind() lose the correct overload; capture the
-    // methods via a narrow record and call the ORIGINALS directly (no bind).
-    const originalLogger = logger as unknown as {
-      info: (msg: unknown, ...rest: unknown[]) => void;
-      warn: (msg: unknown, ...rest: unknown[]) => void;
-    };
-    const originalInfo = originalLogger.info.bind(originalLogger);
-    const originalWarn = originalLogger.warn.bind(originalLogger);
-    const capture = (msg: unknown, ...rest: unknown[]): void => {
-      // pino serializes the FIRST object arg as the log line's data and the
-      // string as the message. Capture both so the secret-leak assertion
-      // covers the full serialized line.
-      pinoCaptured.push(
-        typeof msg === "string" ? msg : JSON.stringify(msg),
-        ...rest.map((x) => (typeof x === "string" ? x : JSON.stringify(x))),
-      );
-    };
-    // pino's Logger type declares info/warn as generic methods that TS cannot
-    // reassign directly; use a narrow mutable record instead of `typeof logger.info`.
-    const mutableLogger = logger as unknown as {
-      info: (msg: unknown, ...rest: unknown[]) => void;
-      warn: (msg: unknown, ...rest: unknown[]) => void;
-    };
-    // pino's info/warn signature is (obj, msg?: string, ...args) — cast the
-    // message to string to satisfy TS; if a caller passes a non-string it
-    // still gets captured (JSON-stringified) by `capture` above.
-    mutableLogger.info = (msg: unknown, ...rest: unknown[]) => {
-      capture(msg, ...rest);
-      originalInfo(msg, ...rest);
-    };
-    mutableLogger.warn = (msg: unknown, ...rest: unknown[]) => {
-      capture(msg, ...rest);
-      originalWarn(msg, ...rest);
-    };
-    restoreFns.push(() => {
-      mutableLogger.info = (msg: unknown, ...rest: unknown[]) => {
-        originalInfo(msg, ...rest);
-      };
-      mutableLogger.warn = (msg: unknown, ...rest: unknown[]) => {
-        originalWarn(msg, ...rest);
-      };
-    });
-  }
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
   await new Promise((r) => server.once("listening", r));
@@ -153,7 +103,7 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   restoreFns.push(() => {
     globalThis.fetch = realFetch;
   });
-  return { call, upstream: externalCalls, all, vault, vaultTestCalls, pinoCaptured };
+  return { call, upstream: externalCalls, all, vault, vaultTestCalls };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {
@@ -354,6 +304,24 @@ describe("vault test result honesty (provider status is reported, never fabricat
     expect(r).toMatchObject({ ok: false, tested: true, providerStatus: 401 });
   });
 
+  for (const status of [401, 403, 500]) {
+    it(`a ${status} from the provider is visible as providerStatus without leaking the provider body or the secret`, async () => {
+      PinoCapturedGlobal.length = 0;
+      const s = await start(ENABLED, { vaultTransportStatus: status });
+      expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+      const res = await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }));
+      expect(JSON.parse(res.text)).toEqual({ ok: false, tested: true, providerStatus: status, reason: `provider_status_${status}` });
+      expect(res.text).not.toContain("PROVIDER_BODY_MARKER");
+      expect(res.text).not.toContain(SECRET);
+      expect(PinoCapturedGlobal.join("\n")).not.toContain(SECRET);
+      expect(PinoCapturedGlobal.join("\n")).not.toContain("PROVIDER_BODY_MARKER");
+      // exactly one transport call, to the pinned provider host, through the gateway
+      expect(s.vaultTestCalls).toHaveLength(1);
+      expect(s.vaultTestCalls[0]).toMatchObject({ host: "ipinfo.io", pinnedIp: "93.184.216.34", method: "GET" });
+      expect(s.upstream).toEqual([]);
+    });
+  }
+
   it("a 500 from the provider is reported as an upstream fault (ok=false, tested=true)", async () => {
     const s = await start(ENABLED, { vaultTransportStatus: 500 });
     expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
@@ -369,6 +337,18 @@ describe("vault test result honesty (provider status is reported, never fabricat
   });
 
   describe("T-SEC-SSRF-047 (D / canary): the real makeVaultAuditSink does not leak the secret", () => {
+    it("negative control: the capture really sees what the production logger serializes (a leaking line IS caught)", async () => {
+      const { logger } = await import("../lib/logger");
+      PinoCapturedGlobal.length = 0;
+      logger.info({ leaked: SECRET }, "deliberate leak for the negative control");
+      expect(PinoCapturedGlobal.join("\n")).toContain(SECRET);
+      // the production redaction paths are active in the captured logger too
+      logger.info({ req: { headers: { authorization: `Bearer ${SECRET}` } } }, "redaction check");
+      expect(PinoCapturedGlobal.at(-1)).not.toContain(SECRET);
+      expect(PinoCapturedGlobal.at(-1)).toContain("[Redacted]");
+      PinoCapturedGlobal.length = 0;
+    });
+
     it("the SERIALIZED pino line from the actual audit sink contains the redacted digest but NOT the raw secret", async () => {
       // Canary test (advisor D): the response-only test proves the HTTP
       // response doesn't leak the secret; a spy on `logger.info` proves the
@@ -378,16 +358,9 @@ describe("vault test result honesty (provider status is reported, never fabricat
       // NDJSON line (the bytes that would hit stdout) and asserts the raw
       // secret is absent from it.
       //
-      // Implementation: `globalThis.__irLoggerTestHook` is set BEFORE this
-      // module (and `../lib/logger.js`) is imported — `logger.ts` checks it
-      // at load time and, when present, routes pino's destination to a
-      // `Writable` that records every serialized line.
-      const hook = (
-        globalThis as unknown as {
-          __irLoggerTestHook?: { write?: (l: string) => void };
-        }
-      ).__irLoggerTestHook;
-      expect(hook).toBeDefined();
+      // Implementation: `../lib/logger` is mocked (top of file) with a logger built by the production
+      // `createLogger(LOGGER_OPTIONS)` writing to an in-memory destination.
+      PinoCapturedGlobal.length = 0;
       const s = await start(ENABLED, { vaultTransportStatus: 200 });
       expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
       const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);

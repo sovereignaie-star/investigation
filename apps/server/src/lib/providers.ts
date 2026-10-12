@@ -91,7 +91,7 @@ let sharedVaultTransport: VaultEgressTransport | undefined;
 let sharedVaultResolver: VaultDnsResolver | undefined;
 
 function buildSharedVaultGateway(transport: VaultEgressTransport, resolver: VaultDnsResolver): VaultKeyValidationCapability {
-  const cap = createVaultKeyValidationCapability(Object.values(PROVIDER_HOSTS), makeVaultAuditSink());
+  const cap = createVaultKeyValidationCapability(PROVIDER_HOSTS, makeVaultAuditSink());
   const opts = vaultGatewayOptions(cap, resolver, transport, {
     maxRedirects: 1,
     maxSizeBytes: 10_000,

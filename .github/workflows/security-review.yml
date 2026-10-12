@@ -1,12 +1,12 @@
 name: security-review
-# P1-031 (owner decision D-8): a pull request touching a security or egress path needs an APPROVED review from the
+# D-8 (owner decision; tracked under P2-003): a pull request touching a security or egress path needs an APPROVED review from the
 # designated reviewer on its current head. Policy and paths: scripts/gates/security-review-gate.mjs and
 # docs/security/REVIEW_SCOPE.md.
 #
 # ADVISORY ONLY. This check must not be made required on main: GitHub attributes it to the github-actions app, and
 # any workflow in a same-repository pull request can request checks: write and publish a result under the same app
-# and name. The tamper-resistant options (a separate GitHub App, or native code-owner review) are compared in
-# docs/security/D8_ENFORCEMENT_OPTIONS.md and await the owner's choice.
+# and name. The tamper-resistant enforcement is native code-owner review (Option 2 in
+# docs/security/D8_ENFORCEMENT_OPTIONS.md); this job stays an advisory signal next to it.
 #
 # pull_request_target runs this file and the gate script as they are on the default branch, so a pull request cannot
 # change this run. There is deliberately no pull_request_review trigger: that event runs the workflow file from the

@@ -26,7 +26,46 @@
  */
 import * as https from "node:https";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
-import type { EgressTransport } from "./egress";
+import { EgressTransportError, type EgressTransport } from "./egress";
+
+/** Explicit User-Agent (ADR-08): identifies the tool, never carries case data. A caller-provided one wins. */
+export const DEFAULT_USER_AGENT = "InvestigationRoom-egress/1";
+
+/** At most this many stacked content-encoding layers are decoded; more is refused (T-SEC-SSRF-033). */
+export const MAX_ENCODING_LAYERS = 2;
+
+/**
+ * Decode a body according to its Content-Encoding header (RFC 9110 8.4: codings are listed in the order they were
+ * applied, so they are removed in reverse). Every layer is bounded by `maxDecodedBytes` WHILE decoding
+ * (`maxOutputLength`), so a decompression bomb is stopped at the cap instead of being inflated in memory first.
+ * An unknown coding or too many layers is refused (fail-closed): the caller could not read the body anyway.
+ */
+export function decodeBody(raw: Buffer, contentEncoding: string | undefined, maxDecodedBytes: number): Buffer {
+  const codings = String(contentEncoding ?? "")
+    .split(",")
+    .map((c) => c.trim().toLowerCase())
+    .filter((c) => c !== "" && c !== "identity");
+  if (codings.length > MAX_ENCODING_LAYERS) {
+    throw new EgressTransportError("content_encoding", `egress: ${codings.length} stacked content-encodings (max ${MAX_ENCODING_LAYERS})`);
+  }
+  let buf = raw;
+  for (const coding of codings.reverse()) {
+    const limit = { maxOutputLength: maxDecodedBytes + 1 };
+    try {
+      if (coding === "gzip" || coding === "x-gzip") buf = gunzipSync(buf, limit);
+      else if (coding === "deflate") buf = inflateSync(buf, limit);
+      else if (coding === "br") buf = brotliDecompressSync(buf, limit);
+      else throw new EgressTransportError("content_encoding", `egress: unsupported content-encoding "${coding}"`);
+    } catch (e) {
+      if (e instanceof EgressTransportError) throw e;
+      // zlib reports an output over maxOutputLength as a RangeError (ERR_BUFFER_TOO_LARGE).
+      if (e instanceof RangeError) throw new EgressSizeLimitError("decoded");
+      throw new EgressTransportError("content_encoding", `egress: decoding "${coding}" failed: ${(e as Error).message}`);
+    }
+    if (buf.length > maxDecodedBytes) throw new EgressSizeLimitError("decoded");
+  }
+  return buf;
+}
 
 export type NodeTransportTlsOptions = Pick<https.AgentOptions, "ca" | "cert" | "key" | "ciphers" | "minVersion" | "maxVersion" | "timeout">;
 
@@ -50,9 +89,14 @@ export interface NodeTransportOptions {
   readonly tlsOptions?: NodeTransportTlsOptions;
 }
 
-export class EgressSizeLimitError extends Error {
-  constructor() {
-    super("egress size_limit: response body exceeded maxBodyBytes while reading");
+export class EgressSizeLimitError extends EgressTransportError {
+  constructor(stage: "wire" | "decoded" = "wire") {
+    super(
+      "size_limit",
+      stage === "wire"
+        ? "egress size_limit: response body exceeded maxBodyBytes while reading"
+        : "egress size_limit: decoded body exceeded maxDecodedBytes while decoding",
+    );
     this.name = "EgressSizeLimitError";
   }
 }
@@ -90,9 +134,12 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
         timeout: tls?.timeout,
         // `lookup` is overridden so `node:https` connects to the PINNED IP,
         // not whatever `dns.lookup(host)` would return now (rebinding).
-        lookup: (_hostname, _options, callback) => {
-          callback(null, [{ address: req.pinnedIp, family: req.pinnedIp.includes(":") ? 6 : 4 }]);
-        },
+        lookup: ((_hostname: string, options: { all?: boolean }, callback: (...args: unknown[]) => void) => {
+          const family = req.pinnedIp.includes(":") ? 6 : 4;
+          // net calls lookup with `all: true` (autoSelectFamily) or without it; answer in the shape it asked for.
+          if (options?.all) callback(null, [{ address: req.pinnedIp, family }]);
+          else callback(null, req.pinnedIp, family);
+        }) as unknown as https.AgentOptions["lookup"],
         // One socket per request — no keep-alive across requests (rate
         // limiting and auditing are per request, not per connection).
         keepAlive: false,
@@ -109,6 +156,7 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
             {
               method: req.method,
               headers: {
+                "user-agent": DEFAULT_USER_AGENT,
                 ...req.headers,
                 // `host` header must match the URL's hostname (SNI too).
                 host: u.host,
@@ -141,35 +189,11 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
               res.on("end", () => {
                 if (capped) return; // already rejected
                 const raw = Buffer.concat(chunks);
-                const encoding = String(headers["content-encoding"] ?? "")
-                  .toLowerCase()
-                  .trim();
                 let bodyBuf: Buffer;
                 try {
-                  // Decompress the SUPPORTED encodings. An unsupported encoding
-                  // is an error (fail-closed) — the caller cannot read it
-                  // anyway, and silently returning compressed bytes as "the
-                  // body" would be a lie.
-                  if (encoding === "" || encoding === "identity") {
-                    bodyBuf = raw;
-                  } else if (encoding === "gzip" || encoding === "x-gzip") {
-                    bodyBuf = gunzipSync(raw);
-                  } else if (encoding === "deflate") {
-                    bodyBuf = inflateSync(raw);
-                  } else if (encoding === "br") {
-                    bodyBuf = brotliDecompressSync(raw);
-                  } else {
-                    throw new Error(`egress: unsupported content-encoding "${encoding}"`);
-                  }
+                  bodyBuf = decodeBody(raw, headers["content-encoding"], maxDecodedBytes);
                 } catch (e) {
-                  reject(new Error(`egress: decompression failed: ${(e as Error).message}`));
-                  return;
-                }
-                // The DECODED cap: enforced AFTER decompression, against
-                // gzip bombs and decompressed payloads that are far larger
-                // than their compressed wire size.
-                if (bodyBuf.length > maxDecodedBytes) {
-                  reject(new EgressSizeLimitError());
+                  reject(e);
                   return;
                 }
                 resolve({

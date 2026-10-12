@@ -1,4 +1,4 @@
-// P1-031: unit tests for the D-8 security review gate. Run: node --test scripts/gates/security-review-gate.test.mjs
+// D-8 (tracked under P2-003): unit tests for the D-8 security review gate. Run: node --test scripts/gates/security-review-gate.test.mjs
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
@@ -34,6 +34,11 @@ test("paths: directories by prefix, files exactly, nothing else", () => {
     "scripts/gates/phase1.ts",
     ".github/CODEOWNERS",
     "docs/adr/ADR-08-egress-gateway.md",
+    ".github/dependabot.yml",
+    "packages/sandbox/src/enforce.ts",
+    "packages/engine/src/run.ts",
+    "scripts/checks/no-direct-network.ts",
+    "lib/api-client-react/src/custom-fetch.ts",
   ])
     assert.equal(isD8Path(f), true, f);
   for (const f of [
@@ -41,7 +46,9 @@ test("paths: directories by prefix, files exactly, nothing else", () => {
     "apps/web/src/App.tsx",
     "packages/storefront/x.ts", // prefix of a name is not the directory
     "apps/server-old/x.ts",
-    ".github/dependabot.yml",
+    ".github/dependabot.yml.bak",
+    "lib/api-client-react/src/custom-fetch.test.ts",
+    "packages/engines/x.ts",
     ".github/CODEOWNERS.bak",
     "docs/adr/ADR-08-egress-gateway.md.orig",
     "scripts/governance/check.mjs",
@@ -135,6 +142,26 @@ test("CODEOWNERS gives the reviewer nothing beyond the D-8 paths", () => {
     .filter((parts) => parts[0] && !parts[0].startsWith("#") && parts.includes(`@${REVIEWER.login}`))
     .map(([pat]) => pat.replace(/^\//, ""));
   assert.deepEqual([...owned].sort(), [...D8_PATHS].sort());
+});
+
+test("CODEOWNERS has no catch-all and lists the reviewer ALONE on every line (Option 2: native code-owner review)", () => {
+  const root = path.resolve(import.meta.dirname, "..", "..");
+  const lines = readFileSync(path.join(root, ".github", "CODEOWNERS"), "utf8")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith("#"))
+    .map((l) => l.split(/\s+/));
+  assert.ok(lines.length > 0);
+  for (const [pat, ...owners] of lines) {
+    assert.notEqual(pat, "*", "a catch-all line would make every pull request need an owner approval (deadlock)");
+    assert.deepEqual(owners, [`@${REVIEWER.login}`], `${pat}: owners must be exactly the D-8 reviewer`);
+  }
+});
+
+test("negative control: the CODEOWNERS checks above reject the previous file shape", () => {
+  const old = ["*  @sovereignaie-star", "/packages/egress/  @xuuux-voox @sovereignaie-star"].map((l) => l.split(/\s+/));
+  assert.ok(old.some(([pat]) => pat === "*"));
+  assert.ok(old.some(([, ...o]) => o.length !== 1 || o[0] !== `@${REVIEWER.login}`));
 });
 
 test("the Actions check stays advisory: no trigger that runs the workflow file from the pull request", () => {

@@ -41,6 +41,28 @@ describe("no direct network paths outside @ir/egress (P2-003 / ADR-08 C)", () =>
       expect(f(`class A { async fetch() {} }\nthis_is.fetch();`)).toEqual([]);
       expect(f(`function g(fetch: (u: string) => void) { return 1; }`)).toEqual([]);
     });
+    it("detects module-loader escapes: non-literal require/import, createRequire, process.binding/dlopen, inspector, vm", () => {
+      expect(f(`const m = "node:" + "net"; const n = require(m);`)).toHaveLength(1);
+      expect(f("const n = await import(`node:${name}`);")).toHaveLength(1);
+      expect(f(`import { createRequire } from "node:module"; const r = createRequire(import.meta.url);`)).toHaveLength(1);
+      expect(f(`const t = process.binding("tcp_wrap");`)).toHaveLength(1);
+      expect(f(`process["dlopen"](m, "/tmp/x.node");`)).toHaveLength(1);
+      expect(f(`globalThis.process._linkedBinding("x");`)).toHaveLength(1);
+      expect(f(`import inspector from "node:inspector"; inspector.open(9229);`)).toHaveLength(1);
+      expect(f(`import vm from "node:vm";`)).toHaveLength(1);
+    });
+    it("scans .js/.mjs/.cjs as well as TypeScript", () => {
+      expect(f(`const http = require("http");`, "packages/x/src/a.cjs")).toHaveLength(1);
+      expect(f(`import net from "node:net";`, "packages/x/src/a.mjs")).toHaveLength(1);
+    });
+    it("only the two sandbox launcher files are exempt, not the whole sandbox package", async () => {
+      const { isGatewayFile } = await import("./no-direct-network.js");
+      expect(isGatewayFile("packages/sandbox/src/enforce.ts")).toBe(true);
+      expect(isGatewayFile("packages/sandbox/src/build.ts")).toBe(true);
+      expect(isGatewayFile("packages/sandbox/src/other.ts")).toBe(false);
+      expect(isGatewayFile("packages/egress/src/egress.ts")).toBe(true);
+      expect(isGatewayFile("packages/engine/src/run.ts")).toBe(false);
+    });
     it("restricts the vault capability import to apps/server/src/lib/providers.ts", () => {
       const imp = `import { createVaultKeyValidationCapability } from "@ir/egress/vault-capability";`;
       expect(f(imp, "apps/server/src/lib/providers.ts")).toEqual([]);
