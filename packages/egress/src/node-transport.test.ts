@@ -204,6 +204,78 @@ describe("node-transport (REAL TLS against a local pinned server)", () => {
     }
   });
 
+  it("a gzip bomb is rejected with EgressSizeLimitError AFTER decompression (decoded cap enforced)", async () => {
+    // A gzip bomb: a tiny compressed wire size that decodes to a payload far
+    // larger than the decoded cap. The raw cap would NOT catch this — the
+    // decoded cap must.
+    const { gzipSync } = await import("node:zlib");
+    const bomb = gzipSync(Buffer.alloc(200 * 1024, 0x41)); // 200 KiB of 'A' -> tiny wire
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
+      res.writeHead(200, { "content-encoding": "gzip" });
+      res.end(bomb);
+    });
+    try {
+      const t = createNodeTransport({
+        tlsOptions: { ca: good.cert },
+        maxBodyBytes: 1024 * 1024, // raw cap 1 MiB (the bomb is ~300 B on the wire)
+        maxDecodedBytes: 100 * 1024, // decoded cap 100 KiB (the bomb decodes to 200 KiB)
+      });
+      const p = t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
+        pinnedIp: "127.0.0.1",
+        method: "GET",
+      });
+      // The decoded payload (200 KiB) exceeds the decoded cap (100 KiB) —
+      // the transport must REJECT with EgressSizeLimitError.
+      await expect(p).rejects.toBeInstanceOf(EgressSizeLimitError);
+    } finally {
+      close();
+    }
+  });
+
+  it("a gzip body under the decoded cap decodes fine (happy path)", async () => {
+    const { gzipSync } = await import("node:zlib");
+    const payload = Buffer.from("hello-gzip");
+    const compressed = gzipSync(payload);
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
+      res.writeHead(200, { "content-encoding": "gzip" });
+      res.end(compressed);
+    });
+    try {
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } });
+      const r = await t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
+        pinnedIp: "127.0.0.1",
+        method: "GET",
+      });
+      expect(r.status).toBe(200);
+      expect(r.body).toBe("hello-gzip");
+    } finally {
+      close();
+    }
+  });
+
+  it("an unsupported content-encoding is rejected (fail-closed)", async () => {
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
+      res.writeHead(200, { "content-encoding": "brotli-fake-unknown" });
+      res.end(Buffer.from("junk"));
+    });
+    try {
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } });
+      const p = t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
+        pinnedIp: "127.0.0.1",
+        method: "GET",
+      });
+      await expect(p).rejects.toThrow(/unsupported content-encoding/);
+    } finally {
+      close();
+    }
+  });
+
   it("a 3xx response is RETURNED to the caller (the transport never follows redirects itself)", async () => {
     const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
       res.writeHead(302, { location: "https://example.org/redirected" });

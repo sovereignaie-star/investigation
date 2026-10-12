@@ -16,7 +16,7 @@
  *   communicates with it over a local IPC channel (stdin/stdout by default)
  *   and never opens a socket itself. This is the P2-005 design.
  */
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { buildSocketBlocker } from "./build.ts";
 
 export interface SandboxOptions {
@@ -88,14 +88,104 @@ function buildChildEnv(extra: Record<string, string> | undefined, ldPreload: str
 }
 
 /**
+ * Kernel-level isolation: `unshare --user --map-root-user --net` puts the child
+ * in a NEW, EMPTY network namespace. Unlike the LD_PRELOAD shim (a LIBRARY
+ * layer that a grandchild can drop), a network namespace is enforced BY THE
+ * KERNEL for EVERY process inside it — a grandchild spawned with
+ * `LD_PRELOAD=""` is STILL inside the empty namespace and cannot connect
+ * (`ENETUNREACH`). stdio pipes are unaffected by the namespace switch.
+ *
+ * When `unshare` is available and the namespace probe succeeds, it is the
+ * PRIMARY isolation mechanism. The LD_PRELOAD shim is kept as a DEFENSIVE
+ * SECOND LAYER (belt and suspenders): if the kernel mechanism is somehow
+ * unavailable, the shim still blocks the common library path. BOTH must be
+ * present for the harness to spawn a child at all (fail-closed).
+ */
+function canUnshareNet(): boolean {
+  const r = spawnSync("unshare", ["--user", "--map-root-user", "--net", "true"], {
+    encoding: "utf8",
+    timeout: 5000,
+  });
+  return r.status === 0;
+}
+
+/**
+ * Verify the shim ACTUALLY blocks a socket BEFORE any transform source runs.
+ *
+ * This is a LIVE PROBE, not a build-success check. The parent starts a local
+ * listener, spawns a THROWAWAY child with the same LD_PRELOAD env, and asks
+ * it to connect. If the throwaway child CAN connect, the shim is NOT enforcing
+ * (e.g. it loaded but the libc path is different) — the harness REFUSES to run
+ * the transform source. A transform source is only ever executed after this
+ * probe proves the enforcement layer blocks a fresh socket in THIS environment.
+ *
+ * The probe uses a random ephemeral port on 127.0.0.1 (not a real network
+ * destination) and is torn down immediately. Its result is cached per
+ * (blockerPath, pid) so repeated transforms don't re-probe.
+ */
+const probeCache = new Map<string, boolean>();
+async function verifyBlockerEnforced(socketBlockerPath: string, env: Record<string, string>): Promise<boolean> {
+  const key = `${socketBlockerPath}:${process.pid}`;
+  const cached = probeCache.get(key);
+  if (cached !== undefined) return cached;
+  let enforced = false;
+  let listener: import("node:net").Server | undefined;
+  try {
+    const net = await import("node:net");
+    const l = net.createServer(() => {
+      // Any connection means the shim did NOT block — mark not-enforced.
+      enforced = false;
+    });
+    listener = l;
+    await new Promise<void>((r) => l.listen(0, "127.0.0.1", () => r()));
+    const addr = listener.address() as { port: number };
+    const probeChild = spawn(
+      "node",
+      [
+        "--input-type=module",
+        "--eval",
+        `import("node:net").then((m) => {
+         const s = m.connect(${addr.port}, "127.0.0.1", () => { process.exit(2); });
+         s.on("error", () => process.exit(0));
+         setTimeout(() => process.exit(3), 2000);
+       }).catch(() => process.exit(0));`,
+      ],
+      { env: { ...env, LD_PRELOAD: socketBlockerPath }, stdio: "ignore" },
+    );
+    const code = await new Promise<number | null>((r) => probeChild.on("exit", (c) => r(c)));
+    // exit=2 means the probe child CONNECTED (shim not enforcing).
+    // exit=0 means the connect errored (shim blocked). exit=3 means timeout —
+    // treat as NOT enforced (fail-closed).
+    enforced = code === 0;
+  } catch {
+    enforced = false; // fail-closed on any probe error
+  } finally {
+    listener?.close();
+  }
+  probeCache.set(key, enforced);
+  return enforced;
+}
+
+/**
  * Spawn a node child process running `source` in the socket-blocked sandbox.
  * The source is a top-level module evaluated with `--input-type=module`.
  *
- * Fail-closed: on an unsupported platform the child is NOT spawned.
+ * Fail-closed: on an unsupported platform the child is NOT spawned, AND the
+ * shim is LIVE-PROBED — if it does not actually block a socket in this
+ * environment, the transform source is NOT executed.
  */
 export async function runSandboxedTransform(source: string, opts: SandboxOptions = {}): Promise<SandboxOutcome> {
   const { socketBlockerPath, supported } = buildSocketBlocker();
   if (!supported || !socketBlockerPath) {
+    return { refused: true, reason: "platform_unsupported" };
+  }
+  const probeEnv = buildChildEnv(undefined, socketBlockerPath);
+  const enforced = await verifyBlockerEnforced(socketBlockerPath, probeEnv);
+  const kernelIsolated = canUnshareNet();
+  // Fail-closed: BOTH layers must be present. The kernel namespace is the
+  // enforcement that cannot be dropped by a grandchild; the LD_PRELOAD shim is
+  // the in-process layer. If EITHER is missing the child is NOT spawned.
+  if (!enforced || !kernelIsolated) {
     return { refused: true, reason: "platform_unsupported" };
   }
   const env = buildChildEnv(opts.env, socketBlockerPath);
@@ -105,7 +195,7 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
   let childStdin: import("node:stream").Writable | undefined;
 
   return new Promise((resolve, reject) => {
-    const child: ChildProcess = spawn("node", ["--input-type=module", "--eval", source], {
+    const child: ChildProcess = spawn("unshare", ["--user", "--map-root-user", "--net", "node", "--input-type=module", "--eval", source], {
       cwd: opts.cwd,
       env,
       stdio: ["pipe", "pipe", "pipe"],

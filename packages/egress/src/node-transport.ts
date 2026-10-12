@@ -25,18 +25,27 @@
  *   decides the request is allowed.
  */
 import * as https from "node:https";
+import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import type { EgressTransport } from "./egress";
 
 export type NodeTransportTlsOptions = Pick<https.AgentOptions, "ca" | "cert" | "key" | "ciphers" | "minVersion" | "maxVersion" | "timeout">;
 
 export interface NodeTransportOptions {
   /**
-   * Byte cap for the response body WHILE READING. When exceeded, the stream is
-   * destroyed and the transport REJECTS with a `size_limit` error (no truncated
-   * success). The gateway re-checks `contentLength` before the body, this cap
-   * is the enforcement for chunked/no-content-length bodies.
+   * Byte cap for the response body WHILE READING (RAW bytes off the wire,
+   * pre-decompression). When exceeded, the stream is destroyed and the
+   * transport REJECTS with a `size_limit` error (no truncated success).
+   * The gateway re-checks `contentLength` before the body; this cap is the
+   * enforcement for chunked/no-content-length bodies.
    */
   readonly maxBodyBytes?: number;
+  /**
+   * Byte cap for the body AFTER decompression (the actual payload size).
+   * Enforced against gzip bombs and decompressed payloads that are far
+   * larger than their compressed wire size. Defaults to 50 MiB (the ADR-08
+   * "absolute cap in gateway code").
+   */
+  readonly maxDecodedBytes?: number;
   /** TLS options. Deliberately a narrow type — `rejectUnauthorized` cannot be set. */
   readonly tlsOptions?: NodeTransportTlsOptions;
 }
@@ -53,7 +62,8 @@ export class EgressSizeLimitError extends Error {
  * uses `host` from the URL — a mis-issued or mismatched certificate fails.
  */
 export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTransport {
-  const maxBodyBytes = opts.maxBodyBytes ?? 10 * 1024 * 1024; // 10 MiB default
+  const maxBodyBytes = opts.maxBodyBytes ?? 5 * 1024 * 1024; // 5 MiB default (ADR-08)
+  const maxDecodedBytes = opts.maxDecodedBytes ?? 50 * 1024 * 1024; // 50 MiB absolute cap (ADR-08)
   return {
     async fetch(req) {
       const u = new URL(req.url);
@@ -65,11 +75,19 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
 
       // Per-request socket-level control. `rejectUnauthorized` stays true —
       // the default. The transport never disables certificate verification.
-      // NOTE: `ca`/`cert`/`key` come from `opts.tlsOptions` (a narrow type);
-      // `rejectUnauthorized` and `servername` are set EXPLICITLY after and
-      // cannot be overridden by the caller.
+      // NOTE: `opts.tlsOptions` is NOT spread — each allowed field is picked
+      // EXPLICITLY. A JavaScript caller could otherwise inject
+      // `checkServerIdentity` or `rejectUnauthorized: false` via the spread.
+      const tls = opts.tlsOptions;
       const agent = new https.Agent({
-        ...opts.tlsOptions,
+        // ONLY the fields the transport explicitly allows — never a spread.
+        ca: tls?.ca,
+        cert: tls?.cert,
+        key: tls?.key,
+        ciphers: tls?.ciphers,
+        minVersion: tls?.minVersion,
+        maxVersion: tls?.maxVersion,
+        timeout: tls?.timeout,
         // `lookup` is overridden so `node:https` connects to the PINNED IP,
         // not whatever `dns.lookup(host)` would return now (rebinding).
         lookup: (_hostname, _options, callback) => {
@@ -81,7 +99,7 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
       });
 
       const chunks: Buffer[] = [];
-      let received = 0;
+      let received = 0; // raw bytes read off the wire (pre-decompression)
       let capped = false;
 
       return await new Promise<{ status: number; body?: string; headers?: Record<string, string>; contentLength?: number }>(
@@ -122,10 +140,41 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
               });
               res.on("end", () => {
                 if (capped) return; // already rejected
-                const body = Buffer.concat(chunks).toString("utf8");
+                const raw = Buffer.concat(chunks);
+                const encoding = String(headers["content-encoding"] ?? "")
+                  .toLowerCase()
+                  .trim();
+                let bodyBuf: Buffer;
+                try {
+                  // Decompress the SUPPORTED encodings. An unsupported encoding
+                  // is an error (fail-closed) — the caller cannot read it
+                  // anyway, and silently returning compressed bytes as "the
+                  // body" would be a lie.
+                  if (encoding === "" || encoding === "identity") {
+                    bodyBuf = raw;
+                  } else if (encoding === "gzip" || encoding === "x-gzip") {
+                    bodyBuf = gunzipSync(raw);
+                  } else if (encoding === "deflate") {
+                    bodyBuf = inflateSync(raw);
+                  } else if (encoding === "br") {
+                    bodyBuf = brotliDecompressSync(raw);
+                  } else {
+                    throw new Error(`egress: unsupported content-encoding "${encoding}"`);
+                  }
+                } catch (e) {
+                  reject(new Error(`egress: decompression failed: ${(e as Error).message}`));
+                  return;
+                }
+                // The DECODED cap: enforced AFTER decompression, against
+                // gzip bombs and decompressed payloads that are far larger
+                // than their compressed wire size.
+                if (bodyBuf.length > maxDecodedBytes) {
+                  reject(new EgressSizeLimitError());
+                  return;
+                }
                 resolve({
                   status: res.statusCode ?? 0,
-                  body,
+                  body: bodyBuf.toString("utf8"),
                   headers,
                   contentLength: contentLengthHeader ? Number(contentLengthHeader) : undefined,
                 });

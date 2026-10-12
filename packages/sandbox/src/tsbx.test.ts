@@ -239,17 +239,16 @@ s.on("error", (e) => { console.log("BLOCKED:", e.code); process.exit(0); });
     expect(result.stdout).toContain("CONNECTED!");
     expect(connections).toBe(before + 1);
   });
-  it("negative control: a grandchild spawned WITHOUT LD_PRELOAD DOES open a socket — proving the blocker is a layer, not a kernel wall", async () => {
-    // T-SBX isolation is a LIBRARY-level layer (LD_PRELOAD intercepts libc's
-    // `socket()`). This negative control proves it EMPIRICALLY against the
-    // REAL listener + connection counter in this suite: a grandchild spawned
-    // WITHOUT LD_PRELOAD connects and increments the counter; the sandboxed
-    // child itself does NOT.
+  it("kernel-level isolation: a grandchild spawned WITHOUT LD_PRELOAD is STILL blocked — the network namespace is a kernel wall, not a library layer", async () => {
+    // The sandbox harness now uses `unshare --user --map-root-user --net` as
+    // the PRIMARY isolation (an EMPTY network namespace enforced BY THE
+    // KERNEL), with the LD_PRELOAD shim as a defensive second layer.
     //
-    // NOTE: the LD_PRELOAD env var is inherited by the grandchild unless it is
-    // explicitly emptied. This test is the documented LAYER-not-WALL limitation
-    // of LD_PRELOAD (a grandchild can escape the shim) — it does NOT weaken
-    // the positive tests (the sandboxed child itself is blocked).
+    // This test proves the kernel wall: a grandchild spawned WITHOUT
+    // LD_PRELOAD (which would have escaped a LIBRARY-only shim) is STILL
+    // inside the empty network namespace and CANNOT connect. The counter
+    // stays unchanged — this is the empirical proof that the escape path of
+    // the OLD (library-only) mechanism is now closed.
     const before = connections;
     const GRANDCHILD_SRC = [
       'const net = await import("node:net");',
@@ -269,11 +268,12 @@ s.on("error", (e) => { console.log("BLOCKED:", e.code); process.exit(0); });
     expect(isRefusal(result)).toBe(false);
     const { stdout, exitCode } = result as Exclude<typeof result, { refused: true }>;
     expect(exitCode).toBe(0);
-    // The grandchild DID open a socket — this is the empirical proof that
-    // LD_PRELOAD is a LAYER, not a kernel wall. (The sandboxed child itself
-    // was blocked — the positive tests assert that.)
-    expect(stdout).toContain("GRANDCHILD_CONNECTED");
-    // And the REAL listener counter proves the connection actually arrived.
-    expect(connections).toBe(before + 1);
+    // The grandchild was BLOCKED (its connect failed — `net.connect` inside
+    // the empty namespace gives ENETUNREACH). The child reported the
+    // grandchild's failure. The counter must NOT have moved.
+    expect(stdout).toContain("GRANDCHILD_FAILED 1");
+    expect(stdout).not.toContain("GRANDCHILD_CONNECTED");
+    // The REAL listener counter proves the grandchild's connection did NOT arrive.
+    expect(connections).toBe(before);
   }, 15_000); // grandchild spawn + 5s inner timeout + overhead
 });

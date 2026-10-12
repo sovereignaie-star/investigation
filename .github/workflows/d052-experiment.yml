@@ -74,46 +74,41 @@ jobs:
             if [ $(( i % 2 )) -eq 1 ]; then FIRST=a; SECOND=b; else FIRST=b; SECOND=a; fi
             for WHICH in "$FIRST" "$SECOND"; do
               LABEL="pair${i}-${WHICH}"
+              # vitest supports MULTIPLE reporters in one run: the default text
+              # reporter (what the user sees in the log) AND a JSON reporter
+              # writing to a file. The JSON comes from THE SAME RUN that produces
+              # the exit code — the durations and the exit status are from one
+              # execution, not two.
+              # - (a) the exact CI command PLUS a JSON reporter (the JSON reporter
+              #   does not change test behaviour or parallelism).
+              # - (b) the same command with ONLY --fileParallelism=false added.
+              #   (Called via `pnpm exec` so the flag reaches vitest directly.)
+              # The JSON output path is per-run so both files are kept.
               if [ "$WHICH" = "a" ]; then
-                # (a) the exact CI command — no extra flags.
-                pnpm run test:coverage 2>&1 | tee "${LABEL}.log"
+                pnpm exec vitest run --coverage \
+                  --reporter=default --reporter=json \
+                  --outputFile.json="d052-results/${LABEL}.json" 2>&1 | tee "${LABEL}.log"
                 STATUS="${PIPESTATUS[0]}"
               else
-                # (b) the same command with ONLY --fileParallelism=false added.
-                # (Called via `pnpm exec` so the flag reaches vitest directly;
-                # `pnpm run x -- --flag` inserts a literal `--` arg.)
-                pnpm exec vitest run --coverage --fileParallelism=false 2>&1 | tee "${LABEL}.log"
+                pnpm exec vitest run --coverage --fileParallelism=false \
+                  --reporter=default --reporter=json \
+                  --outputFile.json="d052-results/${LABEL}.json" 2>&1 | tee "${LABEL}.log"
                 STATUS="${PIPESTATUS[0]}"
               fi
               echo "exit=$STATUS" >> "${LABEL}.log"
               echo "${LABEL} exit=$STATUS" >> d052-results/summary.txt
-              # Structured JSON report (the PRIMARY evidence — the text grep below
-              # is only a fallback because vitest's text output is parallelised
-              # and may drop slow-test lines).
-              # Run the D-052 test file once with the JSON reporter; the JSON has
-              # EVERY test (both plain AND encrypted), so the report is COMPLETE.
-              pnpm exec vitest run packages/store/src/audit-purpose.test.ts \
-                --reporter=json --outputFile="d052-results/${LABEL}.json" \
-                --fileParallelism=false 2>&1 > "/dev/null" || true
-              # AUTOMATED per-run D-052 duration report (both plain AND
-              # encrypted variants when present; vitest prints ONE line per
-              # run but the variant is file-order-dependent, not branch-dependent).
-              while IFS= read -r D052LINE; do
-                [ -z "$D052LINE" ] && continue
-                # Strip ANSI escape codes FIRST so the grep regexes match
-                # reliably in CI (vitest colourises output).
-                D052CLEAN="$(printf '%s' "$D052LINE" | sed -e 's/\x1b\[[0-9;]*m//g')"
-                # The line looks like: `       ✓ plain: a creation that fails ... 302ms`
-                # Extract variant + duration.
-                VARIANT="none"
-                case "$D052CLEAN" in
-                  *" plain: "*) VARIANT="plain" ;;
-                  *" encrypted: "*) VARIANT="encrypted" ;;
-                esac
-                DURATION="$(printf '%s' "$D052CLEAN" | grep -oE '[0-9]+ms$' | tr -d 'ms')"
-                echo "${LABEL} variant=${VARIANT} duration_ms=${DURATION:-unknown}" >> d052-results/d052-durations.txt
-              done < "${LABEL}-d052.txt"
-              # Extract the D-052 durations from the STRUCTURED JSON (both
+              # Record the SHA and A/B setting WITH the run so the JSON, the exit
+              # code and the durations are all bound to the same execution.
+              echo "${LABEL} sha=$(git rev-parse HEAD) ab=${WHICH} exit=$STATUS json=d052-results/${LABEL}.json" >> d052-results/summary.txt
+              # Structured JSON report from THE SAME RUN (the PRIMARY evidence —
+              # the text grep below is only a fallback because vitest's text
+              # output is parallelised and may drop slow-test lines).
+              # vitest supports multiple reporters: the default text reporter
+              # (what the user sees) AND a JSON reporter writing to a file.
+              # The JSON comes from THE SAME RUN that produced
+              # the exit code — not a separate one.
+              # Extract the D-052 durations from the STRUCTURED JSON of THIS
+              # SAME RUN (both
               # plain AND encrypted are present — the loop is over the test
               # results in the JSON, not over the grep output).
               node -e '
@@ -146,9 +141,9 @@ jobs:
             done
           done
           # Verify the report is COMPLETE: every run must have BOTH plain AND
-          # encrypted durations. With N runs, expect 2*N rows. If any are
-          # missing, record it (do NOT fail the workflow — the analysis is the
-          # deliverable).
+          # encrypted durations. With N runs, expect 2*N rows (N runs x 2
+          # variants each). If any are missing, record it (do NOT fail the
+          # workflow — the analysis is the deliverable).
           PAIRS_N=$(( PAIRS * 2 ))
           ROWS=$(grep -c "duration_ms=" d052-results/d052-durations.txt || echo 0)
           if [ "$ROWS" -lt "$PAIRS_N" ]; then
@@ -169,5 +164,5 @@ jobs:
             d052-results/summary.txt
             d052-results/d052-durations.txt
             pair*.log
-            pair*-d052.txt
+            d052-results/pair*.json
           if-no-files-found: warn
