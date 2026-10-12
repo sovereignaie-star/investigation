@@ -226,9 +226,13 @@ process.stdin.on("data", (chunk) => {
     const worker = `console.log("should not run"); process.exit(1);`;
     // On a real unsupported platform this returns the refusal. On Linux we
     // cannot force it without mocking; assert the contract by type instead.
+    // NOTE: the DEFAULT isolation is "kernel-required", so on hosts WITHOUT
+    // `unshare` (e.g. CI runners) the refusal is "kernel_isolation_unavailable"
+    // — a REFINED reason, not a different failure mode. Both refusal reasons
+    // are fail-closed: no child is spawned.
     const outcome = await run(worker, { env: {} });
     if (isRefusal(outcome)) {
-      expect(outcome.reason).toBe("platform_unsupported");
+      expect(["platform_unsupported", "kernel_isolation_unavailable"]).toContain(outcome.reason);
     } else {
       // Linux: supported, so the harness spawned the child. Verify the child
       // was spawned WITH the blocker (not a fallback run-without-blocker).
