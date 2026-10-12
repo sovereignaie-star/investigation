@@ -1,4 +1,5 @@
 export { createEgressGateway, EGRESS_DENY_CODE } from "./egress";
+export type { EgressGateway } from "./egress";
 export type {
   EgressRequest,
   EgressResult,

@@ -353,7 +353,16 @@ class RateLimiter {
   }
 }
 
-export function createEgressGateway(opts: EgressOptions) {
+/** The narrow interface the engine depends on. */
+export interface EgressGateway {
+  request(req: EgressRequest): Promise<EgressResult>;
+}
+
+export interface EgressGatewayWithLimits extends EgressGateway {
+  readonly limits: Readonly<Required<EgressLimits>>;
+}
+
+export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimits {
   const limits = validateLimits(opts.limits);
   const now = opts.now ?? (() => Date.now());
   const limiter = new RateLimiter(limits.rateLimitPerHostPerSecond, limits.rateLimitBurst, now);
