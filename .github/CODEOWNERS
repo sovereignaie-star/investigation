@@ -1,14 +1,23 @@
-# P0-024 — review ownership. One maintainer today; split per area as the team grows (ROADMAP 10).
-*                         @sovereignaie-star
-/docs/ROADMAP.md          @sovereignaie-star
-/docs/STATUS.md           @sovereignaie-star
-/GOVERNANCE.md            @sovereignaie-star
-/scripts/governance/      @sovereignaie-star
-/.github/                 @sovereignaie-star
-/SECURITY.md              @sovereignaie-star
-# D-8 (owner decision, 2026-10-10): human review for security and egress paths. Scope: docs/security/REVIEW_SCOPE.md.
-# Enforcement in branch protection is pending the owner's choice there (self-approval is impossible today).
-/packages/egress/         @sovereignaie-star
-/apps/server/             @sovereignaie-star
-/packages/store/          @sovereignaie-star
-/scripts/gates/           @sovereignaie-star
+# D-8 (owner decision 2026-10-10; designated reviewer approved by the owner: @xuuux-voox).
+#
+# Option 2 of docs/security/D8_ENFORCEMENT_OPTIONS.md (native code-owner review): this file lists ONLY the D-8
+# security and egress paths, each owned by the independent reviewer ALONE.
+# - No catch-all `*` and no owner-only lines: with "Require review from Code Owners" enabled, such lines would make
+#   every pull request need an approval from the repository owner's account, which is the account the agent works
+#   under; GitHub does not accept an author's approval of their own pull request, so every merge would deadlock.
+# - The owner is not listed next to the reviewer: any listed owner's approval satisfies the rule, so listing the
+#   owner would let the agent-controlled account approve D-8 changes it did not write (e.g. Dependabot).
+# Keep this list identical to D8_PATHS in scripts/gates/security-review-gate.mjs (a unit test compares them).
+/packages/egress/                         @xuuux-voox
+/packages/transforms/                     @xuuux-voox
+/packages/sandbox/                        @xuuux-voox
+/packages/engine/                         @xuuux-voox
+/packages/store/                          @xuuux-voox
+/apps/server/                             @xuuux-voox
+/lib/api-client-react/src/custom-fetch.ts @xuuux-voox
+/scripts/gates/                           @xuuux-voox
+/scripts/checks/                          @xuuux-voox
+/.github/workflows/                       @xuuux-voox
+/.github/CODEOWNERS                       @xuuux-voox
+/.github/dependabot.yml                   @xuuux-voox
+/docs/adr/ADR-08-egress-gateway.md        @xuuux-voox

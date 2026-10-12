@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.sha || github.ref }}
+          ref: ${{ inputs.sha || github.ref }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -47,6 +47,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Record the experiment identity (D-052)
+        env:
+          PAIRS_INPUT: ${{ inputs.pairs || '3' }}
         run: |
           {
             echo "sha=$(git rev-parse HEAD)"
@@ -54,37 +56,115 @@ jobs:
             echo "node=$(node --version)"
             echo "pnpm=$(pnpm --version)"
             echo "cpu_count=$(nproc)"
-            echo "pairs=${{ github.event.inputs.pairs || '3' }}"
+            echo "pairs=${PAIRS_INPUT}"
           } | tee experiment-identity.txt
       - name: Run the paired A/B experiment (D-052)
+        # Inputs reach the shell through env, never by template substitution into the script (no injection).
+        env:
+          PAIRS_INPUT: ${{ inputs.pairs || '3' }}
         run: |
+          # `set -u` (undefined var = error) AND `set +e` (explicitly DISABLE
+          # errexit): GitHub runners may enable `-e` by default; if a vitest
+          # run fails (which is DATA for this experiment, not an error), the
+          # loop must CONTINUE so all pairs complete and the logs carry the
+          # verdict. We restore the original shell opts at the end.
           set -u
-          PAIRS="${{ github.event.inputs.pairs || '3' }}"
+          set +e
+          PAIRS="${PAIRS_INPUT}"
+          case "$PAIRS" in
+            ''|*[!0-9]*) echo "::error::pairs must be a positive integer, got '${PAIRS}'"; exit 2 ;;
+          esac
+          if [ "$PAIRS" -lt 1 ] || [ "$PAIRS" -gt 10 ]; then echo "::error::pairs must be 1..10"; exit 2; fi
           mkdir -p d052-results
+          : > d052-results/d052-durations.txt
+          : > d052-results/d052-expected.txt
           for i in $(seq 1 "$PAIRS"); do
             # Alternate the order each pair: pair 1 A-then-B, pair 2 B-then-A, ...
             if [ $(( i % 2 )) -eq 1 ]; then FIRST=a; SECOND=b; else FIRST=b; SECOND=a; fi
             for WHICH in "$FIRST" "$SECOND"; do
               LABEL="pair${i}-${WHICH}"
+              # vitest supports MULTIPLE reporters in one run: the default text
+              # reporter (what the user sees in the log) AND a JSON reporter
+              # writing to a file. The JSON comes from THE SAME RUN that produces
+              # the exit code — the durations and the exit status are from one
+              # execution, not two.
+              # - (a) the exact CI command PLUS a JSON reporter (the JSON reporter
+              #   does not change test behaviour or parallelism).
+              # - (b) the same command with ONLY --fileParallelism=false added.
+              #   (Called via `pnpm exec` so the flag reaches vitest directly.)
+              # The JSON output path is per-run so both files are kept.
               if [ "$WHICH" = "a" ]; then
-                # (a) the exact CI command — no extra flags.
-                pnpm run test:coverage 2>&1 | tee "${LABEL}.log"
+                pnpm exec vitest run --coverage \
+                  --reporter=default --reporter=json \
+                  --outputFile.json="d052-results/${LABEL}.json" 2>&1 | tee "${LABEL}.log"
                 STATUS="${PIPESTATUS[0]}"
               else
-                # (b) the same command with ONLY --fileParallelism=false added.
-                # (Called via `pnpm exec` so the flag reaches vitest directly;
-                # `pnpm run x -- --flag` inserts a literal `--` arg.)
-                pnpm exec vitest run --coverage --fileParallelism=false 2>&1 | tee "${LABEL}.log"
+                pnpm exec vitest run --coverage --fileParallelism=false \
+                  --reporter=default --reporter=json \
+                  --outputFile.json="d052-results/${LABEL}.json" 2>&1 | tee "${LABEL}.log"
                 STATUS="${PIPESTATUS[0]}"
               fi
               echo "exit=$STATUS" >> "${LABEL}.log"
               echo "${LABEL} exit=$STATUS" >> d052-results/summary.txt
-              # Extract the D-052 line duration from the log for offline analysis.
-              grep -E "a creation that fails at any step|plain:|encrypted:" "${LABEL}.log" | head -20 > "${LABEL}-d052.txt" || true
+              # Record the SHA and A/B setting WITH the run so the JSON, the exit
+              # code and the durations are all bound to the same execution.
+              echo "${LABEL} sha=$(git rev-parse HEAD) ab=${WHICH} exit=$STATUS json=d052-results/${LABEL}.json" >> d052-results/summary.txt
+              # Structured JSON report from THE SAME RUN (the PRIMARY evidence —
+              # the text grep below is only a fallback because vitest's text
+              # output is parallelised and may drop slow-test lines).
+              # vitest supports multiple reporters: the default text reporter
+              # (what the user sees) AND a JSON reporter writing to a file.
+              # The JSON comes from THE SAME RUN that produced
+              # the exit code — not a separate one.
+              # Extract the D-052 durations from the STRUCTURED JSON of THIS
+              # SAME RUN (both
+              # plain AND encrypted are present — the loop is over the test
+              # results in the JSON, not over the grep output).
+              node -e '
+                const fs = require("node:fs");
+                const label = process.argv[1];
+                const file = `d052-results/${label}.json`;
+                if (!fs.existsSync(file)) { console.error("MISSING_JSON", file); process.exit(1); }
+                const r = JSON.parse(fs.readFileSync(file, "utf8"));
+                const tests = r.testResults || [];
+                const d052 = [];
+                function walk(t) {
+                  const nm = t.fullName || t.title || "";
+                  if (/a creation that fails at any step/.test(nm)) d052.push(t);
+                  for (const c of t.assertionResults || []) {
+                    if (/a creation that fails at any step/.test(c.fullName || c.title || "")) {
+                      d052.push({ fullName: c.fullName || c.title, duration: c.duration, status: c.status });
+                    }
+                  }
+                }
+                for (const t of tests) walk(t);
+                const out = fs.createWriteStream("d052-results/d052-durations.txt", { flags: "a" });
+                for (const t of d052) {
+                  const nm = t.fullName || "";
+                  const variant = /encrypted:/.test(nm) ? "encrypted" : "plain";
+                  const dur = t.duration !== undefined && t.duration !== null ? Math.round(t.duration) : "unknown";
+                  out.write(`${label} variant=${variant} duration_ms=${dur} status=${t.status}\n`);
+                }
+                out.end();
+              ' "${LABEL}" || echo "${LABEL} json_parse_error" >> d052-results/d052-durations.txt
             done
           done
-          # Never fail the workflow on the experiment itself: the analysis is the
-          # deliverable, not a pass/fail gate. The logs carry the verdict.
+          # Verify the report is COMPLETE. Each pair has TWO runs (a and b) and each run reports TWO variants
+          # (plain and encrypted), so the expected row count is PAIRS * 4.
+          EXPECTED=$(( PAIRS * 4 ))
+          # grep -c prints the count (0 included) and exits 1 on zero matches; `|| true` keeps ONE number.
+          ROWS=$(grep -c "duration_ms=[0-9]" d052-results/d052-durations.txt || true)
+          FAILED_RUNS=$(grep -cE "^pair[0-9]+-[ab] exit=[1-9]" d052-results/summary.txt || true)
+          echo "runs_with_failures=${FAILED_RUNS} (of $(( PAIRS * 2 )); test failures are DATA for this experiment)" | tee -a d052-results/d052-durations.txt
+          if [ "$ROWS" -ne "$EXPECTED" ]; then
+            echo "INCOMPLETE: expected ${EXPECTED} rows, got ${ROWS}" | tee -a d052-results/d052-durations.txt
+            # A test failure is a result; a MISSING measurement is not. The job fails so an incomplete
+            # experiment is never shown as green. The artifact is still uploaded (if: always()).
+            echo "::error::D-052 experiment incomplete: ${ROWS}/${EXPECTED} duration rows"
+            exit 1
+          fi
+          echo "COMPLETE: ${ROWS}/${EXPECTED} rows" | tee -a d052-results/d052-durations.txt
+          # Test failures do not fail the job: the logs and durations are the deliverable.
           exit 0
       - name: Upload the experiment logs (D-052)
         if: always()
@@ -94,6 +174,7 @@ jobs:
           path: |
             experiment-identity.txt
             d052-results/summary.txt
+            d052-results/d052-durations.txt
             pair*.log
-            pair*-d052.txt
+            d052-results/pair*.json
           if-no-files-found: warn

@@ -3,7 +3,24 @@ import type { Server } from "node:http";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * T-SEC-SSRF-047 canary: the server logger is replaced by one built with the SAME production options
+ * (`createLogger` + `LOGGER_OPTIONS`, including redaction) but writing to an in-memory destination, so the test
+ * reads the bytes pino actually serializes. There is no test hook in the production logger module.
+ */
+const PinoCapturedGlobal: string[] = vi.hoisted(() => []);
+vi.mock("../lib/logger", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../lib/logger")>();
+  const destination = {
+    write(line: string) {
+      PinoCapturedGlobal.push(line.replace(/\n$/, ""));
+    },
+  };
+  return { ...real, logger: real.createLogger(destination) };
+});
+
 import { openVault } from "@ir/store";
 import { createApp } from "../app";
 import { LOOKUPS_DISABLED, lookupsEnabled, vaultRouter } from "./vault";
@@ -50,7 +67,12 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   const vaultTestTransport = {
     async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
       vaultTestCalls.push({ ...req });
-      return { status: opts.vaultTransportStatus ?? 200, body: "" };
+      // The provider body echoes a sensitive marker and the key itself: neither may reach the route's response.
+      return {
+        status: opts.vaultTransportStatus ?? 200,
+        body: `PROVIDER_BODY_MARKER ${SECRET}`,
+        headers: { "content-type": "text/plain" },
+      };
     },
   };
   const vaultTestResolver = {
@@ -282,6 +304,38 @@ describe("vault test result honesty (provider status is reported, never fabricat
     expect(r).toMatchObject({ ok: false, tested: true, providerStatus: 401 });
   });
 
+  for (const status of [401, 403, 500]) {
+    it(`a ${status} from the provider is visible as providerStatus without leaking the provider body or the secret`, async () => {
+      PinoCapturedGlobal.length = 0;
+      const s = await start(ENABLED, { vaultTransportStatus: status });
+      expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+      const res = await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }));
+      expect(JSON.parse(res.text)).toEqual({ ok: false, tested: true, providerStatus: status, reason: `provider_status_${status}` });
+      expect(res.text).not.toContain("PROVIDER_BODY_MARKER");
+      expect(res.text).not.toContain(SECRET);
+      expect(PinoCapturedGlobal.join("\n")).not.toContain(SECRET);
+      expect(PinoCapturedGlobal.join("\n")).not.toContain("PROVIDER_BODY_MARKER");
+      // exactly one transport call, to the pinned provider host, through the gateway
+      expect(s.vaultTestCalls).toHaveLength(1);
+      expect(s.vaultTestCalls[0]).toMatchObject({ host: "ipinfo.io", pinnedIp: "93.184.216.34", method: "GET" });
+      expect(s.upstream).toEqual([]);
+    });
+  }
+
+  it("each provider's key test requests its real API endpoint, with the key only in that provider's header", async () => {
+    const s = await start(ENABLED);
+    expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+    expect((await s.call("/vault/virustotal", put(SECRET))).status).toBe(200);
+    expect((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).status).toBe(200);
+    expect((await s.call("/vault/virustotal/test", withAdmin({ method: "POST" }))).status).toBe(200);
+    const calls = s.vaultTestCalls as Array<{ url: string; host: string; headers?: Record<string, string> }>;
+    expect(calls.map((c) => c.url)).toEqual(["https://ipinfo.io/8.8.8.8", "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8"]);
+    expect(calls[0]?.headers?.["authorization"]).toBe(`Bearer ${SECRET}`);
+    expect(calls[1]?.headers?.["x-apikey"]).toBe(SECRET);
+    expect(calls[1]?.headers?.["authorization"]).toBeUndefined();
+    for (const c of calls) expect(c.url).not.toContain(SECRET);
+  });
+
   it("a 500 from the provider is reported as an upstream fault (ok=false, tested=true)", async () => {
     const s = await start(ENABLED, { vaultTransportStatus: 500 });
     expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
@@ -294,5 +348,57 @@ describe("vault test result honesty (provider status is reported, never fabricat
     expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
     const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
     expect(r).toMatchObject({ ok: true, tested: true, providerStatus: 200 });
+  });
+
+  describe("T-SEC-SSRF-047 (D / canary): the real makeVaultAuditSink does not leak the secret", () => {
+    it("negative control: the capture really sees what the production logger serializes (a leaking line IS caught)", async () => {
+      const { logger } = await import("../lib/logger");
+      PinoCapturedGlobal.length = 0;
+      logger.info({ leaked: SECRET }, "deliberate leak for the negative control");
+      expect(PinoCapturedGlobal.join("\n")).toContain(SECRET);
+      // the production redaction paths are active in the captured logger too
+      logger.info({ req: { headers: { authorization: `Bearer ${SECRET}` } } }, "redaction check");
+      expect(PinoCapturedGlobal.at(-1)).not.toContain(SECRET);
+      expect(PinoCapturedGlobal.at(-1)).toContain("[Redacted]");
+      PinoCapturedGlobal.length = 0;
+    });
+
+    it("the SERIALIZED pino line from the actual audit sink contains the redacted digest but NOT the raw secret", async () => {
+      // Canary test (advisor D): the response-only test proves the HTTP
+      // response doesn't leak the secret; a spy on `logger.info` proves the
+      // OBJECT passed in doesn't leak it. NEITHER proves what pino actually
+      // SERIALIZES to stdout (pino's own redact/serialization could
+      // theoretically differ). This test captures the ACTUAL serialized pino
+      // NDJSON line (the bytes that would hit stdout) and asserts the raw
+      // secret is absent from it.
+      //
+      // Implementation: `../lib/logger` is mocked (top of file) with a logger built by the production
+      // `createLogger(LOGGER_OPTIONS)` writing to an in-memory destination.
+      PinoCapturedGlobal.length = 0;
+      const s = await start(ENABLED, { vaultTransportStatus: 200 });
+      expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+      const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
+      expect(r).toMatchObject({ ok: true, tested: true, providerStatus: 200 });
+      // Find the serialized audit line(s) (NDJSON — one JSON object per line).
+      const auditLines = PinoCapturedGlobal.filter((l) => {
+        try {
+          const o = JSON.parse(l) as { msg?: string; secretDigest?: string };
+          return o.msg === "vault egress audit";
+        } catch {
+          return false;
+        }
+      });
+      expect(auditLines.length).toBeGreaterThan(0);
+      // The raw secret must NOT appear in the SERIALIZED output (the whole
+      // capture — any line leaking it fails this).
+      expect(PinoCapturedGlobal.join("\n")).not.toContain(SECRET);
+      // Each serialized audit line must carry the redacted HMAC digest, not
+      // the raw secret.
+      for (const line of auditLines) {
+        expect(line).not.toContain(SECRET);
+        const o = JSON.parse(line) as { secretDigest?: string };
+        expect(o.secretDigest).toMatch(/^redacted-hmac-sha256-[0-9a-f]{16}$/);
+      }
+    });
   });
 });

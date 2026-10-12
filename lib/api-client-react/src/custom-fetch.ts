@@ -70,8 +70,17 @@ function isUrl(input: RequestInfo | URL): input is URL {
 function applyBaseUrl(input: RequestInfo | URL): RequestInfo | URL {
   if (!_baseUrl) return input;
   const url = resolveUrl(input);
-  // Only prepend to relative paths (starting with /)
-  if (!url.startsWith("/")) return input;
+  // Only prepend to RELATIVE paths (starting with a SINGLE `/`).
+  // `//host/...` (protocol-relative) and any value with a scheme are NOT
+  // relative — they carry their own origin and must NOT be prefixed.
+  if (!/^\/[^/]/.test(url)) return input;
+  // Only a value that stays on the sentinel origin is a plain relative path; anything else (`/\\host`, `/\t/host`)
+  // is left untouched so the same-origin guard sees and refuses it.
+  try {
+    if (new URL(url, NO_ORIGIN_SENTINEL).origin !== NO_ORIGIN_SENTINEL) return input;
+  } catch {
+    return input;
+  }
 
   const absolute = `${_baseUrl}${url}`;
   if (typeof input === "string") return absolute;
@@ -323,11 +332,19 @@ async function parseSuccessBody(
  * `location`, so the origin is the configured base URL (or the empty
  * string, which means only relative paths are allowed).
  */
+/**
+ * Origin used to classify a value when no real origin is known. `.invalid` is reserved (RFC 6761), so it can never
+ * be a real destination; it is NEVER used to authorize anything, only to see whether a value carries its own origin.
+ */
+const NO_ORIGIN_SENTINEL = "http://same-origin.invalid";
+
 function assertSameOrigin(input: RequestInfo | URL): void {
+  // The decision is made by the WHATWG URL parser itself, never by a regex over the raw string: the parser strips
+  // tabs/newlines, treats `\\` like `/` for http(s), and resolves `//host` as protocol-relative. A regex can disagree
+  // with it (`/\\evil.example/x` and `/\t/evil.example/x` both start with a single `/` yet resolve to evil.example).
   const url = resolveUrl(input);
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) return; // relative path — same origin by construction
-  let currentOrigin: string;
-  if (typeof location !== "undefined" && location.origin) {
+  let currentOrigin = "";
+  if (typeof location !== "undefined" && location.origin && location.origin !== "null") {
     currentOrigin = location.origin;
   } else if (_baseUrl) {
     try {
@@ -335,23 +352,21 @@ function assertSameOrigin(input: RequestInfo | URL): void {
     } catch {
       currentOrigin = "";
     }
-  } else {
-    currentOrigin = "";
   }
+  const base = currentOrigin || NO_ORIGIN_SENTINEL;
   let targetOrigin: string;
   try {
-    targetOrigin = new URL(url, currentOrigin || undefined).origin;
+    targetOrigin = new URL(url, base).origin;
   } catch {
     throw new TypeError(`customFetch: cannot resolve the origin of ${url}`);
   }
-  if (currentOrigin && targetOrigin !== currentOrigin) {
-    throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
-  }
-  if (!currentOrigin && targetOrigin) {
-    // No origin is configured and the URL is absolute — refuse it. The
-    // generated client never does this, but a hand-rolled call could.
+  if (targetOrigin === base) return;
+  if (!currentOrigin) {
+    // No origin configured and the value carries its own origin (absolute, protocol-relative, backslash or
+    // whitespace tricks): refuse.
     throw new TypeError(`customFetch: absolute URL refused (${targetOrigin}); configure a base URL or use a relative path.`);
   }
+  throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
 }
 
 export async function customFetch<T = unknown>(input: RequestInfo | URL, options: CustomFetchOptions = {}): Promise<T> {

@@ -41,7 +41,13 @@ describe("vault capability (private symbol)", () => {
   it("with a capability attached, a systemContext vault request is allowed through the shared gateway", async () => {
     const events: unknown[] = [];
     const sink = { record: (e: unknown) => events.push(e) };
-    const cap = createVaultKeyValidationCapability(["ipinfo.io", "www.virustotal.com"], sink);
+    const cap = createVaultKeyValidationCapability(
+      {
+        ipinfo: { hosts: "ipinfo.io", paths: ["/8.8.8.8"] },
+        virustotal: { hosts: "www.virustotal.com", paths: ["/api/v3/ip_addresses/8.8.8.8"] },
+      },
+      sink,
+    );
     const t = fakeTransport(200, '{"ok":true}');
     const resolver = fakeResolver({ "ipinfo.io": ["93.184.216.34"] });
     const opts = vaultGatewayOptions(cap, resolver, t, {
@@ -97,7 +103,7 @@ describe("vault capability (private symbol)", () => {
   });
 
   it("a vault capability request to a host outside its list is denied before transport", async () => {
-    const cap = createVaultKeyValidationCapability(["ipinfo.io"], { record: () => {} });
+    const cap = createVaultKeyValidationCapability({ ipinfo: { hosts: "ipinfo.io", paths: ["/8.8.8.8"] } }, { record: () => {} });
     const t = fakeTransport();
     const resolver = fakeResolver({ "evil.example": ["93.184.216.34"] });
     const opts = vaultGatewayOptions(cap, resolver, t);
@@ -108,6 +114,7 @@ describe("vault capability (private symbol)", () => {
       transform: "vault.test@1",
       url: "https://evil.example/8.8.8.8",
       sends: ["domain"],
+      sensitivity: "normal",
       pinnedHost: "evil.example",
       capability: cap,
     });
@@ -117,6 +124,6 @@ describe("vault capability (private symbol)", () => {
   });
 
   it("createVaultKeyValidationCapability rejects an empty allowedHosts list", () => {
-    expect(() => createVaultKeyValidationCapability([], { record: () => {} })).toThrow(RangeError);
+    expect(() => createVaultKeyValidationCapability({}, { record: () => {} })).toThrow(RangeError);
   });
 });

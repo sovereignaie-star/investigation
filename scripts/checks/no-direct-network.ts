@@ -10,7 +10,15 @@
  *      undici, node-fetch, axios, got, ws, ...),
  *   - a CALL of the ambient `fetch` (including `globalThis.fetch(...)`),
  *   - construction of XMLHttpRequest / WebSocket / EventSource,
- *   - `child_process` imports (a way to shell out to curl).
+ *   - `child_process` imports (a way to shell out to curl),
+ *   - module-loader escapes: a `require` / `import()` whose specifier is not a string literal, `createRequire`
+ *     (the `module` builtin), `process.binding` / `process._linkedBinding` / `process.dlopen`, and the
+ *     `inspector` builtin (it can open a listening debug port).
+ *
+ * WHAT THIS IS NOT: a static check is a code-review aid, not runtime isolation. It cannot see code generated at
+ * run time (`eval`, `new Function`, `vm`), native addons, or a dependency's own network calls. The runtime
+ * boundary for untrusted transforms is the T-SBX sandbox (`packages/sandbox`), and the boundary for the server's
+ * own provider traffic is `@ir/egress`.
  *
  * Test files are classified separately (they may spin local listeners) and the
  * browser app (`apps/web`) is excluded because it only talks to its own origin
@@ -24,7 +32,7 @@ import ts from "typescript";
 export interface Finding {
   readonly file: string;
   readonly line: number;
-  readonly kind: "import" | "call" | "construct" | "capability";
+  readonly kind: "import" | "call" | "construct" | "capability" | "loader";
   readonly detail: string;
 }
 
@@ -49,6 +57,10 @@ const NETWORK_MODULES = new Set([
   "request",
   "cross-fetch",
   "isomorphic-fetch",
+  "module",
+  "inspector",
+  "inspector/promises",
+  "vm",
 ]);
 const NETWORK_CTORS = new Set(["XMLHttpRequest", "WebSocket", "EventSource"]);
 const SKIP_DIRS = new Set(["node_modules", "dist", "coverage", ".git", "generated"]);
@@ -68,7 +80,7 @@ export function listSources(root: string, repo: string): string[] {
       const full = path.join(dir, name);
       const st = statSync(full);
       if (st.isDirectory()) walk(full);
-      else if (/\.(ts|tsx|mts|cts)$/.test(name) && !name.endsWith(".d.ts")) out.push(path.relative(repo, full));
+      else if (/\.(ts|tsx|mts|cts|js|mjs|cjs)$/.test(name) && !name.endsWith(".d.ts")) out.push(path.relative(repo, full));
     }
   };
   try {
@@ -80,14 +92,14 @@ export function listSources(root: string, repo: string): string[] {
 }
 
 export function isTestFile(rel: string): boolean {
-  return /\.(test|spec)\.(ts|tsx|mts|cts)$/.test(rel);
+  return /\.(test|spec)\.(ts|tsx|mts|cts|js|mjs|cjs)$/.test(rel);
 }
 
 /** Files that may legitimately contain network primitives (the gateway itself). */
 export function isGatewayFile(rel: string): boolean {
-  // `packages/sandbox` is the T-SBX enforcement package (P2-005): it owns the
-  // OS-level socket blocker and must be allowed to spawn child processes.
-  return rel.startsWith("packages/egress/src/") || rel.startsWith("packages/sandbox/src/");
+  // The T-SBX launcher (P2-005) must spawn the sandboxed process and run its live probe against local
+  // listeners; only these two files are exempt, not the whole package.
+  return rel.startsWith("packages/egress/src/") || rel === "packages/sandbox/src/enforce.ts" || rel === "packages/sandbox/src/build.ts";
 }
 
 /**
@@ -114,6 +126,7 @@ export function analyzeSource(rel: string, text: string): Finding[] {
     visitImportOrExport(node, ctx);
     visitCall(node, ctx);
     visitNew(node, ctx);
+    visitProcessEscape(node, ctx);
     // `const f = fetch;`  /  `opts.fetch ?? fetch`  /  `{ fetch }`  — an alias of the ambient fetch
     if (ts.isIdentifier(node) && node.text === "fetch" && isAmbientFetchReference(node)) add(node, "call", "fetch (aliased reference)");
     // `const f = globalThis.fetch;` — a property read of the ambient fetch
@@ -167,7 +180,11 @@ function visitRequireOrImport(node: ts.CallExpression, callee: ts.Expression, ct
   const isDynImport = callee.kind === ts.SyntaxKind.ImportKeyword;
   if (!isRequire && !isDynImport) return;
   const arg0 = node.arguments[0];
-  if (!arg0 || !ts.isStringLiteralLike(arg0)) return;
+  if (!arg0) return;
+  if (!ts.isStringLiteralLike(arg0)) {
+    ctx.add(node, "loader", `${isRequire ? "require" : "import"}() with a non-literal specifier`);
+    return;
+  }
   if (NETWORK_MODULES.has(normalizeModule(arg0.text))) ctx.add(node, "import", arg0.text);
   if (arg0.text.startsWith("@ir/egress/") && arg0.text !== "@ir/egress/vault-capability") ctx.add(node, "capability", arg0.text);
   if (arg0.text === "@ir/egress/vault-capability" && ctx.rel !== "apps/server/src/lib/providers.ts") ctx.add(node, "capability", arg0.text);
@@ -197,6 +214,24 @@ function isGlobalFetchAccess(callee: ts.Expression): callee is ts.PropertyAccess
     ts.isIdentifier(callee.expression) &&
     ["globalThis", "self", "window", "global"].includes(callee.expression.text)
   );
+}
+
+const PROCESS_ESCAPES = new Set(["binding", "_linkedBinding", "dlopen"]);
+
+/** process.binding(...) / process["dlopen"](...) / globalThis.process.binding — native/internal loader escapes */
+function visitProcessEscape(node: ts.Node, ctx: Ctx): void {
+  if (!ts.isPropertyAccessExpression(node) && !ts.isElementAccessExpression(node)) return;
+  const name = ts.isPropertyAccessExpression(node)
+    ? node.name.text
+    : ts.isStringLiteralLike(node.argumentExpression)
+      ? node.argumentExpression.text
+      : undefined;
+  if (!name || !PROCESS_ESCAPES.has(name)) return;
+  const target = node.expression;
+  const isProcess =
+    (ts.isIdentifier(target) && target.text === "process") ||
+    (ts.isPropertyAccessExpression(target) && target.name.text === "process" && ts.isIdentifier(target.expression));
+  if (isProcess) ctx.add(node, "loader", `process.${name}`);
 }
 
 function visitNew(node: ts.Node, ctx: Ctx): void {

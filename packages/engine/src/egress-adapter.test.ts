@@ -154,4 +154,78 @@ describe("engine + egress gateway integration (simulated)", () => {
     expect(res.failure.kindDetail).toBe("transport:ssrf-blocked");
     expect(t.calls).toHaveLength(0);
   });
+
+  describe("cancellation during an in-flight transport (AbortSignal reaches the transport)", () => {
+    function slowTransport(opts: { honourSignal: boolean }) {
+      const seen: { signal?: AbortSignal; abortedAtReturn?: boolean } = {};
+      let started!: () => void;
+      const startedP = new Promise<void>((r) => (started = r));
+      const t: EgressTransport = {
+        async fetch(req) {
+          seen.signal = req.signal;
+          started();
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(resolve, 50);
+            if (opts.honourSignal) {
+              req.signal?.addEventListener("abort", () => {
+                clearTimeout(timer);
+                reject(new Error("aborted by signal"));
+              });
+            }
+          });
+          seen.abortedAtReturn = req.signal?.aborted;
+          return { status: 200, body: "late success" };
+        },
+      };
+      return { t, seen, startedP };
+    }
+
+    for (const honourSignal of [true, false]) {
+      it(`a cancel while the transport is running fails the run as cancelled (transport ${honourSignal ? "honours" : "ignores"} the signal)`, async () => {
+        const { t, seen, startedP } = slowTransport({ honourSignal });
+        const gateway = createEgressGateway({ resolver: fakeResolver({ "example.com": ["93.184.216.34"] }), transport: t });
+        const transport = createEgressHttpTransport({ gateway, baseRequest: { ...BASE } });
+        const engine = new RunEngine({ transport, caps: CAPS, now: () => 0, random: () => "seed", maxRetries: 0 });
+        const h = engine.submit({ kind: "lookup", canonicalInput: "https://example.com/x" });
+        const drained = engine.drain();
+        await startedP;
+        h.cancel("user pressed stop mid-flight");
+        await drained;
+        const res = engine.result(h.runId);
+        // the engine's signal reached the transport and was aborted by the cancel
+        expect(seen.signal).toBeInstanceOf(AbortSignal);
+        expect(seen.signal?.aborted).toBe(true);
+        // a late "200 late success" is never reported as success
+        expect(res?.phase).toBe("cancelled");
+        expect(res?.failure?.kind).toBe("cancel");
+        expect(res?.processed ?? 0).toBe(0);
+        expect(res?.transportAttempts).toBe(1);
+        if (!honourSignal) {
+          // the transport finishes late (after the run was already settled as cancelled) with its signal aborted
+          await new Promise((r) => setTimeout(r, 80));
+          expect(seen.abortedAtReturn).toBe(true);
+          expect(engine.result(h.runId)?.phase).toBe("cancelled");
+        }
+      });
+    }
+  });
+
+  it("typed transport failures keep their reason through the adapter (size_limit, transport_error)", async () => {
+    const { EgressTransportError } = await import("@ir/egress");
+    for (const [thrown, expected] of [
+      [new EgressTransportError("size_limit", "too big"), "size_limit"],
+      [new Error("ECONNRESET"), "transport_error"],
+    ] as const) {
+      const t: EgressTransport = {
+        fetch: async () => {
+          throw thrown;
+        },
+      };
+      const gateway = createEgressGateway({ resolver: fakeResolver({ "example.com": ["93.184.216.34"] }), transport: t });
+      const transport = createEgressHttpTransport({ gateway, baseRequest: { ...BASE } });
+      await expect(transport.fetch({ method: "GET", url: "https://example.com/x" }, new AbortController().signal)).rejects.toThrow(
+        new RegExp(`egress denied: ${expected}`),
+      );
+    }
+  });
 });

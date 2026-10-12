@@ -22,10 +22,15 @@ export type VaultEgressTransport = EgressTransport;
 /** A resolver so tests can pin a public address without real DNS (a DnsResolver). */
 export type VaultDnsResolver = DnsResolver;
 
-/** The pinned provider destinations. No caller-supplied URL reaches the wire. */
-export const PROVIDER_HOSTS: Record<string, string> = {
-  ipinfo: "ipinfo.io",
-  virustotal: "www.virustotal.com",
+/**
+ * The pinned provider destinations and the exact key-test request for each. No caller-supplied URL reaches the
+ * wire, and the gateway refuses any other path for the provider's secret (T-SEC-SSRF-042).
+ * - ipinfo: `GET https://ipinfo.io/8.8.8.8` with `Authorization: Bearer` (IP details endpoint).
+ * - VirusTotal: `GET https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8` with `x-apikey` (API v3 IP object).
+ */
+export const PROVIDER_TESTS: Readonly<Record<string, { readonly host: string; readonly path: string }>> = {
+  ipinfo: { host: "ipinfo.io", path: "/8.8.8.8" },
+  virustotal: { host: "www.virustotal.com", path: "/api/v3/ip_addresses/8.8.8.8" },
 };
 
 /** Known provider names the vault UI lists. */
@@ -91,7 +96,10 @@ let sharedVaultTransport: VaultEgressTransport | undefined;
 let sharedVaultResolver: VaultDnsResolver | undefined;
 
 function buildSharedVaultGateway(transport: VaultEgressTransport, resolver: VaultDnsResolver): VaultKeyValidationCapability {
-  const cap = createVaultKeyValidationCapability(Object.values(PROVIDER_HOSTS), makeVaultAuditSink());
+  const cap = createVaultKeyValidationCapability(
+    Object.fromEntries(Object.entries(PROVIDER_TESTS).map(([name, t]) => [name, { hosts: t.host, paths: [t.path] }])),
+    makeVaultAuditSink(),
+  );
   const opts = vaultGatewayOptions(cap, resolver, transport, {
     maxRedirects: 1,
     maxSizeBytes: 10_000,
@@ -104,14 +112,23 @@ function buildSharedVaultGateway(transport: VaultEgressTransport, resolver: Vaul
   return cap;
 }
 
+/** The key travels only in the provider's designated header (never the URL). */
+function keyTestHeaders(name: string, key: string): Record<string, string> {
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (name === "ipinfo") headers["authorization"] = `Bearer ${key}`;
+  if (name === "virustotal") headers["x-apikey"] = key;
+  return headers;
+}
+
 export async function testProviderKey(
   name: string,
   vault: Vault,
   transport: VaultEgressTransport,
   resolver: VaultDnsResolver,
 ): Promise<{ ok: boolean; tested: boolean; reason?: string; providerStatus?: number }> {
-  const host = PROVIDER_HOSTS[name];
-  if (!host) return { ok: true, tested: false };
+  const test = Object.prototype.hasOwnProperty.call(PROVIDER_TESTS, name) ? PROVIDER_TESTS[name] : undefined;
+  if (!test) return { ok: true, tested: false };
+  const host = test.host;
   const key = vault.reveal(name);
   if (!key) return { ok: false, tested: false };
 
@@ -124,9 +141,7 @@ export async function testProviderKey(
   const gateway = sharedVaultGateway;
   const cap: VaultKeyValidationCapability = sharedVaultCapability;
 
-  const headers: Record<string, string> = { accept: "application/json" };
-  if (name === "ipinfo") headers["authorization"] = `Bearer ${key}`;
-  if (name === "virustotal") headers["x-apikey"] = key;
+  const headers = keyTestHeaders(name, key);
 
   // The secret is sent in the designated header only (never URL, never
   // audit, never evidence). The gateway's own audit redacts the secret.
@@ -134,7 +149,7 @@ export async function testProviderKey(
     systemContext: true,
     purposeRef: "vault-key-validation",
     transform: "vault.test@1",
-    url: `https://${host}/8.8.8.8`,
+    url: `https://${host}${test.path}`,
     method: "GET",
     headers,
     sends: ["domain"],

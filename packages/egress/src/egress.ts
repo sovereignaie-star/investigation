@@ -8,6 +8,7 @@
  * injected `resolver` / `transport` / `auditSink` / `now` functions.
  */
 import { createHmac, randomBytes } from "node:crypto";
+import { domainToASCII } from "node:url";
 import { classifyAddress } from "./address-policy";
 
 export type EgressReason =
@@ -33,7 +34,11 @@ export type EgressReason =
   | "unknown_field"
   | "invalid_url"
   | "invalid_request"
-  | "cancelled";
+  | "cancelled"
+  /** The transport failed for a reason that is not a policy decision (connection reset, TLS failure, ...). */
+  | "transport_error"
+  /** The response used a content-encoding the gateway does not decode, or too many stacked layers. */
+  | "content_encoding";
 
 export const EGRESS_DENY_CODE = "EGRESS_POLICY_DENIED" as const;
 /** @deprecated Use `EGRESS_DENY_CODE` (the const value) or `EgressReason`. */
@@ -167,7 +172,7 @@ export interface EgressOptions {
   readonly now?: () => number;
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   readonly auditSink?: EgressAuditSink;
-  /** Simulate IR_OFFLINE=1 (deny-by-default; cannot be turned off by env). */
+  /** Force offline mode. `IR_OFFLINE=1` in the environment has the same effect and cannot be overridden here. */
   readonly offline?: boolean;
   /**
    * When provided, every request's destination host (or its pinnedHost when
@@ -177,6 +182,45 @@ export interface EgressOptions {
   readonly allowedHosts?: readonly string[];
   /** Private capability used only by the vault path (see vault-capability.ts). */
   readonly capability?: unknown;
+  /**
+   * Provider registry for secret-bearing (pinned) requests: provider name -> exact hosts. A request carrying a
+   * `secret` must name a `secretProvider` present here and a `pinnedHost` on that provider's list, otherwise it is
+   * denied with `secret_host_mismatch` before DNS (ADR-08 section 3, T-SEC-SSRF-041). No registry = no secret
+   * request is ever allowed (fail-closed).
+   */
+  readonly providerHosts?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * Provider name -> exact URL paths a secret of that provider may be sent to (T-SEC-SSRF-042). When set, a secret
+   * request whose path (on any hop) is not listed, or that carries a query or fragment, is refused, and a provider
+   * missing from the map is refused too. Unset means no path restriction (hosts are still checked).
+   */
+  readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
+}
+
+/**
+ * Typed transport failures. A transport (see node-transport.ts) throws one of these so the gateway can report a
+ * precise reason instead of a generic failure. Any other thrown value maps to `transport_error`.
+ */
+export class EgressTransportError extends Error {
+  readonly reason: "size_limit" | "content_encoding" | "transport_error";
+  constructor(reason: "size_limit" | "content_encoding" | "transport_error", message: string) {
+    super(message);
+    this.name = "EgressTransportError";
+    this.reason = reason;
+  }
+}
+
+/**
+ * Host normalisation used for every list comparison (ADR-08 section 3): IDNA to punycode (UTS-46 via WHATWG
+ * `domainToASCII`), lower case, no trailing dot, no wildcards. Returns "" for a value that is not a valid host,
+ * which never matches anything (fail-closed).
+ */
+export function normalizeHost(host: string): string {
+  const bare = host.trim().replace(/^\[|\]$/g, "");
+  if (bare === "" || /[*\s/]/.test(bare)) return "";
+  if (bare.includes(":")) return bare.toLowerCase(); // IPv6 literal: never punycoded
+  const ascii = domainToASCII(bare.replace(/\.$/, ""));
+  return ascii.replace(/\.$/, "").toLowerCase();
 }
 
 const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
@@ -231,6 +275,12 @@ function deny(reason: EgressReason, transportCalls = 0, detail?: string): Egress
  * ever reach the log.
  */
 const AUDIT_SECRET_REDACT_KEY = randomBytes(32);
+/** Replace every occurrence of the secret (raw and percent-encoded) in a free-text detail. */
+function redactInText(text: string, secret: string): string {
+  if (secret === "") return text;
+  return text.split(secret).join("[secret]").split(encodeURIComponent(secret)).join("[secret]");
+}
+
 function redactSecret(secret: string): string {
   const mac = createHmac("sha256", AUDIT_SECRET_REDACT_KEY).update(secret, "utf8").digest("hex");
   return `redacted-hmac-sha256-${mac.slice(0, 16)}`;
@@ -360,10 +410,12 @@ function preDnsChecks(req: EgressRequest, offline: boolean, opts: EgressOptions)
 }
 
 function checkSensitivity(sensitivity: string | undefined): EgressResult | null {
+  // Section 2 (reference model): a missing or unknown classification never becomes an implicit allow.
+  if (sensitivity === undefined) return deny("unclassified_data", 0, "sensitivity is required");
+  if (!["normal", "natural_person_gate", "minor"].includes(sensitivity)) return deny("unclassified_data");
+  // Natural person: refused until P2-013 is adopted. There is deliberately no option, env var or field that
+  // turns this off (T-SEC-SSRF-040).
   if (sensitivity === "natural_person_gate") return deny("natural_person");
-  if (sensitivity !== undefined && !["normal", "natural_person_gate", "minor"].includes(sensitivity)) {
-    return deny("unclassified_data");
-  }
   return null;
 }
 
@@ -384,15 +436,64 @@ function checkHeaders(headers: Record<string, string> | undefined): EgressResult
   return null;
 }
 
-/** Secret transport must be pinned and bound to a provider. */
+/**
+ * Secret transport must be pinned, bound to a registered provider, and the pinned host must be one of that
+ * provider's exact hosts (ADR-08 section 3). The secret must never be part of the URL.
+ */
 function checkSecretShape(req: EgressRequest): EgressResult | null {
   if (req.secret === undefined) return null;
+  if (req.secret === "") return deny("secret_host_mismatch", 0, "an empty secret is not a secret");
   if (!req.pinnedHost) return deny("secret_host_mismatch", 0, "a secret requires pinnedHost");
   if (!req.secretProvider) return deny("secret_host_mismatch", 0, "a secret requires secretProvider");
-  // Host list is a policy concern of the caller; the gateway only enforces
-  // the *shape*: pinned, provider-identified, and the URL host matches the
-  // pin. The actual host list lives in the provider registry (vault).
+  if (secretInUrl(req.url, req.secret)) return deny("credentials", 0, "the secret must not appear in the URL");
   return null;
+}
+
+/**
+ * Provider registry binding for a secret (checked after the destination/allowlist checks, still before DNS): the
+ * provider must be registered and the pinned host must be one of its exact hosts.
+ */
+function checkSecretRegistry(req: EgressRequest, opts: EgressOptions): EgressResult | null {
+  if (req.secret === undefined || !req.secretProvider || req.pinnedHost === undefined) return null;
+  const registry = opts.providerHosts;
+  const hosts = registry && Object.prototype.hasOwnProperty.call(registry, req.secretProvider) ? registry[req.secretProvider] : undefined;
+  if (!hosts || hosts.length === 0) return deny("secret_host_mismatch", 0, "secretProvider is not in the provider registry");
+  const pin = normalizeHost(req.pinnedHost);
+  if (pin === "" || !hosts.some((h) => normalizeHost(h) === pin)) {
+    return deny("secret_host_mismatch", 0, "pinnedHost is not a registered host of secretProvider");
+  }
+  let url: URL;
+  try {
+    url = new URL(req.url);
+  } catch {
+    return null; // the URL shape check reports invalid_url
+  }
+  return checkProviderPath(req, url, opts, 0);
+}
+
+/** T-SEC-SSRF-042: a secret only goes to a registered path of its own provider, on every hop. */
+function checkProviderPath(req: EgressRequest, url: URL, opts: EgressOptions, hop: number): EgressResult | null {
+  const paths = opts.providerPaths;
+  if (paths === undefined || req.secret === undefined || !req.secretProvider) return null;
+  const allowed = Object.prototype.hasOwnProperty.call(paths, req.secretProvider) ? paths[req.secretProvider] : undefined;
+  if (!allowed || allowed.length === 0) {
+    return deny("secret_host_mismatch", hop, "secretProvider has no registered paths");
+  }
+  if (url.search !== "" || url.hash !== "" || !allowed.includes(url.pathname)) {
+    return deny("secret_host_mismatch", hop, "path is not a registered path of secretProvider");
+  }
+  return null;
+}
+
+/** True when the secret appears in the URL, raw or percent-encoded (any case). */
+function secretInUrl(url: string, secret: string): boolean {
+  if (url.includes(secret)) return true;
+  if (url.toLowerCase().includes(encodeURIComponent(secret).toLowerCase())) return true;
+  try {
+    return decodeURIComponent(url).includes(secret);
+  } catch {
+    return false;
+  }
 }
 
 /** URL shape checks (scheme, port, credentials). */
@@ -450,6 +551,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   const limits = validateLimits(opts.limits);
   const now = opts.now ?? (() => Date.now());
   const limiter = new RateLimiter(limits.rateLimitPerHostPerSecond, limits.rateLimitBurst, now);
+  // An explicitly empty allowedHosts list allows nothing (fail-closed); undefined means public mode.
+  const allowedSet: ReadonlySet<string> | undefined =
+    opts.allowedHosts === undefined ? undefined : new Set(opts.allowedHosts.map(normalizeHost).filter((h) => h !== ""));
 
   function audit(event: EgressAuditEvent): void {
     try {
@@ -490,6 +594,50 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     };
   }
 
+  /** Steps 7c: allowedHosts (system-context vault path) and pinnedHost bindings; audits and returns the denial. */
+  function hostBinding(req: EgressRequest, host: string, secretDigest: string | undefined): EgressResult | null {
+    // --- 7c: allowedHosts binding (system-context vault path) ---
+    if (allowedSet) {
+      // Both the request host and (when set) the pinned host must be on the list (exact match after normalisation).
+      const targetHost = normalizeHost(host);
+      const pinTarget = req.pinnedHost !== undefined ? normalizeHost(req.pinnedHost) : targetHost;
+      if (!allowedSet.has(targetHost) || !allowedSet.has(pinTarget)) {
+        audit({
+          kind: "denied",
+          reason: "host_not_allowed",
+          caseId: req.caseId,
+          systemContext: req.systemContext,
+          transform: req.transform,
+          host,
+          transportCalls: 0,
+          secretDigest,
+        });
+        return deny("host_not_allowed", 0, `destination host "${targetHost || host}" is not on the allowedHosts list`);
+      }
+    }
+
+    // --- 7c: pinnedHost binding ---
+    if (req.pinnedHost !== undefined) {
+      // ADR-08 section 3: pinned mode is an EXACT match after normalisation — no subdomains, no wildcards.
+      const normalizedPin = normalizeHost(req.pinnedHost);
+      if (normalizedPin === "" || normalizeHost(host) !== normalizedPin) {
+        audit({
+          kind: "denied",
+          reason: "host_not_allowed",
+          caseId: req.caseId,
+          systemContext: req.systemContext,
+          transform: req.transform,
+          host,
+          transportCalls: 0,
+          secretDigest,
+        });
+        return deny("host_not_allowed", 0, `request host "${host}" is outside pinnedHost "${req.pinnedHost}"`);
+      }
+    }
+
+    return null;
+  }
+
   async function request(req: EgressRequest): Promise<EgressResult> {
     const secretDigest = req.secret !== undefined ? redactSecret(req.secret) : undefined;
 
@@ -501,7 +649,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     }
 
     // --- 1..5: pre-DNS policy (deny-by-default) ---
-    const pre = preDnsChecks(req, opts.offline ?? false, opts);
+    // IR_OFFLINE=1 in the process environment always wins, read per request (so setting it later still applies);
+    // `offline: false` in the options cannot override it.
+    const offline = opts.offline === true || process.env["IR_OFFLINE"] === "1";
+    const pre = preDnsChecks(req, offline, opts);
     if (pre) {
       audit({
         kind: "denied",
@@ -562,47 +713,26 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return deny("rate_limit", 0, `rate limit exceeded for host ${host}`);
     }
 
-    // --- 7c: allowedHosts binding (system-context vault path) ---
-    if (opts.allowedHosts && opts.allowedHosts.length > 0) {
-      const normalizedAllowed = new Set(opts.allowedHosts.map((h) => h.replace(/\.$/, "").toLowerCase()));
-      const targetHost = (req.pinnedHost ?? host).replace(/\.$/, "").toLowerCase();
-      if (!normalizedAllowed.has(targetHost)) {
-        audit({
-          kind: "denied",
-          reason: "host_not_allowed",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host,
-          transportCalls: 0,
-          secretDigest,
-        });
-        return deny("host_not_allowed", 0, `destination host "${targetHost}" is not on the allowedHosts list`);
-      }
-    }
-
-    // --- 7c: pinnedHost binding ---
-    if (req.pinnedHost) {
-      const normalizedPin = req.pinnedHost.replace(/\.$/, "").toLowerCase();
-      const normalizedHost = host.replace(/\.$/, "").toLowerCase();
-      // An exact match or a subdomain of the pin is allowed; anything else is a mismatch.
-      const isSub = normalizedHost === normalizedPin || normalizedHost.endsWith(`.${normalizedPin}`);
-      if (!isSub) {
-        audit({
-          kind: "denied",
-          reason: "host_not_allowed",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host,
-          transportCalls: 0,
-          secretDigest,
-        });
-        return deny("host_not_allowed", 0, `request host "${host}" is outside pinnedHost "${req.pinnedHost}"`);
-      }
-    }
+    const binding = hostBinding(req, host, secretDigest);
+    if (binding) return binding;
 
     // --- 8..11: resolve → classify → pin → transport → redirect loop ---
+    const registryErr = checkSecretRegistry(req, opts);
+    if (registryErr) {
+      audit({
+        kind: "denied",
+        reason: registryErr.reason,
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        host,
+        transportCalls: 0,
+        detail: registryErr.detail,
+        secretDigest,
+      });
+      return registryErr;
+    }
+
     const deadline = now() + limits.timeoutMs;
     const abort = makeRequestAbort(req);
     try {
@@ -649,7 +779,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
         return deny("timeout_total", hopCount);
       }
-      const resolved = await resolveAndClassify(currentUrl, hopCount);
+      const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
       if ("code" in resolved && resolved.code !== undefined) {
         audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
         return resolved;
@@ -693,7 +823,14 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     const onReqAbort = () => hopController.abort(abort.controller.signal.reason);
     abort.controller.signal.addEventListener("abort", onReqAbort, { once: true });
     try {
-      return await opts.transport.fetch({
+      // The gateway does not rely on the transport honouring the signal: the hop settles when the signal fires even
+      // if the transport keeps running (its late result is discarded), so a deadline is a real upper bound.
+      const aborted = new Promise<never>((_resolve, reject) => {
+        const fire = () => reject(hopController.signal.reason ?? new Error("egress hop aborted"));
+        if (hopController.signal.aborted) fire();
+        else hopController.signal.addEventListener("abort", fire, { once: true });
+      });
+      const fetching = opts.transport.fetch({
         url: currentUrl.href,
         host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
         pinnedIp,
@@ -701,12 +838,30 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         headers: req.headers,
         signal: hopController.signal,
       });
+      fetching.catch(() => {}); // a late rejection after the race is settled must not become unhandled
+      aborted.catch(() => {});
+      return await Promise.race([fetching, aborted]);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      audit({ kind: "transport_error", ...auditCtx(req, currentUrl.hostname, hopCount), detail });
-      if (isCancelled(req, abort)) return deny("cancelled", hopCount, "request cancelled by caller during transport");
-      if (hopController.signal.aborted) return deny(now() >= deadline ? "timeout_total" : "timeout_connect", hopCount);
-      return deny("address_class", hopCount, detail);
+      const safeDetail = req.secret ? redactInText(detail, req.secret) : detail;
+      if (isCancelled(req, abort)) {
+        audit({ kind: "transport_error", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
+        return deny("cancelled", hopCount + 1, "request cancelled by caller during transport");
+      }
+      if (hopController.signal.aborted) {
+        const reason = now() >= deadline ? "timeout_total" : "timeout_connect";
+        audit({ kind: "timeout", reason, ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
+        return deny(reason, hopCount + 1);
+      }
+      // A typed transport failure keeps its reason; anything else is a transport error, never a policy reason.
+      const reason: EgressReason = err instanceof EgressTransportError ? err.reason : "transport_error";
+      audit({
+        kind: reason === "size_limit" ? "size_limit" : "transport_error",
+        reason,
+        ...auditCtx(req, currentUrl.hostname, hopCount + 1),
+        detail: safeDetail,
+      });
+      return deny(reason, hopCount + 1, safeDetail);
     } finally {
       clearTimeout(hopTimer);
       abort.controller.signal.removeEventListener("abort", onReqAbort);
@@ -722,6 +877,32 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   interface ResolvedAddress {
     readonly resolved: true;
     readonly pinnedIp: string;
+  }
+
+  /**
+   * DNS is bounded by the same overall deadline and the caller's cancellation as the transport: a resolver that
+   * never answers cannot hold a request open past `timeoutMs` (fail-closed `timeout_total` / `cancelled`).
+   */
+  async function resolveBounded(url: URL, hopCount: number, deadline: number, abort: AbortCtl): Promise<ResolvedAddress | EgressResult> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+    const stop = new Promise<EgressResult>((resolve) => {
+      timer = setTimeout(
+        () => resolve(deny("timeout_total", hopCount, "DNS resolution exceeded the request deadline")),
+        Math.max(1, deadline - now()),
+      );
+      onAbort = () => resolve(deny("cancelled", hopCount, "request cancelled by caller during DNS"));
+      abort.controller.signal.addEventListener("abort", onAbort, { once: true });
+    });
+    try {
+      return await Promise.race([
+        resolveAndClassify(url, hopCount).catch(() => deny("address_class", hopCount, "DNS resolution failed")),
+        stop,
+      ]);
+    } finally {
+      clearTimeout(timer);
+      if (onAbort) abort.controller.signal.removeEventListener("abort", onAbort);
+    }
   }
 
   async function resolveAndClassify(url: URL, hopCount: number): Promise<ResolvedAddress | EgressResult> {
@@ -782,18 +963,25 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     } catch {
       return { done: true, result: deny("invalid_url", hopCount, "redirect target is not a valid URL") };
     }
+    const nextHostForAudit = nextUrl.hostname.replace(/^\[|\]$/g, "");
+    const refuse = (result: EgressResult, kind: EgressAuditEvent["kind"] = "denied") => {
+      audit({ kind, reason: result.reason, ...auditCtx(req, nextHostForAudit, hopCount, secretDigest), detail: result.detail });
+      return { done: true as const, result };
+    };
     const nextShape = urlChecks(nextUrl);
-    if (nextShape) return { done: true, result: { ...nextShape, transportCalls: hopCount } };
-    if (hopCount > limits.maxRedirects) return { done: true, result: deny("redirect_limit", hopCount) };
+    if (nextShape) return refuse({ ...nextShape, transportCalls: hopCount, detail: "redirect target refused" });
+    if (hopCount > limits.maxRedirects) return refuse(deny("redirect_limit", hopCount));
+    // Every hop is charged against its own host's rate limit, like a first request (ADR-08).
+    if (!limiter.take(nextHostForAudit)) {
+      return refuse(deny("rate_limit", hopCount, `rate limit exceeded for host ${nextHostForAudit}`), "rate_limited");
+    }
     // --- ACTUAL-DESTINATION check (T-SEC-SSRF-045 / Q4 condition): the redirect
     // target host must pass the same allowedHosts + pinnedHost checks that the
     // original request passed. A redirect to an unlisted host is denied, even
     // for public-mode requests when allowedHosts is set.
     const nextHost = nextUrl.hostname.replace(/^\[|\]$/g, "");
-    if (opts.allowedHosts && opts.allowedHosts.length > 0) {
-      const normalizedAllowed = new Set(opts.allowedHosts.map((h) => h.replace(/\.$/, "").toLowerCase()));
-      const normalizedNext = nextHost.replace(/\.$/, "").toLowerCase();
-      if (!normalizedAllowed.has(normalizedNext)) {
+    if (allowedSet) {
+      if (!allowedSet.has(normalizeHost(nextHost))) {
         audit({
           kind: "denied",
           reason: "host_not_allowed",
@@ -811,11 +999,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       }
     }
     // Redirects to a different host are NOT allowed when a secret or a pin is in play.
-    if (req.pinnedHost) {
-      const normalizedPin = req.pinnedHost.replace(/\.$/, "").toLowerCase();
-      const normalizedNext = nextHost.replace(/\.$/, "").toLowerCase();
-      const isSub = normalizedNext === normalizedPin || normalizedNext.endsWith(`.${normalizedPin}`);
-      if (!isSub) {
+    if (req.pinnedHost !== undefined) {
+      const normalizedPin = normalizeHost(req.pinnedHost);
+      if (normalizedPin === "" || normalizeHost(nextHost) !== normalizedPin) {
         audit({
           kind: "denied",
           reason: "host_not_allowed",
@@ -832,6 +1018,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         };
       }
     }
+    const pathErr = checkProviderPath(req, nextUrl, opts, hopCount);
+    if (pathErr) return refuse(pathErr);
     if (now() >= deadline) {
       audit({
         kind: "timeout",
@@ -860,8 +1048,11 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // one, otherwise fall back to the body string length. The transport is
     // responsible for not buffering more than it can report; the gateway treats
     // a missing body as size 0.
-    const reported = resp.contentLength ?? (resp.body !== undefined ? resp.body.length : 0);
-    if (reported > limits.maxSizeBytes) {
+    // Both the declared length and the ACTUAL body bytes are checked: a short Content-Length must not let a larger
+    // body through (T-SEC-SSRF-032), and a missing one must not either (T-SEC-SSRF-031).
+    const declared = resp.contentLength ?? 0;
+    const actual = resp.body !== undefined ? Buffer.byteLength(resp.body, "utf8") : 0;
+    if (declared > limits.maxSizeBytes || actual > limits.maxSizeBytes) {
       audit({
         kind: "size_limit",
         reason: "size_limit",

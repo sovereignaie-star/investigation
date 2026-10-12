@@ -62,6 +62,8 @@ const REASON_TO_KIND: Record<
   unknown_field: "transport:ssrf-blocked",
   invalid_url: "transport:ssrf-blocked",
   invalid_request: "transport:ssrf-blocked",
+  transport_error: "transport:network",
+  content_encoding: "transport:http-error",
 };
 
 /** The typed reason for a cancelled transport request (no fake success). */
@@ -93,7 +95,8 @@ export function createEgressHttpTransport(opts: EgressAdapterOptions): HttpTrans
         throw new TransportError(kind, `egress denied: ${reason} (${detail})`, { retryable: false });
       }
       const resp = result.response;
-      if (!resp) {
+      // A response flagged as aborted is a late completion after cancellation: never a success.
+      if (!resp || resp.aborted === true || signal.aborted) {
         throw new TransportError("transport:cancelled", EGRESS_ADAPTER_CANCELLED, { retryable: false });
       }
       return {

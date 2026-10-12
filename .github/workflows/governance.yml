@@ -20,6 +20,8 @@ jobs:
         run: node --test scripts/governance/check.test.mjs
       - name: ROADMAP <-> STATUS <-> MASTER_PLAN consistency
         run: node scripts/governance/check.mjs --consistency
+      - name: D-8 security review gate unit tests (D-8, P2-003)
+        run: node --test scripts/gates/security-review-gate.test.mjs
       - name: Every commit updates the docs
         env:
           EVENT: ${{ github.event_name }}

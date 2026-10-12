@@ -1,0 +1,47 @@
+name: security-review
+# D-8 (owner decision; tracked under P2-003): a pull request touching a security or egress path needs an APPROVED review from the
+# designated reviewer on its current head. Policy and paths: scripts/gates/security-review-gate.mjs and
+# docs/security/REVIEW_SCOPE.md.
+#
+# ADVISORY ONLY. This check must not be made required on main: GitHub attributes it to the github-actions app, and
+# any workflow in a same-repository pull request can request checks: write and publish a result under the same app
+# and name. The tamper-resistant enforcement is native code-owner review (Option 2 in
+# docs/security/D8_ENFORCEMENT_OPTIONS.md); this job stays an advisory signal next to it.
+#
+# pull_request_target runs this file and the gate script as they are on the default branch, so a pull request cannot
+# change this run. There is deliberately no pull_request_review trigger: that event runs the workflow file from the
+# pull request. After a review, re-run this job; the script reads the reviews live from the API.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: security-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  security-review-advisory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/gates
+            .github/CODEOWNERS
+            .github/workflows/security-review.yml
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Gate unit tests (base commit)
+        run: node --test scripts/gates/security-review-gate.test.mjs
+      - name: D-8 review on the current head
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/gates/security-review-gate.mjs
