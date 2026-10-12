@@ -172,7 +172,7 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
   });
 
-  describe("T-SEC-SSRF-045 (review log Q4): vault test cannot reach an unauthorized host", () => {
+  describe("T-SEC-SSRF-046 + T-SEC-SSRF-048 (review log Q4, renumbered per fix E): vault test goes through the gateway and cannot reach an unauthorized host", () => {
     it("a request whose pinnedHost is not a provider host is denied with host_not_allowed and no secret is sent", async () => {
       const transport = {
         calls: [] as Array<{ url: string; host: string; pinnedIp: string }>,
