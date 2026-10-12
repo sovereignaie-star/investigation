@@ -1740,3 +1740,10 @@
 - **(2) فك ضغط HTTP داخل النقل:** `node-transport.ts` يفك `gzip`/`deflate`/`br`، ويرفض أي ترميز غير مدعوم (فشل مغلق). حدان: `maxBodyBytes` (الأساسي، 5 MiB افتراضياً) و`maxDecodedBytes` (بعد فك الضغط، 50 MiB). **اختبار قنبلة gzip حقيقي:** 200 KiB من البيانات المضغوطة تنفك إلى 200 KiB > حد 100 KiB → رفض بـ`EgressSizeLimitError`. 9/9 في node-transport.
 - **(3) `tlsOptions` بلا spread:** كل حقل مسموح يُبنى صراحة (لا spread) — لا يمكن لمستدعي JS حقن `checkServerIdentity` أو `rejectUnauthorized: false`.
 - **(4) D-052 JSON من نفس التشغيل:** أُزيل تشغيل JSON المنفرد. الآن `--reporter=default --reporter=json --outputFile.json=...` في **نفس التشغيل** الذي يُنتج exit code. `summary.txt` يسجل SHA + A/B + exit + مسار JSON لكل تشغيل. أُزيلت حلقة `grep` النصية القديمة تماماً.
+
+### 2026-10-12 — [P2-003] فشل مزدوج موثق (runner بلا unshare) + إصلاح D-052
+
+- فشل CI (gates/test) على commit 3500782: على GitHub runners، `unshare --user --map-root-user --net` غير متاح (المحمل أصلاً يمنع user namespaces). 550/554 — فشلت 4 اختبارات (T-SBX-001 suite). **الإصلاح: فشل مزدوج صريح.**
+- **(SandboxOptions.isolation):** الافتراضي `"kernel-required"` — إذا لم يتوفر `unshare`، المشغّل يرفض بالسبب المحدد `"kernel_isolation_unavailable"` (لا عودة صامتة إلى shim فقط). `"shim-only"` خيار **صريح أضعف** (طبقة مكتبة فقط؛ حفيد يستطيع تجاوزها) — ليس الافتراضي.
+- **(الاختبارات):** مُعيّرة `isolation` صراحة: `"kernel-required"` عندما يتوفر `unshare` محلياً، و`"shim-only"` مع **سطر يُطبع يفصح** الخيار. لا اختبار يتبع مستوى عزل أعلى مما يستخدمه الإنتاج.
+- **(D-052):** نُشر توثيق مقارنة — الفشل الأصلي في CI `gates` job (5000ms) وليس في تشغيل D-052 المنفرد. JSON الآن من نفس التشغيل (لا تشغيل منفرد).

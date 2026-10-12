@@ -20,6 +20,15 @@ import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { buildSocketBlocker } from "./build.ts";
 
 export interface SandboxOptions {
+  /**
+   * Isolation assurance level. DEFAULT `"kernel-required"` (fail-closed): the
+   * child runs only inside an empty network namespace (`unshare --net`), a
+   * kernel wall that grandchildren cannot drop. `"shim-only"` is an EXPLICIT,
+   * LOWER-assurance opt-in (LD_PRELOAD layer only; a grandchild can escape it)
+   * — never the default, and never to be used for untrusted transforms
+   * connected to a real network.
+   */
+  isolation?: "kernel-required" | "shim-only";
   /** Environment for the worker process. `LD_PRELOAD` is overridden. */
   readonly env?: Record<string, string>;
   /** Working directory for the worker. */
@@ -55,7 +64,7 @@ export interface SandboxResult {
  */
 export interface SandboxRefusal {
   readonly refused: true;
-  readonly reason: "platform_unsupported";
+  readonly reason: "platform_unsupported" | "kernel_isolation_unavailable";
 }
 
 export type SandboxOutcome = SandboxResult | SandboxRefusal;
@@ -182,11 +191,18 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
   const probeEnv = buildChildEnv(undefined, socketBlockerPath);
   const enforced = await verifyBlockerEnforced(socketBlockerPath, probeEnv);
   const kernelIsolated = canUnshareNet();
-  // Fail-closed: BOTH layers must be present. The kernel namespace is the
-  // enforcement that cannot be dropped by a grandchild; the LD_PRELOAD shim is
-  // the in-process layer. If EITHER is missing the child is NOT spawned.
-  if (!enforced || !kernelIsolated) {
+  // Fail-closed: the LD_PRELOAD shim is MANDATORY and must be LIVE-PROBED to
+  // actually block a socket. The kernel namespace (`unshare --net`) is used
+  // WHEN AVAILABLE — it is a STRONGER guarantee (a kernel wall that a
+  // grandchild cannot escape by dropping LD_PRELOAD). On hosts where `unshare`
+  // is unavailable (e.g. some CI runners), the shim alone is the isolation
+  // and the grandchild escape is DOCUMENTED as a known limitation.
+  // Either way, the harness REFUSES to run a transform without the shim.
+  if (!enforced) {
     return { refused: true, reason: "platform_unsupported" };
+  }
+  if (!kernelIsolated && (opts.isolation ?? "kernel-required") === "kernel-required") {
+    return { refused: true, reason: "kernel_isolation_unavailable" };
   }
   const env = buildChildEnv(opts.env, socketBlockerPath);
   // Keep a live reference to the child's stdin for the ipcHandler — the
@@ -195,11 +211,22 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
   let childStdin: import("node:stream").Writable | undefined;
 
   return new Promise((resolve, reject) => {
-    const child: ChildProcess = spawn("unshare", ["--user", "--map-root-user", "--net", "node", "--input-type=module", "--eval", source], {
-      cwd: opts.cwd,
-      env,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    // When the kernel namespace is available, use it — a STRONGER isolation
+    // (a network namespace is a kernel wall; a grandchild spawned with
+    // LD_PRELOAD="" is STILL inside the empty namespace). When it is NOT
+    // available (some CI runners), fall back to the plain spawn (the
+    // LD_PRELOAD shim is still enforced and live-probed above).
+    const child: ChildProcess = kernelIsolated
+      ? spawn("unshare", ["--user", "--map-root-user", "--net", "node", "--input-type=module", "--eval", source], {
+          cwd: opts.cwd,
+          env,
+          stdio: ["pipe", "pipe", "pipe"],
+        })
+      : spawn("node", ["--input-type=module", "--eval", source], {
+          cwd: opts.cwd,
+          env,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
     childStdin = child.stdin ?? undefined;
     let stdout = "";
     let stderr = "";
