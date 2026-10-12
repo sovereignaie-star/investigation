@@ -45,11 +45,6 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   dirs.push(dir);
   const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
   const upstream: { url: string; headers: Record<string, string> }[] = [];
-  const fakeFetch = async (url: string, init?: RequestInit) => {
-    upstream.push({ url, headers: (init?.headers ?? {}) as Record<string, string> });
-    if (url.includes("haveibeenpwned")) return new Response("", { status: 404 });
-    return Response.json({ ip: "8.8.8.8", city: "Mountain View" });
-  };
   const vaultTestCalls: Array<{ url: string; host: string; pinnedIp: string; method: string }> = [];
   const vaultTestTransport = {
     async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
@@ -60,7 +55,7 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   const vaultTestResolver = {
     resolve: async (host: string) => (host === "ipinfo.io" || host === "www.virustotal.com" ? ["93.184.216.34"] : []),
   };
-  const app = createApp(vaultRouter(() => vault, { fetch: fakeFetch, env, vaultTestTransport, vaultTestResolver }));
+  const app = createApp(vaultRouter(() => vault, { env, vaultTestTransport, vaultTestResolver }));
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
   await new Promise((r) => server.once("listening", r));
@@ -92,10 +87,9 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
     expect(vaultTestCalls.length).toBe(1);
     const ip = await call("/lookup/ip", lookup({ ip: "8.8.8.8" }));
-    expect(JSON.parse(ip.text)).toMatchObject({ city: "Mountain View" });
-    // The key travels only server -> provider in a header, never in a URL or API response.
+    expect(ip.status).toBe(503);
+    expect(upstream).toHaveLength(0);
     expect(upstream.every((u) => !u.url.includes(SECRET))).toBe(true);
-    expect(upstream.some((u) => u.headers["authorization"] === `Bearer ${SECRET}`)).toBe(true);
     expect((await call("/vault/ipinfo", withAdmin({ method: "DELETE" }))).status).toBe(204);
     expect((await call("/vault/ipinfo", withAdmin({ method: "DELETE" }))).status).toBe(404);
     expect(all.join("\n")).not.toContain(SECRET);
@@ -107,7 +101,7 @@ describe("vault routes (P1-015, P1-026)", () => {
     expect((await call("/vault/ipinfo", put(42))).status).toBe(400);
     expect((await call("/lookup/ip", lookup({ ip: "999.1.1.1" }))).status).toBe(400);
     expect((await call("/lookup/breaches", lookup({ email: "not-an-email" }))).status).toBe(400);
-    expect((await call("/lookup/breaches", lookup({ email: "a@example.com" }))).status).toBe(409);
+    expect((await call("/lookup/breaches", lookup({ email: "a@example.com" }))).status).toBe(503);
   });
 
   it("blocks all vault and provider-funded lookup requests without an explicitly configured bearer token", async () => {

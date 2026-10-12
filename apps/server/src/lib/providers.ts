@@ -158,24 +158,13 @@ export async function testProviderKey(
   return { ok, tested: true, providerStatus: status, reason: ok ? undefined : `provider_status_${status}` };
 }
 
-/** Kept for backward compatibility with the lookup routes (which also need migration). */
-export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
-
-export async function lookupIp(ip: string, vault: Vault, f: FetchLike): Promise<{ status: number; body: unknown }> {
-  const key = vault.reveal("ipinfo");
-  const headers: Record<string, string> = { accept: "application/json", "user-agent": "InvestigationRoom/1.0" };
-  if (key) headers["authorization"] = `Bearer ${key}`;
-  const res = await f(`https://ipinfo.io/${encodeURIComponent(ip)}/json`, { headers, signal: AbortSignal.timeout(10_000) });
-  return { status: res.ok ? 200 : 502, body: res.ok ? await res.json() : { error: `upstream ${res.status}` } };
-}
-
-export async function lookupBreaches(email: string, vault: Vault, f: FetchLike): Promise<{ status: number; body: unknown }> {
-  const key = vault.reveal("haveibeenpwned");
-  if (!key) return { status: 409, body: { error: "haveibeenpwned key not configured" } };
-  const res = await f(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`, {
-    headers: { "hibp-api-key": key, "user-agent": "InvestigationRoom/1.0" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (res.status === 404) return { status: 200, body: { breaches: [] } };
-  return { status: res.ok ? 200 : 502, body: res.ok ? { breaches: (await res.json()) as unknown } : { error: `upstream ${res.status}` } };
-}
+/**
+ * Fail-closed (P2-003 / C): the two keyed lookup routes (ipinfo ip-lookup,
+ * haveibeenpwned breachedaccount) are DISABLED until their dedicated gateway
+ * capability exists. Direct fetch is PROHIBITED anywhere in the server. The
+ * automated check (`scripts/checks/no-direct-network.test.ts`) fails if a new
+ * direct network path appears outside `packages/egress`.
+ */
+export const LOOKUPS_GATEWAY_PENDING = {
+  error: "external lookups are routed through the egress gateway (pending); direct fetch is prohibited",
+} as const;

@@ -15,6 +15,8 @@ export default defineConfig({
       "lib/**/*.test.ts",
       "packages/**/*.test.ts",
       "apps/**/*.test.ts",
+      // P2-003 / C: static guard that no direct network path exists outside @ir/egress
+      "scripts/checks/**/*.test.ts",
       // ADR-08 reference data (IANA registry snapshot): verification tests live next
       // to the snapshot they verify; they run in the same root Vitest run (P0-010).
       "docs/adr/reference/**/*.test.ts",

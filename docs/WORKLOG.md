@@ -1529,3 +1529,20 @@
   - اختبار إيجابي: نجاح 200 عبر القدرة (ok=true, tested=true, providerStatus=200).
   - اختبارات سالبة: 401 و500 يُبلَّغان كما هما؛ `no_case` عند غياب القدرة مع صفر استدعاءات resolver/transport؛ `host_not_allowed` قبل أي DNS.
 - **الفحوص:** 515/515 ناجحة. typecheck نجاح. governance --consistency نجاح. eslint نظيف.
+
+### 2026-10-12 — [P2-003] إغلاق مسارات الشبكة المباشرة (C) وفحص AST آلي
+
+- **`apps/server/src/lib/providers.ts`:** حُذفت دالتا `lookupIp` و`lookupBreaches` (استخدما `fetch` مباشرة). حُذف `FetchLike`. أُضيف ثابت `LOOKUPS_GATEWAY_PENDING` مع سبب الرفض.
+- **`apps/server/src/routes/vault.ts`:** حُذف `opts.fetch` من العقد (المسار لا يحتاج ألياً). استبدلت المسارات `/lookup/ip` و`/lookup/breaches` بردهم `503 { error: LOOKUPS_GATEWAY_PENDING }` (fail-closed) — لا مسار شبكة مباشر بعد الآن في الخادم.
+- **`apps/server/src/routes/vault.test.ts`:** تحديث الاختبارات: `/lookup/ip` يردّ 503 وصفر طلبات upstream، و`/lookup/breaches` مع بريد صالح يردّ 503.
+- **`scripts/checks/no-direct-network.ts` (جديد):** محلل AST (TypeScript Compiler API) يمنع في التعليمات البرمجية القابلة للتنفيذ خارج `packages/egress/src`:
+  - `import`/`require`/`import()`/`export * from` لأي من `node:http/https/http2/net/tls/dns/dgram/child_process/cluster/worker_threads` أو `undici/axios/got/node-fetch/cross-fetch/isomorphic-fetch/ws/superagent/request`،
+  - أي `fetch(...)` أو `globalThis.fetch/self.fetch/window.fetch/global.fetch` أو `const f = fetch;` أو `{ fetch }` shorthand،
+  - أي `new XMLHttpRequest()/WebSocket()/EventSource()`،
+  - أي `import` لـ`@ir/egress/*` (باستثناء `vault-capability`)، و`vault-capability` مسموح فقط من `apps/server/src/lib/providers.ts`.
+  - يتجاهل التعليقات والنصوص و`import type` وأسماء الأعضاء/الخصائص/التصريحات المحلية (تثبت تحكمات سلبية).
+  - ملفات الاختبار تُفصل كطبقة منفصلة (قد تفتح مستمعات محلية) ولا تُحسب كمسارات إنتاجية.
+  - استثناء موثق واحد: `lib/api-client-react/src/custom-fetch.ts` (عميل المتصفح للـorigin الخاص، تحدّث عنه أهل الاختصاص ولا يعبر نحو مزود خارجي).
+- **`scripts/checks/no-direct-network.test.ts` (جديد):** اختبارات تحكم سلبية (5) تثبت أن المحلل يكشف فعلاً كل نمط انتهاك — لا يمر أي شيء بالخطأ — واختبار تحكم سلبي واحد على إيجابيات/سلبيات.
+- **`vitest.config.ts`:** أضيف `scripts/checks/**/*.test.ts` إلى `include`.
+- **الفحوص:** 522/522 ناجحة (43 ملفاً). typecheck نجاح. governance --consistency نجاح. eslint نظيف.
