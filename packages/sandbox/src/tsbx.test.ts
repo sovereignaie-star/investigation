@@ -67,7 +67,10 @@ function done(o: SandboxOutcome): SandboxResult {
 }
 
 let helperPath: string | null | undefined;
-/** A tiny C helper: process_vm_readv + PTRACE_ATTACH against a target pid; prints the errno names. */
+/**
+ * A tiny C helper: forks its OWN child (so Yama ptrace_scope=1, which allows tracing descendants, does not mask the
+ * result), then tries process_vm_readv and PTRACE_ATTACH on it and prints the errno names.
+ */
 function ptraceHelper(): string | null {
   if (helperPath !== undefined) return helperPath;
   const src = path.join(dir, "ptrace-helper.c");
@@ -76,22 +79,24 @@ function ptraceHelper(): string | null {
     src,
     `#define _GNU_SOURCE
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/ptrace.h>
 #include <sys/uio.h>
+#include <sys/wait.h>
+#include <unistd.h>
+static char probe[8] = "probe";
 static const char *name(int e) { return e == 0 ? "OK" : e == EPERM ? "EPERM" : e == EACCES ? "EACCES" : e == ESRCH ? "ESRCH" : "OTHER"; }
-int main(int argc, char **argv) {
-  pid_t pid = (pid_t)atoi(argv[1]);
-  char buf[8]; static char probe[8];
+int main(void) {
+  pid_t child = fork();
+  if (child == 0) { for (;;) pause(); }
+  usleep(50000);
+  char buf[8];
   struct iovec local = { buf, sizeof buf }, remote = { probe, sizeof probe };
-  /* read our own static address in the target: any readable address works for the permission check */
-  errno = 0; long n = process_vm_readv(pid, &local, 1, &remote, 1, 0); int e1 = n < 0 ? errno : 0;
-  if (argc > 2) { printf("vm_readv=%s\\n", e1 == EFAULT ? "OK" : name(e1)); return 0; }
-  errno = 0; long a = ptrace(PTRACE_ATTACH, pid, 0, 0); int e2 = a < 0 ? errno : 0;
-  if (a == 0) ptrace(PTRACE_DETACH, pid, 0, 0);
-  printf("vm_readv=%s attach=%s\\n", e1 == EFAULT ? "OK" : name(e1), name(e2));
+  long n = process_vm_readv(child, &local, 1, &remote, 1, 0); int e1 = n < 0 ? errno : 0;
+  long a = ptrace(PTRACE_ATTACH, child, 0, 0); int e2 = a < 0 ? errno : 0;
+  kill(child, SIGKILL); waitpid(child, 0, 0);
+  printf("vm_readv=%s attach=%s\\n", name(e1), name(e2));
   return 0;
 }
 `,
@@ -236,32 +241,26 @@ setTimeout(() => { console.log("TIMEOUT"); process.exit(0); }, 4000);
         expect(tcpSeen).toBe(before);
       });
 
-      it("T-SBX-008: ptrace / process_vm_readv against another process of the same user are refused", async (ctx) => {
-        if (skip() || level === "full") return ctx.skip(); // under "full" other processes are not even visible (PID namespace)
+      it("T-SBX-008: ptrace / process_vm_readv are refused, even against the transform's own child", async (ctx) => {
+        // under "full" the helper binary (in the test's temp dir) is not visible inside the sandbox
+        if (skip() || level === "full") return ctx.skip();
         const helper = ptraceHelper();
         if (!helper) return ctx.skip();
-        // target: a harmless sleeping process owned by the test (never the test worker itself)
-        const target = spawn("sleep", ["30"], { stdio: "ignore" });
-        try {
-          const r = done(
-            await run(
-              `
+        // negative control FIRST: outside the sandbox both calls succeed on the helper's own child, so the refusal
+        // below comes from the filter, not from Yama or another host restriction
+        const control = spawnSync(helper, [], { encoding: "utf8" });
+        expect(control.stdout.trim()).toBe("vm_readv=OK attach=OK");
+        const r = done(
+          await run(
+            `
 import { spawnSync } from "node:child_process";
-const g = spawnSync(process.env.IR_HELPER, [process.env.IR_TARGET], { encoding: "utf8" });
+const g = spawnSync(process.env.IR_HELPER, [], { encoding: "utf8" });
 console.log((g.stdout || "").trim());
 `,
-              { IR_HELPER: helper, IR_TARGET: String(target.pid) },
-            ),
-          );
-          expect(r.stdout.trim()).toBe("vm_readv=EPERM attach=EPERM");
-          // negative control: outside the sandbox the same read succeeds (no Yama/ptrace restriction is masking it)
-          const control = spawnSync(helper, [String(target.pid), "--read-only"], { encoding: "utf8" });
-          expect(control.stdout.trim()).toMatch(/^vm_readv=(OK|EPERM)$/);
-          if (control.stdout.trim() === "vm_readv=EPERM")
-            console.info("[T-SBX-008] host already restricts ptrace (Yama); control is not discriminating here");
-        } finally {
-          target.kill("SIGKILL");
-        }
+            { IR_HELPER: helper },
+          ),
+        );
+        expect(r.stdout.trim()).toBe("vm_readv=EPERM attach=EPERM");
       });
 
       it("T-SBX-009: reading a case file of the parent / its /proc entries", async (ctx) => {

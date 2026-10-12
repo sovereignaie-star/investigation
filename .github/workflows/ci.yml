@@ -35,6 +35,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install bubblewrap so T-SBX can exercise the "full" isolation level (P2-005)
+        # If the runner still cannot create user namespaces (AppArmor), the live probe reports full=false with the
+        # reason and the full-level cases are skipped; the "network-only" level runs either way.
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends bubblewrap
+          sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>/dev/null || true
+          bwrap --unshare-all --ro-bind / / true && echo "bwrap: user namespaces available" || echo "bwrap: unavailable here"
       - name: Test with the core coverage ceiling (ROADMAP 8.5, G-13)
         run: pnpm run test:coverage
   gates:
