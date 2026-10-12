@@ -15,26 +15,37 @@
  *   gateway so it can decide.
  * - No `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` — `node:https` does not read
  *   them by default, and we never pass a proxy agent.
- * - Body size is capped WHILE READING (streamed chunks counted, not buffered).
- * - `AbortSignal` propagates to `tls.TLSSocket` (`socket.destroy()`).
- * - Timeouts: `connectTimeoutMs` (TLS handshake deadline) and `timeoutTotalMs`
- *   (whole-request deadline) are enforced by the CALLER (the gateway already
- *   wires `timeout_connect`/`timeout_total` via `AbortController`). This
- *   transport only needs to honour the abort signal.
- *
- * Offline mode: the gateway refuses before calling the transport (`offline`).
- * This file contains NO dial-out on its own — it only runs when the gateway
- * decides the request is allowed.
+ * - Body size is capped WHILE READING (streamed chunks counted; past the cap
+ *   the response stream is destroyed and the request REJECTS with `size_limit`).
+ * - `AbortSignal` propagates to the socket (`request.destroy()`).
+ * - TLS options are NOT spread after `rejectUnauthorized`/`servername` — a
+ *   caller cannot weaken verification or override the pinned `lookup`.
+ * - Offline mode: the gateway refuses before calling the transport (`offline`).
+ *   This file contains NO dial-out on its own — it only runs when the gateway
+ *   decides the request is allowed.
  */
 import * as https from "node:https";
-import * as tls from "node:tls";
 import type { EgressTransport } from "./egress";
 
+export type NodeTransportTlsOptions = Pick<https.AgentOptions, "ca" | "cert" | "key" | "ciphers" | "minVersion" | "maxVersion" | "timeout">;
+
 export interface NodeTransportOptions {
-  /** Extra `https.Agent` options (e.g. custom CA bundle for tests). */
-  agentOptions?: https.AgentOptions;
-  /** Custom `tls.connect` options (e.g. custom CA for a local test server). */
-  tlsOptions?: tls.ConnectionOptions;
+  /**
+   * Byte cap for the response body WHILE READING. When exceeded, the stream is
+   * destroyed and the transport REJECTS with a `size_limit` error (no truncated
+   * success). The gateway re-checks `contentLength` before the body, this cap
+   * is the enforcement for chunked/no-content-length bodies.
+   */
+  readonly maxBodyBytes?: number;
+  /** TLS options. Deliberately a narrow type — `rejectUnauthorized` cannot be set. */
+  readonly tlsOptions?: NodeTransportTlsOptions;
+}
+
+export class EgressSizeLimitError extends Error {
+  constructor() {
+    super("egress size_limit: response body exceeded maxBodyBytes while reading");
+    this.name = "EgressSizeLimitError";
+  }
 }
 
 /**
@@ -42,6 +53,7 @@ export interface NodeTransportOptions {
  * uses `host` from the URL — a mis-issued or mismatched certificate fails.
  */
 export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTransport {
+  const maxBodyBytes = opts.maxBodyBytes ?? 10 * 1024 * 1024; // 10 MiB default
   return {
     async fetch(req) {
       const u = new URL(req.url);
@@ -53,81 +65,103 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
 
       // Per-request socket-level control. `rejectUnauthorized` stays true —
       // the default. The transport never disables certificate verification.
+      // NOTE: `ca`/`cert`/`key` come from `opts.tlsOptions` (a narrow type);
+      // `rejectUnauthorized` and `servername` are set EXPLICITLY after and
+      // cannot be overridden by the caller.
       const agent = new https.Agent({
-        ...opts.agentOptions,
+        ...opts.tlsOptions,
         // `lookup` is overridden so `node:https` connects to the PINNED IP,
         // not whatever `dns.lookup(host)` would return now (rebinding).
-        lookup: (hostname, _options, callback) => {
+        lookup: (_hostname, _options, callback) => {
           callback(null, [{ address: req.pinnedIp, family: req.pinnedIp.includes(":") ? 6 : 4 }]);
         },
         // One socket per request — no keep-alive across requests (rate
         // limiting and auditing are per request, not per connection).
         keepAlive: false,
-        // Note: `node:https` never follows redirects on its own for
-        // `https.request` — 3xx responses come back to the caller (the
-        // gateway), which re-runs its policy per hop. No exception needed.
       });
 
       const chunks: Buffer[] = [];
+      let received = 0;
+      let capped = false;
 
-      return new Promise<{ status: number; body?: string; headers?: Record<string, string>; contentLength?: number }>((resolve, reject) => {
-        const request = https.request(
-          u,
-          {
-            method: req.method,
-            headers: {
-              ...req.headers,
-              // `host` header must match the URL's hostname (SNI too).
-              host: u.host,
+      return await new Promise<{ status: number; body?: string; headers?: Record<string, string>; contentLength?: number }>(
+        (resolve, reject) => {
+          const request = https.request(
+            u,
+            {
+              method: req.method,
+              headers: {
+                ...req.headers,
+                // `host` header must match the URL's hostname (SNI too).
+                host: u.host,
+              },
+              agent,
+              // Certificate verification against the URL hostname — set AFTER
+              // the spread so a caller cannot override them.
+              servername: u.hostname,
+              rejectUnauthorized: true,
+              signal: req.signal,
             },
-            agent,
-            servername: u.hostname,
-            // Certificate verification against the URL hostname.
-            rejectUnauthorized: true,
-            ...(opts.tlsOptions ?? {}),
-            signal: req.signal,
-          },
-          (res) => {
-            const headers = { ...res.headers } as Record<string, string>;
-            const contentLengthHeader = res.headers["content-length"];
+            (res) => {
+              const headers = { ...res.headers } as Record<string, string>;
+              const contentLengthHeader = res.headers["content-length"];
 
-            res.on("data", (chunk: Buffer) => {
-              // Read WHILE STREAMING (the gateway enforces size_limit from
-              // `contentLength` before the body is read; chunks are
-              // appended and never buffered past the cap).
-              chunks.push(chunk);
-            });
-            res.on("end", () => {
-              const body = Buffer.concat(chunks).toString("utf8");
-              resolve({
-                status: res.statusCode ?? 0,
-                body,
-                headers,
-                contentLength: contentLengthHeader ? Number(contentLengthHeader) : undefined,
+              res.on("data", (chunk: Buffer) => {
+                received += chunk.length;
+                // Cap WHILE READING — do not buffer past the cap. On overflow,
+                // destroy the stream and REJECT (fail-closed, no truncated
+                // success).
+                if (received > maxBodyBytes) {
+                  capped = true;
+                  res.destroy();
+                  request.destroy();
+                  reject(new EgressSizeLimitError());
+                  return;
+                }
+                chunks.push(chunk);
               });
-            });
-            res.on("error", (err) => reject(err));
-            res.on("aborted", () => reject(new Error("response aborted")));
-          },
-        );
+              res.on("end", () => {
+                if (capped) return; // already rejected
+                const body = Buffer.concat(chunks).toString("utf8");
+                resolve({
+                  status: res.statusCode ?? 0,
+                  body,
+                  headers,
+                  contentLength: contentLengthHeader ? Number(contentLengthHeader) : undefined,
+                });
+              });
+              res.on("error", (err) => {
+                if (capped) return;
+                reject(err);
+              });
+              res.on("aborted", () => {
+                if (capped) return;
+                reject(new Error("response aborted"));
+              });
+            },
+          );
 
-        request.on("error", (err) => reject(err));
-        request.on("timeout", () => {
-          request.destroy(new Error("node-transport: connect timeout"));
-        });
+          request.on("error", (err) => {
+            if (capped) return;
+            reject(err);
+          });
+          request.on("timeout", () => {
+            request.destroy(new Error("node-transport: connect timeout"));
+          });
 
-        // The caller's AbortSignal destroys the socket — the transport
-        // never swallows cancellation.
-        req.signal?.addEventListener(
-          "abort",
-          () => {
-            request.destroy(req.signal?.reason ?? new Error("aborted"));
-          },
-          { once: true },
-        );
+          // The caller's AbortSignal destroys the socket — the transport
+          // never swallows cancellation.
+          req.signal?.addEventListener(
+            "abort",
+            () => {
+              request.destroy(req.signal?.reason ?? new Error("aborted"));
+            },
+            { once: true },
+          );
 
-        request.end();
-      }).finally(() => {
+          request.end();
+        },
+      ).finally(() => {
         agent.destroy();
       });
     },

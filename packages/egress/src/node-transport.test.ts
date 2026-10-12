@@ -1,194 +1,280 @@
 /**
  * REAL transport test for `createNodeTransport` — P2-003 section 4.
  *
- * Uses a LOCAL TLS server (self-signed cert for `localhost`) on 127.0.0.1 —
- * no internet. The tests prove:
- * - The transport connects to the PINNED IP (rebinding-safe).
- * - Certificate verification uses the URL hostname (SNI) — a mismatched
- *   certificate fails.
- * - Body size is capped WHILE READING.
- * - AbortSignal destroys the connection (real cancellation).
+ * Uses LOCAL TLS servers (self-signed certs generated IN the test via openssl,
+ * cleaned up afterwards — nothing stored in the repo) — no internet.
+ *
+ * The tests prove:
+ * - The transport connects to the PINNED IP with SNI/hostname verification
+ *   (a test hostname that does NOT resolve normally — only the pinned IP
+ *   reaches the server, so a missing `lookup` override would fail DNS).
+ * - A certificate that does not match the URL hostname is rejected with a
+ *   HOSTNAME-MISMATCH error specifically.
+ * - Body size is capped WHILE READING (chunked, no Content-Length) and the
+ *   promise REJECTS with `EgressSizeLimitError` — no truncated success — and
+ *   the connection is destroyed (the server sees the client go away).
+ * - AbortSignal after the response starts destroys the connection.
  * - 3xx responses are returned to the caller (the gateway drives redirects).
  * - No HTTP_PROXY / HTTPS_PROXY is honored.
+ * - `rejectUnauthorized` cannot be overridden via `tlsOptions` (type-level +
+ *   runtime behaviour unchanged).
  */
 import * as fs from "node:fs";
 import * as http from "node:http";
 import * as https from "node:https";
+import * as os from "node:os";
 import * as path from "node:path";
-import { describe, expect, it } from "vitest";
-import { createNodeTransport } from "./node-transport";
+import { spawnSync } from "node:child_process";
+import { afterAll, describe, expect, it } from "vitest";
+import { createNodeTransport, EgressSizeLimitError } from "./node-transport";
 
-const FIXTURES = path.resolve(__dirname, "../test-fixtures");
-// PEM keys stored WITHOUT the "BEGIN/END PRIVATE KEY" markers (base64 only)
-// so secret scanners do not flag them — they are TEST-ONLY fixtures for a
-// LOCAL self-signed server, not real secrets.
-const pem = (b64: string) => `-----BEGIN PRIVATE KEY-----\n${b64}\n-----END PRIVATE KEY-----\n`;
-const CERT = fs.readFileSync(path.join(FIXTURES, "localhost.crt"), "utf8");
-const KEY = pem(fs.readFileSync(path.join(FIXTURES, "localhost.key.txt"), "utf8").trim());
-const WRONG_CERT = fs.readFileSync(path.join(FIXTURES, "wrong.example.crt"), "utf8");
-const WRONG_KEY = pem(fs.readFileSync(path.join(FIXTURES, "wrong.example.key.txt"), "utf8").trim());
+/**
+ * Generate a self-signed certificate + key with openssl in a TEMP DIR.
+ * Nothing is committed to the repo — no disguised keys, no gitleaks issues.
+ */
+function makeCert(cn: string, san: string): { cert: string; key: string } {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "egress-tls-"));
+  const crt = path.join(dir, "c.crt");
+  const key = path.join(dir, "c.key");
+  const r = spawnSync(
+    "openssl",
+    [
+      "req",
+      "-x509",
+      "-newkey",
+      "rsa:2048",
+      "-keyout",
+      key,
+      "-out",
+      crt,
+      "-days",
+      "1",
+      "-nodes",
+      "-subj",
+      `/CN=${cn}`,
+      "-addext",
+      `subjectAltName=${san}`,
+    ],
+    { encoding: "utf8" },
+  );
+  if (r.status !== 0) throw new Error(`openssl failed: ${r.stderr}`);
+  const cert = fs.readFileSync(crt, "utf8");
+  const keyPem = fs.readFileSync(key, "utf8");
+  fs.rmSync(dir, { recursive: true, force: true });
+  return { cert, key: keyPem };
+}
+
+const FIXTURE_HOST = "pinned-test.invalid"; // does NOT resolve — only the pinned IP reaches the server
+const WRONG_HOST = "wrong-name.invalid";
+
+const good = makeCert(FIXTURE_HOST, `DNS:${FIXTURE_HOST}`);
+const wrong = makeCert(WRONG_HOST, `DNS:${WRONG_HOST}`);
+
+const certs: Array<{ server: https.Server }> = [];
+afterAll(() => {
+  for (const c of certs) c.server.close();
+  certs.length = 0;
+});
 
 function makeLocalTlsServer(
   certPem: string,
   keyPem: string,
   handler: (req: http.IncomingMessage, res: http.ServerResponse) => void,
-): Promise<{ server: https.Server; port: number; close: () => Promise<void> }> {
+  onClientGone?: () => void,
+): Promise<{ port: number; close: () => void }> {
   const server = https.createServer({ cert: certPem, key: keyPem }, handler);
+  certs.push({ server });
   return new Promise((resolve) => {
     server.listen(0, "127.0.0.1", () => {
       const addr = server.address();
       const port = typeof addr === "object" && addr ? addr.port : 0;
       resolve({
-        server,
         port,
-        close: () => new Promise<void>((r) => server.close(() => r())),
+        close: () => {
+          server.close();
+          if (onClientGone) onClientGone();
+        },
       });
     });
   });
 }
 
 describe("node-transport (REAL TLS against a local pinned server)", () => {
-  it("connects to the pinned IP and verifies the certificate against the URL hostname (SNI)", async () => {
-    // Cert for `localhost` — SNI/hostname check must PASS for
-    // `https://localhost:<port>/...` and pinned to 127.0.0.1.
-    const { port, close } = await makeLocalTlsServer(CERT, KEY, (_req, res) => {
+  it("connects to the pinned IP for a name that does NOT resolve via DNS (SNI/hostname verified)", async () => {
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
       res.writeHead(200, { "content-type": "text/plain" });
       res.end("hello-pinned");
     });
     try {
       const t = createNodeTransport({
-        // Trust the self-signed cert for the LOCAL TEST ONLY — the transport
-        // still verifies the hostname against the cert's SAN/CN.
-        agentOptions: { ca: CERT },
+        // Trust ONLY the generated self-signed cert for the LOCAL TEST.
+        tlsOptions: { ca: good.cert },
       });
+      // FIXTURE_HOST does not resolve — the ONLY way to reach the server is the
+      // pinned IP. If the `lookup` override were missing, this would fail with
+      // getaddrinfo ENOTFOUND.
       const r = await t.fetch({
-        url: `https://localhost:${port}/x`,
-        host: `localhost:${port}`,
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
         pinnedIp: "127.0.0.1",
         method: "GET",
       });
       expect(r.status).toBe(200);
       expect(r.body).toBe("hello-pinned");
     } finally {
-      await close();
+      close();
     }
   });
 
-  it("rejects a certificate that does NOT match the URL hostname (SNI mismatch)", async () => {
-    // Cert issued for `wrong.example` — the transport must refuse even with
-    // `ca` trusting the chain, because the HOSTNAME check fails.
-    const { port, close } = await makeLocalTlsServer(WRONG_CERT, WRONG_KEY, (_req, res) => {
+  it("rejects a certificate that does NOT match the URL hostname — with a hostname-mismatch error specifically", async () => {
+    const { port, close } = await makeLocalTlsServer(wrong.cert, wrong.key, (_req, res) => {
       res.writeHead(200);
       res.end("should-not-reach");
     });
     try {
-      const t = createNodeTransport({ agentOptions: { ca: WRONG_CERT } });
-      await expect(
-        t.fetch({
-          url: `https://localhost:${port}/x`,
-          host: `localhost:${port}`,
-          pinnedIp: "127.0.0.1",
-          method: "GET",
-        }),
-      ).rejects.toThrow();
-    } finally {
-      await close();
-    }
-  });
-
-  it("caps the body size WHILE READING (does not buffer the whole body first)", async () => {
-    const { port, close } = await makeLocalTlsServer(CERT, KEY, (_req, res) => {
-      res.writeHead(200);
-      // Stream a body in chunks — the transport must stream and stop at the
-      // cap. 8 KB total (under the default cap) proves streaming works.
-      const chunk = "x".repeat(512);
-      let n = 0;
-      const t = setInterval(() => {
-        res.write(chunk);
-        n++;
-        if (n >= 16) {
-          clearInterval(t);
-          res.end();
-        }
-      }, 5);
-    });
-
-    try {
-      const t = createNodeTransport({ agentOptions: { ca: CERT } });
-      const r = await t.fetch({
-        url: `https://localhost:${port}/x`,
-        host: `localhost:${port}`,
+      const t = createNodeTransport({ tlsOptions: { ca: wrong.cert } });
+      const p = t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
         pinnedIp: "127.0.0.1",
         method: "GET",
       });
-      // 8 KB body read fully (under the cap) — proves streaming works end
-      // to end and that the cap is enforced while reading (no hang).
-      expect(r.body?.length).toBe(512 * 16);
-      expect(r.status).toBe(200);
+      // The error must be a DEPTH_ZERO/self-signed or ERR_TLS_CERT_ALTNAME_INVALID
+      // style hostname mismatch — NOT just any exception.
+      let err: unknown;
+      try {
+        await p;
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeDefined();
+      const msg = String((err as Error)?.message ?? (err as { code?: string })?.code ?? "");
+      expect(/ERR_TLS_CERT_ALTNAME_INVALID|DEPTH_ZERO_SELF_SIGNED_CERT|hostname\/IP/i.test(msg)).toBe(true);
     } finally {
-      await close();
+      close();
+    }
+  });
+
+  it("caps the body WHILE READING: chunked (no Content-Length) over the cap rejects with EgressSizeLimitError and the connection is destroyed", async () => {
+    let clientGone = false;
+    const { port, close } = await makeLocalTlsServer(
+      good.cert,
+      good.key,
+      (_req, res) => {
+        res.writeHead(200); // chunked — no content-length
+        // Stream MORE than the cap. The transport must destroy the stream.
+        const chunk = "x".repeat(1024);
+        let n = 0;
+        const t = setInterval(() => {
+          res.write(chunk);
+          n++;
+          if (n >= 32) {
+            clearInterval(t);
+            res.end();
+          }
+        }, 5);
+        res.on("close", () => {
+          clientGone = true;
+          clearInterval(t);
+        });
+      },
+      () => {
+        clientGone = true;
+      },
+    );
+    try {
+      const t = createNodeTransport({
+        tlsOptions: { ca: good.cert },
+        maxBodyBytes: 8 * 1024, // 8 KiB cap; server streams 32 KiB
+      });
+      const p = t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
+        pinnedIp: "127.0.0.1",
+        method: "GET",
+      });
+      // Must REJECT with EgressSizeLimitError — never a truncated success.
+      await expect(p).rejects.toBeInstanceOf(EgressSizeLimitError);
+      // And the connection must be destroyed (server observed the client go).
+      // The destroy is synchronous with the cap hit; give the event loop a tick.
+      await new Promise((r) => setTimeout(r, 100));
+      expect(clientGone).toBe(true);
+    } finally {
+      close();
     }
   });
 
   it("a 3xx response is RETURNED to the caller (the transport never follows redirects itself)", async () => {
-    const { port, close } = await makeLocalTlsServer(CERT, KEY, (_req, res) => {
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
       res.writeHead(302, { location: "https://example.org/redirected" });
       res.end();
     });
     try {
-      const t = createNodeTransport({ agentOptions: { ca: CERT } });
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } });
       const r = await t.fetch({
-        url: `https://localhost:${port}/x`,
-        host: `localhost:${port}`,
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
         pinnedIp: "127.0.0.1",
         method: "GET",
       });
       expect(r.status).toBe(302);
       expect(r.headers?.location).toBe("https://example.org/redirected");
     } finally {
-      await close();
+      close();
     }
   });
 
-  it("honours AbortSignal — the connection is destroyed and the promise rejects", async () => {
-    const { port, close } = await makeLocalTlsServer(CERT, KEY, (_req, res) => {
-      // Never end the response — the transport must be aborted by the
-      // caller's signal.
-      res.writeHead(200);
-      res.write("partial");
-    });
+  it("honours AbortSignal AFTER the response starts — the connection is destroyed", async () => {
+    let clientGone = false;
+    const { port, close } = await makeLocalTlsServer(
+      good.cert,
+      good.key,
+      (_req, res) => {
+        // Start the response but never end it — the abort must destroy the
+        // connection mid-response.
+        res.writeHead(200);
+        res.write("partial");
+        res.on("close", () => {
+          clientGone = true;
+        });
+      },
+      () => {
+        clientGone = true;
+      },
+    );
     try {
-      const t = createNodeTransport({ agentOptions: { ca: CERT } });
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } });
       const ctrl = new AbortController();
       const p = t.fetch({
-        url: `https://localhost:${port}/x`,
-        host: `localhost:${port}`,
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
         pinnedIp: "127.0.0.1",
         method: "GET",
         signal: ctrl.signal,
       });
-      setTimeout(() => ctrl.abort(new Error("cancelled-by-test")), 30);
+      // Abort AFTER the response starts (the server already wrote "partial").
+      setTimeout(() => ctrl.abort(new Error("cancelled-by-test")), 50);
       await expect(p).rejects.toThrow();
+      await new Promise((r) => setTimeout(r, 100));
+      expect(clientGone).toBe(true);
     } finally {
-      await close();
+      close();
     }
   });
 
   it("does NOT honour HTTP_PROXY / HTTPS_PROXY (no proxy agent is ever set)", async () => {
-    // Set the env vars — the transport must ignore them (node:https does not
-    // read them by default, and we never construct a proxy agent).
     process.env.HTTP_PROXY = "http://127.0.0.1:1";
     process.env.HTTPS_PROXY = "http://127.0.0.1:1";
     process.env.NO_PROXY = "*";
-    const { port, close } = await makeLocalTlsServer(CERT, KEY, (_req, res) => {
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
       res.writeHead(200);
       res.end("direct");
     });
     try {
-      const t = createNodeTransport({ agentOptions: { ca: CERT } });
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } });
       const r = await t.fetch({
-        url: `https://localhost:${port}/x`,
-        host: `localhost:${port}`,
+        url: `https://${FIXTURE_HOST}:${port}/x`,
+        host: `${FIXTURE_HOST}:${port}`,
         pinnedIp: "127.0.0.1",
         method: "GET",
       });

@@ -239,21 +239,28 @@ s.on("error", (e) => { console.log("BLOCKED:", e.code); process.exit(0); });
     expect(result.stdout).toContain("CONNECTED!");
     expect(connections).toBe(before + 1);
   });
-  it("negative control: a grandchild spawned WITHOUT LD_PRELOAD can still open a socket — proving the blocker is a layer, not a kernel wall", async () => {
+  it("negative control: a grandchild spawned WITHOUT LD_PRELOAD DOES open a socket — proving the blocker is a layer, not a kernel wall", async () => {
     // T-SBX isolation is a LIBRARY-level layer (LD_PRELOAD intercepts libc's
-    // `socket()`). This negative control proves it: a child that spawns its
-    // OWN child WITHOUT LD_PRELOAD can open a socket. The sandbox is NOT a
-    // kernel-level wall — this is documented and must not be weakened.
+    // `socket()`). This negative control proves it EMPIRICALLY against the
+    // REAL listener + connection counter in this suite: a grandchild spawned
+    // WITHOUT LD_PRELOAD connects and increments the counter; the sandboxed
+    // child itself does NOT.
+    //
+    // NOTE: the LD_PRELOAD env var is inherited by the grandchild unless it is
+    // explicitly emptied. This test is the documented LAYER-not-WALL limitation
+    // of LD_PRELOAD (a grandchild can escape the shim) — it does NOT weaken
+    // the positive tests (the sandboxed child itself is blocked).
+    const before = connections;
     const GRANDCHILD_SRC = [
       'const net = await import("node:net");',
-      'const s = net.connect(12345, "127.0.0.1", () => { console.log("GRANDCHILD_CONNECTED"); s.destroy(); });',
-      's.on("error", (e) => { console.log("GRANDCHILD_ERR", e.code); process.exit(0); });',
-      'setTimeout(() => { console.log("GRANDCHILD_TIMEOUT"); process.exit(0); }, 2000);',
+      "const s = net.connect(" + port + ', "127.0.0.1", () => { console.log("GRANDCHILD_CONNECTED"); s.destroy(); });',
+      's.on("error", (e) => { console.log("GRANDCHILD_ERR", e.code); process.exit(1); });',
+      'setTimeout(() => { console.log("GRANDCHILD_TIMEOUT"); process.exit(1); }, 5000);',
     ].join("\n");
     const CHILD_SRC = [
       'const { spawnSync } = await import("node:child_process");',
-      "// Spawn WITHOUT LD_PRELOAD — the grandchild's net.connect to a local",
-      "// listener MUST succeed (this is the negative control).",
+      "// Spawn WITHOUT LD_PRELOAD — the grandchild's net.connect to the REAL",
+      "// listener in this suite MUST succeed (this is the negative control).",
       'const r = spawnSync("node", ["--input-type=module", "--eval", ' + JSON.stringify(GRANDCHILD_SRC) + "],",
       '  { env: { ...process.env, LD_PRELOAD: "" }, stdio: "inherit" });',
       'if (r.status !== 0) { console.log("GRANDCHILD_FAILED", r.status); process.exit(0); }',
@@ -261,13 +268,12 @@ s.on("error", (e) => { console.log("BLOCKED:", e.code); process.exit(0); });
     const result = await runSandboxedTransform(CHILD_SRC);
     expect(isRefusal(result)).toBe(false);
     const { stdout, exitCode } = result as Exclude<typeof result, { refused: true }>;
-    // The sandboxed child itself is blocked (LD_PRELOAD applies).
-    // But the GRANDCHILD (spawned with LD_PRELOAD="") may connect — this is
-    // the documented LAYER-not-WALL limitation of LD_PRELOAD.
     expect(exitCode).toBe(0);
-    // Either the grandchild connected, or it hit an error/timeout. All three
-    // outcomes are recorded; the key point is that we DOCUMENT the limitation
-    // (the shim is a library-level layer, not a kernel wall).
-    expect(stdout).toMatch(/GRANDCHILD_/);
-  });
+    // The grandchild DID open a socket — this is the empirical proof that
+    // LD_PRELOAD is a LAYER, not a kernel wall. (The sandboxed child itself
+    // was blocked — the positive tests assert that.)
+    expect(stdout).toContain("GRANDCHILD_CONNECTED");
+    // And the REAL listener counter proves the connection actually arrived.
+    expect(connections).toBe(before + 1);
+  }, 15_000); // grandchild spawn + 5s inner timeout + overhead
 });
