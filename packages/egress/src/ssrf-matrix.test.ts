@@ -317,4 +317,24 @@ describe("T-SEC-SSRF-043 scope boundary: server-chosen redirect targets (known g
       { host: "other.example", pinnedIp: "93.184.216.34" },
     ]);
   });
+
+  it("the transform's own headers (already checked for host A) are re-sent unchanged to a server-chosen host B today", async () => {
+    // Second part of the same gap (second review, 2026-10-13): every hop reuses req.headers. A declared value sent to
+    // host A also reaches host B, which the transform never chose. Follow-up task P2-032 must change this test.
+    const seen: Array<{ host: string; headers: Record<string, string> | undefined }> = [];
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: {
+        fetch: async (r) => {
+          seen.push({ host: r.host, headers: r.headers });
+          return seen.length === 1 ? { status: 302, headers: { location: "https://other.example/" } } : { status: 200, body: "ok" };
+        },
+      },
+    });
+    const headers = { "x-lookup": "8.8.8.8" };
+    const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["ip"], headers });
+    expect(r.ok).toBe(true);
+    expect(seen.map((h) => h.host)).toEqual(["example.com", "other.example"]);
+    expect(seen[1]?.headers).toEqual(headers);
+  });
 });

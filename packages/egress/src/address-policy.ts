@@ -82,7 +82,7 @@ const V6: Array<[string, AddressClass]> = [
   ["2001::/32", "tunnel"], // Teredo → always rejected
   ["2001:1::1/128", "public"], // Port Control Protocol Anycast
   ["2001:1::2/128", "public"], // Traversal Using Relays around NAT Anycast
-  ["2001:1::3/128", "public"], // NAT64 DNS64 Discovery Anycast
+  ["2001:1::3/128", "public"], // DNS-SD Service Registration Protocol Anycast (RFC 9665); label corrected 2026-10-13
   ["2001:2::/48", "reserved"], // Benchmarking
   ["2001:3::/32", "public"], // AMT
   ["2001:4:112::/48", "public"], // AS112
