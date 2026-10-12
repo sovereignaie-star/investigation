@@ -1,0 +1,26 @@
+{
+  "name": "@ir/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./queue": "./src/queue.ts",
+    "./budget": "./src/budget.ts",
+    "./cancel": "./src/cancel.ts",
+    "./transport": "./src/transport.ts",
+    "./run": "./src/run.ts",
+    "./egress-adapter": "./src/egress-adapter.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ir/schema": "workspace:*",
+    "@ir/core": "workspace:*",
+    "@ir/egress": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
