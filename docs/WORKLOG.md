@@ -1511,3 +1511,21 @@
   - `egress-limits.test.ts`: تحديث تعبير regular لتنسيق HMAC الجديد.
 - **الفحوص:** `npx vitest run` → 507/507 ناجحة. `pnpm -r --if-present run typecheck` → نجاح. `pnpm run governance --consistency` → نجاح.
 
+
+### 2026-10-12 — [P2-003] إكمال مسار الخزنة (B) وتفعيل القدرة الرمزية الخاصة
+
+- **`packages/egress/src/vault-capability.ts` (جديد):** كائن القدرة `VaultKeyValidationCapability` يُبنى بدالة `createVaultKeyValidationCapability` مع `allowedHosts` (سجل المزودين) و`auditSink`. **غير مُصدَّر من `index.ts`** — الوصول فقط عبر `@ir/egress/vault-capability`. دالة مساعدة `vaultGatewayOptions` تُرجع خيارات البوابة الجاهزة.
+- **`packages/egress/package.json`:** أضيف مسار التصدير `./vault-capability`؛ حُذف `./providers` (غير موجود).
+- **`packages/egress/src/egress.ts`:**
+  - أضيف حقل `capability?: unknown` على `EgressRequest` و`EgressOptions` وفي `REQUEST_FIELDS`.
+  - دالة `hasVaultCapability` تقارن **تطابق الكائن** بين `req.capability` و`opts.capability` — لا يمكن تزويرها.
+  - `preDnsChecks` الآن يتلقى `opts` ويعيد تفعيل إعفاء `systemContext` من `caseId` **شرطياً**: يتطلب قدرة مسجّلة.
+- **`apps/server/src/lib/providers.ts`:**
+  - بوابة مشتركة (مثيل واحد) مع حد معدل لكل مضيف مشترك عبر الطلبات؛ يعاد البناء فقط إذا تغيّر النقل/الحلّال (الهوية).
+  - `auditSink` حقيقي يمر عبر `logger` pino، بدون سر خام أو جسم مزود.
+  - `testProviderKey` يعيد `providerStatus` من `result.response.status` — يميّز 200/401/403/500.
+  - السر في الترويسة المخصصة فقط (`authorization` لـipinfo، `x-apikey` لـvirustotal).
+- **`apps/server/src/routes/vault.test.ts`:**
+  - اختبار إيجابي: نجاح 200 عبر القدرة (ok=true, tested=true, providerStatus=200).
+  - اختبارات سالبة: 401 و500 يُبلَّغان كما هما؛ `no_case` عند غياب القدرة مع صفر استدعاءات resolver/transport؛ `host_not_allowed` قبل أي DNS.
+- **الفحوص:** 515/515 ناجحة. typecheck نجاح. governance --consistency نجاح. eslint نظيف.

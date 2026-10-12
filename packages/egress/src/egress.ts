@@ -67,6 +67,13 @@ export interface EgressRequest {
    * the transport completes late.
    */
   signal?: AbortSignal;
+  /**
+   * Private vault-key-validation capability. NOT part of the public request
+   * contract: the field is only reachable through `vault-capability.ts`, which
+   * is not exported from `src/index.ts`. The gateway ignores `systemContext: true`
+   * alone — the capability object itself must be attached by the caller.
+   */
+  capability?: unknown;
 }
 
 export interface EgressResult {
@@ -168,6 +175,8 @@ export interface EgressOptions {
    * provider hosts can ever be reached (T-SEC-SSRF-045, review log Q4).
    */
   readonly allowedHosts?: readonly string[];
+  /** Private capability used only by the vault path (see vault-capability.ts). */
+  readonly capability?: unknown;
 }
 
 const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
@@ -197,7 +206,15 @@ const REQUEST_FIELDS = new Set([
   "secretProvider",
   "systemContext",
   "signal",
+  "capability",
 ]);
+
+/** Returns true only when `req.capability` is one of the gateway's registered vault capabilities. */
+function hasVaultCapability(opts: EgressOptions, req: EgressRequest): boolean {
+  if (opts.capability === undefined || req.capability === undefined) return false;
+  // Exact object identity is required — a forged object or a copy is rejected.
+  return req.capability === opts.capability;
+}
 
 function deny(reason: EgressReason, transportCalls = 0, detail?: string): EgressResult {
   return { ok: false, code: EGRESS_DENY_CODE, reason, transportCalls, detail };
@@ -317,7 +334,7 @@ function validateHeadersType(headers: Record<string, string> | undefined): Egres
 }
 
 /** Pre-DNS policy checks (offline, case, sensitivity, sends, headers, secrets). */
-function preDnsChecks(req: EgressRequest, offline: boolean): EgressResult | null {
+function preDnsChecks(req: EgressRequest, offline: boolean, opts: EgressOptions): EgressResult | null {
   if (offline) return deny("offline");
   if (!req.systemContext && !req.caseId) return deny("no_case");
   if (!req.purposeRef) return deny("no_case");
@@ -326,18 +343,12 @@ function preDnsChecks(req: EgressRequest, offline: boolean): EgressResult | null
   if (req.systemContext && (req.purposeRef !== "vault-key-validation" || req.transform !== "vault.test@1")) {
     return deny("invalid_request", 0, "systemContext is only valid for purposeRef=vault-key-validation with transform=vault.test@1");
   }
-  // TEMPORARY FAIL-CLOSED (owner decision required): the systemContext caseId
-  // exemption is DISABLED until the remaining Q4 conditions are met —
-  // allowedHosts required (not optional), auditSink wired for the vault path,
-  // and the check applied to the ACTUAL destination (and any redirect hop),
-  // not just the declared host. Until then a systemContext request without a
-  // caseId is denied before DNS and transport (zero calls).
-  if (req.systemContext && !req.caseId) {
-    return deny(
-      "no_case",
-      0,
-      "systemContext exemption from caseId is temporarily disabled (Q4 conditions incomplete: allowedHosts required, auditSink, actual-destination check)",
-    );
+  // The systemContext caseId exemption is honored ONLY when the caller attached
+  // a capability object that is one of the vault capabilities registered on
+  // the gateway options (see vault-capability.ts). `systemContext: true` alone
+  // or any boolean on the request can never enable the exemption.
+  if (req.systemContext && !req.caseId && !hasVaultCapability(opts, req)) {
+    return deny("no_case", 0, "systemContext exemption requires a vault capability");
   }
   const sensErr = checkSensitivity(req.sensitivity);
   if (sensErr) return sensErr;
@@ -490,7 +501,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     }
 
     // --- 1..5: pre-DNS policy (deny-by-default) ---
-    const pre = preDnsChecks(req, opts.offline ?? false);
+    const pre = preDnsChecks(req, opts.offline ?? false, opts);
     if (pre) {
       audit({
         kind: "denied",
