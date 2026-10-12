@@ -1687,3 +1687,8 @@
 - **(030) صُحح التناقض:** الصف الآن يقول «مُثبت — `vault.test.ts` (مسار الخزنة عبر البوابة)»، وأُزيلت العبارة المتناقضة عن «فجوة canary عولجت» (الـ canary مُثبت في اختبار `vault.test.ts` المُسلسل). لم يتبقَّ أي وصف متناقض للـ canary.
 - **(C) ثغرة `http://localhost/x`:** أُصلحت بالفعل في الـ commit السابق (c7fe36d / 7e4ef7e) — بلا أصل مضبوط، يُقبل فقط المسار النسبي البسيط.
 - **(H) نتائج تجارب CODEOWNERS:** أُضيفت روابط CI الفعلية (runs 38079862046/38080103459/38080104585/38117816925) + فرع `test/d8-gate-outside` commit `1eadb06` (سطر «اختبار بوابة D-8: ملف خارج مسارات D-8. لا يُدمج.»). اختبار البوابة المُختبِر (`scripts/gates/security-review-gate.test.mjs`) موجود **في هذا PR (#68)**، **ليس على main بعد**.
+
+### 2026-10-12 — [P2-003] إصلاح فشل CI في اختبار الـ negative control
+
+- فشل `build`/`gates`/`docker` في CI على commit c061e70: خطأ TypeScript — نوع `SandboxOutcome` (union مع `{refused:true}`) لا يحمل `stdout`/`exitCode` مباشرة. أُصلح: تحقّق `isRefusal(result) === false` ثم cast بـ `Exclude<typeof result, {refused:true}>` (نفس نمط باقي الاختبارات في الملف).
+- محليًا: 7/7 في sandbox، 551/551 كامل، typecheck نظيف، consistency ناجح.

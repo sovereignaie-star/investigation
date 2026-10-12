@@ -258,7 +258,9 @@ s.on("error", (e) => { console.log("BLOCKED:", e.code); process.exit(0); });
       '  { env: { ...process.env, LD_PRELOAD: "" }, stdio: "inherit" });',
       'if (r.status !== 0) { console.log("GRANDCHILD_FAILED", r.status); process.exit(0); }',
     ].join("\n");
-    const { stdout, exitCode } = await runSandboxedTransform(CHILD_SRC);
+    const result = await runSandboxedTransform(CHILD_SRC);
+    expect(isRefusal(result)).toBe(false);
+    const { stdout, exitCode } = result as Exclude<typeof result, { refused: true }>;
     // The sandboxed child itself is blocked (LD_PRELOAD applies).
     // But the GRANDCHILD (spawned with LD_PRELOAD="") may connect — this is
     // the documented LAYER-not-WALL limitation of LD_PRELOAD.
