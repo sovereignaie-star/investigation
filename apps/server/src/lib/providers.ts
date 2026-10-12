@@ -78,6 +78,9 @@ export async function testProviderKey(
 
   const result: EgressResult = await gateway.request({
     systemContext: true,
+    // TEMPORARY FAIL-CLOSED: the systemContext caseId exemption is disabled
+    // until the remaining Q4 conditions are met. A caseId is required.
+    caseId: "vault-key-validation",
     purposeRef: "vault-key-validation",
     transform: "vault.test@1",
     url: `https://${host}/8.8.8.8`,

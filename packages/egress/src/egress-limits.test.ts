@@ -429,12 +429,41 @@ describe("systemContext + audit sink (review log Q4, T-SEC-SSRF-044)", () => {
       transport: { fetch: async () => ({ status: 200, body: "" }) },
       auditSink: { record: (e) => events.push({ ...e }) },
     });
-    const r = await g.request(baseSys);
+    // TEMPORARY FAIL-CLOSED: systemContext alone does NOT exempt the request
+    // from caseId until the Q4 conditions are met, so the caller must supply
+    // a caseId for the request to proceed.
+    const r = await g.request({ ...baseSys, caseId: "sys-0" });
     expect(r.ok).toBe(true);
     expect(events.length).toBeGreaterThanOrEqual(1);
     expect(events.every((e) => e["systemContext"] === true)).toBe(true);
     expect(JSON.stringify(events)).not.toContain("SUPER-SECRET-KEY-12345");
     expect(events.some((e) => typeof e["secretDigest"] === "string")).toBe(true);
+  });
+
+  it("TEMPORARY FAIL-CLOSED: systemContext without caseId is denied (Q4 conditions incomplete)", async () => {
+    const resolverCalls: string[] = [];
+    const transportCalls: string[] = [];
+    const g = createEgressGateway({
+      resolver: {
+        resolve: async (h) => {
+          resolverCalls.push(h);
+          return ["93.184.216.34"];
+        },
+      },
+      transport: {
+        fetch: async (r: { url: string; host: string; pinnedIp: string }) => {
+          transportCalls.push(r.url);
+          return { status: 200, body: "" };
+        },
+      },
+      auditSink: { record: () => {} },
+      allowedHosts: ["ipinfo.io"],
+    });
+    const r = await g.request(baseSys);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("no_case");
+    expect(resolverCalls.length).toBe(0);
+    expect(transportCalls.length).toBe(0);
   });
 
   it("a non-system request without caseId is still denied (no_case)", async () => {

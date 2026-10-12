@@ -1406,3 +1406,19 @@
   - T-SEC-SSRF-045 اختبار للبوابة، لا للمسار — اختبار المسار يحتاج bypass محاكاة resolver (قرار معماري).
   - توسيع `EgressResult` لإظهار status المزود (قرار معماري).
   - `AbortSignal` في `egress-adapter.ts` (سطر 80) — `void signal;` ما زال موجوداً.
+
+### 2026-10-12 — [P2-003] إغلاق تحفّظي مؤقت لإعفاء systemContext (مراجعة المستشار الثالثة)
+- **الفرع:** `audit/P2-003-investigation`.
+- **ما تم:** عطّل إعفاء `systemContext` من `caseId` مؤقتاً (fail-closed) حتى استيفاء شروط سؤال 4 كاملة:
+  1. `allowedHosts` إلزامية (لا اختيارية).
+  2. `auditSink` مربوط لمسار الخزنة الفعلي.
+  3. الفحص يُطبَّق على الوجهة الفعلية وأي قفزة إعادة توجيه، لا على المضيف المعلن فقط.
+  طلب `systemContext` بدون `caseId` يُرفض بـ`no_case` **قبل DNS والنقل** (0 استدعاء). `testProviderKey` يمرر `caseId: "vault-key-validation"` احتياطياً ليبقى المسار يعمل (مع إشارة واضحة للتعطيل المؤقت).
+- **ما لم يُنفَّذ (قرار معماري للمالك):**
+  - جعل `allowedHosts` إلزامية للطلبات بـ`systemContext`.
+  - ربط `auditSink` لمسار الخزنة الفعلي في `testProviderKey`.
+  - فحص الوجهة الفعلية وإعادة التوجيه مقابل القائمة.
+  - توسيع `EgressResult` لإظهار status المزود.
+  - فرض حد المعدل بين استدعاءات المسار (instance مشترك).
+  - `AbortSignal` في `egress-adapter.ts`.
+- **الأدلة:** `corepack pnpm vitest run` (كامل) → 507/507. `packages/egress` → 199/199. lint/typecheck/build نظيفة. governance consistency ناجح. اختبار انحدار جديد يثبت أن `systemContext` بدون `caseId` → `no_case` مع 0 استدعاء DNS/نقل.

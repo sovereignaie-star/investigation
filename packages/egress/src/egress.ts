@@ -291,6 +291,19 @@ function preDnsChecks(req: EgressRequest, offline: boolean): EgressResult | null
   if (req.systemContext && (req.purposeRef !== "vault-key-validation" || req.transform !== "vault.test@1")) {
     return deny("invalid_request", 0, "systemContext is only valid for purposeRef=vault-key-validation with transform=vault.test@1");
   }
+  // TEMPORARY FAIL-CLOSED (owner decision required): the systemContext caseId
+  // exemption is DISABLED until the remaining Q4 conditions are met —
+  // allowedHosts required (not optional), auditSink wired for the vault path,
+  // and the check applied to the ACTUAL destination (and any redirect hop),
+  // not just the declared host. Until then a systemContext request without a
+  // caseId is denied before DNS and transport (zero calls).
+  if (req.systemContext && !req.caseId) {
+    return deny(
+      "no_case",
+      0,
+      "systemContext exemption from caseId is temporarily disabled (Q4 conditions incomplete: allowedHosts required, auditSink, actual-destination check)",
+    );
+  }
   const sensErr = checkSensitivity(req.sensitivity);
   if (sensErr) return sensErr;
   const manifestErr = checkSends(req.sends);

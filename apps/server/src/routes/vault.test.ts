@@ -201,6 +201,10 @@ describe("vault routes (P1-015, P1-026)", () => {
       const g = createEgressGateway({ resolver, transport, allowedHosts: ["ipinfo.io", "www.virustotal.com"] });
       const r = await g.request({
         systemContext: true,
+        // TEMPORARY FAIL-CLOSED: systemContext alone does not exempt the
+        // request from caseId, so a caseId is supplied here (the request
+        // still targets an unauthorized host to prove the allowlist works).
+        caseId: "sys-test",
         purposeRef: "vault-key-validation",
         transform: "vault.test@1",
         url: "https://evil.example/8.8.8.8",
