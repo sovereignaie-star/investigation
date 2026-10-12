@@ -5,15 +5,15 @@
  * `TransportError` with a machine-readable kind so the engine can fail the run
  * with an understandable reason.
  *
- * SIMULATION ONLY in this cycle: the gateway is injected; there is no real
- * DNS, no real socket, no env var that enables the network.
+ * The gateway now returns a full `EgressSuccessResponse` (status/headers/body)
+ * on the success path, so the adapter forwards the response body to the engine
+ * instead of throwing. The `EGRESS_ADAPTER_NO_RESPONSE` sentinel is removed:
+ * there is no fake error path anymore.
  *
- * IMPORTANT: the gateway does NOT expose the response body to the engine in
- * this cycle — `EgressResult` is an allow/deny verdict, not a response. The
- * adapter therefore throws a typed TransportError when the gateway allows the
- * request: the caller must wire the real response through the transport
- * before the engine can consume it. This is documented in ADR-08 and tracked
- * as the remaining integration point (see WORKLOG).
+ * Cancellation flows end-to-end: the engine's run signal is forwarded to
+ * `gateway.request({ signal })`, and the gateway merges it with its per-hop
+ * timer and overall deadline. A cancelled run NEVER resolves to a success, even
+ * if the transport completes late.
  */
 import type { EgressGateway } from "@ir/egress";
 import { TransportError, type HttpTransport, type TransportRequest, type TransportResponse } from "./transport.ts";
@@ -64,9 +64,8 @@ const REASON_TO_KIND: Record<
   invalid_request: "transport:ssrf-blocked",
 };
 
-/** The sentinel error thrown when the gateway allows a request. */
-export const EGRESS_ADAPTER_NO_RESPONSE =
-  "egress adapter reached the success path but the gateway contract does not return a response body in this cycle";
+/** The typed reason for a cancelled transport request (no fake success). */
+export const EGRESS_ADAPTER_CANCELLED = "egress adapter request cancelled before a successful transport response";
 
 /**
  * Returns an `HttpTransport` backed entirely by the egress gateway.
@@ -77,20 +76,31 @@ export function createEgressHttpTransport(opts: EgressAdapterOptions): HttpTrans
   const base = opts.baseRequest ?? {};
   return {
     async fetch(req: TransportRequest, signal: AbortSignal): Promise<TransportResponse> {
-      void signal; // The gateway owns the transport; the signal reaches it via its own timer.
       const result = await gateway.request({
         ...base,
         url: req.url,
         method: req.method,
         headers: req.headers ? Object.fromEntries(Object.entries(req.headers)) : undefined,
+        signal,
       });
       if (!result.ok) {
         const reason = result.reason ?? "unknown_field";
+        if (reason === "cancelled") {
+          throw new TransportError("transport:cancelled", EGRESS_ADAPTER_CANCELLED, { retryable: false });
+        }
         const kind = REASON_TO_KIND[reason] ?? "transport:ssrf-blocked";
         const detail = result.detail ?? reason;
         throw new TransportError(kind, `egress denied: ${reason} (${detail})`, { retryable: false });
       }
-      throw new TransportError("transport:http-error", EGRESS_ADAPTER_NO_RESPONSE, { retryable: false });
+      const resp = result.response;
+      if (!resp) {
+        throw new TransportError("transport:cancelled", EGRESS_ADAPTER_CANCELLED, { retryable: false });
+      }
+      return {
+        status: resp.status,
+        body: resp.body ?? "",
+        contentType: resp.headers?.["content-type"] ?? resp.headers?.["Content-Type"],
+      };
     },
   };
 }

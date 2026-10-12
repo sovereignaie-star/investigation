@@ -7,6 +7,7 @@
  * This module is intentionally self-contained and side-effect-free outside the
  * injected `resolver` / `transport` / `auditSink` / `now` functions.
  */
+import { createHmac, randomBytes } from "node:crypto";
 import { classifyAddress } from "./address-policy";
 
 export type EgressReason =
@@ -31,7 +32,8 @@ export type EgressReason =
   | "rate_limit"
   | "unknown_field"
   | "invalid_url"
-  | "invalid_request";
+  | "invalid_request"
+  | "cancelled";
 
 export const EGRESS_DENY_CODE = "EGRESS_POLICY_DENIED" as const;
 /** @deprecated Use `EGRESS_DENY_CODE` (the const value) or `EgressReason`. */
@@ -58,6 +60,13 @@ export interface EgressRequest {
   pinnedHost?: string;
   /** Provider registry that a `secret` must be bound to. */
   secretProvider?: string;
+  /**
+   * Caller-provided AbortSignal. Cancels the whole request (DNS + transport) at
+   * any hop; the signal is merged with the per-hop connect timer and the
+   * overall deadline. A cancelled request NEVER resolves to a success, even if
+   * the transport completes late.
+   */
+  signal?: AbortSignal;
 }
 
 export interface EgressResult {
@@ -69,6 +78,24 @@ export interface EgressResult {
   readonly transportCalls: number;
   /** Pinned IP handed to the transport (present only when transport was called). */
   readonly pinnedIp?: string;
+  /**
+   * Successful transport response (present only when ok=true and the transport
+   * completed). status/headers/body are the FINAL hop's response, after redirect
+   * resolution, within `maxSizeBytes`. Body length is measured post-decompression.
+   */
+  readonly response?: EgressSuccessResponse;
+}
+
+/** Successful transport response forwarded to the engine/server (ADR-08 contract). */
+export interface EgressSuccessResponse {
+  readonly status: number;
+  readonly headers?: Record<string, string>;
+  readonly body?: string;
+  readonly contentLength?: number;
+  /** Host actually served the response (post-redirect, post-DNS, validated). */
+  readonly host: string;
+  /** True when the request was aborted (late completion after cancellation). */
+  readonly aborted?: boolean;
 }
 
 /** Injectable DNS resolver (tests pass a fake). */
@@ -169,6 +196,7 @@ const REQUEST_FIELDS = new Set([
   "pinnedHost",
   "secretProvider",
   "systemContext",
+  "signal",
 ]);
 
 function deny(reason: EgressReason, transportCalls = 0, detail?: string): EgressResult {
@@ -176,15 +204,19 @@ function deny(reason: EgressReason, transportCalls = 0, detail?: string): Egress
 }
 
 /** Create a stable, non-reversible digest prefix for a secret (never log the secret). */
+/**
+ * Redact a secret to a stable, non-reversible digest prefix for the audit log.
+ * Uses HMAC-SHA256 keyed by an audit-only random key generated once per
+ * gateway instance (never persisted). FNV-1a was rejected: it is invertible
+ * for short token shapes and is not a MAC, so an attacker with log access
+ * could correlate or brute-force the raw secret. The key is fresh per process
+ * so a leaked digest cannot be correlated across restarts, and no secret bytes
+ * ever reach the log.
+ */
+const AUDIT_SECRET_REDACT_KEY = randomBytes(32);
 function redactSecret(secret: string): string {
-  // FNV-1a 32-bit — not cryptographically strong, but the goal is only to give
-  // the audit sink a stable correlation token that is NOT the secret itself.
-  let h = 0x811c9dc5;
-  for (let i = 0; i < secret.length; i++) {
-    h ^= secret.charCodeAt(i);
-    h = (h * 0x01000193) >>> 0;
-  }
-  return `redacted-${h.toString(16).padStart(8, "0")}`;
+  const mac = createHmac("sha256", AUDIT_SECRET_REDACT_KEY).update(secret, "utf8").digest("hex");
+  return `redacted-hmac-sha256-${mac.slice(0, 16)}`;
 }
 
 /**
@@ -252,6 +284,9 @@ function validateRequestTypes(req: EgressRequest): EgressResult | null {
   }
   if (req.systemContext !== undefined && typeof req.systemContext !== "boolean") {
     return deny("invalid_request", 0, "systemContext must be a boolean when provided");
+  }
+  if (req.signal !== undefined && !(req.signal instanceof AbortSignal)) {
+    return deny("invalid_request", 0, "signal must be an AbortSignal when provided");
   }
   const stringFields: Array<[keyof EgressRequest, string]> = [
     ["caseId", "caseId must be a string when provided"],
@@ -415,6 +450,35 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     }
   }
 
+  /**
+   * Request-scoped AbortController merging the caller's signal with the overall
+   * deadline and the per-hop connect timer. Listeners are cleaned up: the hop
+   * timer is always cleared; the caller-signal listener is added once at the
+   * start of the request and removed when the request settles.
+   */
+  function makeRequestAbort(req: EgressRequest): {
+    controller: AbortController;
+    dispose: () => void;
+    abortWith: (reason?: unknown) => void;
+  } {
+    const controller = new AbortController();
+    let disposed = false;
+    const onCallerAbort = () => controller.abort(req.signal?.reason ?? new Error("caller cancelled"));
+    if (req.signal) {
+      if (req.signal.aborted) controller.abort(req.signal.reason);
+      else req.signal.addEventListener("abort", onCallerAbort, { once: true });
+    }
+    return {
+      controller,
+      abortWith: (reason?: unknown) => controller.abort(reason),
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        req.signal?.removeEventListener("abort", onCallerAbort);
+      },
+    };
+  }
+
   async function request(req: EgressRequest): Promise<EgressResult> {
     const secretDigest = req.secret !== undefined ? redactSecret(req.secret) : undefined;
 
@@ -529,93 +593,112 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
 
     // --- 8..11: resolve → classify → pin → transport → redirect loop ---
     const deadline = now() + limits.timeoutMs;
-    const result = await runHops(req, currentUrl, deadline, secretDigest);
-    return result;
+    const abort = makeRequestAbort(req);
+    try {
+      return await runHops(req, currentUrl, deadline, abort, secretDigest);
+    } finally {
+      abort.dispose();
+    }
   }
 
-  async function runHops(req: EgressRequest, initialUrl: URL, deadline: number, secretDigest?: string): Promise<EgressResult> {
+  type AbortCtl = ReturnType<typeof makeRequestAbort>;
+  type TransportResp = Awaited<ReturnType<EgressTransport["fetch"]>>;
+
+  function isCancelled(req: EgressRequest, abort: AbortCtl): boolean {
+    return Boolean(req.signal?.aborted) || abort.controller.signal.aborted;
+  }
+
+  function auditCtx(req: EgressRequest, host: string, transportCalls: number, secretDigest?: string) {
+    return {
+      caseId: req.caseId,
+      systemContext: req.systemContext,
+      transform: req.transform,
+      host,
+      transportCalls,
+      secretDigest,
+    };
+  }
+
+  async function runHops(
+    req: EgressRequest,
+    initialUrl: URL,
+    deadline: number,
+    abort: AbortCtl,
+    secretDigest?: string,
+  ): Promise<EgressResult> {
     let currentUrl = initialUrl;
     let hopCount = 0;
     while (true) {
+      // Cancellation before DNS: no resolver call, no transport call.
+      if (isCancelled(req, abort)) {
+        audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+        return deny("cancelled", hopCount, "request cancelled by caller before DNS");
+      }
       if (now() >= deadline) {
-        audit({
-          kind: "timeout",
-          reason: "timeout_total",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host: currentUrl.hostname,
-          transportCalls: hopCount,
-        });
+        audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
         return deny("timeout_total", hopCount);
       }
       const resolved = await resolveAndClassify(currentUrl, hopCount);
       if ("code" in resolved && resolved.code !== undefined) {
-        audit({
-          kind: "denied",
-          reason: resolved.reason,
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host: currentUrl.hostname,
-          transportCalls: hopCount,
-          secretDigest,
-        });
+        audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
         return resolved;
       }
-      // After the deny branch returns, only the ResolvedAddress variant remains.
-      const pinnedIp = (resolved as ResolvedAddress).pinnedIp;
-      // A transport hop also consumes the connect budget.
-      const hopDeadline = Math.min(deadline, now() + limits.connectTimeoutMs);
-      if (now() >= hopDeadline) {
-        audit({
-          kind: "timeout",
-          reason: "timeout_connect",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host: currentUrl.hostname,
-          transportCalls: hopCount,
-        });
-        return deny("timeout_connect", hopCount);
-      }
-      const controller = new AbortController();
-      const hopTimer = setTimeout(() => controller.abort(new Error("egress hop timeout")), Math.max(1, hopDeadline - now()));
-      let resp: Awaited<ReturnType<EgressTransport["fetch"]>>;
-      try {
-        resp = await opts.transport.fetch({
-          url: currentUrl.href,
-          host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
-          pinnedIp,
-          method: req.method ?? "GET",
-          headers: req.headers,
-          signal: controller.signal,
-        });
-      } catch (err) {
-        clearTimeout(hopTimer);
-        audit({
-          kind: "transport_error",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host: currentUrl.hostname,
-          transportCalls: hopCount,
-          detail: err instanceof Error ? err.message : String(err),
-        });
-        if (controller.signal.aborted) {
-          if (now() >= deadline) {
-            return deny("timeout_total", hopCount);
-          }
-          return deny("timeout_connect", hopCount);
-        }
-        return deny("address_class", hopCount, err instanceof Error ? err.message : String(err));
-      } finally {
-        clearTimeout(hopTimer);
+      const hop = await transportHop(req, currentUrl, (resolved as ResolvedAddress).pinnedIp, hopCount, deadline, abort);
+      if ("code" in hop && hop.code !== undefined) return hop;
+      const resp = hop as TransportResp;
+      // A cancelled request is NEVER a success, even if the transport completed late.
+      if (isCancelled(req, abort)) {
+        audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount + 1, secretDigest) });
+        return deny("cancelled", hopCount + 1, "request cancelled by caller after transport");
       }
       hopCount++;
-      const next = await redirectOrFinish(req, currentUrl, resp, hopCount, deadline, secretDigest);
+      const next = await redirectOrFinish(req, currentUrl, resp, hopCount, deadline, abort, secretDigest);
       if (next.done) return next.result;
       currentUrl = next.url;
+    }
+  }
+
+  /**
+   * One transport hop. The hop AbortController merges (a) the per-hop connect
+   * timer and (b) the request-level abort (caller signal). Both the timer and
+   * the request-abort listener are always released, so no listener or timer
+   * leaks across hops or requests.
+   */
+  async function transportHop(
+    req: EgressRequest,
+    currentUrl: URL,
+    pinnedIp: string,
+    hopCount: number,
+    deadline: number,
+    abort: AbortCtl,
+  ): Promise<TransportResp | EgressResult> {
+    const hopDeadline = Math.min(deadline, now() + limits.connectTimeoutMs);
+    if (now() >= hopDeadline) {
+      audit({ kind: "timeout", reason: "timeout_connect", ...auditCtx(req, currentUrl.hostname, hopCount) });
+      return deny("timeout_connect", hopCount);
+    }
+    const hopController = new AbortController();
+    const hopTimer = setTimeout(() => hopController.abort(new Error("egress hop timeout")), Math.max(1, hopDeadline - now()));
+    const onReqAbort = () => hopController.abort(abort.controller.signal.reason);
+    abort.controller.signal.addEventListener("abort", onReqAbort, { once: true });
+    try {
+      return await opts.transport.fetch({
+        url: currentUrl.href,
+        host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
+        pinnedIp,
+        method: req.method ?? "GET",
+        headers: req.headers,
+        signal: hopController.signal,
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      audit({ kind: "transport_error", ...auditCtx(req, currentUrl.hostname, hopCount), detail });
+      if (isCancelled(req, abort)) return deny("cancelled", hopCount, "request cancelled by caller during transport");
+      if (hopController.signal.aborted) return deny(now() >= deadline ? "timeout_total" : "timeout_connect", hopCount);
+      return deny("address_class", hopCount, detail);
+    } finally {
+      clearTimeout(hopTimer);
+      abort.controller.signal.removeEventListener("abort", onReqAbort);
     }
   }
 
@@ -660,55 +743,108 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     resp: { status: number; body?: string; headers?: Record<string, string>; contentLength?: number },
     hopCount: number,
     deadline: number,
+    abort: ReturnType<typeof makeRequestAbort>,
     secretDigest?: string,
   ): Promise<{ done: true; result: EgressResult } | { done: false; url: URL }> {
     if (isRedirect(resp) && resp.headers?.location) {
-      let nextUrl: URL;
-      try {
-        nextUrl = new URL(resp.headers.location, currentUrl);
-      } catch {
-        return { done: true, result: deny("invalid_url", hopCount, "redirect target is not a valid URL") };
-      }
-      const nextShape = urlChecks(nextUrl);
-      if (nextShape) return { done: true, result: { ...nextShape, transportCalls: hopCount } };
-      if (hopCount > limits.maxRedirects) return { done: true, result: deny("redirect_limit", hopCount) };
-      // Redirects to a different host are NOT allowed when a secret or a pin is in play.
-      const nextHost = nextUrl.hostname.replace(/^\[|\]$/g, "");
-      if (req.pinnedHost) {
-        const normalizedPin = req.pinnedHost.replace(/\.$/, "").toLowerCase();
-        const normalizedNext = nextHost.replace(/\.$/, "").toLowerCase();
-        const isSub = normalizedNext === normalizedPin || normalizedNext.endsWith(`.${normalizedPin}`);
-        if (!isSub) {
-          audit({
-            kind: "denied",
-            reason: "host_not_allowed",
-            caseId: req.caseId,
-            systemContext: req.systemContext,
-            transform: req.transform,
-            host: nextHost,
-            transportCalls: hopCount,
-            secretDigest,
-          });
-          return {
-            done: true,
-            result: deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is outside pinnedHost "${req.pinnedHost}"`),
-          };
-        }
-      }
-      if (now() >= deadline) {
+      return redirectHop(req, currentUrl, resp, hopCount, deadline, secretDigest);
+    }
+    return finishHop(req, currentUrl, resp, hopCount, abort, secretDigest);
+  }
+
+  /** Redirect hop: validate the target and either continue or deny. */
+  async function redirectHop(
+    req: EgressRequest,
+    currentUrl: URL,
+    resp: { status: number; body?: string; headers?: Record<string, string>; contentLength?: number },
+    hopCount: number,
+    deadline: number,
+    secretDigest?: string,
+  ): Promise<{ done: true; result: EgressResult } | { done: false; url: URL }> {
+    const location = resp.headers?.location;
+    if (!location) {
+      return { done: true, result: deny("invalid_url", hopCount, "redirect target is missing a location header") };
+    }
+    let nextUrl: URL;
+    try {
+      nextUrl = new URL(location, currentUrl);
+    } catch {
+      return { done: true, result: deny("invalid_url", hopCount, "redirect target is not a valid URL") };
+    }
+    const nextShape = urlChecks(nextUrl);
+    if (nextShape) return { done: true, result: { ...nextShape, transportCalls: hopCount } };
+    if (hopCount > limits.maxRedirects) return { done: true, result: deny("redirect_limit", hopCount) };
+    // --- ACTUAL-DESTINATION check (T-SEC-SSRF-045 / Q4 condition): the redirect
+    // target host must pass the same allowedHosts + pinnedHost checks that the
+    // original request passed. A redirect to an unlisted host is denied, even
+    // for public-mode requests when allowedHosts is set.
+    const nextHost = nextUrl.hostname.replace(/^\[|\]$/g, "");
+    if (opts.allowedHosts && opts.allowedHosts.length > 0) {
+      const normalizedAllowed = new Set(opts.allowedHosts.map((h) => h.replace(/\.$/, "").toLowerCase()));
+      const normalizedNext = nextHost.replace(/\.$/, "").toLowerCase();
+      if (!normalizedAllowed.has(normalizedNext)) {
         audit({
-          kind: "timeout",
-          reason: "timeout_total",
+          kind: "denied",
+          reason: "host_not_allowed",
           caseId: req.caseId,
           systemContext: req.systemContext,
           transform: req.transform,
           host: nextHost,
           transportCalls: hopCount,
+          secretDigest,
         });
-        return { done: true, result: deny("timeout_total", hopCount) };
+        return {
+          done: true,
+          result: deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is not on the allowedHosts list`),
+        };
       }
-      return { done: false, url: nextUrl };
     }
+    // Redirects to a different host are NOT allowed when a secret or a pin is in play.
+    if (req.pinnedHost) {
+      const normalizedPin = req.pinnedHost.replace(/\.$/, "").toLowerCase();
+      const normalizedNext = nextHost.replace(/\.$/, "").toLowerCase();
+      const isSub = normalizedNext === normalizedPin || normalizedNext.endsWith(`.${normalizedPin}`);
+      if (!isSub) {
+        audit({
+          kind: "denied",
+          reason: "host_not_allowed",
+          caseId: req.caseId,
+          systemContext: req.systemContext,
+          transform: req.transform,
+          host: nextHost,
+          transportCalls: hopCount,
+          secretDigest,
+        });
+        return {
+          done: true,
+          result: deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is outside pinnedHost "${req.pinnedHost}"`),
+        };
+      }
+    }
+    if (now() >= deadline) {
+      audit({
+        kind: "timeout",
+        reason: "timeout_total",
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        host: nextHost,
+        transportCalls: hopCount,
+      });
+      return { done: true, result: deny("timeout_total", hopCount) };
+    }
+    return { done: false, url: nextUrl };
+  }
+
+  /** Finish hop: enforce the size limit and attach the response to the result. */
+  async function finishHop(
+    req: EgressRequest,
+    currentUrl: URL,
+    resp: { status: number; body?: string; headers?: Record<string, string>; contentLength?: number },
+    hopCount: number,
+    abort: ReturnType<typeof makeRequestAbort>,
+    secretDigest?: string,
+  ): Promise<{ done: true; result: EgressResult }> {
     // Size limit: prefer an explicit contentLength when the transport reports
     // one, otherwise fall back to the body string length. The transport is
     // responsible for not buffering more than it can report; the gateway treats
@@ -736,7 +872,18 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       transportCalls: hopCount,
       secretDigest,
     });
-    return { done: true, result: { ok: true, transportCalls: hopCount } };
+    // Attach the transport response to the SUCCESS result so the caller
+    // (engine adapter / vault route) can consume status+headers+body without
+    // a second fetch. Only present when ok=true.
+    const successResp: EgressSuccessResponse = {
+      status: resp.status,
+      headers: resp.headers,
+      body: resp.body,
+      contentLength: resp.contentLength,
+      host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
+      aborted: req.signal?.aborted || abort.controller.signal.aborted || undefined,
+    };
+    return { done: true, result: { ok: true, transportCalls: hopCount, response: successResp } };
   }
 
   return { request, limits };
