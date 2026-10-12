@@ -406,3 +406,55 @@ describe("secrets require a pin AND a provider", () => {
     expect(r.reason).toBe("host_not_allowed");
   });
 });
+
+describe("systemContext + audit sink (review log Q4, T-SEC-SSRF-044)", () => {
+  const baseSys = {
+    systemContext: true,
+    purposeRef: "vault-key-validation",
+    transform: "vault.test@1",
+    url: "https://ipinfo.io/8.8.8.8",
+    method: "GET" as const,
+    headers: { accept: "application/json" },
+    sends: ["domain"],
+    sensitivity: "normal",
+    secret: "SUPER-SECRET-KEY-12345",
+    pinnedHost: "ipinfo.io",
+    secretProvider: "ipinfo",
+  };
+
+  it("records systemContext=true and a redacted digest; the raw secret never reaches the sink", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: { fetch: async () => ({ status: 200, body: "" }) },
+      auditSink: { record: (e) => events.push({ ...e }) },
+    });
+    const r = await g.request(baseSys);
+    expect(r.ok).toBe(true);
+    expect(events.length).toBeGreaterThanOrEqual(1);
+    expect(events.every((e) => e["systemContext"] === true)).toBe(true);
+    expect(JSON.stringify(events)).not.toContain("SUPER-SECRET-KEY-12345");
+    expect(events.some((e) => typeof e["secretDigest"] === "string")).toBe(true);
+  });
+
+  it("a non-system request without caseId is still denied (no_case)", async () => {
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: { fetch: async () => ({ status: 200, body: "" }) },
+    });
+    const { systemContext: _drop, ...noSys } = baseSys;
+    void _drop;
+    const r = await g.request(noSys);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("no_case");
+  });
+
+  it("systemContext must be a boolean (runtime type check)", async () => {
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: { fetch: async () => ({ status: 200, body: "" }) },
+    });
+    const r = await g.request({ ...baseSys, systemContext: "yes" as unknown as boolean });
+    expect(r.ok).toBe(false);
+  });
+});

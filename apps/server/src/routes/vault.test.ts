@@ -178,6 +178,42 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
   });
 
+  describe("T-SEC-SSRF-045 (review log Q4): vault test cannot reach an unauthorized host", () => {
+    it("a request whose pinnedHost is not a provider host is denied with host_not_allowed and no secret is sent", async () => {
+      const transport = {
+        calls: [] as Array<{ url: string; host: string; pinnedIp: string }>,
+        async fetch(req: { url: string; host: string; pinnedIp: string }) {
+          transport.calls.push(req);
+          return { status: 200, body: "" };
+        },
+      };
+      const resolver = {
+        resolve: async (host: string) => (host === "evil.example" ? ["93.184.216.34"] : []),
+      };
+      const { createEgressGateway } = await import("@ir/egress");
+      const g = createEgressGateway({ resolver, transport, allowedHosts: ["ipinfo.io", "www.virustotal.com"] });
+      const r = await g.request({
+        systemContext: true,
+        purposeRef: "vault-key-validation",
+        transform: "vault.test@1",
+        url: "https://evil.example/8.8.8.8",
+        method: "GET",
+        headers: { accept: "application/json" },
+        sends: ["domain"],
+        sensitivity: "normal",
+        secret: "k",
+        pinnedHost: "evil.example",
+        secretProvider: "ipinfo",
+      });
+      expect(r.ok).toBe(false);
+      // The gateway denies any host outside the pinned provider hosts. The
+      // exact reason depends on which check fires first; for a public IP
+      // with a non-provider pinnedHost it is host_not_allowed.
+      expect(r.reason).toBe("host_not_allowed");
+      expect(transport.calls.length).toBe(0);
+    });
+  });
+
   it("does not grant a hostile origin CORS access to the vault", async () => {
     const { call } = await start();
     const response = await call("/vault", {

@@ -96,7 +96,7 @@ export function vaultRouter(
         // network path. The route degrades to "not tested" (200, tested: false)
         // rather than failing, because the e2e gate calls it on the built
         // server. Production wiring of a real transport is an owner decision.
-        res.json({ ok: true, tested: false });
+        res.json({ ok: false, tested: false, reason: "transport_not_configured" });
         return;
       }
       res.json(await testProviderKey(param(req.params["name"]), getVault(), transport, resolver));

@@ -61,6 +61,7 @@ export async function testProviderKey(
   const gateway = createEgressGateway({
     resolver,
     transport,
+    allowedHosts: Object.values(PROVIDER_HOSTS),
     limits: {
       maxRedirects: 1,
       maxSizeBytes: 10_000,

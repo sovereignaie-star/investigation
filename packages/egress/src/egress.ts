@@ -110,6 +110,8 @@ export interface EgressAuditEvent {
   readonly method?: string;
   readonly transportCalls: number;
   readonly detail?: string;
+  /** True when the request was a system-level request (no caseId). */
+  readonly systemContext?: boolean;
   /** Placeholder for a redacted secret digest. Never the raw secret. */
   readonly secretDigest?: string;
 }
@@ -133,6 +135,12 @@ export interface EgressOptions {
   readonly auditSink?: EgressAuditSink;
   /** Simulate IR_OFFLINE=1 (deny-by-default; cannot be turned off by env). */
   readonly offline?: boolean;
+  /**
+   * When provided, every request's destination host (or its pinnedHost when
+   * set) must be on this list. Used by the vault test path so that only
+   * provider hosts can ever be reached (T-SEC-SSRF-045, review log Q4).
+   */
+  readonly allowedHosts?: readonly string[];
 }
 
 const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
@@ -241,6 +249,9 @@ function validateRequestTypes(req: EgressRequest): EgressResult | null {
     for (const s of req.sends) {
       if (typeof s !== "string") return deny("invalid_request", 0, "sends entries must be strings");
     }
+  }
+  if (req.systemContext !== undefined && typeof req.systemContext !== "boolean") {
+    return deny("invalid_request", 0, "systemContext must be a boolean when provided");
   }
   const stringFields: Array<[keyof EgressRequest, string]> = [
     ["caseId", "caseId must be a string when provided"],
@@ -403,6 +414,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         kind: "denied",
         reason: pre.reason,
         caseId: req.caseId,
+        systemContext: req.systemContext,
         transform: req.transform,
         transportCalls: 0,
         detail: pre.detail,
@@ -416,7 +428,14 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     try {
       currentUrl = new URL(req.url);
     } catch {
-      audit({ kind: "denied", reason: "invalid_url", caseId: req.caseId, transform: req.transform, transportCalls: 0 });
+      audit({
+        kind: "denied",
+        reason: "invalid_url",
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        transportCalls: 0,
+      });
       return deny("invalid_url");
     }
 
@@ -427,6 +446,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         kind: "denied",
         reason: shape.reason,
         caseId: req.caseId,
+        systemContext: req.systemContext,
         transform: req.transform,
         host: currentUrl.hostname,
         transportCalls: 0,
@@ -437,8 +457,35 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // --- 7b: rate limit (per host, per hop) ---
     const host = currentUrl.hostname.replace(/^\[|\]$/g, "");
     if (!limiter.take(host)) {
-      audit({ kind: "rate_limited", reason: "rate_limit", caseId: req.caseId, transform: req.transform, host, transportCalls: 0 });
+      audit({
+        kind: "rate_limited",
+        reason: "rate_limit",
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        host,
+        transportCalls: 0,
+      });
       return deny("rate_limit", 0, `rate limit exceeded for host ${host}`);
+    }
+
+    // --- 7c: allowedHosts binding (system-context vault path) ---
+    if (opts.allowedHosts && opts.allowedHosts.length > 0) {
+      const normalizedAllowed = new Set(opts.allowedHosts.map((h) => h.replace(/\.$/, "").toLowerCase()));
+      const targetHost = (req.pinnedHost ?? host).replace(/\.$/, "").toLowerCase();
+      if (!normalizedAllowed.has(targetHost)) {
+        audit({
+          kind: "denied",
+          reason: "host_not_allowed",
+          caseId: req.caseId,
+          systemContext: req.systemContext,
+          transform: req.transform,
+          host,
+          transportCalls: 0,
+          secretDigest,
+        });
+        return deny("host_not_allowed", 0, `destination host "${targetHost}" is not on the allowedHosts list`);
+      }
     }
 
     // --- 7c: pinnedHost binding ---
@@ -452,6 +499,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
           kind: "denied",
           reason: "host_not_allowed",
           caseId: req.caseId,
+          systemContext: req.systemContext,
           transform: req.transform,
           host,
           transportCalls: 0,
@@ -476,6 +524,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
           kind: "timeout",
           reason: "timeout_total",
           caseId: req.caseId,
+          systemContext: req.systemContext,
           transform: req.transform,
           host: currentUrl.hostname,
           transportCalls: hopCount,
@@ -488,6 +537,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
           kind: "denied",
           reason: resolved.reason,
           caseId: req.caseId,
+          systemContext: req.systemContext,
           transform: req.transform,
           host: currentUrl.hostname,
           transportCalls: hopCount,
@@ -504,6 +554,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
           kind: "timeout",
           reason: "timeout_connect",
           caseId: req.caseId,
+          systemContext: req.systemContext,
           transform: req.transform,
           host: currentUrl.hostname,
           transportCalls: hopCount,
@@ -527,6 +578,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         audit({
           kind: "transport_error",
           caseId: req.caseId,
+          systemContext: req.systemContext,
           transform: req.transform,
           host: currentUrl.hostname,
           transportCalls: hopCount,
@@ -613,6 +665,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
             kind: "denied",
             reason: "host_not_allowed",
             caseId: req.caseId,
+            systemContext: req.systemContext,
             transform: req.transform,
             host: nextHost,
             transportCalls: hopCount,
@@ -629,6 +682,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
           kind: "timeout",
           reason: "timeout_total",
           caseId: req.caseId,
+          systemContext: req.systemContext,
           transform: req.transform,
           host: nextHost,
           transportCalls: hopCount,
@@ -647,6 +701,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         kind: "size_limit",
         reason: "size_limit",
         caseId: req.caseId,
+        systemContext: req.systemContext,
         transform: req.transform,
         host: currentUrl.hostname,
         transportCalls: hopCount,
@@ -656,6 +711,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     audit({
       kind: "allowed",
       caseId: req.caseId,
+      systemContext: req.systemContext,
       transform: req.transform,
       host: currentUrl.hostname,
       method: req.method ?? "GET",
