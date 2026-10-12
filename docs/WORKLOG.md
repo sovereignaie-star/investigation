@@ -1391,3 +1391,18 @@
 - **الأدلة:** `corepack pnpm vitest run` (كامل) → 503/503. `packages/egress` → 196/196. `apps/server` → 15/15. lint/typecheck/build نظيفة. `node scripts/governance/check.mjs --consistency` → consistent. G-11 يفشل محلياً بسبب غياب Chrome (`browserNetwork: {"error": "no Chrome/Chromium found"}`) فقط — على CI ينجح.
 - **ملاحظة تفويض systemContext:** نص سؤال 4 يعرض الحل التقني صراحة `systemContext: true, // لا يحتاج caseId` — فالإضافة موثقة بقرار المالك، والفحص البولياني يمنع أي truthy من تجاوز الشرط.
 - **ما لم يُنفَّذ (قرار المالك):** الربط الإنتاجي (نقل/resolver حقيقيان)، تحويل `lookupIp`/`lookupBreaches` (يحتاج `caseId` — P2-014)، توسيع `EgressResult` لإظهار status المزود (قرار معماري — المستشار أشار إليه).
+
+### 2026-10-12 — [P2-003] تصحيح النجاح المصطنع وإحكام نطاق systemContext (مراجعة المستشار الثانية)
+- **الفرع:** `audit/P2-003-investigation`.
+- **ما تم:**
+  1. أُزيل `status: 200` المصطنعة من `testProviderKey()`. `EgressResult` لا ينقل حالة استجابة المزود، لذا لا يمكن الإبلاغ عن المفتاح كـمُتحقق. النتيجة الصادقة: `{ ok: false, tested: false, reason: "provider_response_unavailable" }` — ليس نجاحاً مُختلقاً. توسيع عقد الاستجابة (إظهار 401/403/500 من المزود) قرار معماري للمالك.
+  2. `systemContext` مقصور على `purposeRef=vault-key-validation` و`transform=vault.test@1` فقط. أي غرض/تحويل آخر مع `systemContext: true` يُرفض بـ`invalid_request` قبل DNS والنقل. هذا يمنع الإعفاء العام من `caseId`.
+  3. `providers.ts` يمرر `secret: key` و`pinnedHost: host` من `PROVIDER_HOSTS` — القائمة المسموحة صغيرة ومضيفة المزودين فقط (شرط سؤال 4).
+  4. اختبارات جديدة: (a) `vault.test.ts` — مسار الخزنة يرد `provider_response_unavailable` بصدق ولا يُختلق نجاح؛ (b) `egress-limits.test.ts` — `systemContext` بغرض مختلف أو بتحويل مختلف يُرفض بـ`invalid_request`.
+- **الأدلة:** `corepack pnpm vitest run` (كامل) → 506/506. `packages/egress` → 198/198. `apps/server` → 16/16. lint/typecheck/build نظيفة. governance consistency ناجح.
+- **ما لم يُثبت (قرار مالك):**
+  - `testProviderKey()` لا يمرر `auditSink` — التسجيل المنقّح للمسار الفعلي يحتاج ربط sink في الخادم (قرار معماري).
+  - حد المعدل (1rps burst 5) غير مفروض بين استدعاءات المسار — `createEgressGateway` يُنشأ لكل استدعاء فيعيد بناء محدد المعدل. فرضه يتطلب instance مشترك (قرار معماري).
+  - T-SEC-SSRF-045 اختبار للبوابة، لا للمسار — اختبار المسار يحتاج bypass محاكاة resolver (قرار معماري).
+  - توسيع `EgressResult` لإظهار status المزود (قرار معماري).
+  - `AbortSignal` في `egress-adapter.ts` (سطر 80) — `void signal;` ما زال موجوداً.

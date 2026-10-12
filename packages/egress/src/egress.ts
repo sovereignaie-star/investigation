@@ -286,6 +286,11 @@ function preDnsChecks(req: EgressRequest, offline: boolean): EgressResult | null
   if (offline) return deny("offline");
   if (!req.systemContext && !req.caseId) return deny("no_case");
   if (!req.purposeRef) return deny("no_case");
+  // systemContext is narrowly scoped: it exempts the request from caseId ONLY
+  // for the approved vault-key-validation purpose/transform (review log Q4).
+  if (req.systemContext && (req.purposeRef !== "vault-key-validation" || req.transform !== "vault.test@1")) {
+    return deny("invalid_request", 0, "systemContext is only valid for purposeRef=vault-key-validation with transform=vault.test@1");
+  }
   const sensErr = checkSensitivity(req.sensitivity);
   if (sensErr) return sensErr;
   const manifestErr = checkSends(req.sends);

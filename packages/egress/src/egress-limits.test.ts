@@ -458,3 +458,38 @@ describe("systemContext + audit sink (review log Q4, T-SEC-SSRF-044)", () => {
     expect(r.ok).toBe(false);
   });
 });
+
+describe("systemContext is narrowly scoped to the vault path (review log Q4)", () => {
+  const sysRes = { resolve: async () => ["93.184.216.34"] };
+  const sysTra = { fetch: async () => ({ status: 200, body: "" }) };
+
+  it("a systemContext request with a different purposeRef is denied (invalid_request)", async () => {
+    const g = createEgressGateway({ resolver: sysRes, transport: sysTra });
+    const r = await g.request({
+      systemContext: true,
+      purposeRef: "some-other-purpose",
+      transform: "vault.test@1",
+      url: "https://ipinfo.io/8.8.8.8",
+      method: "GET",
+      sends: ["domain"],
+      sensitivity: "normal",
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("invalid_request");
+  });
+
+  it("a systemContext request with a different transform is denied (invalid_request)", async () => {
+    const g = createEgressGateway({ resolver: sysRes, transport: sysTra });
+    const r = await g.request({
+      systemContext: true,
+      purposeRef: "vault-key-validation",
+      transform: "other.transform@1",
+      url: "https://ipinfo.io/8.8.8.8",
+      method: "GET",
+      sends: ["domain"],
+      sensitivity: "normal",
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("invalid_request");
+  });
+});

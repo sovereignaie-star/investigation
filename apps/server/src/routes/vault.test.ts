@@ -82,7 +82,14 @@ describe("vault routes (P1-015, P1-026)", () => {
     const list = JSON.parse((await call("/vault", withAdmin())).text) as { entries: { name: string; configured: boolean }[] };
     expect(list.entries.find((e) => e.name === "ipinfo")).toMatchObject({ configured: true });
     expect(list.entries.find((e) => e.name === "shodan")).toMatchObject({ configured: false });
-    expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({ ok: true, tested: true });
+    // The vault test is gated by the gateway (T-SEC-SSRF-043/044 proven below)
+    // but `EgressResult` does not carry the provider's response, so the route
+    // honestly reports "not tested" until the response contract expands.
+    expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({
+      ok: false,
+      tested: false,
+      reason: "provider_response_unavailable",
+    });
     // T-SEC-SSRF-043: the vault test path goes through the egress gateway
     // (pinned host, pinned IP, no direct fetch).
     expect(vaultTestCalls.length).toBeGreaterThanOrEqual(1);
@@ -225,5 +232,15 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
     expect(response.status).toBe(401);
+  });
+});
+
+describe("vault test result honesty (provider_response_unavailable)", () => {
+  it("the vault test never reports a fabricated provider status when the gateway allows but the response contract is missing", async () => {
+    // A 401/403/500 from the provider cannot be distinguished today, so the
+    // route must not report the key as validated.
+    const s = await start({ IR_ADMIN_TOKEN: ADMIN_TOKEN });
+    const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
+    expect(r).toMatchObject({ ok: false, tested: false });
   });
 });

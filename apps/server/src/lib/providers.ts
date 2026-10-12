@@ -52,7 +52,7 @@ export async function testProviderKey(
   vault: Vault,
   transport: VaultEgressTransport,
   resolver: VaultDnsResolver,
-): Promise<{ ok: boolean; tested: boolean; status?: number; reason?: string }> {
+): Promise<{ ok: boolean; tested: boolean; reason?: string }> {
   const host = PROVIDER_HOSTS[name];
   if (!host) return { ok: true, tested: false };
   const key = vault.reveal(name);
@@ -92,10 +92,11 @@ export async function testProviderKey(
   if (!result.ok) {
     return { ok: false, tested: false, reason: result.reason };
   }
-  // The gateway's transport returns the status; the caller's transport is
-  // responsible for surfacing it. In this cycle the fake transport records
-  // the status, and we surface it to the caller for test assertions.
-  return { ok: true, tested: true, status: 200 };
+  // The gateway allows the request, but `EgressResult` does not carry the
+  // provider's response status, so we cannot report the key as VALIDATED.
+  // Until the response contract is expanded (an owner decision), the honest
+  // result is "not tested" with a reason — never a fabricated status.
+  return { ok: false, tested: false, reason: "provider_response_unavailable" };
 }
 
 /** Kept for backward compatibility with the lookup routes (which also need migration). */
