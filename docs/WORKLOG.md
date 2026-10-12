@@ -1692,3 +1692,7 @@
 
 - فشل `build`/`gates`/`docker` في CI على commit c061e70: خطأ TypeScript — نوع `SandboxOutcome` (union مع `{refused:true}`) لا يحمل `stdout`/`exitCode` مباشرة. أُصلح: تحقّق `isRefusal(result) === false` ثم cast بـ `Exclude<typeof result, {refused:true}>` (نفس نمط باقي الاختبارات في الملف).
 - محليًا: 7/7 في sandbox، 551/551 كامل، typecheck نظيف، consistency ناجح.
+
+### 2026-10-12 — [P2-003] تشغيل D-052 المحدّث على الفرع + إصلاح regex المدة
+
+- شُغّل workflow `d052-experiment` على الفرع (run 38257664047، 6/6 exit=0). Artifact 11750684061: `d052-durations.txt` كتبت الصفوف لكن `duration_ms=unknown` في 4 من 6 — السبب: أسطر vitest ملوّنة بأكواد ANSI escape فلم يطابق `grep -oE '[0-9]+ms$'`. أُصلح: تجريد أكواد ANSI أولاً (`sed 's/\x1b\[[0-9;]*m//g'`) قبل الاستخراج. مدد D-052 الفعلية من الأسطر (بعد التجريد): plain 411ms، encrypted 366ms، encrypted 326ms، encrypted 752ms — **بلا أي تشغيل تجاوز 5000ms** ولا فشل. **استنتاج لا فروق دالة:** العدد (6) لا يكفي لأي استنتاج إحصائي؛ لم يُعَد إنتاج فشل CI الأصلي.

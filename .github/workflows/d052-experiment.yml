@@ -93,14 +93,17 @@ jobs:
               # run but the variant is file-order-dependent, not branch-dependent).
               while IFS= read -r D052LINE; do
                 [ -z "$D052LINE" ] && continue
+                # Strip ANSI escape codes FIRST so the grep regexes match
+                # reliably in CI (vitest colourises output).
+                D052CLEAN="$(printf '%s' "$D052LINE" | sed -e 's/\x1b\[[0-9;]*m//g')"
                 # The line looks like: `       ✓ plain: a creation that fails ... 302ms`
                 # Extract variant + duration.
                 VARIANT="none"
-                case "$D052LINE" in
+                case "$D052CLEAN" in
                   *" plain: "*) VARIANT="plain" ;;
                   *" encrypted: "*) VARIANT="encrypted" ;;
                 esac
-                DURATION="$(printf '%s' "$D052LINE" | grep -oE '[0-9]+ms$' | tr -d 'ms')"
+                DURATION="$(printf '%s' "$D052CLEAN" | grep -oE '[0-9]+ms$' | tr -d 'ms')"
                 echo "${LABEL} variant=${VARIANT} duration_ms=${DURATION:-unknown}" >> d052-results/d052-durations.txt
               done < "${LABEL}-d052.txt"
             done
