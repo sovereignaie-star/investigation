@@ -180,10 +180,6 @@ export const POLICY_ROWS: readonly Row[] = (
     ["2002::/16", { kind: "policy_deny", why: "6to4: refused as a whole (approved decision, item a)" }],
     ["2001::/32", { kind: "policy_deny", why: "Teredo: the real destination is behind a relay" }],
     ["2001:20::/28", { kind: "policy_deny", why: "ORCHIDv2: identifiers, not IP destinations (approved decision, item b)" }],
-    // PROVISIONAL (P2-003, 2026-10-13): found by this differential. The registry marks the block GR=True and the
-    // section 4 rule would accept it; the classifier has always refused it. It stays refused (fail-closed, egress is
-    // not widened without a decision) until the owner decides; ADR-08 section 4 records the open item.
-    ["192.175.48.0/24", { kind: "policy_deny", why: "AS112 Direct Delegation v4: kept refused pending owner decision (P2-003)" }],
   ] as const
 ).map(([cidr, treatment]) => ({ block: parseBlock(cidr), treatment }));
 

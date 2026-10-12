@@ -16,12 +16,13 @@ import { executeCase, mismatches, SSRF_CASES, type Factory } from "./ssrf-cases"
 import { TIMING_CASES } from "./ssrf-timing-cases";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const CORE_IDENTIFIERS = path.resolve(HERE, "../../core/src/identifiers/index.ts");
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "egress-mutants-"));
 afterAll(() => fs.rmSync(ROOT, { recursive: true, force: true }));
 
 interface Mutation {
   readonly name: string;
-  readonly file: "egress.ts" | "address-policy.ts";
+  readonly file: "egress.ts" | "address-policy.ts" | "content-inventory.ts";
   readonly from: string;
   readonly to: string;
   /** Further replacements in the same file, for checks that are deliberately layered (defence in depth). */
@@ -91,6 +92,20 @@ const MUTATIONS: readonly Mutation[] = [
     file: "egress.ts",
     from: "const contentErr = checkContent(req);",
     to: "const contentErr = null as EgressResult | null;",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "a context keyword alone makes an ordinary reading refuse (evidence criterion removed)",
+    file: "content-inventory.ts",
+    from: ".filter(isStrongReading)",
+    to: "",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "natural-person readings held to the ordinary evidence bar (context no longer counts)",
+    file: "content-inventory.ts",
+    from: 'return c.sensitivity === "natural_person_gate" || c.validated',
+    to: "return c.validated",
     detectedBy: ["T-SEC-SSRF-043"],
   },
   {
@@ -305,7 +320,7 @@ const TIMING_MUTATIONS: readonly Mutation[] = [
 
 async function loadMutant(m: Mutation | null): Promise<Factory> {
   const dir = fs.mkdtempSync(path.join(ROOT, "m-"));
-  for (const f of ["egress.ts", "address-policy.ts"]) {
+  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts"]) {
     let src = fs.readFileSync(path.join(HERE, f), "utf8");
     if (m && m.file === f) {
       expect(src.includes(m.from), `mutation anchor for "${m.name}" not found in ${f}`).toBe(true);
@@ -314,8 +329,8 @@ async function loadMutant(m: Mutation | null): Promise<Factory> {
         src = src.split(from).join(to);
       }
     }
-    // content-inventory.ts is never mutated; the copy imports the original (whose @ir/core import resolves in the repo)
-    src = src.split('from "./content-inventory.ts"').join(`from ${JSON.stringify(path.join(HERE, "content-inventory.ts"))}`);
+    // the copies live outside the workspace: point the @ir/core import at its source file
+    src = src.split('from "@ir/core/identifiers"').join(`from ${JSON.stringify(CORE_IDENTIFIERS)}`);
     fs.writeFileSync(path.join(dir, f), src);
   }
   const mod = (await import(/* @vite-ignore */ path.join(dir, "egress.ts"))) as { createEgressGateway: Factory };

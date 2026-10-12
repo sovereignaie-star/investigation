@@ -291,3 +291,30 @@ describe("coverage bookkeeping", () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe("T-SEC-SSRF-043 scope boundary: server-chosen redirect targets (known gap, P2-003 2026-10-13)", () => {
+  // The content check inventories what the TRANSFORM put in the request. A redirect target is chosen by the server;
+  // each hop is re-checked for scheme, port, credentials, host list, address class and pinning, but its URL content is
+  // NOT inventoried. This test states the gap as it is, so it cannot be mistaken for protection: it must be changed
+  // (and this row re-classified) when the follow-up decided in ADR-08 section 4 is implemented.
+  it("a public-mode redirect to another public host whose URL carries an undeclared email address is followed today", async () => {
+    const destinations: Array<{ host: string; pinnedIp: string }> = [];
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: {
+        fetch: async (r) => {
+          destinations.push({ host: r.host, pinnedIp: r.pinnedIp });
+          return destinations.length === 1
+            ? { status: 302, headers: { location: "https://other.example/?q=alice%40example.org" } }
+            : { status: 200, body: "ok" };
+        },
+      },
+    });
+    const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["domain"] });
+    expect(r.ok).toBe(true);
+    expect(destinations).toEqual([
+      { host: "example.com", pinnedIp: "93.184.216.34" },
+      { host: "other.example", pinnedIp: "93.184.216.34" },
+    ]);
+  });
+});

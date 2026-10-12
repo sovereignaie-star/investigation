@@ -59,9 +59,10 @@ const V4: Array<[string, AddressClass]> = [
   ["192.31.196.0/24", "public"], // AS112 — GR=True
   ["192.52.193.0/24", "public"], // AMT — GR=True
   ["192.88.99.0/24", "reserved"], // 6to4 Relay Anycast (deprecated)
-  // AS112 Direct Delegation v4: registry GR=True, refused here. NOT because of its v6 counterpart (2620:4f:8000::/48 is
-  // accepted, inside 2000::/3): kept refused pending an owner decision, recorded in ADR-08 section 4 (P2-003, T-SEC-SSRF-045)
-  ["192.175.48.0/24", "reserved"],
+  // AS112 Direct Delegation v4 (RFC 7534): registry GR=True. Accepted like the three other AS112 prefixes the same nodes
+  // originate (192.31.196.0/24, 2001:4:112::/48, 2620:4f:8000::/48). It was refused until 2026-10-13 on a false
+  // comment ("v6 counterpart is a policy refusal"); no ADR-08 rule ever refused it (P2-003, T-SEC-SSRF-045).
+  ["192.175.48.0/24", "public"],
   ["192.168.0.0/16", "private"],
   ["198.18.0.0/15", "reserved"], // Benchmarking
   ["198.51.100.0/24", "reserved"], // TEST-NET-2

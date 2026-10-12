@@ -81,6 +81,21 @@ function isBareLabel(type: string, value: string): boolean {
   return type === "hostname" && !value.includes(".");
 }
 
+/**
+ * Refusal criterion (P2-003, 2026-10-13), asymmetric on purpose:
+ * - an ordinary (normal-sensitivity) reading counts only on its own evidence: it passed the type's validator
+ *   (checksum, PSL, ...) or its pattern is specific (specificity >= 0.5, the bar `extract` uses for context-free
+ *   candidates). A reading that is reportable ONLY because a nearby word is a context keyword does not refuse: the
+ *   query key is such a word, so `?name=Bob` would otherwise read any short value as a `netbios_name`;
+ * - a natural-person reading counts whenever `extract` reports it, context included (`?passport=AB123456`): the
+ *   protected category stays fail-closed (ADR-08 section 2, reason precedence).
+ * Known limit: an ordinary identifier the catalog can only recognise through context is not found here.
+ */
+const MIN_SPECIFICITY = 0.5;
+function isStrongReading(c: { validated: boolean; specificity: number; sensitivity: string }): boolean {
+  return c.sensitivity === "natural_person_gate" || c.validated || c.specificity >= MIN_SPECIFICITY;
+}
+
 function decode(s: string): string {
   try {
     return decodeURIComponent(s.replace(/\+/g, " "));
@@ -117,6 +132,7 @@ export function inventoryRequest(
       const readings = hit.candidates
         .filter((c) => c.score === hit.best.score)
         .filter((c) => !isBareLabel(c.type, hit.value))
+        .filter(isStrongReading)
         .map((c) => ({ kind: sendKindOf(c.type, specById(c.type)?.category ?? ""), type: c.type, sensitivity: c.sensitivity }));
       if (readings.length > 0) out.push({ surface, readings });
     }

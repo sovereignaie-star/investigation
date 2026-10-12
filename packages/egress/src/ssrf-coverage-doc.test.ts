@@ -18,6 +18,7 @@ const FILES: Record<string, string> = {
   "ssrf-mutation.test.ts": "packages/egress/src/ssrf-mutation.test.ts",
   "vault.test.ts": "apps/server/src/routes/vault.test.ts",
   "content-inventory.test.ts": "packages/egress/src/content-inventory.test.ts",
+  "address-verdicts.test.ts": "packages/egress/src/address-verdicts.test.ts",
   "iana-reference-differential.test.ts": "docs/adr/reference/iana/iana-reference-differential.test.ts",
 };
 // the matrix runs the shared case tables (ssrf-cases.ts, ssrf-timing-cases.ts) as its own tests
