@@ -1510,3 +1510,4 @@
   - `egress-adapter.test.ts`: اختبار نجاح كامل (استجابة 200 تصل إلى المحرك وتنجح العملية)؛ اختبار رفض rate-limit محسّن (concurrency=1)؛ تحديث اختبار الميزانية.
   - `egress-limits.test.ts`: تحديث تعبير regular لتنسيق HMAC الجديد.
 - **الفحوص:** `npx vitest run` → 507/507 ناجحة. `pnpm -r --if-present run typecheck` → نجاح. `pnpm run governance --consistency` → نجاح.
+
