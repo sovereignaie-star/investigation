@@ -27,6 +27,26 @@ describe("customFetch same-origin guard (P2-003 / C)", () => {
     await expect(customFetch("https://evil.example/x")).rejects.toThrow(/absolute URL refused/);
   });
 
+  it("a protocol-relative URL (`//evil.example/x`) is refused (resolves cross-origin)", async () => {
+    setBaseUrl("http://127.0.0.1:9999");
+    await expect(customFetch("//evil.example/x")).rejects.toThrow(/cross-origin request refused/);
+  });
+
+  it("a bare `//evil.example/x` with NO base is refused", async () => {
+    setBaseUrl(null);
+    await expect(customFetch("//evil.example/x")).rejects.toThrow(/absolute URL refused|cross-origin request refused/);
+  });
+
+  it("a `URL` object for a cross-origin host is refused", async () => {
+    setBaseUrl("http://127.0.0.1:9999");
+    await expect(customFetch(new URL("https://evil.example/x"))).rejects.toThrow(/cross-origin request refused/);
+  });
+
+  it("a `Request` for a cross-origin host is refused", async () => {
+    setBaseUrl("http://127.0.0.1:9999");
+    await expect(customFetch(new Request("https://evil.example/x"))).rejects.toThrow(/cross-origin request refused/);
+  });
+
   it("a same-origin absolute URL (matching the base) is allowed", async () => {
     setBaseUrl("http://127.0.0.1:9999");
     // Same origin as the base — the guard must NOT throw; the fetch itself

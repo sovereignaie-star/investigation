@@ -42,7 +42,7 @@ function lookup(body: Record<string, string>): RequestInit {
   });
 }
 
-async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportStatus?: number } = {}) {
+async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportStatus?: number; capturePino?: boolean } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-"));
   dirs.push(dir);
   const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
@@ -67,6 +67,57 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
     return realFetch(input, init);
   }) as typeof fetch;
   const app = createApp(vaultRouter(() => vault, { env, vaultTestTransport, vaultTestResolver }));
+  // Capture the REAL `makeVaultAuditSink` output (advisor D canary test).
+  // `pino-pretty` writes from a worker thread so patching process.stdout
+  // misses it; instead we spy the logger's info/warn methods (the SAME
+  // functions `makeVaultAuditSink` calls) and capture their JSON payloads.
+  // This captures exactly what pino would serialize to stdout.
+  const pinoCaptured: string[] = [];
+  if (opts.capturePino) {
+    const { logger } = await import("../lib/logger.js");
+    // pino's Logger type makes bind() lose the correct overload; capture the
+    // methods via a narrow record and call the ORIGINALS directly (no bind).
+    const originalLogger = logger as unknown as {
+      info: (msg: unknown, ...rest: unknown[]) => void;
+      warn: (msg: unknown, ...rest: unknown[]) => void;
+    };
+    const originalInfo = originalLogger.info.bind(originalLogger);
+    const originalWarn = originalLogger.warn.bind(originalLogger);
+    const capture = (msg: unknown, ...rest: unknown[]): void => {
+      // pino serializes the FIRST object arg as the log line's data and the
+      // string as the message. Capture both so the secret-leak assertion
+      // covers the full serialized line.
+      pinoCaptured.push(
+        typeof msg === "string" ? msg : JSON.stringify(msg),
+        ...rest.map((x) => (typeof x === "string" ? x : JSON.stringify(x))),
+      );
+    };
+    // pino's Logger type declares info/warn as generic methods that TS cannot
+    // reassign directly; use a narrow mutable record instead of `typeof logger.info`.
+    const mutableLogger = logger as unknown as {
+      info: (msg: unknown, ...rest: unknown[]) => void;
+      warn: (msg: unknown, ...rest: unknown[]) => void;
+    };
+    // pino's info/warn signature is (obj, msg?: string, ...args) — cast the
+    // message to string to satisfy TS; if a caller passes a non-string it
+    // still gets captured (JSON-stringified) by `capture` above.
+    mutableLogger.info = (msg: unknown, ...rest: unknown[]) => {
+      capture(msg, ...rest);
+      originalInfo(msg, ...rest);
+    };
+    mutableLogger.warn = (msg: unknown, ...rest: unknown[]) => {
+      capture(msg, ...rest);
+      originalWarn(msg, ...rest);
+    };
+    restoreFns.push(() => {
+      mutableLogger.info = (msg: unknown, ...rest: unknown[]) => {
+        originalInfo(msg, ...rest);
+      };
+      mutableLogger.warn = (msg: unknown, ...rest: unknown[]) => {
+        originalWarn(msg, ...rest);
+      };
+    });
+  }
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
   await new Promise((r) => server.once("listening", r));
@@ -81,7 +132,7 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   restoreFns.push(() => {
     globalThis.fetch = realFetch;
   });
-  return { call, upstream: externalCalls, all, vault, vaultTestCalls };
+  return { call, upstream: externalCalls, all, vault, vaultTestCalls, pinoCaptured };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {
@@ -294,5 +345,31 @@ describe("vault test result honesty (provider status is reported, never fabricat
     expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
     const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
     expect(r).toMatchObject({ ok: true, tested: true, providerStatus: 200 });
+  });
+
+  describe("T-SEC-SSRF-047 (D / canary): the real makeVaultAuditSink does not leak the secret", () => {
+    it("the pino line from the actual audit sink contains the redacted digest but NOT the raw secret", async () => {
+      // Canary test (advisor D): the response-only test proves the HTTP
+      // response doesn't leak the secret, but the AUDIT LOG line could still
+      // contain it. This test runs the full test-key path through the REAL
+      // `makeVaultAuditSink` (which calls `logger.info` on pino) and captures
+      // pino's actual stdout output, then asserts the raw secret is absent.
+      const s = await start(ENABLED, { vaultTransportStatus: 200, capturePino: true });
+      expect((await s.call("/vault/ipinfo", put(SECRET))).status).toBe(200);
+      const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
+      expect(r).toMatchObject({ ok: true, tested: true, providerStatus: 200 });
+      // The audit sink must have fired. pino serializes the OBJECT (with
+      // `secretDigest`) and the string message into ONE line — capture both
+      // into a single joined line for the assertion.
+      const auditLine = s.pinoCaptured.filter((l) => l.includes("vault egress audit") || l.includes("secretDigest")).join(" | ");
+      expect(auditLine).toContain("vault egress audit");
+      expect(auditLine).toContain("secretDigest");
+      // The raw secret must NOT be in the pino output (the whole capture, not
+      // just the audit line — any line leaking it fails this).
+      expect(s.pinoCaptured.join("\n")).not.toContain(SECRET);
+      // The audit line should carry the redacted HMAC digest, not the raw secret.
+      expect(auditLine).toMatch(/redacted-hmac-sha256-[0-9a-f]{16}/);
+      expect(auditLine).not.toContain(SECRET);
+    });
   });
 });

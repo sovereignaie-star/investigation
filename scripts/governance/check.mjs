@@ -283,8 +283,12 @@ function main(argv) {
     // Detects them in ROADMAP, STATUS, WORKLOG, MASTER_PLAN and every ADR file.
     errors.push(...conflictMarkerChecks());
     // D-8 (new): ADR-08 approval state and ROADMAP ADR-08 row must agree.
+    // Fail-closed: a MISSING ADR-08 document is an error, not a silent pass —
+    // a repo that removed the ADR doc must NOT look consistent.
     const adr08Path = path.join(ROOT, "docs", "adr", "ADR-08-egress-gateway.md");
-    if (existsSync(adr08Path)) {
+    if (!existsSync(adr08Path)) {
+      errors.push("D-8: docs/adr/ADR-08-egress-gateway.md is MISSING — the egress ADR must exist and be tracked.");
+    } else {
       errors.push(...adrStatusConsistency(roadmapText, readFileSync(adr08Path, "utf8")));
     }
     if (!errors.length) console.log("ROADMAP, STATUS and MASTER_PLAN are consistent.");

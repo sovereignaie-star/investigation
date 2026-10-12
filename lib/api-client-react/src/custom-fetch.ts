@@ -70,8 +70,10 @@ function isUrl(input: RequestInfo | URL): input is URL {
 function applyBaseUrl(input: RequestInfo | URL): RequestInfo | URL {
   if (!_baseUrl) return input;
   const url = resolveUrl(input);
-  // Only prepend to relative paths (starting with /)
-  if (!url.startsWith("/")) return input;
+  // Only prepend to RELATIVE paths (starting with a SINGLE `/`).
+  // `//host/...` (protocol-relative) and any value with a scheme are NOT
+  // relative — they carry their own origin and must NOT be prefixed.
+  if (!/^\/[^/]/.test(url)) return input;
 
   const absolute = `${_baseUrl}${url}`;
   if (typeof input === "string") return absolute;
@@ -324,8 +326,12 @@ async function parseSuccessBody(
  * string, which means only relative paths are allowed).
  */
 function assertSameOrigin(input: RequestInfo | URL): void {
+  // NEVER treat a value as "same origin by construction" just because it
+  // lacks a scheme. `//evil.example/x` (a protocol-relative URL) is
+  // cross-origin when resolved against a real base, and a bare value with
+  // no origin configured at all is only safe if it resolves to the SAME
+  // origin as the resolved base. Always resolve the origin and compare it.
   const url = resolveUrl(input);
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) return; // relative path — same origin by construction
   let currentOrigin: string;
   if (typeof location !== "undefined" && location.origin) {
     currentOrigin = location.origin;
@@ -340,17 +346,21 @@ function assertSameOrigin(input: RequestInfo | URL): void {
   }
   let targetOrigin: string;
   try {
-    targetOrigin = new URL(url, currentOrigin || undefined).origin;
+    // Resolve against the current origin (or a harmless default when none
+    // is configured) so that relative and protocol-relative values both get
+    // an origin to compare against.
+    targetOrigin = new URL(url, currentOrigin || "http://localhost").origin;
   } catch {
     throw new TypeError(`customFetch: cannot resolve the origin of ${url}`);
   }
+  if (!currentOrigin && targetOrigin !== "http://localhost") {
+    // No origin is configured and the resolved origin is not the local
+    // default — refuse it. The generated client never does this, but a
+    // hand-rolled call with `//host/...` or a bare absolute URL could.
+    throw new TypeError(`customFetch: absolute URL refused (${targetOrigin}); configure a base URL or use a relative path.`);
+  }
   if (currentOrigin && targetOrigin !== currentOrigin) {
     throw new TypeError(`customFetch: cross-origin request refused (${targetOrigin}); this client only talks to ${currentOrigin}.`);
-  }
-  if (!currentOrigin && targetOrigin) {
-    // No origin is configured and the URL is absolute — refuse it. The
-    // generated client never does this, but a hand-rolled call could.
-    throw new TypeError(`customFetch: absolute URL refused (${targetOrigin}); configure a base URL or use a relative path.`);
   }
 }
 

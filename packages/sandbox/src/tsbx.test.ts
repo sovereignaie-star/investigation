@@ -96,16 +96,18 @@ try {
   it("the legitimate path still works: the sandboxed child reaches the parent's gateway over a pipe", async () => {
     const { supported } = buildSocketBlocker();
     if (!supported) return;
-    // The sandboxed transform talks to the PARENT over stdout (the P2-005 IPC
-    // channel). The parent — NOT the child — calls the egress gateway, which
-    // here is the actual `@ir/egress` gateway with an injected transport
-    // (no real network needed). The child prints the gateway's verdict.
+    // The sandboxed transform talks to the PARENT over stdin/stdout (the
+    // P2-005 IPC channel). The parent — NOT the child — calls the egress
+    // gateway, which here is the actual `@ir/egress` gateway with an
+    // injected transport (no real network needed). The child RECEIVES the
+    // gateway's real response through stdin and verifies it.
     const { createEgressGateway } = await import("@ir/egress");
     const gateway = createEgressGateway({
       transport: { fetch: async () => ({ status: 200, body: "ok" }) },
       resolver: { resolve: async () => ["93.184.216.34"] },
       allowedHosts: ["example.com"],
     });
+    // Parent-side precondition: the gateway path is available to the parent.
     const gatewayOk = await gateway.request({
       caseId: "c1",
       purposeRef: "test",
@@ -116,30 +118,52 @@ try {
       sends: ["domain"],
       sensitivity: "normal",
     });
-    // Parent-side precondition: the gateway path is available to the parent.
     expect(gatewayOk.ok).toBe(true);
 
-    // Sandboxed child: it cannot open a socket, but it can talk on stdout.
-    // It proves both: sockets blocked (EACCES) AND stdout/IPC alive.
+    // Sandboxed child: it cannot open a socket (EACCES) but its stdin is a
+    // pipe. It proves BOTH the security property (socket blocked) AND the
+    // legitimate path (reads the parent's stdin and verifies the gateway's
+    // real response through the pipe).
     const worker = `
 import net from "node:net";
 let socketBlocked = false;
 const s = new net.Socket();
 s.connect(${port}, "127.0.0.1");
-s.on("error", () => { socketBlocked = true; });
-setTimeout(() => {
-  if (!socketBlocked) { console.log("FAIL_NOT_BLOCKED"); process.exit(1); }
-  console.log("IPC_OK");
-  process.exit(0);
-}, 300);
+s.on("error", () => {
+  socketBlocked = true;
+  console.log("CHILD_SOCKET_BLOCKED");
+});
+process.stdin.setEncoding("utf8");
+let buf = "";
+process.stdin.on("data", (chunk) => {
+  buf += chunk;
+  if (buf.trim() === "GATEWAY_RESPONSE_OK") {
+    console.log("CHILD_GOT_RESPONSE");
+    process.exit(0);
+  } else if (buf.trim() === "GATEWAY_RESPONSE_REFUSED") {
+    console.log("CHILD_GOT_REFUSAL");
+    process.exit(1);
+  }
+});
 `;
-    const result = await runSandboxedTransform(worker, { env: {} });
+    // Spawn with stdinData — the parent writes the gateway's verdict on
+    // stdin (the IPC channel) BEFORE the child exits (the child exits 0
+    // only after CHILD_GOT_RESPONSE, which happens after stdin arrives).
+    const result = await runSandboxedTransform(worker, {
+      env: {},
+      stdinData: "GATEWAY_RESPONSE_OK",
+    });
     expect(isRefusal(result)).toBe(false);
     const r = result as Exclude<typeof result, { refused: true }>;
     // The child's socket was blocked (the security property) ...
     expect(r.blockedByKernel).toBe(true);
-    // ... and its stdout (the IPC channel to the parent) still works.
-    expect(r.stdout).toContain("IPC_OK");
+    // ... and it printed that its socket was blocked (the parent-side proxy
+    // for `blockedByKernel`, since the child prints it BEFORE handling stdin).
+    expect(r.stdout).toContain("CHILD_SOCKET_BLOCKED");
+    // ... and it received the gateway's real response through the pipe and
+    // verified it (proving the legitimate path is functional).
+    expect(r.stdout).toContain("CHILD_GOT_RESPONSE");
+    expect(r.exitCode).toBe(0);
     expect(r.timedOut).toBe(false);
   });
 

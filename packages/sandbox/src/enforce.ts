@@ -26,6 +26,8 @@ export interface SandboxOptions {
   readonly cwd?: string;
   /** Timeout in ms (default 30_000). */
   readonly timeoutMs?: number;
+  /** Data to write to the child's stdin (the P2-005 IPC channel). */
+  readonly stdinData?: string;
 }
 
 export interface SandboxResult {
@@ -35,6 +37,8 @@ export interface SandboxResult {
   readonly stderr: string;
   readonly blockedByKernel: boolean;
   readonly timedOut: boolean;
+  /** The child's stdin handle (open while the child runs). */
+  readonly stdin?: ChildProcess["stdin"];
 }
 
 /**
@@ -54,6 +58,28 @@ function isRefusal(x: SandboxOutcome): x is SandboxRefusal {
 export { isRefusal };
 
 /**
+ * Fail-closed environment allowlist for the sandboxed child.
+ *
+ * The child must NOT inherit the parent's full `process.env` — that could leak
+ * secrets (tokens, API keys) into a transform. Only the minimum needed for
+ * node to run is passed, plus anything explicitly provided by `opts.env`.
+ */
+const ENV_ALLOWLIST = new Set(["PATH", "HOME", "LANG", "LC_ALL", "TERM", "TMPDIR", "USER"]);
+
+function buildChildEnv(extra: Record<string, string> | undefined, ldPreload: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const key of ENV_ALLOWLIST) {
+    const v = process.env[key];
+    if (v !== undefined) env[key] = v;
+  }
+  // Preserve node-specific env that's needed for module resolution.
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith("NODE_") && !key.startsWith("NODE_OPTIONS")) env[key] = process.env[key] as string;
+  }
+  return { ...env, ...(extra ?? {}), LD_PRELOAD: ldPreload };
+}
+
+/**
  * Spawn a node child process running `source` in the socket-blocked sandbox.
  * The source is a top-level module evaluated with `--input-type=module`.
  *
@@ -64,17 +90,13 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
   if (!supported || !socketBlockerPath) {
     return { refused: true, reason: "platform_unsupported" };
   }
-  const env: Record<string, string> = {
-    ...(process.env as Record<string, string>),
-    ...(opts.env ?? {}),
-    LD_PRELOAD: socketBlockerPath,
-  };
+  const env = buildChildEnv(opts.env, socketBlockerPath);
 
   return new Promise((resolve, reject) => {
     const child: ChildProcess = spawn("node", ["--input-type=module", "--eval", source], {
       cwd: opts.cwd,
       env,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
     let stderr = "";
@@ -89,7 +111,10 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
       clearTimeout(timeout);
       reject(e);
     });
-    child.on("exit", (code, _signal) => {
+    // Use `close` (not `exit`) so that stdout/stderr are fully drained before
+    // we resolve — otherwise `blockedByKernel` (computed from stderr) can be
+    // stale/missing at exit time (race between exit and last stderr flush).
+    child.on("close", (code, _signal) => {
       clearTimeout(timeout);
       resolve({
         ok: code === 0,
@@ -98,7 +123,16 @@ export async function runSandboxedTransform(source: string, opts: SandboxOptions
         stderr,
         blockedByKernel: stderr.includes("[block-socket]") || /EACCES/i.test(stderr),
         timedOut,
+        stdin: child.stdin ?? undefined,
       });
     });
+    // Write stdin data if provided (the P2-005 IPC channel).
+    if (opts.stdinData !== undefined && child.stdin) {
+      child.stdin.write(opts.stdinData);
+      child.stdin.end();
+    } else if (child.stdin) {
+      // No stdin data requested: close stdin so the child's reads get EOF.
+      child.stdin.end();
+    }
   });
 }
