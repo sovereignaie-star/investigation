@@ -36,11 +36,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Install bubblewrap so T-SBX can exercise the "full" isolation level (P2-005)
-        # If the runner still cannot create user namespaces (AppArmor), the live probe reports full=false with the
-        # reason and the full-level cases are skipped; the "network-only" level runs either way.
+        # The "full" level needs unprivileged user namespaces. Ubuntu 24.04 runners restrict them through AppArmor
+        # (kernel.apparmor_restrict_unprivileged_userns=1, measured in run 38289840426), so the runner is configured
+        # like a supported deployment host. This changes only the throwaway CI VM, not the repository or the product.
+        # If namespaces are still unavailable, the live probe reports full=false with the reason and the full-level
+        # cases are skipped; the "network-only" level runs either way.
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>/dev/null || true
           bwrap --unshare-all --ro-bind / / true && echo "bwrap: user namespaces available" || echo "bwrap: unavailable here"
       - name: Test with the core coverage ceiling (ROADMAP 8.5, G-13)

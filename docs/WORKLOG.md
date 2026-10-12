@@ -1777,3 +1777,8 @@
 - **القياس في CI** (run 38289343370، مهمة `test`): الفحص الحي طبع `[T-SBX] full=false networkOnly=true bubblewrap not installed`، فتخطى مستوى `full` كله (12 متخطى، 787 ناجحاً). وطبع T-SBX-008 أن ضابطه **غير مميِّز** هناك: Yama يمنع `process_vm_readv` على عملية غير منحدرة حتى بلا عزل، فنجاح الاختبار في CI لم يكن يثبت المرشح.
 - **الإصلاح:** المساعد يطلق طفله بنفسه ويستهدفه (Yama بالقيمة 1 يسمح بتتبع المنحدرين). الضابط السلبي يُشغَّل أولاً بلا عزل ويجب أن يعطي `vm_readv=OK attach=OK` حرفياً، ثم داخل العزل `EPERM` للاثنين.
 - **CI:** خطوة في مهمة `test` تثبّت `bubblewrap` وتطبع هل تتاح مساحات أسماء المستخدم؛ إن لم تتح يبقى `full` متخطى بسبب مطبوع. النتيجة تُسجَّل في الإدخال التالي.
+
+### 2026-10-12 — [P2-005] T-SBX في CI: AppArmor يمنع مساحات أسماء المستخدم على المشغّل
+
+- **القياس** (run 38289840426، مهمة `test`): بعد تثبيت `bubblewrap`: `kernel.apparmor_restrict_unprivileged_userns = 1`، و`bwrap --unshare-all` فشل بـ `Failed RTM_NEWADDR: Operation not permitted`؛ الفحص الحي `full=false`؛ 787 ناجحاً و12 متخطى. ضابط T-SBX-008 الجديد **نجح في CI** (`vm_readv=OK attach=OK` بلا عزل، ثم `EPERM` داخله)، فصار يثبت المرشح هناك.
+- **القرار:** مهمة `test` تضبط `kernel.apparmor_restrict_unprivileged_userns=0` على آلة CI المؤقتة، كما يُضبط على مضيف نشر مدعوم، ليُختبر المستوى `full` فعلاً. هذا متطلب نشر موثق في `docs/security/T-SBX_ENFORCEMENT.md`، لا تعطيل لحماية في المستودع أو المنتج.
