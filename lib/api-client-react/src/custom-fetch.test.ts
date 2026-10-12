@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from "vitest";
-import { customFetch, setBaseUrl } from "./custom-fetch.ts";
+import { customFetch, setBaseUrl } from "./custom-fetch.js";
 
 /** The same-origin guard (P2-003 / C) is what makes the custom-fetch.ts
  *  exemption in scripts/checks/no-direct-network.ts provable. */
