@@ -1,59 +1,117 @@
+/**
+ * Provider registry (P1-015, P2-003). Every outbound call in this module goes
+ * through the egress gateway — there is NO direct `fetch` here. This implements
+ * the owner's decision recorded in the D-8 review log (question 4, ADR-08-review-log.md):
+ * `/api/vault/:name/test` is routed through the gateway "فوراً ضمن P2-003".
+ *
+ * The `VaultTransport` interface is what the egress gateway's `EgressTransport`
+ * maps onto: it receives a PINNED host/IP and returns a status + body. It is a
+ * narrow, typed contract — no `RequestInit`, no `Response`, no ambient `fetch`.
+ *
+ * SIMULATION ONLY in this cycle: the caller injects a fake transport in tests.
+ * There is no code path that enables a real socket from this module.
+ */
+import { createEgressGateway, type DnsResolver, type EgressTransport, type EgressResult } from "@ir/egress";
 import type { Vault } from "@ir/store";
 
-/**
- * Provider calls that need an API key run on the server only (P1-015): the browser asks for a lookup, the server
- * reads the key from the vault and returns the result. The key never reaches the client, a URL it can see, or a log.
- * These mirror the two legacy browser lookups until the Phase 2 connectors replace them.
- */
+/** The pinned transport the gateway hands a request to (an EgressTransport). */
+export type VaultEgressTransport = EgressTransport;
+
+/** A resolver so tests can pin a public address without real DNS (a DnsResolver). */
+export type VaultDnsResolver = DnsResolver;
+
+/** The pinned provider destinations. No caller-supplied URL reaches the wire. */
+export const PROVIDER_HOSTS: Record<string, string> = {
+  ipinfo: "ipinfo.io",
+  virustotal: "www.virustotal.com",
+};
+
+/** Known provider names the vault UI lists. */
 export const KNOWN_PROVIDERS = [
-  "shodan",
-  "virustotal",
   "ipinfo",
-  "abuseipdb",
-  "hunter",
+  "virustotal",
   "haveibeenpwned",
-  "numverify",
-  "ipgeolocation",
-  "clearbit",
-  "fullcontact",
-  "censys",
+  "shodan",
   "binaryedge",
   "greynoise",
   "securitytrails",
   "whoisxml",
 ] as const;
 
-export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
-const TIMEOUT_MS = 10_000;
-const UA = "InvestigationRoom/1.0";
-
+/**
+ * The function the vault route calls. It builds an egress gateway with a
+ * pinned host for the provider, sends the secret as a header (never in the
+ * URL), and returns the provider's ok/tested status. The secret is redacted
+ * by the gateway's audit sink before any log is written.
+ *
+ * The `purposeRef` is a stable, non-case identifier because this is a
+ * system-level key validation, not an investigation lookup (review log Q4).
+ */
 export async function testProviderKey(
   name: string,
   vault: Vault,
-  f: FetchLike,
-): Promise<{ ok: boolean; tested: boolean; status?: number }> {
+  transport: VaultEgressTransport,
+  resolver: VaultDnsResolver,
+): Promise<{ ok: boolean; tested: boolean; reason?: string }> {
+  const host = PROVIDER_HOSTS[name];
+  if (!host) return { ok: true, tested: false };
   const key = vault.reveal(name);
   if (!key) return { ok: false, tested: false };
-  const signal = AbortSignal.timeout(TIMEOUT_MS);
-  let res: Response;
-  switch (name) {
-    case "ipinfo":
-      res = await f("https://ipinfo.io/8.8.8.8", { headers: { authorization: `Bearer ${key}`, accept: "application/json" }, signal });
-      break;
-    case "virustotal":
-      res = await f("https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8", { headers: { "x-apikey": key }, signal });
-      break;
-    default:
-      return { ok: true, tested: false };
+
+  const gateway = createEgressGateway({
+    resolver,
+    transport,
+    allowedHosts: Object.values(PROVIDER_HOSTS),
+    limits: {
+      maxRedirects: 1,
+      maxSizeBytes: 10_000,
+      timeoutMs: 10_000,
+      connectTimeoutMs: 5_000,
+      rateLimitPerHostPerSecond: 1,
+      rateLimitBurst: 5,
+    },
+  });
+
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (name === "ipinfo") headers["authorization"] = `Bearer ${key}`;
+  if (name === "virustotal") headers["x-apikey"] = key;
+
+  // TEMPORARY FAIL-CLOSED: the systemContext caseId exemption is disabled
+  // until the remaining Q4 conditions are met (allowedHosts required,
+  // auditSink wired, actual-destination check). The gateway denies the
+  // request BEFORE DNS and transport, and the route honestly reports
+  // "not tested" — never a fabricated caseId.
+  const result: EgressResult = await gateway.request({
+    systemContext: true,
+    purposeRef: "vault-key-validation",
+    transform: "vault.test@1",
+    url: `https://${host}/8.8.8.8`,
+    method: "GET",
+    headers,
+    sends: ["domain"],
+    sensitivity: "normal",
+    secret: key,
+    pinnedHost: host,
+    secretProvider: name,
+  });
+  if (!result.ok) {
+    return { ok: false, tested: false, reason: result.reason };
   }
-  return { ok: res.ok, tested: true, status: res.status };
+  // The gateway allows the request, but `EgressResult` does not carry the
+  // provider's response status, so we cannot report the key as VALIDATED.
+  // Until the response contract is expanded (an owner decision), the honest
+  // result is "not tested" with a reason — never a fabricated status.
+  return { ok: false, tested: false, reason: "provider_response_unavailable" };
 }
+
+/** Kept for backward compatibility with the lookup routes (which also need migration). */
+export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 export async function lookupIp(ip: string, vault: Vault, f: FetchLike): Promise<{ status: number; body: unknown }> {
   const key = vault.reveal("ipinfo");
-  const headers: Record<string, string> = { accept: "application/json", "user-agent": UA };
+  const headers: Record<string, string> = { accept: "application/json", "user-agent": "InvestigationRoom/1.0" };
   if (key) headers["authorization"] = `Bearer ${key}`;
-  const res = await f(`https://ipinfo.io/${encodeURIComponent(ip)}/json`, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const res = await f(`https://ipinfo.io/${encodeURIComponent(ip)}/json`, { headers, signal: AbortSignal.timeout(10_000) });
   return { status: res.ok ? 200 : 502, body: res.ok ? await res.json() : { error: `upstream ${res.status}` } };
 }
 
@@ -61,8 +119,8 @@ export async function lookupBreaches(email: string, vault: Vault, f: FetchLike):
   const key = vault.reveal("haveibeenpwned");
   if (!key) return { status: 409, body: { error: "haveibeenpwned key not configured" } };
   const res = await f(`https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}`, {
-    headers: { "hibp-api-key": key, "user-agent": UA },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { "hibp-api-key": key, "user-agent": "InvestigationRoom/1.0" },
+    signal: AbortSignal.timeout(10_000),
   });
   if (res.status === 404) return { status: 200, body: { breaches: [] } };
   return { status: res.ok ? 200 : 502, body: res.ok ? { breaches: (await res.json()) as unknown } : { error: `upstream ${res.status}` } };

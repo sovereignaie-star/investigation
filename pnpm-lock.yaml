@@ -362,6 +362,9 @@ importers:
       '@ir/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@ir/egress':
+        specifier: workspace:*
+        version: link:../../packages/egress
       '@ir/store':
         specifier: workspace:*
         version: link:../../packages/store
@@ -687,6 +690,28 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
+
+  packages/egress:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+
+  packages/engine:
+    dependencies:
+      '@ir/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ir/egress':
+        specifier: workspace:*
+        version: link:../egress
+      '@ir/schema':
+        specifier: workspace:*
+        version: link:../schema
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
 
   packages/ledger:
     dependencies:

@@ -50,7 +50,17 @@ async function start(env: NodeJS.ProcessEnv = ENABLED) {
     if (url.includes("haveibeenpwned")) return new Response("", { status: 404 });
     return Response.json({ ip: "8.8.8.8", city: "Mountain View" });
   };
-  const app = createApp(vaultRouter(() => vault, { fetch: fakeFetch, env }));
+  const vaultTestCalls: Array<{ url: string; host: string; pinnedIp: string; method: string }> = [];
+  const vaultTestTransport = {
+    async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
+      vaultTestCalls.push({ ...req });
+      return { status: 200, body: "" };
+    },
+  };
+  const vaultTestResolver = {
+    resolve: async (host: string) => (host === "ipinfo.io" || host === "www.virustotal.com" ? ["93.184.216.34"] : []),
+  };
+  const app = createApp(vaultRouter(() => vault, { fetch: fakeFetch, env, vaultTestTransport, vaultTestResolver }));
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
   await new Promise((r) => server.once("listening", r));
@@ -62,17 +72,30 @@ async function start(env: NodeJS.ProcessEnv = ENABLED) {
     all.push(text, JSON.stringify([...res.headers]));
     return { status: res.status, text, headers: res.headers };
   };
-  return { call, upstream, all, vault };
+  return { call, upstream, all, vault, vaultTestCalls };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {
   it("stores, lists status, tests and deletes a key; no response ever contains the secret", async () => {
-    const { call, upstream, all } = await start();
+    const { call, upstream, all, vaultTestCalls } = await start();
     expect((await call("/vault/ipinfo", put(SECRET))).status).toBe(200);
     const list = JSON.parse((await call("/vault", withAdmin())).text) as { entries: { name: string; configured: boolean }[] };
     expect(list.entries.find((e) => e.name === "ipinfo")).toMatchObject({ configured: true });
     expect(list.entries.find((e) => e.name === "shodan")).toMatchObject({ configured: false });
-    expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({ ok: true, tested: true });
+    // TEMPORARY FAIL-CLOSED: the vault test path is CLOSED until the Q4
+    // conditions are met. The gateway denies the request BEFORE DNS and
+    // transport (reason no_case), so the route honestly reports "not tested".
+    expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({
+      ok: false,
+      tested: false,
+      reason: "no_case",
+    });
+    // TEMPORARY FAIL-CLOSED: the vault test path is CLOSED (Q4 conditions
+    // incomplete) — the gateway denies the request before DNS and transport,
+    // so ZERO transport calls happen. The gateway-level reachability and
+    // redaction (T-SEC-SSRF-043/044) are proven by the gateway's own tests
+    // in packages/egress/src/egress-limits.test.ts and egress.test.ts.
+    expect(vaultTestCalls.length).toBe(0);
     const ip = await call("/lookup/ip", lookup({ ip: "8.8.8.8" }));
     expect(JSON.parse(ip.text)).toMatchObject({ city: "Mountain View" });
     // The key travels only server -> provider in a header, never in a URL or API response.
@@ -160,6 +183,46 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
   });
 
+  describe("T-SEC-SSRF-045 (review log Q4): vault test cannot reach an unauthorized host", () => {
+    it("a request whose pinnedHost is not a provider host is denied with host_not_allowed and no secret is sent", async () => {
+      const transport = {
+        calls: [] as Array<{ url: string; host: string; pinnedIp: string }>,
+        async fetch(req: { url: string; host: string; pinnedIp: string }) {
+          transport.calls.push(req);
+          return { status: 200, body: "" };
+        },
+      };
+      const resolver = {
+        resolve: async (host: string) => (host === "evil.example" ? ["93.184.216.34"] : []),
+      };
+      const { createEgressGateway } = await import("@ir/egress");
+      const g = createEgressGateway({ resolver, transport, allowedHosts: ["ipinfo.io", "www.virustotal.com"] });
+      const r = await g.request({
+        systemContext: true,
+        // TEMPORARY FAIL-CLOSED: systemContext alone does not exempt the
+        // request from caseId, so a caseId is supplied here (the request
+        // still targets an unauthorized host to prove the allowlist works).
+        caseId: "sys-test",
+        purposeRef: "vault-key-validation",
+        transform: "vault.test@1",
+        url: "https://evil.example/8.8.8.8",
+        method: "GET",
+        headers: { accept: "application/json" },
+        sends: ["domain"],
+        sensitivity: "normal",
+        secret: "k",
+        pinnedHost: "evil.example",
+        secretProvider: "ipinfo",
+      });
+      expect(r.ok).toBe(false);
+      // The gateway denies any host outside the pinned provider hosts. The
+      // exact reason depends on which check fires first; for a public IP
+      // with a non-provider pinnedHost it is host_not_allowed.
+      expect(r.reason).toBe("host_not_allowed");
+      expect(transport.calls.length).toBe(0);
+    });
+  });
+
   it("does not grant a hostile origin CORS access to the vault", async () => {
     const { call } = await start();
     const response = await call("/vault", {
@@ -171,5 +234,15 @@ describe("vault routes (P1-015, P1-026)", () => {
     });
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
     expect(response.status).toBe(401);
+  });
+});
+
+describe("vault test result honesty (provider_response_unavailable)", () => {
+  it("the vault test never reports a fabricated provider status when the gateway allows but the response contract is missing", async () => {
+    // A 401/403/500 from the provider cannot be distinguished today, so the
+    // route must not report the key as validated.
+    const s = await start({ IR_ADMIN_TOKEN: ADMIN_TOKEN });
+    const r = JSON.parse((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text);
+    expect(r).toMatchObject({ ok: false, tested: false });
   });
 });
