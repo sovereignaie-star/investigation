@@ -50,7 +50,17 @@ async function start(env: NodeJS.ProcessEnv = ENABLED) {
     if (url.includes("haveibeenpwned")) return new Response("", { status: 404 });
     return Response.json({ ip: "8.8.8.8", city: "Mountain View" });
   };
-  const app = createApp(vaultRouter(() => vault, { fetch: fakeFetch, env }));
+  const vaultTestCalls: Array<{ url: string; host: string; pinnedIp: string; method: string }> = [];
+  const vaultTestTransport = {
+    async fetch(req: { url: string; host: string; pinnedIp: string; method: string }) {
+      vaultTestCalls.push({ ...req });
+      return { status: 200, body: "" };
+    },
+  };
+  const vaultTestResolver = {
+    resolve: async (host: string) => (host === "ipinfo.io" || host === "www.virustotal.com" ? ["93.184.216.34"] : []),
+  };
+  const app = createApp(vaultRouter(() => vault, { fetch: fakeFetch, env, vaultTestTransport, vaultTestResolver }));
   const server = app.listen(0, "127.0.0.1");
   servers.push(server);
   await new Promise((r) => server.once("listening", r));
@@ -62,17 +72,25 @@ async function start(env: NodeJS.ProcessEnv = ENABLED) {
     all.push(text, JSON.stringify([...res.headers]));
     return { status: res.status, text, headers: res.headers };
   };
-  return { call, upstream, all, vault };
+  return { call, upstream, all, vault, vaultTestCalls };
 }
 
 describe("vault routes (P1-015, P1-026)", () => {
   it("stores, lists status, tests and deletes a key; no response ever contains the secret", async () => {
-    const { call, upstream, all } = await start();
+    const { call, upstream, all, vaultTestCalls } = await start();
     expect((await call("/vault/ipinfo", put(SECRET))).status).toBe(200);
     const list = JSON.parse((await call("/vault", withAdmin())).text) as { entries: { name: string; configured: boolean }[] };
     expect(list.entries.find((e) => e.name === "ipinfo")).toMatchObject({ configured: true });
     expect(list.entries.find((e) => e.name === "shodan")).toMatchObject({ configured: false });
     expect(JSON.parse((await call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).text)).toMatchObject({ ok: true, tested: true });
+    // T-SEC-SSRF-043: the vault test path goes through the egress gateway
+    // (pinned host, pinned IP, no direct fetch).
+    expect(vaultTestCalls.length).toBeGreaterThanOrEqual(1);
+    expect(vaultTestCalls[0].host).toBe("ipinfo.io");
+    expect(vaultTestCalls[0].pinnedIp).toBe("93.184.216.34");
+    expect(vaultTestCalls[0].method).toBe("GET");
+    // T-SEC-SSRF-044: the key never appears in the URL.
+    expect(vaultTestCalls.every((c) => !c.url.includes(SECRET))).toBe(true);
     const ip = await call("/lookup/ip", lookup({ ip: "8.8.8.8" }));
     expect(JSON.parse(ip.text)).toMatchObject({ city: "Mountain View" });
     // The key travels only server -> provider in a header, never in a URL or API response.

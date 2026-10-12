@@ -40,6 +40,13 @@ export type EgressDenyCode = typeof EGRESS_DENY_CODE;
 export interface EgressRequest {
   caseId?: string;
   purposeRef?: string;
+  /**
+   * System-level request (vault key validation, health checks). When true, the
+   * request is exempt from the caseId requirement but MUST have a purposeRef
+   * and a pinnedHost + secretProvider if a secret is sent. Recorded in the
+   * audit sink with systemContext=true (review log Q4, ADR-08).
+   */
+  systemContext?: boolean;
   transform: string;
   url: string;
   method?: "GET" | "HEAD";
@@ -153,6 +160,7 @@ const REQUEST_FIELDS = new Set([
   "secret",
   "pinnedHost",
   "secretProvider",
+  "systemContext",
 ]);
 
 function deny(reason: EgressReason, transportCalls = 0, detail?: string): EgressResult {
@@ -265,7 +273,8 @@ function validateHeadersType(headers: Record<string, string> | undefined): Egres
 /** Pre-DNS policy checks (offline, case, sensitivity, sends, headers, secrets). */
 function preDnsChecks(req: EgressRequest, offline: boolean): EgressResult | null {
   if (offline) return deny("offline");
-  if (!req.caseId || !req.purposeRef) return deny("no_case");
+  if (!req.systemContext && !req.caseId) return deny("no_case");
+  if (!req.purposeRef) return deny("no_case");
   const sensErr = checkSensitivity(req.sensitivity);
   if (sensErr) return sensErr;
   const manifestErr = checkSends(req.sends);

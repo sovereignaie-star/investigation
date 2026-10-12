@@ -1363,3 +1363,18 @@
 - **الفرع:** `feat/P2-001-egress-adapter`.
 - **ما تم:** حُدّث `vitest.config.ts` ليدخل `packages/engine/src` و`packages/egress/src` في قائمة CORE (حد تغطية الأسطر ≥ 85%). لم يُستثن أي ملف لاجتياز الحد؛ غطيت الحزمتان فعلياً (egress/src 97.05% أسطر، engine/src 92.3% أسطر) والحد الأعلى للمساحة كلها 97.62%.
 - **الأدلة:** `corepack pnpm test:coverage` → exit 0؛ 499/499 اختباراً ناجحاً؛ ملخص الأسطر 97.62%.
+
+### 2026-10-12 — [P2-003] توجيه /api/vault/:name/test عبر بوابة الخروج (قرار المراجعة س4)
+- **المنفّذ:** Perplexity Computer بتفويض المالك (توجيه 2026-10-12).
+- **الفرع:** `audit/P2-003-investigation` (رأس `686a1f0` بعد دمج `feat/P2-001-egress-adapter`).
+- **القرار المطبَّق:** سجل مراجعة D-8 ([`docs/adr/ADR-08-review-log.md`](docs/adr/ADR-08-review-log.md) السؤال 4): «نعم، فوراً ضمن P2-003» — نقل `/api/vault/:name/test` إلى البوابة.
+- **ما تم:**
+  - `packages/egress/src/egress.ts`: أضيف `systemContext?: boolean` إلى `EgressRequest` و`REQUEST_FIELDS`. عندما يكون `true` يُعفى الطلب من `caseId` (طلب نظامي لا تحقيق) ويبقى `purposeRef` إلزامياً. هذا هو عقد «`systemContext: true`» المقترح في المراجعة.
+  - `apps/server/src/lib/providers.ts`: أُعيدت كتابة `testProviderKey()` ليبني `createEgressGateway` بمضيف مثبَّت من `PROVIDER_HOSTS` (ipinfo.io، www.virustotal.com)، وسر يُرسل كترويسة لا في URL، وحدود (10KB، 10s/5s، rate-limit)، ويستدعي `gateway.request({ systemContext: true, purposeRef: "vault-key-validation", ... })`. لا `fetch` مباشر في هذه الدالة. `lookupIp`/`lookupBreaches` بقيا كما هما (مُقيَّدان بـ `IR_ENABLE_LOOKUPS` بالفعل).
+  - `apps/server/src/routes/vault.ts`: `vaultRouter` يقبل `vaultTestTransport` و`vaultTestResolver`؛ عند غيابهما يرد 503 مغلقاً («simulation-only cycle») — لا يوجد مسار شبكة حقيقية.
+  - `apps/server/src/routes/vault.test.ts`: الاختبار الحالي يمر؛ أُضيفت تأكيدات T-SEC-SSRF-043 (المسار عبر البوابة، المضيف وIP المثبَّتان) وT-SEC-SSRF-044 (السر لا يظهر في URL).
+  - `apps/server/package.json`: اعتمادية `@ir/egress: workspace:*`.
+  - إصلاح GR-20: بقايا علامات دمج في `docs/STATUS.md` (أسطر 408-412) حُلّت دلالياً.
+- **الأدلة:** `corepack pnpm vitest run apps/server` → 14/14 ناجح. `corepack pnpm vitest run` (كامل) → 499/499. `corepack pnpm lint`/`typecheck`/`build` → نظيفة. `test:coverage` → أسطر 97.75%. `node scripts/governance/check.mjs --consistency` → consistent.
+- **ما لم يُنفّذ (قرار المالك):** الربط الإنتاجي (نقل/resolver حقيقيان للخادم)، تحويل `lookupIp`/`lookupBreaches` إلى البوابة (يحتاج `caseId` لكل تحقيق — P2-014)، اختبار T-SEC-SSRF-045 (رفض مضيف غير مصرح) — سيُضاف عند توفر إطار اختبار للرفض.
+- **الالتزامات الحاكمة:** لا دفع إلى main، لا force push، لا --no-verify، لا دمج، لا اعتماد ADR-08 نهائي، لا اتصال شبكي حقيقي.

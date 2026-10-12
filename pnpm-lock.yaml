@@ -362,6 +362,9 @@ importers:
       '@ir/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@ir/egress':
+        specifier: workspace:*
+        version: link:../../packages/egress
       '@ir/store':
         specifier: workspace:*
         version: link:../../packages/store

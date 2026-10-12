@@ -3,7 +3,15 @@ import rateLimit from "express-rate-limit";
 import { validate } from "@ir/core/validate";
 import { assertVaultName, type Vault } from "@ir/store";
 import { requireAdmin } from "../lib/admin";
-import { KNOWN_PROVIDERS, lookupBreaches, lookupIp, testProviderKey, type FetchLike } from "../lib/providers";
+import {
+  KNOWN_PROVIDERS,
+  lookupBreaches,
+  lookupIp,
+  testProviderKey,
+  type FetchLike,
+  type VaultDnsResolver,
+  type VaultEgressTransport,
+} from "../lib/providers";
 
 /** Express 5 types route params as string | string[]; routes here take one segment each. */
 const param = (v: string | string[] | undefined): string => (typeof v === "string" ? v : "");
@@ -28,7 +36,16 @@ export const LOOKUPS_DISABLED = {
 } as const;
 
 /** Key vault and keyed lookups (P1-015). No route ever responds with a secret. */
-export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; env?: NodeJS.ProcessEnv } = {}): IRouter {
+export function vaultRouter(
+  getVault: () => Vault,
+  opts: {
+    fetch?: FetchLike;
+    env?: NodeJS.ProcessEnv;
+    /** The egress transport + resolver for /vault/:name/test. Injected in tests; never a real socket. */
+    vaultTestTransport?: VaultEgressTransport;
+    vaultTestResolver?: VaultDnsResolver;
+  } = {},
+): IRouter {
   const f: FetchLike = opts.fetch ?? ((url, init) => fetch(url, init));
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env);
@@ -72,7 +89,16 @@ export function vaultRouter(getVault: () => Vault, opts: { fetch?: FetchLike; en
 
   router.post("/vault/:name/test", async (req, res) => {
     try {
-      res.json(await testProviderKey(param(req.params["name"]), getVault(), f));
+      const transport = opts.vaultTestTransport;
+      const resolver = opts.vaultTestResolver;
+      if (!transport || !resolver) {
+        // Fail closed when no transport is injected: this is a simulation-only
+        // cycle and there is no real network path. The caller must provide a
+        // transport (tests do); production wiring is a separate decision.
+        res.status(503).json({ ok: false, tested: false, error: "vault test transport not configured (simulation-only cycle)" });
+        return;
+      }
+      res.json(await testProviderKey(param(req.params["name"]), getVault(), transport, resolver));
     } catch {
       res.status(502).json({ ok: false, tested: true, error: "provider unreachable" });
     }
