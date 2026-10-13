@@ -1965,3 +1965,13 @@
 - **ما تم:** إيداع Dependabot يرفع `date-fns` من `^3.6.0` إلى `^4.4.0` في `apps/sandbox/package.json` و`apps/web/package.json` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017].
 - **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء على `0a0b77f`).
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
+
+### 2026-10-14 — [P0-017] دمج تحديث Dependabot: eslint-plugin-react-hooks 5.2.0 → 7.1.1 (PR #55)
+- **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
+- **ما تم:** إيداع Dependabot يرفع `eslint-plugin-react-hooks` من `5.2.0` إلى `7.1.1`. كان فشل البناء حقيقياً: القواعد الجديدة في 7.x (react-hooks/set-state-in-effect وreact-hooks/purity) رصدت 4 أخطاء في شيفرة React قائمة. أُصلحت:
+  - `apps/sandbox/src/hooks/use-mobile.tsx`: تهيئة كسولة للحالة بدل setState متزامن في التأثير.
+  - `apps/sandbox/src/App.tsx`: إزالة setState المتزامن من التأثير + `key={previewPath}` لإعادة التركيب عند تغيّر المسار.
+  - `apps/sandbox/src/components/ui/carousel.tsx`: تعليق eslint-disable موضعي للنمط القياسي (shadcn) المتزامن مع حالة embla الخارجية.
+  - `apps/sandbox/src/components/ui/sidebar.tsx`: عرض زائف حتمي بدل `Math.random()` في useMemo.
+- **الأدلة:** `pnpm run lint` نظيف (0 أخطاء)؛ `pnpm run typecheck` نظيف؛ `pnpm test` => 63 ملفاً / 872 نجاح / 12 تخطي.
+- **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
