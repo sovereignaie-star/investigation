@@ -715,6 +715,12 @@ importers:
         specifier: workspace:*
         version: link:../schema
     devDependencies:
+      '@ir/sim':
+        specifier: workspace:*
+        version: link:../sim
+      '@ir/transforms':
+        specifier: workspace:*
+        version: link:../transforms
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
