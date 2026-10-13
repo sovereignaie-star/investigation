@@ -416,7 +416,7 @@ describe("systemContext + audit sink (review log Q4, T-SEC-SSRF-044)", () => {
     url: "https://ipinfo.io/8.8.8.8",
     method: "GET" as const,
     headers: { accept: "application/json" },
-    sends: ["domain"],
+    sends: ["ip"],
     sensitivity: "normal",
     secret: "SUPER-SECRET-KEY-12345",
     pinnedHost: "ipinfo.io",
