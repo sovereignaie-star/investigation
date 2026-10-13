@@ -1965,3 +1965,9 @@
 - **ما تم:** إيداع Dependabot يرفع `date-fns` من `^3.6.0` إلى `^4.4.0` في `apps/sandbox/package.json` و`apps/web/package.json` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017].
 - **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء على `0a0b77f`).
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
+
+### 2026-10-14 — [P0-017] دمج تحديث Dependabot: thread-stream 3.1.0 → 4.2.0 (PR #59)
+- **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
+- **ما تم:** إيداع Dependabot يرفع `thread-stream` من `^3.1.0` إلى `^4.2.0` في `apps/server/package.json` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017]. المسار `apps/server/` ضمن D-8 — يلزم مراجعة مالك الشيفرة على الرأس الجديد قبل الدمج.
+- **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء).
+- **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
