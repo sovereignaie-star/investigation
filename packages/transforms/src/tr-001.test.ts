@@ -11,30 +11,30 @@ describe("TR-001 dns-resolve", () => {
   it("emits typed findings for A/AAAA/MX/NS/TXT/CNAME answers", async () => {
     const sim = createSimServer([
       {
-        match: "https://dns.google/resolve?name=example.com&type=1",
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=1$/,
         response: { status: 200, body: JSON.stringify({ Answer: [{ name: "example.com.", type: 1, data: "93.184.216.34" }] }) },
       },
       {
-        match: "https://dns.google/resolve?name=example.com&type=28",
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=28$/,
         response: {
           status: 200,
           body: JSON.stringify({ Answer: [{ name: "example.com.", type: 28, data: "2606:2800:220:1:248:1893:25c8:1946" }] }),
         },
       },
       {
-        match: "https://dns.google/resolve?name=example.com&type=15",
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=15$/,
         response: { status: 200, body: JSON.stringify({ Answer: [{ name: "example.com.", type: 15, data: "10 mail.example.com" }] }) },
       },
       {
-        match: "https://dns.google/resolve?name=example.com&type=2",
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=2$/,
         response: { status: 200, body: JSON.stringify({ Answer: [{ name: "example.com.", type: 2, data: "a.iana-servers.net." }] }) },
       },
       {
-        match: "https://dns.google/resolve?name=example.com&type=16",
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=16$/,
         response: { status: 200, body: JSON.stringify({ Answer: [{ name: "example.com.", type: 16, data: '"v=spf1 -all"' }] }) },
       },
       {
-        match: "https://dns.google/resolve?name=example.com&type=5",
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=5$/,
         response: { status: 200, body: JSON.stringify({ Answer: [{ name: "www.example.com.", type: 5, data: "example.com." }] }) },
       },
     ]);
@@ -71,12 +71,30 @@ describe("TR-001 dns-resolve", () => {
 
   it("returns an empty finding set when a record type has no answer", async () => {
     const sim = createSimServer([
-      { match: "https://dns.google/resolve?name=example.com&type=1", response: { status: 200, body: JSON.stringify({ Answer: [] }) } },
-      { match: "https://dns.google/resolve?name=example.com&type=28", response: { status: 200, body: JSON.stringify({ Answer: [] }) } },
-      { match: "https://dns.google/resolve?name=example.com&type=15", response: { status: 200, body: JSON.stringify({ Answer: [] }) } },
-      { match: "https://dns.google/resolve?name=example.com&type=2", response: { status: 200, body: JSON.stringify({ Answer: [] }) } },
-      { match: "https://dns.google/resolve?name=example.com&type=16", response: { status: 200, body: JSON.stringify({ Answer: [] }) } },
-      { match: "https://dns.google/resolve?name=example.com&type=5", response: { status: 200, body: JSON.stringify({ Answer: [] }) } },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=1$/,
+        response: { status: 200, body: JSON.stringify({ Answer: [] }) },
+      },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=28$/,
+        response: { status: 200, body: JSON.stringify({ Answer: [] }) },
+      },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=15$/,
+        response: { status: 200, body: JSON.stringify({ Answer: [] }) },
+      },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=2$/,
+        response: { status: 200, body: JSON.stringify({ Answer: [] }) },
+      },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=16$/,
+        response: { status: 200, body: JSON.stringify({ Answer: [] }) },
+      },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=5$/,
+        response: { status: 200, body: JSON.stringify({ Answer: [] }) },
+      },
     ]);
     const result = await runTransform(dnsResolve, { transport: sim.transport, input: { domain: "example.com" } });
     expect(result.output.findings).toHaveLength(0);
@@ -84,7 +102,10 @@ describe("TR-001 dns-resolve", () => {
 
   it("propagates a transport failure as a transform error", async () => {
     const sim = createSimServer([
-      { match: "https://dns.google/resolve?name=example.com&type=1", response: { kind: "transport:network", message: "sim: no route" } },
+      {
+        match: /^https:\/\/dns\.google\/resolve\?name=example\.com&type=1$/,
+        response: { kind: "transport:network", message: "sim: no route" },
+      },
     ]);
     await expect(runTransform(dnsResolve, { transport: sim.transport, input: { domain: "example.com" } })).rejects.toThrow();
   });

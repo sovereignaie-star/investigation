@@ -14,9 +14,9 @@ const BOOTSTRAP = JSON.stringify({
 describe("TR-002 rdap-domain", () => {
   it("emits registrar, dates, status and nameserver findings", async () => {
     const sim = createSimServer([
-      { match: "https://data.iana.org/rdap/dns.json", response: { status: 200, body: BOOTSTRAP } },
+      { match: /^https:\/\/data\.iana\.org\/rdap\/dns\.json$/, response: { status: 200, body: BOOTSTRAP } },
       {
-        match: "https://rdap.verisign.com/com/v1/domain/example.com",
+        match: /^https:\/\/rdap\.verisign\.com\/com\/v1\/domain\/example\.com$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -60,7 +60,7 @@ describe("TR-002 rdap-domain", () => {
   it("fails closed when the TLD has no RDAP bootstrap entry", async () => {
     const sim = createSimServer([
       {
-        match: "https://data.iana.org/rdap/dns.json",
+        match: /^https:\/\/data\.iana\.org\/rdap\/dns\.json$/,
         response: { status: 200, body: JSON.stringify({ services: [[["com"], "https://rdap.verisign.com/com/v1/"]] }) },
       },
     ]);

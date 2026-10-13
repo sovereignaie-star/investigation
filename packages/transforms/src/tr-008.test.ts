@@ -13,7 +13,7 @@ describe("TR-008 shodan-host", () => {
   it("emits open-port and product findings", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.shodan.io/shodan/host/8.8.8.8",
+        match: /^https:\/\/api\.shodan\.io\/shodan\/host\/8\.8\.8\.8$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -41,7 +41,10 @@ describe("TR-008 shodan-host", () => {
 
   it("returns an empty finding set for a host with no data", async () => {
     const sim = createSimServer([
-      { match: "https://api.shodan.io/shodan/host/8.8.8.8", response: { status: 200, body: JSON.stringify({ ports: [], data: [] }) } },
+      {
+        match: /^https:\/\/api\.shodan\.io\/shodan\/host\/8\.8\.8\.8$/,
+        response: { status: 200, body: JSON.stringify({ ports: [], data: [] }) },
+      },
     ]);
     const result = await runTransform(shodanHost, { transport: sim.transport, input: { ip: "8.8.8.8" } });
     expect(result.output.findings).toHaveLength(0);

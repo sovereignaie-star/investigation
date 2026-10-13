@@ -17,9 +17,9 @@ const ASN_BOOTSTRAP = JSON.stringify({
 describe("TR-003 rdap-ip", () => {
   it("emits network range, name and registrant findings for an IP", async () => {
     const sim = createSimServer([
-      { match: "https://data.iana.org/rdap/ipv4.json", response: { status: 200, body: IPV4_BOOTSTRAP } },
+      { match: /^https:\/\/data\.iana\.org\/rdap\/ipv4\.json$/, response: { status: 200, body: IPV4_BOOTSTRAP } },
       {
-        match: "https://rdap.arin.net/registry/ip/8.8.8.8",
+        match: /^https:\/\/rdap\.arin\.net\/registry\/ip\/8\.8\.8\.8$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -47,9 +47,9 @@ describe("TR-003 rdap-ip", () => {
 
   it("emits holder findings for an ASN", async () => {
     const sim = createSimServer([
-      { match: "https://data.iana.org/rdap/asn.json", response: { status: 200, body: ASN_BOOTSTRAP } },
+      { match: /^https:\/\/data\.iana\.org\/rdap\/asn\.json$/, response: { status: 200, body: ASN_BOOTSTRAP } },
       {
-        match: "https://rdap.arin.net/registry/autnum/15169",
+        match: /^https:\/\/rdap\.arin\.net\/registry\/autnum\/15169$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -77,7 +77,7 @@ describe("TR-003 rdap-ip", () => {
   it("fails closed when no RIR covers the IP", async () => {
     const sim = createSimServer([
       {
-        match: "https://data.iana.org/rdap/ipv4.json",
+        match: /^https:\/\/data\.iana\.org\/rdap\/ipv4\.json$/,
         response: { status: 200, body: JSON.stringify({ services: [[["10.0.0.0/8"], "https://rdap.example/"]] }) },
       },
     ]);
