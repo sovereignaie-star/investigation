@@ -1,7 +1,18 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { Case, Claim, Entity, Evidence, LedgerEntry, MergeDecision, Observation, SCHEMAS, toJsonSchemas } from "./index.ts";
+import {
+  Case,
+  Claim,
+  Entity,
+  Evidence,
+  LedgerEntry,
+  MergeDecision,
+  Observation,
+  SCHEMAS,
+  TransformManifest,
+  toJsonSchemas,
+} from "./index.ts";
 
 const U = (n: number) => `01J${String(n).padStart(23, "0")}`; // valid ULIDs for fixtures
 const T = "2026-10-10T08:00:00.000Z";
@@ -53,7 +64,7 @@ const valid: Record<keyof typeof SCHEMAS, unknown> = {
     version: "1.0.0",
     inputs: ["domain"],
     outputs: ["ip", "dns_record"],
-    network: { allow: ["dns.google", "cloudflare-dns.com"] },
+    network: { mode: "pinned", allow: ["dns.google", "cloudflare-dns.com"] },
     limits: { rps: 5, timeoutMs: 5000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
@@ -105,6 +116,11 @@ describe("@ir/schema rejects invalid data", () => {
   it("D9: merge survivor is one of the merged entities", () => {
     bad(MergeDecision, { ...base.MergeDecision, survivorId: U(99) });
     bad(MergeDecision, { ...base.MergeDecision, entityIds: [U(2), U(2)] });
+  });
+  it("P2-004: a transform manifest without a network mode is invalid (fail-closed)", () => {
+    bad(TransformManifest, { ...base.TransformManifest, network: { allow: ["dns.google"] } });
+    bad(TransformManifest, { ...base.TransformManifest, network: { mode: "pinned", allow: [] } });
+    bad(TransformManifest, { ...base.TransformManifest, network: { mode: "public", allow: ["dns.google"] } });
   });
 });
 

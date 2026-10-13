@@ -1,0 +1,24 @@
+{
+  "name": "@ir/transforms",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./manifest": "./src/manifest.ts",
+    "./transform": "./src/transform.ts",
+    "./output": "./src/output.ts",
+    "./runner": "./src/runner.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ir/schema": "workspace:*",
+    "@ir/engine": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

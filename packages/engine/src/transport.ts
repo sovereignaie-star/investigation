@@ -15,6 +15,8 @@ export interface TransportResponse {
   readonly status: number;
   readonly body: ReadableStream<Uint8Array> | Uint8Array | string;
   readonly contentType?: string;
+  /** Response headers (lower-cased keys), when the transport can provide them. */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 export type TransportErrorKind =
