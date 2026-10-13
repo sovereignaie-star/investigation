@@ -35,10 +35,24 @@ export interface RunTransformOptions {
   /** The run's cancellation signal (the engine's per-run token in production). */
   signal?: AbortSignal;
   /**
-   * When true, refuse to run: in-process execution provides no runtime isolation.
-   * Set by production wiring that must not execute untrusted transforms in-process.
+   * When true, refuse to run in-process: in-process execution provides no runtime
+   * isolation. Set by production wiring that must not execute untrusted transforms
+   * in-process. When `isolatedModule` is also provided, the run is routed to the
+   * real sandbox (`runTransformIsolated`, P2-005) instead of being refused.
    */
   requireIsolation?: boolean;
+  /**
+   * Module path to run in the sandbox when `requireIsolation` is true. The module
+   * is bundled (never executed in the parent) and spawned under seccomp +
+   * namespaces; its network goes through the injected transport via IPC.
+   */
+  isolatedModule?: string;
+  /** The transform id to select from `isolatedModule`'s exports. */
+  transformId?: string;
+  /** Minimum isolation the sandbox must provide (default "full"). */
+  requireAssurance?: import("@ir/transform-sandbox").Assurance;
+  /** Wall-clock backstop for the whole sandboxed run (default 30_000). */
+  sandboxTimeoutMs?: number;
   /** Injectable clock for deterministic rate-limit tests. */
   now?: () => number;
   /** Injectable sleep for deterministic rate-limit tests. */
@@ -95,7 +109,7 @@ function classifyTransportError(err: unknown): { kind: string; message: string }
  * replacement for it. The bucket is per-run, so concurrent runs never share or
  * steal each other's allowance.
  */
-class RateLimiter {
+export class RateLimiter {
   private tokens: number;
   private lastRefill: number;
   constructor(
@@ -124,7 +138,7 @@ class RateLimiter {
 }
 
 /** Wrap a transport so every request is counted, limited, and recorded as evidence. */
-function recordingTransport(
+export function recordingTransport(
   transport: HttpTransport,
   evidence: TransformEvidence[],
   limiter: RateLimiter,
@@ -199,9 +213,32 @@ function recordingTransport(
  * validated before it is returned. Failures are typed by stage and carry the
  * evidence recorded up to the failure.
  */
-export async function runTransform<TInput>(definition: Transform<TInput>, opts: RunTransformOptions): Promise<RunTransformResult> {
+export async function runTransform<TInput>(
+  definition: Transform<TInput> | undefined,
+  opts: RunTransformOptions,
+): Promise<RunTransformResult> {
   if (opts.requireIsolation === true) {
-    throw new TransformRunError("refused", "in-process execution provides no runtime isolation; use the sandbox (P2-005)", []);
+    if (opts.isolatedModule) {
+      const { runTransformIsolated } = await import("./isolated.ts");
+      return runTransformIsolated(opts.isolatedModule, {
+        transport: opts.transport,
+        input: opts.input,
+        signal: opts.signal,
+        transformId: opts.transformId,
+        requireAssurance: opts.requireAssurance,
+        sandboxTimeoutMs: opts.sandboxTimeoutMs,
+        now: opts.now,
+        sleep: opts.sleep,
+      });
+    }
+    throw new TransformRunError(
+      "refused",
+      "in-process execution provides no runtime isolation; pass isolatedModule to run in the sandbox (P2-005)",
+      [],
+    );
+  }
+  if (!definition) {
+    throw new TransformRunError("refused", "a transform definition is required for in-process execution", []);
   }
   const manifest = TransformManifestSchema.parse(definition.manifest);
   const signal = opts.signal ?? new AbortController().signal;

@@ -152,7 +152,8 @@ export async function testProviderKey(
     url: `https://${host}${test.path}`,
     method: "GET",
     headers,
-    sends: ["domain"],
+    // both key-test paths carry a public IP (8.8.8.8); the gateway inspects the path (T-SEC-SSRF-043)
+    sends: ["ip"],
     sensitivity: "normal",
     secret: key,
     pinnedHost: host,
