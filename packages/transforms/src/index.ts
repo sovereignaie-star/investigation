@@ -2,6 +2,7 @@ export * from "./manifest.ts";
 export * from "./transform.ts";
 export * from "./output.ts";
 export * from "./runner.ts";
+export * from "./isolated.ts";
 export * from "./transforms/tr-001-dns.ts";
 export * from "./transforms/tr-002-rdap-domain.ts";
 export * from "./transforms/tr-003-rdap-ip.ts";

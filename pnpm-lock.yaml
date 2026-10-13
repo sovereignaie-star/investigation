@@ -804,6 +804,12 @@ importers:
       '@ir/schema':
         specifier: workspace:*
         version: link:../schema
+      '@ir/transform-sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       zod:
         specifier: 'catalog:'
         version: 3.25.76
