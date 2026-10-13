@@ -29,3 +29,6 @@ jobs:
         with:
           target: http://localhost:8080
           cmd_options: "-a"
+          # The scan token cannot create issues; the baseline action's default
+          # issue-writing step would fail the job even when the scan itself passes.
+          allow_issue_writing: false
