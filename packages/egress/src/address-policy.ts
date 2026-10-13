@@ -59,7 +59,10 @@ const V4: Array<[string, AddressClass]> = [
   ["192.31.196.0/24", "public"], // AS112 — GR=True
   ["192.52.193.0/24", "public"], // AMT — GR=True
   ["192.88.99.0/24", "reserved"], // 6to4 Relay Anycast (deprecated)
-  ["192.175.48.0/24", "reserved"], // AS112 v4 anycast — v6 counterpart is a policy refusal (see V6)
+  // AS112 Direct Delegation v4 (RFC 7534): registry GR=True. Accepted like the three other AS112 prefixes the same nodes
+  // originate (192.31.196.0/24, 2001:4:112::/48, 2620:4f:8000::/48). It was refused until 2026-10-13 on a false
+  // comment ("v6 counterpart is a policy refusal"); no ADR-08 rule ever refused it (P2-003, T-SEC-SSRF-045).
+  ["192.175.48.0/24", "public"],
   ["192.168.0.0/16", "private"],
   ["198.18.0.0/15", "reserved"], // Benchmarking
   ["198.51.100.0/24", "reserved"], // TEST-NET-2
@@ -79,7 +82,7 @@ const V6: Array<[string, AddressClass]> = [
   ["2001::/32", "tunnel"], // Teredo → always rejected
   ["2001:1::1/128", "public"], // Port Control Protocol Anycast
   ["2001:1::2/128", "public"], // Traversal Using Relays around NAT Anycast
-  ["2001:1::3/128", "public"], // NAT64 DNS64 Discovery Anycast
+  ["2001:1::3/128", "public"], // DNS-SD Service Registration Protocol Anycast (RFC 9665); label corrected 2026-10-13
   ["2001:2::/48", "reserved"], // Benchmarking
   ["2001:3::/32", "public"], // AMT
   ["2001:4:112::/48", "public"], // AS112
