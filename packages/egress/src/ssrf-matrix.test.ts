@@ -9,9 +9,10 @@
  *
  * No real DNS and no real sockets in this file: fake resolver, fake transport.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createEgressGateway, type EgressAuditEvent, type EgressRequest } from "./egress";
 import { BASE_REQUEST, executeCase, mismatches, SSRF_CASES } from "./ssrf-cases";
+import { TIMING_CASES } from "./ssrf-timing-cases";
 import { createVaultKeyValidationCapability, vaultGatewayOptions } from "./vault-capability";
 
 const byId = new Map<string, typeof SSRF_CASES>();
@@ -31,75 +32,15 @@ for (const [id, cases] of byId) {
 const PUB = "93.184.216.34";
 const resolver = { resolve: async () => [PUB] };
 
-describe("T-SEC-SSRF-023", () => {
-  afterEach(() => vi.useRealTimers());
-  it("a server that trickles past the total deadline is cut at timeoutMs (fake clock) and reported timeout_total", async () => {
-    vi.useFakeTimers();
-    const signals: AbortSignal[] = [];
-    const g = createEgressGateway({
-      resolver,
-      limits: { timeoutMs: 15_000, connectTimeoutMs: 5_000 },
-      transport: {
-        // redirects keep the request alive hop after hop; each hop takes 4.9 s (under the per-hop limit)
-        fetch: (r) =>
-          new Promise((resolve) => {
-            signals.push(r.signal as AbortSignal);
-            setTimeout(() => resolve({ status: 302, headers: { location: `https://example.com/${signals.length}` } }), 4_900);
-          }),
-      },
+describe("T-SEC-SSRF-023 / T-SEC-SSRF-034: deadlines under a fake clock (shared with the mutation controls)", () => {
+  for (const c of TIMING_CASES) {
+    it(c.title, async () => {
+      expect(await c.run(createEgressGateway), `${c.id} ${c.title}`).toEqual([]);
     });
-    const p = g.request({ ...BASE_REQUEST, url: "https://example.com/0" });
-    await vi.advanceTimersByTimeAsync(16_000);
-    const r = await p;
-    expect(r).toMatchObject({ ok: false, reason: "timeout_total" });
-    // 3 full hops (14.7 s) + the 4th cut by the 15 s deadline
-    expect(signals).toHaveLength(4);
-    expect(signals[3]?.aborted).toBe(true);
-  });
-
-  it("a resolver that never answers is bounded by the same deadline (no hanging request)", async () => {
-    vi.useFakeTimers();
-    let transportCalls = 0;
-    const g = createEgressGateway({
-      resolver: { resolve: () => new Promise<string[]>(() => {}) },
-      limits: { timeoutMs: 15_000, connectTimeoutMs: 5_000 },
-      transport: {
-        fetch: async () => {
-          transportCalls++;
-          return { status: 200 };
-        },
-      },
-    });
-    const p = g.request({ ...BASE_REQUEST });
-    await vi.advanceTimersByTimeAsync(15_001);
-    expect(await p).toMatchObject({ ok: false, reason: "timeout_total", transportCalls: 0 });
-    expect(transportCalls).toBe(0);
-  });
+  }
 });
 
 describe("T-SEC-SSRF-034", () => {
-  afterEach(() => vi.useRealTimers());
-  it("a server that never completes the connection is cut at the 5 s connect timeout (fake clock)", async () => {
-    vi.useFakeTimers();
-    let signal: AbortSignal | undefined;
-    const g = createEgressGateway({
-      resolver,
-      transport: {
-        fetch: (r) =>
-          new Promise((_resolve, reject) => {
-            signal = r.signal;
-            r.signal?.addEventListener("abort", () => reject(new Error("connect aborted")));
-          }),
-      },
-    });
-    const p = g.request({ ...BASE_REQUEST });
-    await vi.advanceTimersByTimeAsync(4_999);
-    expect(signal?.aborted).toBe(false);
-    await vi.advanceTimersByTimeAsync(2);
-    expect(await p).toMatchObject({ ok: false, reason: "timeout_connect", transportCalls: 1 });
-    expect(signal?.aborted).toBe(true);
-  });
-
   it("cancellation during DNS settles as cancelled without reaching the transport", async () => {
     let transportCalls = 0;
     const ctrl = new AbortController();
@@ -194,7 +135,7 @@ describe("T-SEC-SSRF-042", () => {
     purposeRef: "vault-key-validation",
     transform: "vault.test@1",
     url: "https://ipinfo.io/8.8.8.8",
-    sends: ["domain"],
+    sends: ["ip"],
     sensitivity: "normal" as const,
     pinnedHost: "ipinfo.io",
   };
@@ -282,7 +223,7 @@ describe("T-SEC-SSRF-042: a provider secret only reaches that provider's registe
     purposeRef: "vault-key-validation",
     transform: "vault.test@1",
     url,
-    sends: ["domain"],
+    sends: ["ip"],
     sensitivity: "normal" as const,
     pinnedHost: "www.virustotal.com",
     headers: { "x-apikey": SECRET },
@@ -348,5 +289,52 @@ describe("coverage bookkeeping", () => {
       if (!byId.has(`T-SEC-SSRF-${n}`)) missing.push(n);
     }
     expect(missing).toEqual([]);
+  });
+});
+
+describe("T-SEC-SSRF-043 scope boundary: server-chosen redirect targets (known gap, P2-003 2026-10-13)", () => {
+  // The content check inventories what the TRANSFORM put in the request. A redirect target is chosen by the server;
+  // each hop is re-checked for scheme, port, credentials, host list, address class and pinning, but its URL content is
+  // NOT inventoried. This test states the gap as it is, so it cannot be mistaken for protection: it must be changed
+  // (and this row re-classified) when the follow-up decided in ADR-08 section 4 is implemented.
+  it("a public-mode redirect to another public host whose URL carries an undeclared email address is followed today", async () => {
+    const destinations: Array<{ host: string; pinnedIp: string }> = [];
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: {
+        fetch: async (r) => {
+          destinations.push({ host: r.host, pinnedIp: r.pinnedIp });
+          return destinations.length === 1
+            ? { status: 302, headers: { location: "https://other.example/?q=alice%40example.org" } }
+            : { status: 200, body: "ok" };
+        },
+      },
+    });
+    const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["domain"] });
+    expect(r.ok).toBe(true);
+    expect(destinations).toEqual([
+      { host: "example.com", pinnedIp: "93.184.216.34" },
+      { host: "other.example", pinnedIp: "93.184.216.34" },
+    ]);
+  });
+
+  it("the transform's own headers (already checked for host A) are re-sent unchanged to a server-chosen host B today", async () => {
+    // Second part of the same gap (second review, 2026-10-13): every hop reuses req.headers. A declared value sent to
+    // host A also reaches host B, which the transform never chose. Follow-up task P2-032 must change this test.
+    const seen: Array<{ host: string; headers: Record<string, string> | undefined }> = [];
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: {
+        fetch: async (r) => {
+          seen.push({ host: r.host, headers: r.headers });
+          return seen.length === 1 ? { status: 302, headers: { location: "https://other.example/" } } : { status: 200, body: "ok" };
+        },
+      },
+    });
+    const headers = { "x-lookup": "8.8.8.8" };
+    const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["ip"], headers });
+    expect(r.ok).toBe(true);
+    expect(seen.map((h) => h.host)).toEqual(["example.com", "other.example"]);
+    expect(seen[1]?.headers).toEqual(headers);
   });
 });
