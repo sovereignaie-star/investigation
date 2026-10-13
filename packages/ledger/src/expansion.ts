@@ -64,6 +64,28 @@ export interface ExpandResult {
   rejectedCount: number;
 }
 
+/**
+ * Records a negative observation (D3: "searched, found nothing" is first-class evidence) or an
+ * error observation for a subject. Used when a transform returns no findings (negative) or fails
+ * (error) — the coverage projection then shows the cell as checked-with-no-result / failed, never
+ * as untouched. P2-006.
+ */
+export function recordOutcome(subjectId: string, kind: "negative" | "error", opts: ExpandOptions, note?: string): string {
+  const clock = opts.clock ?? systemClock;
+  const id = opts.newId ?? ulidFactory(clock);
+  const observationId = id();
+  opts.ledger.append("observation.added", {
+    id: observationId,
+    entityId: subjectId,
+    transformId: opts.transformId,
+    evidenceId: opts.evidenceId,
+    observedAt: isoNow(clock),
+    kind,
+    ...(note ? { note } : {}),
+  });
+  return observationId;
+}
+
 /** True when the finding's objectType is a catalog identifier type (so it becomes an entity/edge). */
 export function isIdentifierType(objectType: string): boolean {
   return specById(objectType) !== undefined;
