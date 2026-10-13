@@ -1960,4 +1960,8 @@
 - **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
 - **ما تم:** إيداع Dependabot يرفع `@vitejs/plugin-react` من `^5.0.4` إلى `^6.1.2` في كتالوج `pnpm-workspace.yaml` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017].
 - **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء على `9c647af`).
+### 2026-10-14 — [P0-017] دمج تحديث Dependabot: date-fns 3.6.0 → 4.4.0 (PR #57)
+- **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
+- **ما تم:** إيداع Dependabot يرفع `date-fns` من `^3.6.0` إلى `^4.4.0` في `apps/sandbox/package.json` و`apps/web/package.json` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017].
+- **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء على `0a0b77f`).
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
