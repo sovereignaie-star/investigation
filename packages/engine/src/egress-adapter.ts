@@ -103,6 +103,7 @@ export function createEgressHttpTransport(opts: EgressAdapterOptions): HttpTrans
         status: resp.status,
         body: resp.body ?? "",
         contentType: resp.headers?.["content-type"] ?? resp.headers?.["Content-Type"],
+        headers: resp.headers,
       };
     },
   };

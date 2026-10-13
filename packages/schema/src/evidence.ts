@@ -78,7 +78,18 @@ export const TransformManifest = z.object({
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   inputs: z.array(Slug).min(1),
   outputs: z.array(Slug).min(1),
-  network: z.object({ allow: z.array(z.string().regex(/^[a-z0-9.-]+$/)) }),
+  // ADR-08 §3 (P2-004): a transform declares its destination mode explicitly.
+  // `pinned` requires a non-empty allow list (exact-match destinations, e.g. secret
+  // transport); `public` requires an empty one (any public host, no secrets). A
+  // manifest without a mode is invalid (fail-closed: no mode = no network).
+  network: z
+    .object({
+      mode: z.enum(["public", "pinned"]),
+      allow: z.array(z.string().regex(/^[a-z0-9.-]+$/)),
+    })
+    .refine((n) => (n.mode === "pinned" ? n.allow.length > 0 : n.allow.length === 0), {
+      message: "pinned mode requires a non-empty allow list; public mode requires an empty one",
+    }),
   secrets: z.array(z.string().regex(/^[A-Z][A-Z0-9_]*$/)).default([]),
   limits: z.object({
     rps: z.number().positive(),

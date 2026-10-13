@@ -1805,3 +1805,16 @@
 - **التحقق:** المسبار #74 يمس `apps/server/`. نجحت كل فحوصه المطلوبة، وبقي `BLOCKED` مع طلب مراجعة تلقائي من `@xuuux-voox`. أُغلق دون دمج، ولم تُجرَّب عليه محاولة دمج، وحُذف فرعه. **لم يُقَس:** رفع المنع بموافقة المراجع وعودته بعد دفع جديد.
 - **#42:** أُغلق. البوابة واختبارها وسير عملها على `main` بصيغة أوسع منه (13 مساراً بدل 7، والمعرّف خارج الخارطة P1-031 صار «D-8 تحت P2-003»). سطور `CODEOWNERS` فيه استُبدلت عمداً.
 - **تصحيح هذا الطلب (#73):** صف P2-001 كان ما زال يقول «في PR #68»، وجملة «حماية main لم تُفعّل» كانت مكررة. صُحّحتا مع حالة D-8 الجديدة.
+
+### 2026-10-13 — [P2-004] SDK المحوّل وبيان القدرات: `@ir/transforms` + مثال TR-010
+
+- **المنفّذ:** وكيل هندسي مستقل بتفويض من مالك المستودع (تفويض تنفيذي شامل).
+- **ما تم:**
+  - حزمة جديدة `packages/transforms` (`@ir/transforms`): `manifest.ts` (`defineTransform` يتحقق من البيان فوراً عبر `TransformManifest` — فشل-مغلق)، `transform.ts` (`TransformContext.http` هو المسار الشبكي الوحيد عبر `HttpTransport`/بوابة الخروج، `createTransformHttp` يغلّف النقل)، `output.ts` (`TransformOutputSchema`/`TransformFindingSchema` — T-RULE-03)، `runner.ts` (`runTransform` يعيد التحقق من البيان، يعدّ الطلبات، يسجل كل استجابة دليلاً — T-RULE-04، ويُسجّل الفشل صراحة — T-RULE-05).
+  - مثال TR-010 (فحص HTTP ذاتي الاستضافة، LC-B، بلا مفتاح، مدخلات `url`، مخرجات `http_response`/`technology`): يبني الرابط بـ `URL` فقط (T-RULE-02)، يقرأ الحالة والتقنيات من الترويسات، ويُصدَّر من `index.ts`.
+  - امتداد `TransportResponse.headers?` في `@ir/engine` (`transport.ts`) وتمرير `resp.headers` عبر `egress-adapter.ts` (كانت الترويسات تُفقد — ضرورية لـ TR-010).
+  - `TransformManifest.network` صار `{mode: "public"|"pinned", allow[]}` مع `refine` (pinned يتطلب allow غير فارغ، public يتطلب allow فارغاً) — ADR-08 §3؛ أُعيد توليد JSON Schema (11 ملفاً).
+  - اختبارات: `manifest.test.ts` (تحقق فوري، 3 حالات فشل-مغلق، إعادة تحقق وقت التشغيل، تسجيل الأدلة) و`tr-010.test.ts` (عقد TR-010 بنقل وهمي حتمي، رفض بروتوكول غير http(s)، تسجيل استجابة فارغة صراحة).
+- **الأدلة:** `pnpm test` => 53 ملفاً، 809 ناجحاً و12 متخطياً (قبل: 51/807/2)؛ `pnpm run lint` و`pnpm run typecheck` و`pnpm run governance` نجحت؛ `test:coverage` => 94.64% (عتبة CORE 85% محفوظة)؛ `no-direct-network` بلا نتائج على `packages/transforms` (0 نتائج).
+- **ما لم يتم / ملاحظات:** P2-004 على فرع `feat/P2-004-transform-sdk` في PR #75 بانتظار مراجعة `@xuuux-voox` (D-8: `packages/transforms` مسار مملوك). لم يُدمج بعد. G-15 (T-SBX) لم تتحقق؛ P2-005 غير موصول بالمحوّلات بعد. `packages/transforms` خارج قائمة تغطية CORE (لا بوابة 85% عليه).
+- **التالي:** بعد دمج PR #75: ربط P2-005 (عزل المحوّلات) بـ `runTransform`، ثم P2-008 (`@ir/sim` خادم محاكاة حتمي) وP2-009 (دفعة المحوّلات الأولى TR-001..010).

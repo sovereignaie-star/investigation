@@ -31,6 +31,10 @@
     "network": {
       "type": "object",
       "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["public", "pinned"]
+        },
         "allow": {
           "type": "array",
           "items": {
@@ -39,7 +43,7 @@
           }
         }
       },
-      "required": ["allow"]
+      "required": ["mode", "allow"]
     },
     "secrets": {
       "default": [],

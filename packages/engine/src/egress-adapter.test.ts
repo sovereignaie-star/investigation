@@ -228,4 +228,15 @@ describe("engine + egress gateway integration (simulated)", () => {
       );
     }
   });
+
+  it("P2-004: the adapter forwards response headers to the engine transport", async () => {
+    const t = fakeTransport([{ status: 200, body: "<html>", headers: { "content-type": "text/html", server: "nginx" } }]);
+    const gateway = createEgressGateway({ resolver: fakeResolver({ "example.com": ["93.184.216.34"] }), transport: t });
+    const transport = createEgressHttpTransport({ gateway, baseRequest: { ...BASE } });
+    const res = await transport.fetch({ method: "GET", url: "https://example.com/" }, new AbortController().signal);
+    expect(res.status).toBe(200);
+    expect(res.contentType).toBe("text/html");
+    expect(res.headers).toEqual({ "content-type": "text/html", server: "nginx" });
+    expect(t.calls).toHaveLength(1);
+  });
 });

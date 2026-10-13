@@ -767,6 +767,22 @@ importers:
         specifier: 'catalog:'
         version: 25.6.2
 
+  packages/transforms:
+    dependencies:
+      '@ir/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@ir/schema':
+        specifier: workspace:*
+        version: link:../schema
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+
   scripts:
     devDependencies:
       '@types/node':
