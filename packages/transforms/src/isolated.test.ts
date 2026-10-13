@@ -1,0 +1,231 @@
+/**
+ * T-ISO (P2-005) — the isolated runner wired to the REAL sandbox.
+ *
+ * These tests prove the P2-005 wiring end to end: `runTransform` with
+ * `requireIsolation: true` + `isolatedModule` executes the transform in the
+ * sandbox (seccomp + bubblewrap namespaces), its network goes through the
+ * injected transport (here `@ir/sim`) via IPC, the manifest's limits are
+ * enforced, and failures are typed by stage exactly like the in-process runner.
+ *
+ * The suite is skipped on hosts where the sandbox cannot provide "full"
+ * isolation (no Linux, no C compiler, no unprivileged user namespaces) — the
+ * T-SBX suite documents those hosts. On this host the full level is live-probed
+ * and exercised.
+ */
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { createSimServer } from "@ir/sim";
+import { probeIsolation } from "@ir/transform-sandbox";
+import { runTransform, TransformRunError } from "./runner.ts";
+
+const MODULE = fileURLToPath(new URL("./transforms/tr-iso-test-transforms.spec.ts", import.meta.url));
+const TR010 = fileURLToPath(new URL("./transforms/tr-010-http-scan.ts", import.meta.url));
+
+const sim = createSimServer([
+  { match: "https://example.com/", response: { status: 200, body: "<html></html>", headers: { server: "nginx" } } },
+  { match: "https://slow.example/", response: { status: 200, body: "slow", delayMs: 5_000 } },
+  { match: "https://big.example/", response: { status: 200, body: "x".repeat(2_000_000) } },
+  { match: "https://unmatched.example/", response: { status: 200, body: "ok" } },
+]);
+
+const host = await probeIsolation();
+const fullAvailable = host.full;
+
+describe.skipIf(!fullAvailable)("T-ISO: isolated runner against the real sandbox", () => {
+  it("T-ISO-001: a transform runs successfully in the sandbox, network via the injected transport", async () => {
+    sim.reset();
+    const result = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://example.com/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-101",
+    });
+    expect(result.requestCount).toBe(1);
+    expect(result.evidence[0].url).toBe("https://example.com/");
+    expect(result.evidence[0].status).toBe(200);
+    expect(result.output.findings[0]).toMatchObject({ predicate: "has_http_response", objectValue: "200" });
+    // The request went through the injected transport (the sim), not a direct socket.
+    expect(sim.requestCount()).toBe(1);
+    expect(sim.requests[0].url).toBe("https://example.com/");
+  });
+
+  it("T-ISO-002: requireIsolation without a module refuses (fail-closed, no silent in-process fallback)", async () => {
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://example.com/" },
+      requireIsolation: true,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("refused");
+    expect(err.message).toContain("isolation");
+  });
+
+  it("T-ISO-003: a transform that opens a direct TCP socket is blocked by the sandbox", async () => {
+    sim.reset();
+    const result = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "12345" }, // the port the hostile transform tries to connect to
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-102",
+    });
+    // The direct connect is refused by seccomp: the transform sees an error, never a connection.
+    expect(result.output.findings[0].objectValue).toMatch(/^error:/);
+    expect(result.output.findings[0].objectValue).not.toBe("connected");
+    // No request reached the injected transport — the network path is the gateway only.
+    expect(sim.requestCount()).toBe(0);
+  });
+
+  it("T-ISO-004: a transform that reads the host filesystem is blocked at full isolation", async () => {
+    sim.reset();
+    const result = await runTransform(undefined, {
+      transport: sim.transport,
+      input: {},
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-103",
+    });
+    // At "full" the file is not visible: the transform reports "blocked".
+    expect(result.output.findings[0].objectValue).toBe("blocked");
+  });
+
+  it("T-ISO-005: requests go through the enforced gateway (the injected transport), never direct", async () => {
+    sim.reset();
+    const result = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://example.com/" },
+      requireIsolation: true,
+      isolatedModule: TR010,
+      transformId: "TR-010",
+    });
+    expect(result.requestCount).toBe(1);
+    expect(sim.requestCount()).toBe(1);
+    expect(result.output.findings[0]).toMatchObject({ predicate: "has_http_response", objectValue: "200" });
+    expect(result.output.findings).toContainEqual(expect.objectContaining({ predicate: "has_technology", objectValue: "server: nginx" }));
+  });
+
+  it("T-ISO-006: cancellation kills the sandboxed process tree and fails with stage cancel", async () => {
+    sim.reset();
+    const controller = new AbortController();
+    const run = runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://slow.example/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-101",
+      signal: controller.signal,
+      sandboxTimeoutMs: 20_000,
+    });
+    setTimeout(() => controller.abort(new Error("test cancel")), 300);
+    const err = await run.catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("cancel");
+  });
+
+  it("T-ISO-007: a request exceeding the manifest timeoutMs fails with stage request, kind timeout", async () => {
+    sim.reset();
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://slow.example/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-109", // timeoutMs: 1_000 < the sim's 5s delay
+      sandboxTimeoutMs: 20_000,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("request");
+    expect(err.evidence[0].error?.kind).toBe("timeout");
+  });
+
+  it("T-ISO-008: a response larger than maxBytes fails with stage request, kind size_limit", async () => {
+    sim.reset();
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://big.example/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-101",
+      sandboxTimeoutMs: 20_000,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("request");
+    expect(err.evidence[0].error?.kind).toBe("size_limit");
+  });
+
+  it("T-ISO-009: invalid output fails validation with stage validation", async () => {
+    sim.reset();
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: {},
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-104",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("validation");
+  });
+
+  it("T-ISO-010: a transform that throws fails with stage transform", async () => {
+    sim.reset();
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: {},
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-105",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("transform");
+    expect(err.message).toContain("iso-transform exploded");
+  });
+
+  it("T-ISO-011: a hanging transform is killed by the sandbox timeout (no orphan process)", async () => {
+    sim.reset();
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: {},
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-106",
+      sandboxTimeoutMs: 2_000,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("transform");
+    expect(err.message).toContain("timed out");
+  });
+
+  it("T-ISO-012: rps is enforced on the isolated path (requests spaced by the manifest's rate)", async () => {
+    sim.reset();
+    const start = Date.now();
+    const result = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://example.com/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-107",
+      sandboxTimeoutMs: 20_000,
+    });
+    const elapsed = Date.now() - start;
+    expect(result.requestCount).toBe(3);
+    // rps: 1 → 3 requests need at least ~2s of spacing.
+    expect(elapsed).toBeGreaterThanOrEqual(1_800);
+  });
+
+  it("T-ISO-013: a transform's secret never appears in the recorded evidence", async () => {
+    sim.reset();
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: {},
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-108",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    // The parent's evidence is clean: no request was made, so nothing sensitive is recorded.
+    expect(err.evidence).toHaveLength(0);
+    // The error message is the transform's own (bounded, no log injection): the parent
+    // relays it exactly as the in-process runner does, but never records it as evidence.
+    expect(err.message).toContain("SUPER_SECRET_TOKEN_XYZ");
+  });
+});

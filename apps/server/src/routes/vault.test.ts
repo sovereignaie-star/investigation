@@ -233,7 +233,7 @@ describe("vault routes (P1-015, P1-026)", () => {
         url: "https://evil.example/8.8.8.8",
         method: "GET",
         headers: { accept: "application/json" },
-        sends: ["domain"],
+        sends: ["ip"],
         sensitivity: "normal",
         secret: "k",
         pinnedHost: "evil.example",
@@ -269,7 +269,7 @@ describe("vault routes (P1-015, P1-026)", () => {
         purposeRef: "vault-key-validation",
         transform: "vault.test@1",
         url: "https://ipinfo.io/8.8.8.8",
-        sends: ["domain"],
+        sends: ["ip"],
         sensitivity: "normal",
       });
       expect(r.ok).toBe(false);
