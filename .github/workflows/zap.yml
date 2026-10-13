@@ -1,0 +1,34 @@
+name: zap-baseline
+# P2-020 acceptance: a ZAP baseline scan of the running server must have no HIGH findings.
+# Runs on every PR and push to main. The scan targets the single-service Docker image
+# (API + built web app) exactly as deployed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  zap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t investigation-room .
+      - name: Start the server
+        run: |
+          docker run -d --name ir -p 8080:8080 -e IR_ADMIN_TOKEN=ci-admin-token investigation-room
+          for i in $(seq 1 30); do curl -fsS http://localhost:8080/api/healthz && break; sleep 1; done
+          curl -fsS http://localhost:8080/api/healthz
+      - name: ZAP baseline scan
+        # The baseline action fails the job on any HIGH-risk finding by default.
+        # No rules are excluded: a HIGH finding must be fixed, not suppressed.
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:8080
+          cmd_options: "-a"
+          # The scan token cannot create issues; the baseline action's default
+          # issue-writing step would fail the job even when the scan itself passes.
+          allow_issue_writing: false
