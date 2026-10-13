@@ -19,6 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEgressGateway, type EgressAuditEvent } from "@ir/egress";
 import { runAtLevel } from "./enforce.ts";
 import {
+  isAborted,
   isRefusal,
   probeIsolation,
   runSandboxedTransform,
@@ -63,6 +64,7 @@ const linuxWithCompiler = process.platform === "linux" && spawnSync("cc", ["--ve
 
 function done(o: SandboxOutcome): SandboxResult {
   if (isRefusal(o)) throw new Error(`sandbox refused: ${o.reason} ${o.detail ?? ""}`);
+  if (isAborted(o)) throw new Error(`sandbox aborted: ${o.reason}`);
   return o;
 }
 

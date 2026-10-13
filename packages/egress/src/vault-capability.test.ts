@@ -30,7 +30,7 @@ describe("vault capability (private symbol)", () => {
       url: "https://ipinfo.io/8.8.8.8",
       method: "GET",
       headers: { accept: "application/json" },
-      sends: ["domain"],
+      sends: ["ip"],
       sensitivity: "normal",
     });
     expect(r.ok).toBe(false);
@@ -66,7 +66,7 @@ describe("vault capability (private symbol)", () => {
       url: "https://ipinfo.io/8.8.8.8",
       method: "GET",
       headers: { accept: "application/json" },
-      sends: ["domain"],
+      sends: ["ip"],
       sensitivity: "normal",
       secret: "vault-secret",
       pinnedHost: "ipinfo.io",
@@ -94,7 +94,7 @@ describe("vault capability (private symbol)", () => {
       purposeRef: "vault-key-validation",
       transform: "vault.test@1",
       url: "https://ipinfo.io/8.8.8.8",
-      sends: ["domain"],
+      sends: ["ip"],
       capability: fake,
     });
     expect(r.ok).toBe(false);
@@ -113,7 +113,7 @@ describe("vault capability (private symbol)", () => {
       purposeRef: "vault-key-validation",
       transform: "vault.test@1",
       url: "https://evil.example/8.8.8.8",
-      sends: ["domain"],
+      sends: ["ip"],
       sensitivity: "normal",
       pinnedHost: "evil.example",
       capability: cap,

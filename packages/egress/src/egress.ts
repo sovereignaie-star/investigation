@@ -7,6 +7,7 @@
  * This module is intentionally self-contained and side-effect-free outside the
  * injected `resolver` / `transport` / `auditSink` / `now` functions.
  */
+import { inventoryRequest, judgeInventory } from "./content-inventory.ts";
 import { createHmac, randomBytes } from "node:crypto";
 import { domainToASCII } from "node:url";
 import { classifyAddress } from "./address-policy";
@@ -383,6 +384,29 @@ function validateHeadersType(headers: Record<string, string> | undefined): Egres
   return null;
 }
 
+/**
+ * ADR-08 "reason precedence": a request labelled with a protected category is refused as such before anything else
+ * is looked at. There is no option, field or environment variable that changes this (T-SEC-SSRF-028, 040).
+ */
+function protectedCategory(req: EgressRequest): EgressResult | null {
+  if (typeof req !== "object" || req === null) return null;
+  if ((req as { sensitivity?: unknown }).sensitivity !== "natural_person_gate") return null;
+  return deny("natural_person", 0, "natural-person data is refused until P2-013 is adopted");
+}
+
+/**
+ * ADR-08 "reason precedence": a literal host that is not a public address is recorded as `address_class` before the
+ * scheme, port and credential checks, so `http://127.0.0.1` is logged as an attempt on loopback, not as a wrong
+ * scheme (T-SEC-SSRF-001, 039). Still before DNS and before any transport call.
+ */
+function literalHostCheck(url: URL): EgressResult | null {
+  const literal = classifyLiteral(url.hostname);
+  if (literal !== null && !literal.verdict.ok) {
+    return deny("address_class", 0, `literal ${literal.form} address is not allowed`);
+  }
+  return null;
+}
+
 /** Pre-DNS policy checks (offline, case, sensitivity, sends, headers, secrets). */
 function preDnsChecks(req: EgressRequest, offline: boolean, opts: EgressOptions): EgressResult | null {
   if (offline) return deny("offline");
@@ -404,9 +428,26 @@ function preDnsChecks(req: EgressRequest, offline: boolean, opts: EgressOptions)
   if (sensErr) return sensErr;
   const manifestErr = checkSends(req.sends);
   if (manifestErr) return manifestErr;
+  const contentErr = checkContent(req);
+  if (contentErr) return contentErr;
   const headerErr = checkHeaders(req.headers);
   if (headerErr) return headerErr;
   return checkSecretShape(req);
+}
+
+/**
+ * T-SEC-SSRF-043: what the request actually carries must be what `sends` declares (content-inventory.ts). Before
+ * DNS; an unparsable URL is left to the URL check (invalid_url).
+ */
+function checkContent(req: EgressRequest): EgressResult | null {
+  let url: URL;
+  try {
+    url = new URL(req.url);
+  } catch {
+    return null;
+  }
+  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret), req.sends ?? []);
+  return verdict ? deny(verdict.reason, 0, verdict.detail) : null;
 }
 
 function checkSensitivity(sensitivity: string | undefined): EgressResult | null {
@@ -639,6 +680,20 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   async function request(req: EgressRequest): Promise<EgressResult> {
     const secretDigest = req.secret !== undefined ? redactSecret(req.secret) : undefined;
 
+    // --- 0a: protected category first (ADR-08 "reason precedence"): a natural-person request is recorded as
+    // `natural_person` even when it also breaks the request contract, so an extra field cannot mask the attempt.
+    const protectedRefusal = protectedCategory(req);
+    if (protectedRefusal) {
+      audit({
+        kind: "denied",
+        reason: protectedRefusal.reason,
+        transform: req.transform,
+        transportCalls: 0,
+        detail: protectedRefusal.detail,
+      });
+      return protectedRefusal;
+    }
+
     // --- 0: runtime contract validation ---
     const invalid = validateRequest(req);
     if (invalid) {
@@ -681,8 +736,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return deny("invalid_url");
     }
 
-    // --- 7: scheme / port / credentials ---
-    const shape = urlChecks(currentUrl);
+    // --- 7: literal address class, then scheme / port / credentials ---
+    const shape = literalHostCheck(currentUrl) ?? urlChecks(currentUrl);
     if (shape) {
       audit({
         kind: "denied",
@@ -966,7 +1021,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       audit({ kind, reason: result.reason, ...auditCtx(req, nextHostForAudit, hopCount, secretDigest), detail: result.detail });
       return { done: true as const, result };
     };
-    const nextShape = urlChecks(nextUrl);
+    const nextShape = literalHostCheck(nextUrl) ?? urlChecks(nextUrl);
     if (nextShape) return refuse({ ...nextShape, transportCalls: hopCount, detail: "redirect target refused" });
     if (hopCount > limits.maxRedirects) return refuse(deny("redirect_limit", hopCount));
     // Every hop is charged against its own host's rate limit, like a first request (ADR-08).
