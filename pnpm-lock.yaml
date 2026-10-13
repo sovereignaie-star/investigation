@@ -808,6 +808,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@ir/sim':
+        specifier: workspace:*
+        version: link:../sim
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
