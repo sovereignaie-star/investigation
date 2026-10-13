@@ -23,3 +23,4 @@ export * from "./transforms/tr-017-ethereum.ts";
 export * from "./transforms/tr-018-wikidata.ts";
 export * from "./transforms/tr-019-pgp-keys.ts";
 export * from "./transforms/tr-020-email-tech.ts";
+export * from "./transforms/tr-089-eml-msg.ts";

@@ -2154,6 +2154,14 @@
 - **الأدلة:** `pnpm vitest run scripts/checks/no-silent-catch.test.ts` => 5/5؛ `pnpm vitest run packages/transforms/src/isolated.test.ts` => 13/13؛ `pnpm test` => 64 ملفاً، 874 ناجحاً و15 فشلاً بيئياً (argon2Sync Node 24 API على Node 22) و2 متخطيان؛ lint وtypecheck وbuild => 0.
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04). مسار D-8: `packages/transforms` — يتطلب مراجعة `@xuuux-voox` صالحة على الرأس النهائي قبل الدمج.
 - **التالي:** دفع الرأس الجديد، إعادة طلب مراجعة D-8، ثم دمج PR #79 بعد موافقة صالحة، ثم P2-009 (PR #80).
+
+
+### 2026-10-14 — [P2-027] EML/MSG parser (TR-089)
+- **المنفّذ:** Lindy Assistant
+- **ما تم:** محوّل محلي LC-A يوزّع رسائل EML (RFC 5322/MIME) وMSG (OLE2) دون أي اعتماديات خارجية ودون فتح أي رابط (PB-07). يستخرج الترويسات (الموضوع، المرسل، المستلم، التاريخ، message-id، reply-to، return-path)، سلسلة Received (خوادم from/by + عناوين IP)، روابط الجسم، والمرفقات (اسم + SHA-256). بنية OLE2: FAT/DIFAT، الدليل، mini-FAT، mini-stream، قراءة التخزينات الفرعية للمرفقات. إصلاحات: إزاحة mini-FAT (0x40/0x44)، سلاسل mini-FAT متعددة القطاعات، دليل متعدد القطاعات، قناع tag (16 بت)، فك طي Received، D-017 (لا catch صامت).
+- **الأدلة:** `pnpm --filter @ir/transforms exec vitest run src/transforms/tr-089-eml-msg.test.ts` => 5/5؛ `pnpm --filter @ir/transforms exec vitest run` => 7 ملفات/32 اختبار؛ `pnpm test` => 866 نجاح/15 فشل بيئي (argon2Sync Node 22)؛ `pnpm lint`/`typecheck`/`build`/`governance` => 0 أخطاء.
+- **ما لم يتم / ملاحظات:** 15 فشلاً بيئياً معروفاً (argon2Sync Node 24 API) غير متعلقة بهذا التغيير. packages/transforms مسار D-8 — يحتاج مراجعة @xuuux-voox.
+- **التالي:** فتح PR عبر curl، ثم المهمة المستقلة التالية (P2-024/026/028/029/030/031).
 ## 2026-10-13 — P2-021: خط اعتماد الأدوات من الكتالوج إلى محوّل
 
 - **الخلفية:** P0-003 (كتالوج الأدوات، 10,881 أداة) وP2-004 (SDK المحوّلات) مكتملان. القسم 7.2 من الخارطة يحدد الخط (Candidate → Certified) لكن لا يوجد توثيق تنفيذي له ولا قالب تقييم ولا سجل رفض. D-048 (نقاط نهاية أطراف ثالثة بلا توثيق لحدودها وشروطها) مفتوح.

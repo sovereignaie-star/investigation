@@ -19,7 +19,8 @@
     "@ir/engine": "workspace:*",
     "@ir/transform-sandbox": "workspace:*",
     "esbuild": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@ir/core": "workspace:*"
   },
   "devDependencies": {
     "@ir/sim": "workspace:*",
