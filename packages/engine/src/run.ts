@@ -233,6 +233,18 @@ export class RunEngine {
   }
 
   /**
+   * Restarts a failed run (P2-025): creates a NEW run with the same input, a fresh
+   * cancellation token and a fresh budget, and queues it for the next drain. The
+   * original run's result is left untouched (its history is preserved). Returns the
+   * new handle, or undefined when the source run is unknown or not failed.
+   */
+  restart(runId: string): RunHandle | undefined {
+    const rec = this.records.get(runId);
+    if (!rec || rec.phase !== "failed") return undefined;
+    return this.submit(rec.input);
+  }
+
+  /**
    * Drains the queue subject to concurrency, budget and cancellation. Each call
    * processes only runs still queued; runs already finished are not re-executed.
    * Overlapping drains are rejected: they would exceed the concurrency budget.
@@ -353,10 +365,14 @@ export class RunEngine {
         // Race the transport against the deadline so a transport that ignores the
         // abort signal cannot keep the run pending past the time budget.
         const res = await this.raceWithDeadline(this.transport.fetch(req, combined), rec.token.signal, timeoutSignal, remainingMs);
+        // Error-class retry decision (P2-025): transient classes (5xx, 429) are retried;
+        // permanent classes (4xx, auth) are not. The Retry-After header, when present,
+        // overrides the exponential backoff for the next wait.
         if (res.status >= 500 || res.status === 429) {
+          const retryAfterMs = this.retryAfterMs(res, remainingMs);
           throw new TransportError("transport:http-error", `HTTP ${res.status}`, {
             retryable: true,
-            retryAfterMs: res.status === 429 ? 200 : undefined,
+            retryAfterMs,
           });
         }
         return res;
@@ -374,12 +390,32 @@ export class RunEngine {
         }
         if (err instanceof TransportError && err.retryable && attempt < this.opts.maxRetries) {
           attempt++;
-          await this.backoffWait(rec, timeoutSignal, remainingMs, attempt);
+          await this.backoffWait(rec, timeoutSignal, remainingMs, attempt, err.retryAfterMs);
           continue;
         }
         throw err;
       }
     }
+  }
+
+  /**
+   * Parses the Retry-After header (P2-025): a delta-seconds value or an HTTP-date.
+   * Returns the wait in ms, capped at the remaining time budget, or undefined when
+   * the header is absent or unparseable (the caller then uses exponential backoff).
+   */
+  private retryAfterMs(res: TransportResponse, remainingMs: number): number | undefined {
+    const raw = res.headers?.["retry-after"];
+    if (!raw) return undefined;
+    const trimmed = raw.trim();
+    if (/^\d+$/.test(trimmed)) {
+      return Math.min(Number(trimmed) * 1000, remainingMs);
+    }
+    const date = Date.parse(trimmed);
+    if (Number.isFinite(date)) {
+      const delta = date - this.opts.now();
+      return delta > 0 ? Math.min(delta, remainingMs) : 0;
+    }
+    return undefined;
   }
 
   private remainingTimeMs(budget: Budget): number {
@@ -457,8 +493,17 @@ export class RunEngine {
     }
   }
 
-  private async backoffWait(rec: RunRecord, timeoutSignal: AbortSignal, remainingMs: number, attempt: number): Promise<void> {
-    const waitMs = Math.min(this.opts.retryBaseMs * 2 ** attempt, remainingMs);
+  private async backoffWait(
+    rec: RunRecord,
+    timeoutSignal: AbortSignal,
+    remainingMs: number,
+    attempt: number,
+    retryAfterMs?: number,
+  ): Promise<void> {
+    // P2-025: a Retry-After header (when present) overrides the exponential backoff;
+    // otherwise the backoff is retryBaseMs * 2^attempt (attempt already incremented),
+    // capped at the time budget.
+    const waitMs = retryAfterMs !== undefined ? retryAfterMs : Math.min(this.opts.retryBaseMs * 2 ** attempt, remainingMs);
     const combined = AbortSignal.any([rec.token.signal, timeoutSignal]);
     // The backoff wait is bounded by the SAME shared race as the transport: a sleep
     // implementation that ignores its abort signal cannot hold the run past either
