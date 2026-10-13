@@ -5,3 +5,4 @@ export * from "./blobs.ts";
 export * from "./evidence.ts";
 export * from "./merkle.ts";
 export * from "./signing.ts";
+export * from "./expansion.ts";
