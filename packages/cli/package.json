@@ -13,7 +13,9 @@
   "dependencies": {
     "@ir/core": "workspace:*",
     "@ir/ledger": "workspace:*",
-    "@ir/store": "workspace:*"
+    "@ir/sim": "workspace:*",
+    "@ir/store": "workspace:*",
+    "@ir/transforms": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
