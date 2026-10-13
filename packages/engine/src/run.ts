@@ -8,6 +8,7 @@
  */
 import { Budget, BudgetExceededError, type BudgetCaps, type BudgetSnapshot } from "./budget.ts";
 import { CancellationError, createCancellationToken, type CancellationToken } from "./cancel.ts";
+import { naturalPersonGate, type PurposeConfirmation } from "./gate.ts";
 import { PriorityQueue } from "./queue.ts";
 import { TransportError, type HttpTransport, type TransportRequest, type TransportResponse } from "./transport.ts";
 
@@ -19,6 +20,8 @@ export interface RunInput {
   readonly priority?: number;
   readonly depth?: number;
   readonly costEstimate?: number;
+  /** Sensitivity of the input (E-02/E-08); a natural-person input needs a purpose confirmation. */
+  readonly sensitivity?: "normal" | "natural_person_gate" | "minor";
 }
 
 export interface RunResult {
@@ -49,6 +52,8 @@ export interface EngineOptions {
   readonly maxRetries?: number;
   /** Sleep used for retry backoff; injectable for deterministic tests. */
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** Purpose confirmation for natural-person expansions (E-02, P2-013). */
+  readonly purposeConfirmation?: PurposeConfirmation;
 }
 
 export interface RunHandle {
@@ -86,6 +91,7 @@ export class RunEngine {
     retryBaseMs: number;
     maxRetries: number;
     sleep: (ms: number, signal: AbortSignal) => Promise<void>;
+    purposeConfirmation?: PurposeConfirmation;
   };
   private readonly transport: HttpTransport;
   private draining = false;
@@ -153,11 +159,42 @@ export class RunEngine {
               { once: true },
             );
           })),
+      purposeConfirmation: opts.purposeConfirmation,
     };
   }
 
   /** Registers a run and returns a handle whose runId is stable across drain() calls. */
   submit(input: RunInput): RunHandle {
+    // P2-013 / E-02: a natural-person input without a purpose confirmation is refused before it
+    // is queued — it never reaches the transport (zero transport attempts). The refusal is
+    // recorded as a failed run so the caller can inspect the reason.
+    const gate = naturalPersonGate(input, this.opts.purposeConfirmation);
+    if (!gate.allowed) {
+      const runId = `run-${(this.records.size + 1).toString(36).padStart(4, "0")}-${this.opts.random(6)}`;
+      const token = createCancellationToken();
+      const record: RunRecord = {
+        runId,
+        input,
+        token,
+        phase: "failed",
+        transportAttempts: 0,
+        processed: 0,
+        failure: { kind: "transform", message: gate.message },
+      };
+      this.records.set(runId, record);
+      this.results.set(runId, {
+        runId,
+        phase: "failed",
+        budget: { nodes: 0, depth: 0, requests: 0, costEstimate: 0, elapsedMs: 0 },
+        processed: 0,
+        transportAttempts: 0,
+        failure: { kind: "transform", message: gate.message },
+      });
+      return {
+        runId,
+        cancel: () => false,
+      };
+    }
     const runId = `run-${(this.records.size + 1).toString(36).padStart(4, "0")}-${this.opts.random(6)}`;
     const token = createCancellationToken();
     const record: RunRecord = {
