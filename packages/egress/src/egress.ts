@@ -556,13 +556,11 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     opts.allowedHosts === undefined ? undefined : new Set(opts.allowedHosts.map(normalizeHost).filter((h) => h !== ""));
 
   function audit(event: EgressAuditEvent): void {
-    try {
-      opts.auditSink?.record(event);
-    } catch {
-      // Audit failures are NOT swallowed silently for security-relevant paths;
-      // for now we log to nothing because this is a simulation. A real sink
-      // must be fail-closed: throw if it cannot write.
-    }
+    // D-017 / P2-006: an audit failure is never swallowed silently. When a sink is configured
+    // but cannot record, the request fails closed (the audit trail is security-relevant). When no
+    // sink is configured there is nothing to record — that is an explicit absence, not a silent catch.
+    if (opts.auditSink === undefined) return;
+    opts.auditSink.record(event);
   }
 
   /**

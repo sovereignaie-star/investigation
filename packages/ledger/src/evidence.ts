@@ -23,18 +23,28 @@ export function redactRequest(req: RawRequest): Evidence["request"] {
     headers[lower] = SECRET_HEADER.test(lower) ? REDACTED : v;
   }
   let url = req.url;
-  try {
-    const u = new URL(req.url);
+  // D-017 / P2-006: no silent catch. A URL that fails to parse is not an error — it is a
+  // non-absolute reference (DNS name, local path) and is stored as given. The branch is explicit.
+  const parsed = tryParseUrl(req.url);
+  if (parsed !== null) {
+    const u = parsed;
     if (u.username || u.password) {
       u.username = "";
       u.password = "";
     }
     for (const name of [...u.searchParams.keys()]) if (SECRET_PARAM.test(name)) u.searchParams.set(name, REDACTED);
     url = u.toString();
-  } catch {
-    // not an absolute URL (DNS name, local path): stored as given
   }
   return { method: req.method, url, headers, ...(req.status !== undefined ? { status: req.status } : {}) };
+}
+
+/** Parses a URL, or null when it is not an absolute URL (DNS name, local path). */
+function tryParseUrl(raw: string): URL | null {
+  try {
+    return new URL(raw);
+  } catch {
+    return null;
+  }
 }
 
 export interface StoreEvidenceInput {

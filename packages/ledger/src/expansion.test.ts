@@ -2,7 +2,7 @@ import { manualClock, seededRandom, ulidFactory } from "@ir/core";
 import { describe, expect, it } from "vitest";
 import { Ledger } from "./index.ts";
 import { project } from "./projections/index.ts";
-import { expandFindings, expandForParents, isIdentifierType } from "./expansion.ts";
+import { expandFindings, expandForParents, isIdentifierType, recordOutcome } from "./expansion.ts";
 
 const T0 = "2026-10-10T08:00:00.000Z";
 
@@ -211,6 +211,54 @@ describe("expansion (P2-002)", () => {
     // Two claims (one per expansion), but ONE object node (D-020).
     expect(p.counts).toMatchObject({ entities: 3, nodes: 2, claims: 2, edges: 2 });
     expect(p.graph.nodes.filter((n) => n.canonicalKey === "ipv4:192.0.2.7")).toHaveLength(1);
+    expect(p.issues).toEqual([]);
+  });
+
+  it("P2-006: recordOutcome records a negative observation (D3: searched, found nothing)", () => {
+    const f = fixture();
+    const subject = f.entity("domain", "example.com");
+    const ev = f.evidence("tr-dns");
+    const obsId = recordOutcome(subject, "negative", {
+      ledger: f.ledger,
+      transformId: "tr-dns",
+      evidenceId: ev,
+      clock: f.clock,
+    });
+    expect(obsId).toBeTruthy();
+    const p = project(f.ledger.entries());
+    expect(p.counts).toMatchObject({ entities: 1, nodes: 1, claims: 0, edges: 0, observations: 1 });
+    expect(p.graph.nodes.find((n) => n.id === subject)?.observations).toEqual({ positive: 0, negative: 1, error: 0 });
+    // D3: a negative observation is coverage — the cell is checked-with-no-result, not untouched.
+    expect(p.coverage.cells.find((c) => c.entityId === subject && c.transformId === "tr-dns")).toMatchObject({
+      negative: 1,
+      last: "negative",
+    });
+    expect(p.coverage.untouched).toEqual([]);
+    expect(p.issues).toEqual([]);
+  });
+
+  it("P2-006: recordOutcome records an error observation with a note (D3: failure is not emptiness)", () => {
+    const f = fixture();
+    const subject = f.entity("domain", "example.com");
+    const ev = f.evidence("tr-dns");
+    recordOutcome(
+      subject,
+      "error",
+      {
+        ledger: f.ledger,
+        transformId: "tr-dns",
+        evidenceId: ev,
+        clock: f.clock,
+      },
+      "rate limited",
+    );
+    const p = project(f.ledger.entries());
+    expect(p.graph.nodes.find((n) => n.id === subject)?.observations).toEqual({ positive: 0, negative: 0, error: 1 });
+    // D3: failure is never mixed with emptiness — the cell is error, not negative.
+    expect(p.coverage.cells.find((c) => c.entityId === subject && c.transformId === "tr-dns")).toMatchObject({
+      error: 1,
+      last: "error",
+    });
     expect(p.issues).toEqual([]);
   });
 });
