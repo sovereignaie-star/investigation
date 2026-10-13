@@ -3,7 +3,7 @@
  * snapshot in `docs/adr/reference/iana/`.
  *
  * The goal is NOT to make the classifier "match the CSV" — the classifier has
- * explicit policy refusals (documentation ranges, AS112 v6, 6to4, ORCHIDv2) that
+ * explicit policy refusals (documentation ranges, 6to4, ORCHIDv2) that
  * are documented ADR-08 decisions, not registry readings. The goal is:
  *
  * 1. Every block the registry marks `Globally Reachable: True` is classified
@@ -72,7 +72,6 @@ const POLICY_REFUSALS_V4 = new Set([
   "203.0.113.0/24", // TEST-NET-3
   "198.18.0.0/15", // benchmarking
   "192.88.99.0/24", // 6to4 Relay (deprecated) — tunneling
-  "192.175.48.0/24", // AS112 v4 anycast — v6 counterpart (2001:4:112::/48) is a policy refusal
 ]);
 const POLICY_REFUSALS_V6 = new Set([
   "2001:db8::/32", // documentation

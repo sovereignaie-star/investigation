@@ -569,3 +569,151 @@ describe("RunEngine", () => {
     expect(events).toEqual(["running", "cancelled"]);
   });
 });
+
+describe("RunEngine retry classification (P2-025)", () => {
+  it("respects a numeric Retry-After header for 429 instead of the exponential backoff", async () => {
+    const sleeps: number[] = [];
+    let calls = 0;
+    const engine = new RunEngine({
+      transport: fakeTransport(() => {
+        calls++;
+        if (calls === 1) return { status: 429, body: "", headers: { "retry-after": "2" } } as TransportResponse;
+        return ok;
+      }),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 1000, // would be 1000ms on attempt 1; Retry-After 2s must win
+      maxRetries: 3,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+    engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
+    const [res] = await engine.drain();
+    expect(res.phase).toBe("succeeded");
+    expect(sleeps).toEqual([2000]);
+  });
+
+  it("respects an HTTP-date Retry-After header", async () => {
+    const sleeps: number[] = [];
+    let calls = 0;
+    const future = new Date(Date.now() + 1500).toUTCString();
+    const engine = new RunEngine({
+      transport: fakeTransport(() => {
+        calls++;
+        if (calls === 1) return { status: 429, body: "", headers: { "retry-after": future } } as TransportResponse;
+        return ok;
+      }),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 1000,
+      maxRetries: 3,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+    engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
+    const [res] = await engine.drain();
+    expect(res.phase).toBe("succeeded");
+    expect(sleeps[0]).toBeGreaterThan(0);
+    expect(sleeps[0]).toBeLessThanOrEqual(1500);
+  });
+
+  it("falls back to exponential backoff when Retry-After is absent", async () => {
+    const sleeps: number[] = [];
+    let calls = 0;
+    const engine = new RunEngine({
+      transport: fakeTransport(() => {
+        calls++;
+        if (calls === 1) return { status: 503, body: "" } as TransportResponse;
+        return ok;
+      }),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 10,
+      maxRetries: 3,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+    engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
+    const [res] = await engine.drain();
+    expect(res.phase).toBe("succeeded");
+    expect(sleeps).toEqual([20]); // 10 * 2^1 (attempt already incremented)
+  });
+
+  it("does not retry permanent 4xx responses (auth, not-found): returned as-is, one call", async () => {
+    let calls = 0;
+    const engine = new RunEngine({
+      transport: fakeTransport(() => {
+        calls++;
+        return { status: 401, body: "" } as TransportResponse;
+      }),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 1,
+      maxRetries: 3,
+    });
+    engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
+    const [res] = await engine.drain();
+    // A 4xx is a valid HTTP response for the engine (the transform interprets it);
+    // it is never retried and never treated as a transport failure.
+    expect(res.phase).toBe("succeeded");
+    expect(calls).toBe(1);
+  });
+
+  it("does not retry a non-retryable TransportError (dns)", async () => {
+    let calls = 0;
+    const engine = new RunEngine({
+      transport: fakeTransport(() => {
+        calls++;
+        return new TransportError("transport:dns", "nx");
+      }),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 1,
+      maxRetries: 3,
+    });
+    engine.submit({ kind: "domain", canonicalInput: "https://nx.test/" });
+    const [res] = await engine.drain();
+    expect(res.phase).toBe("failed");
+    expect(calls).toBe(1);
+  });
+});
+
+describe("RunEngine restart (P2-025)", () => {
+  it("restarts a failed run as a NEW run with the same input and a fresh budget", async () => {
+    let calls = 0;
+    const engine = new RunEngine({
+      transport: fakeTransport(() => {
+        calls++;
+        if (calls === 1) return { status: 500, body: "" } as TransportResponse;
+        return ok;
+      }),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 1,
+      maxRetries: 0,
+    });
+    const h = engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
+    const [first] = await engine.drain();
+    expect(first.phase).toBe("failed");
+    const restarted = engine.restart(h.runId);
+    expect(restarted).toBeDefined();
+    const restartedId = restarted?.runId ?? "";
+    expect(restartedId).not.toBe(h.runId);
+    const [second] = await engine.drain();
+    expect(second.phase).toBe("succeeded");
+    expect(second.runId).toBe(restartedId);
+    // The original run's result is preserved.
+    expect(engine.result(h.runId)?.phase).toBe("failed");
+  });
+
+  it("returns undefined for an unknown or non-failed run", async () => {
+    const engine = new RunEngine({ transport: fakeTransport(() => ok), caps, random: fakeRandom(), retryBaseMs: 1 });
+    expect(engine.restart("run-nope")).toBeUndefined();
+    const h = engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
+    await engine.drain();
+    expect(engine.restart(h.runId)).toBeUndefined(); // succeeded, not failed
+  });
+});

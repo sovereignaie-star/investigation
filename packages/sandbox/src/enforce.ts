@@ -46,6 +46,11 @@ export interface SandboxOptions {
    * on its stdin. This is the only legitimate path to the network (the parent's gateway).
    */
   readonly ipcHandler?: (message: Record<string, unknown>, stdin: NonNullable<ChildProcess["stdin"]> | undefined) => void;
+  /**
+   * Abort the run: the whole process tree is killed (like a timeout) and the promise settles with a
+   * `SandboxAborted` outcome instead of a result. The transform cannot observe the abort before it is killed.
+   */
+  readonly signal?: AbortSignal;
 }
 
 export interface SandboxResult {
@@ -64,10 +69,20 @@ export interface SandboxRefusal {
   readonly detail?: string;
 }
 
-export type SandboxOutcome = SandboxResult | SandboxRefusal;
+/** The run was aborted by the caller's signal before it completed. */
+export interface SandboxAborted {
+  readonly aborted: true;
+  readonly reason: string;
+}
+
+export type SandboxOutcome = SandboxResult | SandboxRefusal | SandboxAborted;
 
 export function isRefusal(x: SandboxOutcome): x is SandboxRefusal {
   return (x as SandboxRefusal).refused === true;
+}
+
+export function isAborted(x: SandboxOutcome): x is SandboxAborted {
+  return (x as SandboxAborted).aborted === true;
 }
 
 export interface IsolationReport {
@@ -103,7 +118,10 @@ function command(assurance: Assurance, launcherPath: string, source: string): { 
   if (assurance === "network-only") return { file: launcherPath, args: nodeArgs };
   const binds: string[] = [];
   for (const d of ["/usr", "/lib", "/lib64", "/bin"]) binds.push("--ro-bind-try", d, d);
-  if (!node.prefix.startsWith("/usr/")) binds.push("--ro-bind", node.prefix, node.prefix);
+  // The node prefix is bound AFTER the tmpfs: a node installed under /tmp (or any
+  // path later shadowed by --tmpfs) must not be hidden by the tmpfs mount. When
+  // node lives under /usr it is already covered by the ro-bind-try above.
+  const nodeBind = node.prefix.startsWith("/usr/") ? [] : ["--ro-bind", node.prefix, node.prefix];
   return {
     file: "bwrap",
     args: [
@@ -122,6 +140,7 @@ function command(assurance: Assurance, launcherPath: string, source: string): { 
       "/dev",
       "--tmpfs",
       "/tmp",
+      ...nodeBind,
       "--chdir",
       "/tmp",
       LAUNCHER_IN_SANDBOX,
@@ -280,6 +299,14 @@ export async function runAtLevel(
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
+      fn();
+    };
     const timeout = setTimeout(() => {
       timedOut = true;
       try {
@@ -288,6 +315,22 @@ export async function runAtLevel(
         child.kill("SIGKILL");
       }
     }, opts.timeoutMs ?? 30_000);
+    const onAbort = () => {
+      try {
+        if (child.pid) process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+      settle(() => resolve({ aborted: true, reason: signal?.reason instanceof Error ? signal.reason.message : "aborted" }));
+    };
+    const signal = opts.signal;
+    if (signal) {
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
     let lineBuf = "";
     child.stdout?.on("data", (b: Buffer) => {
       const text = b.toString();
@@ -309,17 +352,18 @@ export async function runAtLevel(
     });
     child.stderr?.on("data", (b: Buffer) => (stderr += b.toString()));
     child.on("error", (e) => {
-      clearTimeout(timeout);
-      reject(e);
+      settle(() => reject(e));
     });
-    child.on("close", (code, signal) => {
-      clearTimeout(timeout);
-      resolve({ ok: code === 0 && !timedOut, exitCode: code, signal, stdout, stderr, timedOut, assurance });
+    child.on("close", (code, sig) => {
+      settle(() => resolve({ ok: code === 0 && !timedOut, exitCode: code, signal: sig, stdout, stderr, timedOut, assurance }));
     });
     if (stdin) {
       if (opts.stdinData !== undefined) {
+        // Initial data (e.g. a bootstrap payload) is written first. When an ipcHandler is
+        // present the stream stays open so the parent can answer the transform's requests;
+        // otherwise it is closed after the initial data.
         stdin.write(opts.stdinData);
-        stdin.end();
+        if (!opts.ipcHandler) stdin.end();
       } else if (!opts.ipcHandler) {
         stdin.end();
       }
