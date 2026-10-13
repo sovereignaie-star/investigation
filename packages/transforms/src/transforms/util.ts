@@ -50,3 +50,43 @@ export function parseJson(body: string, what: string): unknown {
     throw new Error(`TR: malformed JSON from ${what}`);
   }
 }
+
+/** Validate an email address (loose structural check, matches email.yaml). */
+export function isEmail(raw: string): boolean {
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(raw.trim());
+}
+
+/** Validate a GitHub username (matches social.yaml github_username). */
+export function isGithubUsername(raw: string): boolean {
+  return /^[a-zA-Z0-9-]{1,39}$/.test(raw.trim());
+}
+
+/** Validate a GitLab username (matches social.yaml gitlab_username). */
+export function isGitlabUsername(raw: string): boolean {
+  return /^[a-zA-Z0-9_.-]{1,255}$/.test(raw.trim());
+}
+
+/** Validate a PGP fingerprint (matches hash.yaml pgp_fingerprint). */
+export function isPgpFingerprint(raw: string): boolean {
+  return /^[A-F0-9]{4}(\s?[A-F0-9]{4}){9}$/.test(raw.trim());
+}
+
+/** Validate a Bitcoin address (matches crypto.yaml bitcoin_address). */
+export function isBitcoinAddress(raw: string): boolean {
+  return /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(raw.trim());
+}
+
+/** Validate an Ethereum address (matches crypto.yaml ethereum_address). */
+export function isEthereumAddress(raw: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(raw.trim());
+}
+
+/** Validate an Ethereum transaction hash (matches crypto.yaml eth_tx_hash). */
+export function isEthTxHash(raw: string): boolean {
+  return /^0x[a-fA-F0-9]{64}$/.test(raw.trim());
+}
+
+/** Validate a SHA-256 hash (matches hash.yaml sha256_hash). */
+export function isSha256(raw: string): boolean {
+  return /^[a-fA-F0-9]{64}$/.test(raw.trim());
+}
