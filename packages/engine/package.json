@@ -11,6 +11,7 @@
     "./transport": "./src/transport.ts",
     "./run": "./src/run.ts",
     "./egress-adapter": "./src/egress-adapter.ts",
+    "./replay": "./src/replay.ts",
     "./expansion": "./src/expansion.ts"
   },
   "scripts": {
