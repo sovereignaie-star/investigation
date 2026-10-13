@@ -677,9 +677,15 @@ importers:
       '@ir/ledger':
         specifier: workspace:*
         version: link:../ledger
+      '@ir/sim':
+        specifier: workspace:*
+        version: link:../sim
       '@ir/store':
         specifier: workspace:*
         version: link:../store
+      '@ir/transforms':
+        specifier: workspace:*
+        version: link:../transforms
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
