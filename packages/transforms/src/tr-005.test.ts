@@ -11,7 +11,7 @@ describe("TR-005 ripestat", () => {
   it("emits announced prefixes for an IP", async () => {
     const sim = createSimServer([
       {
-        match: "https://stat.ripe.net/data/announced-prefixes/data.json?resource=8.8.8.8",
+        match: /^https:\/\/stat\.ripe\.net\/data\/announced-prefixes\/data\.json\?resource=8\.8\.8\.8$/,
         response: { status: 200, body: JSON.stringify({ data: { prefixes: [{ prefix: "8.8.8.0/24" }, { prefix: "8.8.4.0/24" }] } }) },
       },
     ]);
@@ -29,7 +29,7 @@ describe("TR-005 ripestat", () => {
   it("emits holder for an ASN", async () => {
     const sim = createSimServer([
       {
-        match: "https://stat.ripe.net/data/as-overview/data.json?resource=15169",
+        match: /^https:\/\/stat\.ripe\.net\/data\/as-overview\/data\.json\?resource=15169$/,
         response: { status: 200, body: JSON.stringify({ data: { holder: "Google LLC", asn: "15169" } }) },
       },
     ]);
@@ -43,7 +43,7 @@ describe("TR-005 ripestat", () => {
   it("emits announcing ASes for a prefix", async () => {
     const sim = createSimServer([
       {
-        match: "https://stat.ripe.net/data/prefix-overview/data.json?resource=8.8.8.0%2F24",
+        match: /^https:\/\/stat\.ripe\.net\/data\/prefix-overview\/data\.json\?resource=8\.8\.8\.0%2F24$/,
         response: { status: 200, body: JSON.stringify({ data: { asns: [{ asn: "15169", holder: "Google" }] } }) },
       },
     ]);

@@ -11,7 +11,7 @@ describe("TR-006 ip-to-asn", () => {
   it("emits ASN and prefix findings from the Team Cymru TXT answer", async () => {
     const sim = createSimServer([
       {
-        match: "https://dns.google/resolve?name=8.8.8.8.origin.asn.cymru.com&type=TXT",
+        match: /^https:\/\/dns\.google\/resolve\?name=8\.8\.8\.8\.origin\.asn\.cymru\.com&type=TXT$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -38,7 +38,7 @@ describe("TR-006 ip-to-asn", () => {
   it("returns an empty finding set when there is no answer", async () => {
     const sim = createSimServer([
       {
-        match: "https://dns.google/resolve?name=8.8.8.8.origin.asn.cymru.com&type=TXT",
+        match: /^https:\/\/dns\.google\/resolve\?name=8\.8\.8\.8\.origin\.asn\.cymru\.com&type=TXT$/,
         response: { status: 200, body: JSON.stringify({ Answer: [] }) },
       },
     ]);

@@ -11,7 +11,7 @@ describe("TR-007 ipinfo", () => {
   it("emits ASN, org, city and country findings", async () => {
     const sim = createSimServer([
       {
-        match: "https://ipinfo.io/8.8.8.8/json",
+        match: /^https:\/\/ipinfo\.io\/8\.8\.8\.8\/json$/,
         response: {
           status: 200,
           body: JSON.stringify({ org: "AS15169 Google LLC", city: "Mountain View", region: "California", country: "US" }),
@@ -38,7 +38,7 @@ describe("TR-007 ipinfo", () => {
   });
 
   it("returns an empty finding set for a bare response", async () => {
-    const sim = createSimServer([{ match: "https://ipinfo.io/8.8.8.8/json", response: { status: 200, body: "{}" } }]);
+    const sim = createSimServer([{ match: /^https:\/\/ipinfo\.io\/8\.8\.8\.8\/json$/, response: { status: 200, body: "{}" } }]);
     const result = await runTransform(ipInfo, { transport: sim.transport, input: { ip: "8.8.8.8" } });
     expect(result.output.findings).toHaveLength(0);
   });

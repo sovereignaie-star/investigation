@@ -11,7 +11,7 @@ describe("TR-004 cert-transparency", () => {
   it("emits subdomain and certificate findings from crt.sh results", async () => {
     const sim = createSimServer([
       {
-        match: "https://crt.sh/?q=%25.example.com&output=json",
+        match: /^https:\/\/crt\.sh\/\?q=%25\.example\.com&output=json$/,
         response: {
           status: 200,
           body: JSON.stringify([
@@ -49,7 +49,9 @@ describe("TR-004 cert-transparency", () => {
   });
 
   it("returns an empty finding set for an empty crt.sh response", async () => {
-    const sim = createSimServer([{ match: "https://crt.sh/?q=%25.example.com&output=json", response: { status: 200, body: "[]" } }]);
+    const sim = createSimServer([
+      { match: /^https:\/\/crt\.sh\/\?q=%25\.example\.com&output=json$/, response: { status: 200, body: "[]" } },
+    ]);
     const result = await runTransform(certTransparency, { transport: sim.transport, input: { domain: "example.com" } });
     expect(result.output.findings).toHaveLength(0);
   });

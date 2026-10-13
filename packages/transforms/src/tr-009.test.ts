@@ -13,7 +13,7 @@ describe("TR-009 urlscan-search", () => {
   it("emits scanned-URL and subdomain findings", async () => {
     const sim = createSimServer([
       {
-        match: "https://urlscan.io/api/v1/search/?q=domain:example.com",
+        match: /^https:\/\/urlscan\.io\/api\/v1\/search\/\?q=domain:example\.com$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -47,7 +47,10 @@ describe("TR-009 urlscan-search", () => {
 
   it("returns an empty finding set for no results", async () => {
     const sim = createSimServer([
-      { match: "https://urlscan.io/api/v1/search/?q=domain:example.com", response: { status: 200, body: JSON.stringify({ results: [] }) } },
+      {
+        match: /^https:\/\/urlscan\.io\/api\/v1\/search\/\?q=domain:example\.com$/,
+        response: { status: 200, body: JSON.stringify({ results: [] }) },
+      },
     ]);
     const result = await runTransform(urlscanSearch, { transport: sim.transport, input: { url: "https://example.com/" } });
     expect(result.output.findings).toHaveLength(0);
