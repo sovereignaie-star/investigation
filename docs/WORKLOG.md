@@ -1972,3 +1972,9 @@
 - **ما تم:** إيداع Dependabot يرفع `date-fns` من `^3.6.0` إلى `^4.4.0` في `apps/sandbox/package.json` و`apps/web/package.json` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017].
 - **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء على `0a0b77f`).
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
+
+### 2026-10-14 — [P0-017] دمج تحديث Dependabot: react-resizable-panels 2.1.9 → 4.14.4 (PR #56)
+- **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
+- **ما تم:** إيداع Dependabot يرفع `react-resizable-panels` من `2.1.9` إلى `4.14.4`. كان فشل البناء حقيقياً: v4 إعادة كتابة كاملة للـ API — `PanelGroup`/`PanelResizeHandle` لم يعودا موجودين (أخطاء TS2339 في `apps/sandbox/src/components/ui/resizable.tsx`). هُجّر المكوّن إلى API الجديد: `Group` بدل `PanelGroup`، `Panel` كما هو، `Separator` بدل `PanelResizeHandle`. المكوّن غير مستورد في أي مكان (لا استخدام فعلي).
+- **الأدلة:** `pnpm run lint` نظيف؛ `pnpm run typecheck` نظيف؛ `pnpm test` => 63 ملفاً / 872 نجاح / 12 تخطي.
+- **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
