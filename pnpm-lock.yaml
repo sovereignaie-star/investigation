@@ -704,6 +704,10 @@ importers:
         version: 2.9.1
 
   packages/egress:
+    dependencies:
+      '@ir/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

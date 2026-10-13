@@ -13,14 +13,16 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { executeCase, mismatches, SSRF_CASES, type Factory } from "./ssrf-cases";
+import { TIMING_CASES } from "./ssrf-timing-cases";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const CORE_IDENTIFIERS = path.resolve(HERE, "../../core/src/identifiers/index.ts");
 const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "egress-mutants-"));
 afterAll(() => fs.rmSync(ROOT, { recursive: true, force: true }));
 
 interface Mutation {
   readonly name: string;
-  readonly file: "egress.ts" | "address-policy.ts";
+  readonly file: "egress.ts" | "address-policy.ts" | "content-inventory.ts";
   readonly from: string;
   readonly to: string;
   /** Further replacements in the same file, for checks that are deliberately layered (defence in depth). */
@@ -35,7 +37,8 @@ const MUTATIONS: readonly Mutation[] = [
     file: "egress.ts",
     from: 'if (url.protocol !== "https:") return deny("scheme");',
     to: "",
-    detectedBy: ["T-SEC-SSRF-001", "T-SEC-SSRF-012", "T-SEC-SSRF-020"],
+    // 001 is no longer a detector: http://127.0.0.1 is recorded as address_class before the scheme check
+    detectedBy: ["T-SEC-SSRF-012", "T-SEC-SSRF-020"],
   },
   {
     name: "no port check",
@@ -56,6 +59,7 @@ const MUTATIONS: readonly Mutation[] = [
     file: "egress.ts",
     from: "if (!literal.verdict.ok) {",
     to: "if (false) {",
+    also: [["if (literal !== null && !literal.verdict.ok) {", "if (false) {"]],
     detectedBy: [
       "T-SEC-SSRF-001",
       "T-SEC-SSRF-003",
@@ -68,6 +72,41 @@ const MUTATIONS: readonly Mutation[] = [
       "T-SEC-SSRF-037",
       "T-SEC-SSRF-038",
     ],
+  },
+  {
+    name: "literal address class no longer precedes the scheme check",
+    file: "egress.ts",
+    from: "const shape = literalHostCheck(currentUrl) ?? urlChecks(currentUrl);",
+    to: "const shape = urlChecks(currentUrl);",
+    detectedBy: ["T-SEC-SSRF-001"],
+  },
+  {
+    name: "protected category no longer precedes the request contract",
+    file: "egress.ts",
+    from: "const protectedRefusal = protectedCategory(req);",
+    to: "const protectedRefusal = null as EgressResult | null;",
+    detectedBy: ["T-SEC-SSRF-040"],
+  },
+  {
+    name: "request content not inspected (sends taken on trust)",
+    file: "egress.ts",
+    from: "const contentErr = checkContent(req);",
+    to: "const contentErr = null as EgressResult | null;",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "a context keyword alone makes an ordinary reading refuse (evidence criterion removed)",
+    file: "content-inventory.ts",
+    from: ".filter(isStrongReading)",
+    to: "",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "natural-person readings held to the ordinary evidence bar (context no longer counts)",
+    file: "content-inventory.ts",
+    from: 'return c.sensitivity === "natural_person_gate" || c.validated',
+    to: "return c.validated",
+    detectedBy: ["T-SEC-SSRF-043"],
   },
   {
     name: "resolved addresses not classified",
@@ -162,10 +201,11 @@ const MUTATIONS: readonly Mutation[] = [
     detectedBy: ["T-SEC-SSRF-027"],
   },
   {
-    name: "natural person allowed",
+    name: "natural person allowed (both layers: the early protected-category check and the sensitivity check)",
     file: "egress.ts",
     from: 'if (sensitivity === "natural_person_gate") return deny("natural_person");',
     to: "",
+    also: [['if ((req as { sensitivity?: unknown }).sensitivity !== "natural_person_gate") return null;', "return null;"]],
     detectedBy: ["T-SEC-SSRF-028", "T-SEC-SSRF-040"],
   },
   {
@@ -215,7 +255,7 @@ const MUTATIONS: readonly Mutation[] = [
     file: "egress.ts",
     from: 'if (!REQUEST_FIELDS.has(k)) return deny("unknown_field"',
     to: 'if (false) return deny("unknown_field"',
-    detectedBy: ["T-SEC-SSRF-040"],
+    detectedBy: ["T-SEC-SSRF-042"],
   },
   {
     name: "IPv4-mapped verdict ignored",
@@ -260,9 +300,27 @@ const MUTATIONS: readonly Mutation[] = [
   },
 ];
 
+/** Mutations of the time limits, detected by the fake-clock cases in `ssrf-timing-cases.ts` (023, 034). */
+const TIMING_MUTATIONS: readonly Mutation[] = [
+  {
+    name: "no total deadline (the request deadline is pushed 1000x out)",
+    file: "egress.ts",
+    from: "const deadline = now() + limits.timeoutMs;",
+    to: "const deadline = now() + limits.timeoutMs * 1000;",
+    detectedBy: ["T-SEC-SSRF-023"],
+  },
+  {
+    name: "no connect timeout (a hop may run until the total deadline)",
+    file: "egress.ts",
+    from: "const hopDeadline = Math.min(deadline, now() + limits.connectTimeoutMs);",
+    to: "const hopDeadline = deadline;",
+    detectedBy: ["T-SEC-SSRF-034"],
+  },
+];
+
 async function loadMutant(m: Mutation | null): Promise<Factory> {
   const dir = fs.mkdtempSync(path.join(ROOT, "m-"));
-  for (const f of ["egress.ts", "address-policy.ts"]) {
+  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts"]) {
     let src = fs.readFileSync(path.join(HERE, f), "utf8");
     if (m && m.file === f) {
       expect(src.includes(m.from), `mutation anchor for "${m.name}" not found in ${f}`).toBe(true);
@@ -271,6 +329,8 @@ async function loadMutant(m: Mutation | null): Promise<Factory> {
         src = src.split(from).join(to);
       }
     }
+    // the copies live outside the workspace: point the @ir/core import at its source file
+    src = src.split('from "@ir/core/identifiers"').join(`from ${JSON.stringify(CORE_IDENTIFIERS)}`);
     fs.writeFileSync(path.join(dir, f), src);
   }
   const mod = (await import(/* @vite-ignore */ path.join(dir, "egress.ts"))) as { createEgressGateway: Factory };
@@ -284,6 +344,24 @@ describe("SSRF matrix negative controls (mutation)", () => {
       expect(mismatches(c, await executeCase(factory, c)), `${c.id} ${c.title}`).toEqual([]);
     }
   });
+
+  it("sanity: an unmodified copy passes every time-based case", async () => {
+    const factory = await loadMutant(null);
+    for (const c of TIMING_CASES) expect(await c.run(factory), `${c.id} ${c.title}`).toEqual([]);
+  });
+
+  for (const m of TIMING_MUTATIONS) {
+    it(`"${m.name}" is detected by ${m.detectedBy.join(", ")}`, async () => {
+      const factory = await loadMutant(m);
+      for (const id of m.detectedBy) {
+        const cases = TIMING_CASES.filter((c) => c.id === id);
+        expect(cases.length, `no time-based cases for ${id}`).toBeGreaterThan(0);
+        let detected = 0;
+        for (const c of cases) if ((await c.run(factory)).length > 0) detected++;
+        expect(detected, `${id} did not detect "${m.name}"`).toBeGreaterThan(0);
+      }
+    });
+  }
 
   for (const m of MUTATIONS) {
     it(`"${m.name}" is detected by ${m.detectedBy.join(", ")}`, async () => {

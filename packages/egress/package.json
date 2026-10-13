@@ -12,6 +12,9 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@ir/core": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "catalog:"
   }
