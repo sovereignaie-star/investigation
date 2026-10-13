@@ -191,6 +191,7 @@ interface IpcState {
   manifestError: string | undefined;
   outcome: { ok: boolean; output?: unknown; error?: { kind: string; message: string } } | undefined;
   fatal: { kind: string; message: string } | undefined;
+  writeError: string | undefined;
 }
 
 /** Handle one IPC message from the sandboxed child (ready / fetch / result / fatal). */
@@ -215,8 +216,10 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
       const answer = (payload: string) => {
         try {
           stdin?.write(payload);
-        } catch {
+        } catch (err) {
           // The child may already be gone (cancellation/timeout); the write is best-effort.
+          // Record the failure as a typed state field (D-017: no silent catch).
+          state.writeError = err instanceof Error ? err.message : String(err);
         }
       };
       state.http[method](String(msg.url)).then(
@@ -347,6 +350,7 @@ export async function runTransformIsolated(modulePath: string, opts: RunTransfor
     manifestError: undefined,
     outcome: undefined,
     fatal: undefined,
+    writeError: undefined,
   };
 
   let bundle: string;
