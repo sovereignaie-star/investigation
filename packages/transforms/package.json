@@ -8,7 +8,8 @@
     "./manifest": "./src/manifest.ts",
     "./transform": "./src/transform.ts",
     "./output": "./src/output.ts",
-    "./runner": "./src/runner.ts"
+    "./runner": "./src/runner.ts",
+    "./isolated": "./src/isolated.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -16,9 +17,12 @@
   "dependencies": {
     "@ir/schema": "workspace:*",
     "@ir/engine": "workspace:*",
+    "@ir/transform-sandbox": "workspace:*",
+    "esbuild": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@ir/sim": "workspace:*",
     "@types/node": "catalog:"
   }
 }
