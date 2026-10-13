@@ -5,18 +5,21 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type { Error, HealthStatus, RunInput, RunPhaseEvent, RunResult, RunSubmitted } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -32,9 +35,7 @@ export const getHealthCheckUrl = () => {
   return `/api/healthz`;
 };
 
-export const healthCheck = async (
-  options?: RequestInit,
-): Promise<HealthStatus> => {
+export const healthCheck = async (options?: RequestInit): Promise<HealthStatus> => {
   return customFetch<HealthStatus>(getHealthCheckUrl(), {
     ...options,
     method: "GET",
@@ -45,57 +46,245 @@ export const getHealthCheckQueryKey = () => {
   return [`/api/healthz`] as const;
 };
 
-export const getHealthCheckQueryOptions = <
-  TData = Awaited<ReturnType<typeof healthCheck>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof healthCheck>>,
-    TError,
-    TData
-  >;
+export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey = queryOptions?.queryKey ?? getHealthCheckQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({
-    signal,
-  }) => healthCheck({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({ signal }) => healthCheck({ signal, ...requestOptions });
 
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof healthCheck>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
 };
 
-export type HealthCheckQueryResult = NonNullable<
-  Awaited<ReturnType<typeof healthCheck>>
->;
+export type HealthCheckQueryResult = NonNullable<Awaited<ReturnType<typeof healthCheck>>>;
 export type HealthCheckQueryError = ErrorType<unknown>;
 
 /**
  * @summary Health check
  */
 
-export function useHealthCheck<
-  TData = Awaited<ReturnType<typeof healthCheck>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof healthCheck>>,
-    TError,
-    TData
-  >;
+export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
 
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Submits a run to the engine and returns its id. The run is queued; its status and phase events are available via the run endpoints.
+ * @summary Submit a run
+ */
+export const getSubmitRunUrl = () => {
+  return `/api/runs`;
+};
+
+export const submitRun = async (runInput: RunInput, options?: RequestInit): Promise<RunSubmitted> => {
+  return customFetch<RunSubmitted>(getSubmitRunUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(runInput),
+  });
+};
+
+export const getSubmitRunMutationOptions = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitRun>>, TError, { data: BodyType<RunInput> }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof submitRun>>, TError, { data: BodyType<RunInput> }, TContext> => {
+  const mutationKey = ["submitRun"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitRun>>, { data: BodyType<RunInput> }> = (props) => {
+    const { data } = props ?? {};
+
+    return submitRun(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitRunMutationResult = NonNullable<Awaited<ReturnType<typeof submitRun>>>;
+export type SubmitRunMutationBody = BodyType<RunInput>;
+export type SubmitRunMutationError = ErrorType<Error>;
+
+/**
+ * @summary Submit a run
+ */
+export const useSubmitRun = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof submitRun>>, TError, { data: BodyType<RunInput> }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof submitRun>>, TError, { data: BodyType<RunInput> }, TContext> => {
+  return useMutation(getSubmitRunMutationOptions(options));
+};
+
+/**
+ * Returns the current status and result of a run.
+ * @summary Get run status
+ */
+export const getGetRunUrl = (id: string) => {
+  return `/api/runs/${id}`;
+};
+
+export const getRun = async (id: string, options?: RequestInit): Promise<RunResult> => {
+  return customFetch<RunResult>(getGetRunUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRunQueryKey = (id: string) => {
+  return [`/api/runs/${id}`] as const;
+};
+
+export const getGetRunQueryOptions = <TData = Awaited<ReturnType<typeof getRun>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getRun>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRunQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRun>>> = ({ signal }) => getRun(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getRun>>, TError, TData> & {
     queryKey: QueryKey;
   };
+};
+
+export type GetRunQueryResult = NonNullable<Awaited<ReturnType<typeof getRun>>>;
+export type GetRunQueryError = ErrorType<Error>;
+
+/**
+ * @summary Get run status
+ */
+
+export function useGetRun<TData = Awaited<ReturnType<typeof getRun>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getRun>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRunQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Cancels a queued or running run.
+ * @summary Cancel a run
+ */
+export const getCancelRunUrl = (id: string) => {
+  return `/api/runs/${id}`;
+};
+
+export const cancelRun = async (id: string, options?: RequestInit): Promise<RunSubmitted> => {
+  return customFetch<RunSubmitted>(getCancelRunUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getCancelRunMutationOptions = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelRun>>, TError, { id: string }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof cancelRun>>, TError, { id: string }, TContext> => {
+  const mutationKey = ["cancelRun"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelRun>>, { id: string }> = (props) => {
+    const { id } = props ?? {};
+
+    return cancelRun(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelRunMutationResult = NonNullable<Awaited<ReturnType<typeof cancelRun>>>;
+
+export type CancelRunMutationError = ErrorType<Error>;
+
+/**
+ * @summary Cancel a run
+ */
+export const useCancelRun = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelRun>>, TError, { id: string }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof cancelRun>>, TError, { id: string }, TContext> => {
+  return useMutation(getCancelRunMutationOptions(options));
+};
+
+/**
+ * Opens a Server-Sent Events stream of phase transitions for a run. The stream closes when the run reaches a terminal phase or the client disconnects.
+ * @summary Stream run phase events (SSE)
+ */
+export const getRunEventsUrl = (id: string) => {
+  return `/api/runs/${id}/events`;
+};
+
+export const runEvents = async (id: string, options?: RequestInit): Promise<RunPhaseEvent> => {
+  return customFetch<RunPhaseEvent>(getRunEventsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRunEventsQueryKey = (id: string) => {
+  return [`/api/runs/${id}/events`] as const;
+};
+
+export const getRunEventsQueryOptions = <TData = Awaited<ReturnType<typeof runEvents>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof runEvents>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRunEventsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof runEvents>>> = ({ signal }) => runEvents(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof runEvents>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type RunEventsQueryResult = NonNullable<Awaited<ReturnType<typeof runEvents>>>;
+export type RunEventsQueryError = ErrorType<Error>;
+
+/**
+ * @summary Stream run phase events (SSE)
+ */
+
+export function useRunEvents<TData = Awaited<ReturnType<typeof runEvents>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof runEvents>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getRunEventsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
   return { ...query, queryKey: queryOptions.queryKey };
 }

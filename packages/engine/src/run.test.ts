@@ -547,4 +547,25 @@ describe("RunEngine", () => {
     expect(second).toHaveLength(0);
     expect(engine.result(h.runId)?.phase).toBe("succeeded");
   });
+
+  it("onPhaseChange observes the queued→running→succeeded transitions (P2-019 SSE)", async () => {
+    const engine = new RunEngine({ transport: fakeTransport(() => ok), caps, random: fakeRandom(), retryBaseMs: 1 });
+    const events: string[] = [];
+    const off = engine.onPhaseChange((e) => events.push(`${e.phase}`));
+    const h = engine.submit({ kind: "a", canonicalInput: "https://a.test/" });
+    await engine.drain();
+    off();
+    expect(events).toEqual(["running", "succeeded"]);
+    expect(engine.result(h.runId)?.phase).toBe("succeeded");
+  });
+
+  it("onPhaseChange reports cancelled for a run cancelled while queued (P2-019 SSE)", async () => {
+    const engine = new RunEngine({ transport: fakeTransport(() => ok), caps, random: fakeRandom(), retryBaseMs: 1 });
+    const events: string[] = [];
+    engine.onPhaseChange((e) => events.push(`${e.phase}`));
+    const h = engine.submit({ kind: "a", canonicalInput: "https://a.test/" });
+    h.cancel("user");
+    await engine.drain();
+    expect(events).toEqual(["running", "cancelled"]);
+  });
 });

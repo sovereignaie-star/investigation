@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: engine
+    description: Engine run operations (P2-019)
 paths:
   /healthz:
     get:
@@ -24,7 +26,125 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /runs:
+    post:
+      operationId: submitRun
+      tags: [engine]
+      summary: Submit a run
+      description: Submits a run to the engine and returns its id. The run is queued; its status and phase events are available via the run endpoints.
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunInput"
+      responses:
+        "202":
+          description: Run queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSubmitted"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Admin token required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /runs/{id}:
+    get:
+      operationId: getRun
+      tags: [engine]
+      summary: Get run status
+      description: Returns the current status and result of a run.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResult"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: cancelRun
+      tags: [engine]
+      summary: Cancel a run
+      description: Cancels a queued or running run.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Run cancelling
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSubmitted"
+        "404":
+          description: Run not found or already finished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /runs/{id}/events:
+    get:
+      operationId: runEvents
+      tags: [engine]
+      summary: Stream run phase events (SSE)
+      description: Opens a Server-Sent Events stream of phase transitions for a run. The stream closes when the run reaches a terminal phase or the client disconnects.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/RunPhaseEvent"
+        "404":
+          description: Run not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
+  securitySchemes:
+    adminAuth:
+      type: http
+      scheme: bearer
+      description: IR_ADMIN_TOKEN bearer token
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +153,67 @@ components:
           type: string
       required:
         - status
-
+    RunInput:
+      type: object
+      properties:
+        kind:
+          type: string
+        canonicalInput:
+          type: string
+        priority:
+          type: number
+        depth:
+          type: number
+        costEstimate:
+          type: number
+      required:
+        - kind
+        - canonicalInput
+    RunSubmitted:
+      type: object
+      properties:
+        runId:
+          type: string
+        status:
+          type: string
+      required:
+        - runId
+        - status
+    RunResult:
+      type: object
+      properties:
+        runId:
+          type: string
+        phase:
+          type: string
+          enum: [queued, running, cancelled, failed, succeeded]
+        processed:
+          type: number
+        transportAttempts:
+          type: number
+        failure:
+          nullable: true
+          type: object
+      required:
+        - runId
+        - phase
+        - processed
+        - transportAttempts
+    RunPhaseEvent:
+      type: object
+      properties:
+        runId:
+          type: string
+        phase:
+          type: string
+          enum: [queued, running, cancelled, failed, succeeded]
+      required:
+        - runId
+        - phase
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

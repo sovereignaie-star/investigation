@@ -1862,3 +1862,19 @@
 - **الامتثال الحوكمي:** STATUS.md محدّث (P2-002 → done + ملخص المرحلة)، WORKLOG مُلحق، معرّف المهمة في الرسالة والإدخال (GR-04). لا مسار D-8 في هذا التغيير (`packages/ledger` ليس ضمن المسارات الـ13).
 - **الحدود المعلنة:** التوسيع يكتب أحداث السجل فقط؛ ربطه بدورة تشغيل المحرك الفعلية (استدعاء `expandForParents` بعد كل `runTransform`) جزء من P2-023 (استراتيجيات التوسيع) وP2-018 (الإعادة بلا شبكة). لا اتصال شبكة حقيقي.
 - **التالي:** P2-006 (الدليل السلبي وأسباب الفشل) ثم P2-007 (الكاش بمفتاح idempotency) — كلاهما يعتمد على P2-001 المكتمل.
+
+### 2026-10-13 — [P2-019] واجهات REST + SSE للمحرك في OpenAPI (خادم + عميل مولّد)
+- **المنفّذ:** وكيل هندسي مستقل بتفويض من مالك المستودع (دورة العمل المستمرة).
+- **الخلفية:** ROADMAP سطر P2-019: واجهات REST + SSE للمحرك في OpenAPI، معيار القبول: العميل المولّد يعمل. تعتمد على P2-001 (المحرك) المكتمل. أُنشئ فرع `feat/P2-019-rest-sse` قاعدته `main` bccc800.
+- **ما تم:**
+  - `packages/engine/src/run.ts`: `onPhaseChange(listener)` — اشتراك أحداث الطور (`RunPhaseEvent {runId, phase, at}`) يُرجع إلغاء الاشتراك؛ `emitPhase` عند كل انتقال (running/cancelled/succeeded/failed)؛ `has(runId)` فحص وجود. اختباران في `run.test.ts` (24/24).
+  - `apps/server/src/lib/engine-transport.ts`: `FAIL_CLOSED_TRANSPORT` — يرمي `transport:ssrf-blocked` على كل fetch (لا شبكة حقيقية قبل بوابات الخروج والعزل؛ نفس موقف مسارات الخزنة).
+  - `apps/server/src/routes/engine.ts`: `engineRouter(getEngine, opts)` — POST `/runs` (202 `{runId, status:queued}`؛ 400 بلا kind/canonicalInput)، GET `/runs/:id` (200 النتيجة؛ 404 مجهول)، DELETE `/runs/:id` (202 إلغاء؛ 404 مجهول/منتهٍ)، GET `/runs/:id/events` (SSE `event: phase`، يُغلق عند الطور النهائي أو انقطاع العميل؛ 404 مجهول). حد إداري موحّد: `router.use(["/runs"], express.json 8kb, rateLimit 60/min, requireAdmin)` — لا مسار عام للمتصفح (D-037).
+  - `apps/server/src/routes/index.ts`: محرك مشترك بـ `ENGINE_CAPS` (maxNodes 100 / maxDepth 5 / maxRequests 50 / maxCostEstimate 1000 / maxElapsedMs 30000) و`FAIL_CLOSED_TRANSPORT`.
+  - `lib/api-spec/openapi.yaml`: مسارات `/runs` و`/runs/{id}` و`/runs/{id}/events`، مخططات RunInput/RunSubmitted/RunResult/RunPhaseEvent/Error، securityScheme adminAuth (Bearer IR_ADMIN_TOKEN).
+  - **orval مثبّت إلى 8.5.3** (الإصدار الذي ولّد الكود الملتزم): 8.41.0 يولّد `Headers.entries()` (غير موجود في TS lib) و`zod.looseObject` (واجهة zod v4، المشروع على zod 3.25.76). أُعيد توليد العميل بنجاح: `submitRun/getRun/cancelRun/runEvents` في `lib/api-client-react` + مخططات zod في `lib/api-zod`.
+  - `apps/server/src/generated-client.test.ts` (2): معيار القبول — العميل المولّد (`setBaseUrl` + `setAuthTokenGetter` + `submitRun/getRun/cancelRun`) يعمل ضد خادم loopback حي.
+- **الأدلة [مُقاس محلياً]:** `pnpm test` => **61 ملفاً / 851 نجاحاً / 12 تخطياً** (قبل على main: 59/840/12؛ +11)؛ `pnpm lint` و`pnpm typecheck` و`pnpm build` و`pnpm governance` => 0. `apps/server/tsconfig.json` يستبعد `generated-client.test.ts` (عميل DOM تحت tsconfig node — الاختبار يعمل تحت vitest ببيئته الخاصة).
+- **الامتثال الحوكمي:** STATUS.md محدّث (P2-019 → done)، WORKLOG مُلحق، معرّف المهمة في الرسالة والإدخال (GR-04). **مسار D-8:** `apps/server/` ضمن المسارات الـ13 — يتطلب مراجعة `@xuuux-voox` صالحة على الرأس النهائي قبل الدمج.
+- **الحدود المعلنة:** لا شبكة حقيقية — `FAIL_CLOSED_TRANSPORT` يرفض كل طلب حتى تُعتمد بوابات الخروج والعزل. SSE يبث أحداث الطور فقط (لا محتوى استجابة). لا ترويسات أمان إضافية (helmet) — جزء من P2-020.
+- **التالي:** P2-020 (تقوية الخادم: CORS مقيد، helmet، حد معدل، حد حجم، جلسة محلية) — يعتمد على P2-019 المكتمل.

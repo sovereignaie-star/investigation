@@ -8,3 +8,55 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface RunInput {
+  kind: string;
+  canonicalInput: string;
+  priority?: number;
+  depth?: number;
+  costEstimate?: number;
+}
+
+export interface RunSubmitted {
+  runId: string;
+  status: string;
+}
+
+export type RunResultPhase = (typeof RunResultPhase)[keyof typeof RunResultPhase];
+
+export const RunResultPhase = {
+  queued: "queued",
+  running: "running",
+  cancelled: "cancelled",
+  failed: "failed",
+  succeeded: "succeeded",
+} as const;
+
+export type RunResultFailure = { [key: string]: unknown } | null;
+
+export interface RunResult {
+  runId: string;
+  phase: RunResultPhase;
+  processed: number;
+  transportAttempts: number;
+  failure?: RunResultFailure;
+}
+
+export type RunPhaseEventPhase = (typeof RunPhaseEventPhase)[keyof typeof RunPhaseEventPhase];
+
+export const RunPhaseEventPhase = {
+  queued: "queued",
+  running: "running",
+  cancelled: "cancelled",
+  failed: "failed",
+  succeeded: "succeeded",
+} as const;
+
+export interface RunPhaseEvent {
+  runId: string;
+  phase: RunPhaseEventPhase;
+}
+
+export interface Error {
+  error: string;
+}
