@@ -7,7 +7,12 @@
  * `no-direct-network` static guard enforces this. URLs are built with `URL` /
  * `URLSearchParams` only (T-RULE-02), and every response is saved as evidence
  * before analysis (T-RULE-04) — the runner records each request/response pair.
+ *
+ * Cancellation: the run's `AbortSignal` is threaded through the context and into
+ * every `ctx.http` call, so a cancelled run aborts in-flight requests and a
+ * response that arrives after cancellation is never accepted as a success.
  */
+import { CancellationError } from "@ir/engine/cancel";
 import type { HttpTransport, TransportResponse } from "@ir/engine/transport";
 import type { TransformManifest } from "@ir/schema";
 import type { TransformOutput } from "./output.ts";
@@ -33,6 +38,12 @@ export interface TransformContext {
   readonly manifest: TransformManifest;
   /** The canonical input the transform was invoked with. */
   readonly input: unknown;
+  /**
+   * The run's cancellation signal. Aborted when the run is cancelled; every
+   * `ctx.http` call is bound to it, and a response that arrives after it is
+   * aborted is never accepted as a success.
+   */
+  readonly signal: AbortSignal;
 }
 
 /** A transform: a validated manifest plus a run function. */
@@ -41,10 +52,21 @@ export interface Transform<TInput = unknown> {
   readonly run: (input: TInput, ctx: TransformContext) => Promise<TransformOutput>;
 }
 
-/** Wrap an engine `HttpTransport` into the transform HTTP client. */
-export function createTransformHttp(transport: HttpTransport): TransformHttp {
+/**
+ * Wrap an engine `HttpTransport` into the transform HTTP client. The run's signal
+ * is forwarded to the transport on every request, and a response that arrives
+ * after the signal is aborted is refused (late-completion guard): a cancelled run
+ * never resolves to a success at this layer either.
+ */
+export function createTransformHttp(transport: HttpTransport, signal?: AbortSignal): TransformHttp {
+  const runSignal = signal ?? new AbortController().signal;
   const request = async (method: "GET" | "HEAD", url: string, headers?: Readonly<Record<string, string>>) => {
-    const res: TransportResponse = await transport.fetch({ method, url, headers }, new AbortController().signal);
+    const res: TransportResponse = await transport.fetch({ method, url, headers }, runSignal);
+    // A response that arrives after cancellation is never a success, even if the
+    // transport completed it (the engine enforces the same rule on its own path).
+    if (runSignal.aborted) {
+      throw new CancellationError("cancelled before the response was accepted");
+    }
     const body = typeof res.body === "string" ? res.body : res.body instanceof Uint8Array ? new TextDecoder().decode(res.body) : "";
     return {
       status: res.status,
