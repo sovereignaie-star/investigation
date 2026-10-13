@@ -10,6 +10,7 @@
     "noEmit": true
   },
   "include": ["src"],
+  "exclude": ["src/generated-client.test.ts"],
   "references": [
     {
       "path": "../../lib/db"

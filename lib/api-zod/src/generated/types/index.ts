@@ -6,4 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./error";
 export * from "./healthStatus";
+export * from "./runInput";
+export * from "./runPhaseEvent";
+export * from "./runPhaseEventPhase";
+export * from "./runResult";
+export * from "./runResultFailure";
+export * from "./runResultPhase";
+export * from "./runSubmitted";

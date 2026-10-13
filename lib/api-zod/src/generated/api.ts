@@ -14,3 +14,47 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Submits a run to the engine and returns its id. The run is queued; its status and phase events are available via the run endpoints.
+ * @summary Submit a run
+ */
+export const SubmitRunBody = zod.object({
+  kind: zod.string(),
+  canonicalInput: zod.string(),
+  priority: zod.number().optional(),
+  depth: zod.number().optional(),
+  costEstimate: zod.number().optional(),
+});
+
+/**
+ * Returns the current status and result of a run.
+ * @summary Get run status
+ */
+export const GetRunParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetRunResponse = zod.object({
+  runId: zod.string(),
+  phase: zod.enum(["queued", "running", "cancelled", "failed", "succeeded"]),
+  processed: zod.number(),
+  transportAttempts: zod.number(),
+  failure: zod.object({}).passthrough().nullish(),
+});
+
+/**
+ * Cancels a queued or running run.
+ * @summary Cancel a run
+ */
+export const CancelRunParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * Opens a Server-Sent Events stream of phase transitions for a run. The stream closes when the run reaches a terminal phase or the client disconnects.
+ * @summary Stream run phase events (SSE)
+ */
+export const RunEventsParams = zod.object({
+  id: zod.coerce.string(),
+});

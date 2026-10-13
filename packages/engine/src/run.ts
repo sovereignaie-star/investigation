@@ -56,6 +56,13 @@ export interface RunHandle {
   cancel(reason?: string): boolean;
 }
 
+/** A phase transition observed on a run (P2-019: SSE events). */
+export interface RunPhaseEvent {
+  readonly runId: string;
+  readonly phase: RunPhase;
+  readonly at: number;
+}
+
 interface RunRecord {
   readonly runId: string;
   readonly input: RunInput;
@@ -82,6 +89,20 @@ export class RunEngine {
   };
   private readonly transport: HttpTransport;
   private draining = false;
+  private readonly phaseListeners = new Set<(e: RunPhaseEvent) => void>();
+
+  /** Subscribes to phase transitions (P2-019: SSE). Returns an unsubscribe function. */
+  onPhaseChange(listener: (e: RunPhaseEvent) => void): () => void {
+    this.phaseListeners.add(listener);
+    return () => {
+      this.phaseListeners.delete(listener);
+    };
+  }
+
+  private emitPhase(runId: string, phase: RunPhase): void {
+    const at = this.opts.now();
+    for (const l of this.phaseListeners) l({ runId, phase, at });
+  }
 
   constructor(opts: EngineOptions) {
     this.transport = opts.transport;
@@ -169,6 +190,11 @@ export class RunEngine {
     return this.results.get(runId);
   }
 
+  /** True if a run with this id was ever submitted (P2-019: SSE existence check). */
+  has(runId: string): boolean {
+    return this.records.has(runId);
+  }
+
   /**
    * Drains the queue subject to concurrency, budget and cancellation. Each call
    * processes only runs still queued; runs already finished are not re-executed.
@@ -206,10 +232,12 @@ export class RunEngine {
 
   private async execute(rec: RunRecord): Promise<RunResult> {
     rec.phase = "running";
+    this.emitPhase(rec.runId, "running");
     // A run cancelled while queued fails fast with zero transport attempts.
     if (rec.token.isCancelled) {
       const reason = (await rec.token.whenCancelled) || "user";
       rec.phase = "cancelled";
+      this.emitPhase(rec.runId, "cancelled");
       const result: RunResult = {
         runId: rec.runId,
         phase: "cancelled",
@@ -237,6 +265,7 @@ export class RunEngine {
       this.remainingTimeMs(budget);
       rec.processed = 1;
       rec.phase = "succeeded";
+      this.emitPhase(rec.runId, "succeeded");
       const result: RunResult = {
         runId: rec.runId,
         phase: rec.phase,
@@ -249,6 +278,7 @@ export class RunEngine {
     } catch (err) {
       const failure = this.toFailure(err);
       rec.phase = failure.kind === "cancel" ? "cancelled" : "failed";
+      this.emitPhase(rec.runId, rec.phase);
       const result: RunResult = {
         runId: rec.runId,
         phase: rec.phase,
