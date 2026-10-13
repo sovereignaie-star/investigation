@@ -16,7 +16,8 @@
   "dependencies": {
     "@ir/schema": "workspace:*",
     "@ir/engine": "workspace:*",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@ir/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:"

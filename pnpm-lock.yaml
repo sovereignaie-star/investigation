@@ -788,6 +788,9 @@ importers:
 
   packages/transforms:
     dependencies:
+      '@ir/core':
+        specifier: workspace:*
+        version: link:../core
       '@ir/engine':
         specifier: workspace:*
         version: link:../engine

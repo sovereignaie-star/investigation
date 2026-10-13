@@ -1927,3 +1927,10 @@
 - **الأدلة:** `git log --oneline` => رأس P2-017 فوق P2-006 المعاد أساسه فوق `ceeb77e` (P2-019)؛ `node scripts/governance/check.mjs --range origin/main..HEAD` => 0 فشل.
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04). لا مسار D-8 في هذا التغيير (`packages/ledger` ليس ضمن المسارات الـ13).
 - **التالي:** P2-009 (دفعة المحوّلات الأولى) بعد دمج P2-005 — وP2-010 بعدها.
+
+### 2026-10-14 — [P2-027] EML/MSG parser (TR-089)
+- **المنفّذ:** Lindy Assistant
+- **ما تم:** محوّل محلي LC-A يوزّع رسائل EML (RFC 5322/MIME) وMSG (OLE2) دون أي اعتماديات خارجية ودون فتح أي رابط (PB-07). يستخرج الترويسات (الموضوع، المرسل، المستلم، التاريخ، message-id، reply-to، return-path)، سلسلة Received (خوادم from/by + عناوين IP)، روابط الجسم، والمرفقات (اسم + SHA-256). بنية OLE2: FAT/DIFAT، الدليل، mini-FAT، mini-stream، قراءة التخزينات الفرعية للمرفقات. إصلاحات: إزاحة mini-FAT (0x40/0x44)، سلاسل mini-FAT متعددة القطاعات، دليل متعدد القطاعات، قناع tag (16 بت)، فك طي Received، D-017 (لا catch صامت).
+- **الأدلة:** `pnpm --filter @ir/transforms exec vitest run src/transforms/tr-089-eml-msg.test.ts` => 5/5؛ `pnpm --filter @ir/transforms exec vitest run` => 7 ملفات/32 اختبار؛ `pnpm test` => 866 نجاح/15 فشل بيئي (argon2Sync Node 22)؛ `pnpm lint`/`typecheck`/`build`/`governance` => 0 أخطاء.
+- **ما لم يتم / ملاحظات:** 15 فشلاً بيئياً معروفاً (argon2Sync Node 24 API) غير متعلقة بهذا التغيير. packages/transforms مسار D-8 — يحتاج مراجعة @xuuux-voox.
+- **التالي:** فتح PR عبر curl، ثم المهمة المستقلة التالية (P2-024/026/028/029/030/031).
