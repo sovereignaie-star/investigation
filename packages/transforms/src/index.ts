@@ -24,3 +24,6 @@ export * from "./transforms/tr-018-wikidata.ts";
 export * from "./transforms/tr-019-pgp-keys.ts";
 export * from "./transforms/tr-020-email-tech.ts";
 export * from "./transforms/tr-089-eml-msg.ts";
+// P2-037: the input checks the transforms themselves apply, exported so the CLI refuses an invalid subject before
+// opening a case or starting the sandbox (the transform checks again before its first request).
+export { normalizeDomain, isIpv4, isIpv6, isAsn } from "./transforms/util.ts";

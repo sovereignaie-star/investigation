@@ -493,6 +493,12 @@ export async function runAtLevel(
       );
     });
     if (stdin) {
+      // P2-037: a write to a child that already exited (cancellation, timeout, crash) fails asynchronously with
+      // EPIPE as an 'error' event; unhandled it would crash the parent. The child's exit decides the outcome; the
+      // failed write is kept in the run's stderr (D-017: not silently dropped).
+      stdin.on("error", (err) => {
+        stderr += `\n[sandbox parent] write to transform stdin failed: ${err.message}`;
+      });
       if (opts.stdinData !== undefined) {
         // Initial data (e.g. a bootstrap payload) is written first. When an ipcHandler is
         // present the stream stays open so the parent can answer the transform's requests;
