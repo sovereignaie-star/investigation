@@ -1,7 +1,7 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { isoNow, systemClock, ulidFactory, type Clock } from "@ir/core";
+import { isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
 import type { ExpandResult } from "@ir/ledger";
 import { project, projectionHash, type Projection } from "@ir/ledger/projections";
@@ -13,13 +13,17 @@ import type { EgressAuditEvent } from "@ir/egress";
 import { LegalBasis, type CaseInit } from "@ir/schema";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
 import { registered, subjectInput, type RegisteredTransform } from "./registry.ts";
-import { recordRunFailure, recordRunSuccess } from "./run-record.ts";
+import { ensureSubject, recordRunFailure, recordRunSuccess } from "./run-record.ts";
+import { corroboration, investigate, type InvestigationBudget, type InvestigationResult } from "./investigate.ts";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
        ir project <case-dir> [--at seq] [--expect sha256] [--passphrase-file file] [--json]
        ir run <case-dir> <transform-id> <subject-type> <subject-value> [--sim rules.json] [--json] [--passphrase-file file]
        ir run <case-dir> <transform-id> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
               [--purpose text --legal-basis basis] [--json]
+       ir investigate <case-dir> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
+              [--transform TR-nnn...] [--max-depth n] [--max-runs n] [--max-requests n] [--max-bytes n]
+              [--max-time-ms n] [--purpose text --legal-basis basis] [--json]
 
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
   project: rebuilds the graph, table and coverage views from the chain, offline (optionally as of seq --at),
@@ -31,6 +35,11 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
            IR_ENABLE_NETWORK=1 in the environment (IR_OFFLINE=1 always wins) and at least one --allow-host; every
            request and redirect hop must stay on that list. A new case needs --purpose and --legal-basis (not
            training_simulation); a simulation case is refused. Every gateway decision goes to the case audit chain.
+  investigate (P2-038): from one seed, runs every registered transform (or the --transform ones) that accepts each
+           entity's type, isolated through the same gateway, under a budget (defaults: depth 1, 10 runs, 50
+           requests, 10 MB, 120 s). One node per identifier, every edge from every parent kept; a transform runs at
+           most once per identifier. Coverage per entity and transform: found, none, failed, not_run (with reason).
+           Exit 0 when it completed, 1 when any run failed or the budget/cancellation stopped it, 2 on usage errors.
   Encrypted cases: the passphrase is read from --passphrase-file or IR_CASE_PASSPHRASE, never from the command line.
   Exit codes: 0 intact, 1 integrity failure, 2 usage or I/O error.`;
 
@@ -91,6 +100,12 @@ export async function main(
         "allow-host": { type: "string", multiple: true },
         purpose: { type: "string" },
         "legal-basis": { type: "string" },
+        transform: { type: "string", multiple: true },
+        "max-depth": { type: "string" },
+        "max-runs": { type: "string" },
+        "max-requests": { type: "string" },
+        "max-bytes": { type: "string" },
+        "max-time-ms": { type: "string" },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -103,15 +118,36 @@ export async function main(
     out(USAGE);
     return 0;
   }
-  if (cmd === "project" && dir && rest.length === 0) return runProject(dir, parsed.values, out, err);
-  if (cmd === "run" && dir && rest.length === 3) {
-    return runTransformCommand(dir, rest[0], rest[1], rest[2], parsed.values, out, err, opts);
-  }
-  if (cmd !== "verify" || !dir || rest.length > 0) {
+  const command = dir ? commandFor(cmd, dir, rest, parsed.values, out, err, opts) : undefined;
+  if (!command) {
     err(USAGE);
     return 2;
   }
-  return runVerify(dir, parsed.values, out, err);
+  return command();
+}
+
+/** The sub-command for the positionals, or undefined for a usage error. */
+function commandFor(
+  cmd: string | undefined,
+  dir: string,
+  rest: string[],
+  v: RunValues & InvestigateValues & Values & { at?: string | undefined; expect?: string | undefined },
+  out: (s: string) => void,
+  err: (s: string) => void,
+  opts: CliOptions,
+): (() => number | Promise<number>) | undefined {
+  const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2 };
+  if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
+  switch (cmd) {
+    case "verify":
+      return () => runVerify(dir, v, out, err);
+    case "project":
+      return () => runProject(dir, v, out, err);
+    case "run":
+      return () => runTransformCommand(dir, rest[0], rest[1], rest[2], v, out, err, opts);
+    default:
+      return () => runInvestigateCommand(dir, rest[0], rest[1], v, out, err, opts);
+  }
 }
 
 type Values = {
@@ -199,21 +235,6 @@ type RunValues = {
 };
 
 /** Reuses the subject node when it already exists (D-020: one node per canonical key), else creates it. */
-function ensureSubject(c: Case, key: string, type: string, clock: Clock): string {
-  const p = project(c.entries());
-  const existing = p.graph.nodes.find((n) => n.canonicalKey === key);
-  if (existing) return existing.id;
-  const id = ulidFactory(clock)();
-  c.append("entity.added", {
-    id,
-    type,
-    canonicalKey: key,
-    labels: { en: key.slice(key.indexOf(":") + 1) },
-    props: {},
-  });
-  return id;
-}
-
 function readSimRules(file: string): SimRule[] {
   const parsed = JSON.parse(readFileSync(file, "utf8")) as unknown;
   if (!Array.isArray(parsed)) throw new Error("--sim must be a JSON array of sim rules");
@@ -412,6 +433,112 @@ async function runTransformCommand(
   } catch (x) {
     err(`ir run: ${(x as Error).message}`);
     return 2;
+  }
+}
+
+type InvestigateValues = RunValues & {
+  transform?: string[] | undefined;
+  "max-depth"?: string | undefined;
+  "max-runs"?: string | undefined;
+  "max-requests"?: string | undefined;
+  "max-bytes"?: string | undefined;
+  "max-time-ms"?: string | undefined;
+};
+
+/** Parses the budget flags; each must be a non-negative integer. */
+function budgetFrom(v: InvestigateValues): Partial<InvestigationBudget> | string {
+  const flags: Array<[keyof InvestigationBudget, string | undefined, string]> = [
+    ["maxDepth", v["max-depth"], "--max-depth"],
+    ["maxRuns", v["max-runs"], "--max-runs"],
+    ["maxRequests", v["max-requests"], "--max-requests"],
+    ["maxBytes", v["max-bytes"], "--max-bytes"],
+    ["maxElapsedMs", v["max-time-ms"], "--max-time-ms"],
+  ];
+  const out: Partial<Record<keyof InvestigationBudget, number>> = {};
+  for (const [k, raw, flag] of flags) {
+    if (raw === undefined) continue;
+    if (!/^\d+$/.test(raw)) return `${flag} must be a non-negative integer`;
+    out[k] = Number(raw);
+  }
+  return out;
+}
+
+/** Refusals before any case work: the usage rules of `ir investigate`. */
+function investigateUsage(v: InvestigateValues): Partial<InvestigationBudget> | string {
+  if (!v.network) return "--network is required (an investigation runs only isolated, through the egress gateway)";
+  return budgetFrom(v);
+}
+
+/** Refusals of the opened case: encrypted, or a simulation case. */
+function investigateCaseRefusal(c: Case): string | undefined {
+  if (c.encrypted) return "refusing an encrypted case";
+  if (c.info().legalBasis === "training_simulation") {
+    return "this is a simulation case (legal basis training_simulation); use a case with a real basis";
+  }
+  return undefined;
+}
+
+function printInvestigation(c: Case, r: InvestigationResult, json: boolean, out: (s: string) => void): void {
+  const entries = c.entries();
+  const p = project(entries);
+  const hash = projectionHash(p);
+  if (json) {
+    out(
+      JSON.stringify({ ...r, corroboration: corroboration(entries), projection: { seq: p.seq, sha256: hash, counts: p.counts } }, null, 2),
+    );
+    return;
+  }
+  const stop = r.stopReason ? `, stopped: ${r.stopReason}` : "";
+  const lines = [`ir investigate: ${r.seedKey}: ${r.runs} runs, ${r.requests} requests, ${r.bytes} bytes${stop}`];
+  for (const k of r.coverage)
+    lines.push(`  ${k.transformId} ${k.entityKey} (depth ${k.depth}): ${k.state}${k.reason ? ` — ${k.reason}` : ""}`);
+  if (r.unexpandable.length > 0) lines.push(`  no transform for: ${r.unexpandable.join(", ")}`);
+  lines.push(`  projection at seq ${p.seq}: nodes ${p.counts.nodes}, edges ${p.counts.edges}; sha256 ${hash}`);
+  out(lines.join("\n"));
+}
+
+/** `ir investigate` (P2-038): the expansion loop over registered connectors, network only, isolated only. */
+async function runInvestigateCommand(
+  dir: string,
+  subjectType: string,
+  subjectValue: string,
+  v: InvestigateValues,
+  out: (s: string) => void,
+  err: (s: string) => void,
+  opts: CliOptions,
+): Promise<number> {
+  const fail = (msg: string) => (err(`ir investigate: ${msg}`), 2);
+  try {
+    const budget = investigateUsage(v);
+    if (typeof budget === "string") return fail(budget);
+    const clock = opts.clock ?? systemClock;
+    const c = openRunCase(dir, v, clock);
+    if (typeof c === "string") return fail(c);
+    try {
+      const refused = investigateCaseRefusal(c);
+      if (refused) return fail(refused);
+      const r = await investigate(
+        c,
+        { type: subjectType, value: subjectValue },
+        {
+          allowHosts: v["allow-host"] ?? [],
+          budget,
+          transforms: v.transform,
+          network: opts.network,
+          clock,
+          now: opts.now,
+          sleep: opts.sleep,
+          signal: opts.signal,
+        },
+      );
+      if ("error" in r) return fail(r.error);
+      printInvestigation(c, r, v.json === true, out);
+      return r.stopReason !== undefined || r.coverage.some((k) => k.state === "failed") ? 1 : 0;
+    } finally {
+      c.close();
+    }
+  } catch (x) {
+    return fail((x as Error).message);
   }
 }
 
