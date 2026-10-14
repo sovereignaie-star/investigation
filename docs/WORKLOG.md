@@ -2655,3 +2655,35 @@
   - تحقق محلي على main@c3d4435 بعد الدمج: `pnpm run governance` => ناجحة؛ `vitest run packages/cli/src/investigate.test.ts` => 22/22.
 - **الأدلة:** `gh api …/pulls/109/reviews` => `xuuux-voox: APPROVED@7c9785c`؛ `gh api …/pulls/109/merge-async/3d4d2701…` => `status: merged`، `sha: c3d4435`؛ `git log origin/main -1` => `c3d4435`؛ `gh api …/commits/7c9785…/check-runs?per_page=100` => 11 ناجحة.
 - **ما لم يتم / ما يُترك:** قفزات إعادة التوجيه داخل البوابة (`runHops`) تحدّها حدود البوابة نفسها، لا يُحصيها هذا العدّاد (مُوثّق كحد معروف، لا فجوة). المراجعة الهندسية المستقلة (المرحلة 1) تُكمل: مسار البيانات عبر الطبقات، تحقق العزل، حتمية إعادة بناء الإسقاط.
+
+### 2026-10-14 — [P2-041] فتح مهمة: قفزات إعادة التوجيه داخل البوابة غير محصاة في ميزانية طلبات التحقيق
+- **المنفّذ:** Perplexity Computer (وكيل ذكاء اصطناعي).
+- **ما تم:** أثناء تتبع E2E للمرحلة 1 (توجيه المستخدم: لا تدقيق ملفات، تتبّع بيانات فعلياً عبر الطبقات) رُصد تعارض بين إصلاح P2-040 المدمج ومعيار قبوله الأصلي:
+  - معيار قبول P2-040 في ROADMAP نصّ صراحة «وكل قفزة إعادة توجيه» و«الفرق بين `state.requests` وعدد القرارات الفعلية للبوابة صفراً».
+  - الإصلاح المدمج (main@eb6b1e0) وثّق القفزات ك«حد معروف» في PR #109 وWORKLOG وSTATUS — وهذا تصنيف غير دقيق: القفزة داخل `runHops` (packages/egress/src/egress.ts) استهلاك حقيقي لـDNS واتصال وبايتات ومعدل، غير مرئي لعدّاد `requestMeter` الذي يلف الطلب الإدخالي ككل (قفزة واحدة مقابل N استدعاءات نقل فعلية).
+- **إعادة إنتاج حي (أحمر على main@eb6b1e0، اختبار P2-041 في `investigate.test.ts`):** ميزانية طلبات 2، TR-010 وحده، robots.txt يسمح، الصفحة تعيد `302` إلى مسار آخر على المضيف المصرّح نفسه. النتيجة: **3 استدعاءات نقل فعلية** (`https://www.example.com/robots.txt`، `https://www.example.com/`، `https://www.example.com/final`) مقابل **`result.requests == 2`**. الفجوة = +1 (القفزة) غير محصاة، وأي DNS رابعاً غير مُقتطع قبل البدء.
+- **الطبقة المالكة:** `packages/egress/src/egress.ts` (`runHops`) — الحلقة الداخلية للقفزات؛ و`packages/cli/src/investigate.ts` (`requestMeter`) — عدّاد التحقيق الذي يجب أن يُمرَّر للبوابة.
+- **ما لم يُنفَّذ بعد:** الإصلاح — يبدأ الآن (أصغر إصلاح: عدّ كل قفزة في ميزانية التحقيق قبل بدء DNS لكل قفزة).
+- **الأدلة (كلها تشغيلات فعلية):** `vitest run packages/cli/src/investigate.test.ts -t "reproduces"` => الاختبار يمُرّ (يقيس الفجوة `3 > 2`) على main@eb6b1e0 قبل أي تعديل تنفيذ؛ `gh api repos/sovereignaie-star/investigation/commits/eb6b1e0…` => main الحالي؛ `node scripts/governance/check.mjs --consistency` (قبل هذا الإيداع) => كشف غياب صف P2-041 في STATUS ولم يتجاوز الحوكمة — أُضيفت الصف هنا في نفس الإيداع (GR-01).
+- **التالي:** تنفيذ الإصلاح في `runHops` + `requestMeter`، تحويل اختبار إعادة الإنتاج إلى اختبار انحدار (3 من 3، لا رابع)، تشغيل البوابات، مراجعة، دمج، إعادة التحقق على main.
+
+### 2026-10-14 — [P2-041] تنفيذ الإصلاح: ميزانية طلبات التحقيق ترى كل قفزة إعادة توجيه
+- **المنفّذ:** Perplexity Computer (وكيل ذكاء اصطناعي).
+- **ما تم:**
+  - `packages/egress/src/byte-budget.ts`: فئة `RequestBudget` جديدة (نفس نمط `ByteBudget` تماماً) — عدّاد مشترك ذري (`take()` all-or-nothing)، يُستخرج واحد قبل DNS لكل قفزة.
+  - `packages/egress/src/egress.ts`: 
+    - `EgressRequest.requestBudget?: RequestBudget` (حقل جديد) — يُعلن في `REQUEST_FIELDS` ويُتحقق في `validateBudgetAndPaths` (`isRequestBudget`).
+    - `EgressReason` يضيف `"request_budget"`.
+    - `runHops`: يستخرج واحداً من الميزانية **قبل DNS لكل قفزة** (بعد فحص الإلغاء والمهلة، قبل فحص الميزانية بالبايت)؛ إذا فشل الاستخراج => رفض بـ`request_budget`، لا DNS ولا نقل.
+  - `packages/egress/src/index.ts`: يصدّر `RequestBudget` و`isRequestBudget`.
+  - `packages/cli/src/network.ts`: `networkRunFor()` يستقبل `requestBudget?: RequestBudget` (بدل `wrapTransport`) ويضعه في `baseRequest` الذي يُمرّر للبوابة — فتراه كل من نقل الصفحة ونقل robots.
+  - `packages/cli/src/investigate.ts`: 
+    - `Investigation` يستبدل `usage = { requests: 0 }` بـ`readonly requests: RequestBudget` (مشاركة عبر كل التشغيلات).
+    - `requestMeter()` القديمة (كانت ترى طلب إدخالي واحد ولا ترى القفزات داخل `runHops`) حُذفت؛ `attempt()` يمرّر `this.requests` إلى `networkRunFor()`.
+    - كل مراجع `this.usage.requests` => `this.requests.usedCount`؛ `exhausted()` => `this.requests.exhausted`؛ `result.requests` => `inv.requests.usedCount`.
+    - استيرادات `HttpTransport`/`TransportRequest`/`TransportError` غير المستخدمة أُزيلت.
+- **اختبارات جديدة:**
+  - `packages/cli/src/investigate.test.ts`: اختبار انحدار «budget: requests — redirect hops are counted too» — ميزانية 2، 302 على نفس المضيف: تحقق أن استدعاءات النقل الفعلية == `["robots.txt", "/"]` (بالضبط 2)، `result.requests == 2`، لا استدعاء ثالث (القفزة تُرفض قبل DNS)، الحالة `failed` مع `request budget exhausted`.
+  - `packages/egress/src/p2-039.test.ts`: 6 اختبارات P2-041 — ميزانية 1 + 302 (رفض قبل DNS، استدعاء نقل واحد)، ميزانية 2 + 302 (كلتا القفزتين)، بعد النفاد لا DNS ولا نقل، طلبات متزامنة لا تتجاوز الحد (take ذري)، تحقق صحة الحقل، واختبار وحدة `RequestBudget` (atomic، لا يتجاوز، يرفض الحدود السيئة).
+- **الأدلة (كلها تشغيلات فعلية):** `vitest run packages/cli/src/investigate.test.ts` => 23/23؛ `vitest run packages/egress/src/p2-039.test.ts` => 34/34؛ `pnpm run test` => 1469 passed / 5 skipped (live-network كما كان)؛ `pnpm run lint`/`typecheck`/`build`/`governance` => ناجحة جميعها.
+- **التالي:** إنشاء فرع `fix/P2-041-hop-budget`، إيداع (docs+كود معاً GR-01)، فتح PR، مراجعة xuuux-voox، دمج عبر merge-async، إعادة التحقق على main.

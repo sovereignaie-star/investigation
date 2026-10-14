@@ -7,7 +7,7 @@
  * 4. the shared byte budget (`ByteBudget`), charged WHILE a response is received.
  */
 import { describe, expect, it } from "vitest";
-import { ByteBudget } from "./byte-budget";
+import { ByteBudget, RequestBudget } from "./byte-budget";
 import { inventoryRequest, isStaticPath, judgeInventory } from "./content-inventory";
 import { createEgressGateway, EgressTransportError, type EgressAuditEvent, type EgressRequest, type EgressTransport } from "./egress";
 
@@ -393,5 +393,84 @@ describe("P2-039 byte budget enforced while the response is received", () => {
     expect(b.take(-1)).toBe(false);
     expect(new ByteBudget(0).exhausted).toBe(true);
     expect(() => new ByteBudget(-1)).toThrow(RangeError);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// P2-041: the investigation's request budget sees every redirect hop (taken per hop inside runHops, before DNS).
+
+describe("P2-041 the shared request budget counts every redirect hop, taken before each hop's DNS", () => {
+  it("budget 1 + 302: the redirect hop is refused before DNS, exactly one transport call runs", async () => {
+    const h = harness([REDIRECT("/final")]);
+    const budget = new RequestBudget(1);
+    const r = await h.gw.request({ ...BOOT, staticPaths: STATIC, requestBudget: budget });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("request_budget");
+    expect(r.transportCalls).toBe(1); // only the first hop reached the transport
+    expect(h.calls).toHaveLength(1);
+    expect(h.resolved).toHaveLength(1); // only the first hop's DNS
+    expect(budget.usedCount).toBe(1);
+    expect(budget.exhausted).toBe(true);
+  });
+
+  it("budget 2 + 302: both hops run (first hop + redirect), and the budget is exactly used", async () => {
+    const h = harness([REDIRECT("/final"), { status: 200, body: "final" }]);
+    const budget = new RequestBudget(2);
+    const r = await h.gw.request({ ...BOOT, staticPaths: STATIC, requestBudget: budget });
+    expect(r.ok).toBe(true);
+    expect(h.calls).toHaveLength(2); // first hop (302) + redirect target (200)
+    expect(budget.usedCount).toBe(2); // exactly one take per actual transport call
+    expect(budget.remaining).toBe(0);
+  });
+
+  it("after exhaustion, no request reaches DNS or the transport (refused before DNS)", async () => {
+    const h = harness([
+      { status: 200, body: "a" },
+      { status: 200, body: "b" },
+    ]);
+    const budget = new RequestBudget(1);
+    const first = await h.gw.request({ ...BOOT, staticPaths: STATIC, requestBudget: budget });
+    expect(first.ok).toBe(true);
+    const resolvedBefore = h.resolved.length;
+    const second = await h.gw.request({ ...BOOT, staticPaths: STATIC, requestBudget: budget });
+    expect(second.reason).toBe("request_budget");
+    expect(second.transportCalls).toBe(0);
+    expect(h.resolved.length).toBe(resolvedBefore); // refused before DNS
+    expect(h.calls).toHaveLength(1); // only the first request's transport call
+  });
+
+  it("concurrent requests sharing one budget cannot together overshoot the limit (JS single-threaded take)", async () => {
+    const h = harness(Array.from({ length: 5 }, () => ({ status: 200, body: "x" })));
+    const budget = new RequestBudget(2);
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => h.gw.request({ ...BOOT, staticPaths: STATIC, requestBudget: budget })),
+    );
+    const ok = results.filter((r) => r.ok === true).length;
+    expect(ok).toBe(2); // exactly the limit, no more
+    expect(budget.usedCount).toBe(2);
+    expect(h.calls).toHaveLength(2);
+  });
+
+  it("requestBudget is validated (a plain object is invalid_request)", async () => {
+    const h = harness();
+    const r = await h.gw.request({
+      ...BOOT,
+      staticPaths: STATIC,
+      requestBudget: { limit: 1, take: () => true } as unknown as RequestBudget,
+    });
+    expect(r.reason).toBe("invalid_request");
+  });
+
+  it("RequestBudget: take is atomic, never passes the limit, refuses bad limits", () => {
+    const b = new RequestBudget(3);
+    expect(b.take()).toBe(true);
+    expect(b.take()).toBe(true);
+    expect(b.take()).toBe(true);
+    expect(b.exhausted).toBe(true);
+    expect(b.take()).toBe(false); // never passes
+    expect(b.usedCount).toBe(3);
+    expect(new RequestBudget(0).exhausted).toBe(true);
+    expect(() => new RequestBudget(-1)).toThrow(RangeError);
+    expect(() => new RequestBudget(1.5)).toThrow(RangeError);
   });
 });
