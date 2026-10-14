@@ -7,13 +7,16 @@
  *   sector 3: mini stream
  *   sector 4: mini FAT
  * All streams are < 4096 bytes so they live in the mini stream.
+ *
+ * Exported layout constants let the adversarial tests (P2-034) corrupt one field of an otherwise valid file:
+ * header at file offset 0, sector s at (s + 1) * 512, FAT in sector 0, directory from sector 1 (128-byte entries).
  */
 import { createHash } from "node:crypto";
 
-const SECTOR = 512;
+export const SECTOR = 512;
 const MINI = 64;
-const END = 0xfffffffe;
-const FREE = 0xffffffff;
+export const END = 0xfffffffe;
+export const FREE = 0xffffffff;
 const FATSECT = 0xfffffffd;
 
 interface Stream {
@@ -177,16 +180,21 @@ export function buildMsg(spec: MsgSpec): Buffer {
 
   const header = Buffer.alloc(SECTOR);
   Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]).copy(header, 0);
+  // [MS-CFB] 2.2 header (P2-034: offsets from 0x34 were previously shifted by 4 bytes, in step with the parser).
+  header.writeUInt16LE(0x3e, 0x18); // minor version
+  header.writeUInt16LE(3, 0x1a); // major version 3 (512-byte sectors)
+  header.writeUInt16LE(0xfffe, 0x1c); // byte order: little-endian
   header.writeUInt16LE(9, 0x1e); // sector shift (512)
   header.writeUInt16LE(6, 0x20); // mini sector shift (64)
-  header.writeUInt32LE(0, 0x28); // number of directory sectors (0 = FAT chain)
+  header.writeUInt32LE(0, 0x28); // number of directory sectors (must be 0 for version 3)
   header.writeUInt32LE(1, 0x2c); // number of FAT sectors
   header.writeUInt32LE(1, 0x30); // first directory sector
-  header.writeUInt32LE(0, 0x38); // transaction
-  header.writeUInt32LE(4096, 0x3c); // mini stream cutoff
-  header.writeUInt32LE(miniFatSector, 0x40); // first mini FAT sector
-  header.writeUInt32LE(1, 0x44); // number of DIFAT sectors
-  header.writeUInt32LE(0, 0x48); // DIFAT entries in header
+  header.writeUInt32LE(0, 0x34); // transaction signature
+  header.writeUInt32LE(4096, 0x38); // mini stream cutoff
+  header.writeUInt32LE(miniFatSector, 0x3c); // first mini FAT sector
+  header.writeUInt32LE(1, 0x40); // number of mini FAT sectors
+  header.writeUInt32LE(END, 0x44); // first DIFAT sector (none)
+  header.writeUInt32LE(0, 0x48); // number of DIFAT sectors
   header.writeUInt32LE(0, 0x4c); // DIFAT[0] = FAT sector 0
   for (let i = 1; i < 109; i++) header.writeUInt32LE(FREE, 0x4c + i * 4);
 

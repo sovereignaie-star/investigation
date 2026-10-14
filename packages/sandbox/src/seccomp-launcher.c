@@ -13,10 +13,16 @@
  *   - ptrace, process_vm_readv, process_vm_writev, pidfd_getfd                     -> EPERM
  *   - unshare, setns, mount, bpf, perf_event_open, userfaultfd, keyctl, add_key    -> EPERM
  *
+ * Resource limits (P2-034): leading `--rlimit=<name>:<value>` options are applied with setrlimit(2), soft = hard,
+ * BEFORE the filter and the exec. With PR_SET_NO_NEW_PRIVS and no CAP_SYS_RESOURCE the program (and every
+ * descendant, which inherits them) can only lower them. Names: as (address space), data, fsize, nofile, nproc,
+ * cpu (seconds), core. An unknown name, a malformed value or a failed setrlimit is fatal (exit 73): the launcher
+ * never runs the program with weaker limits than it was asked for.
+ *
  * What it does NOT enforce: file access. Reading or writing files (including /proc/<pid>/mem of other
  * processes of the same user) is governed by the filesystem / namespace layer (bubblewrap) when available.
  *
- * Usage: ir-seccomp-exec <program> [args...]
+ * Usage: ir-seccomp-exec [--rlimit=<name>:<value>]... <program> [args...]
  */
 #define _GNU_SOURCE
 #include <errno.h>
@@ -25,6 +31,9 @@
 #include <linux/seccomp.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/resource.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -40,9 +49,48 @@
 #define IR_DENY(nr, err) \
   BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, (nr), 0, 1), BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | ((err) & SECCOMP_RET_DATA))
 
+static int rlimit_resource(const char *name) {
+  if (strcmp(name, "as") == 0) return RLIMIT_AS;
+  if (strcmp(name, "data") == 0) return RLIMIT_DATA;
+  if (strcmp(name, "fsize") == 0) return RLIMIT_FSIZE;
+  if (strcmp(name, "nofile") == 0) return RLIMIT_NOFILE;
+  if (strcmp(name, "nproc") == 0) return RLIMIT_NPROC;
+  if (strcmp(name, "cpu") == 0) return RLIMIT_CPU;
+  if (strcmp(name, "core") == 0) return RLIMIT_CORE;
+  return -1;
+}
+
+/* Parses "--rlimit=<name>:<value>" and applies it (soft = hard). Returns 0 on success. */
+static int apply_rlimit(const char *opt) {
+  const char *spec = opt + strlen("--rlimit=");
+  const char *colon = strchr(spec, ':');
+  if (!colon || colon == spec || colon - spec >= 16) return -1;
+  char name[16];
+  memcpy(name, spec, (size_t)(colon - spec));
+  name[colon - spec] = '\0';
+  int resource = rlimit_resource(name);
+  if (resource < 0) return -1;
+  const char *digits = colon + 1;
+  if (*digits < '0' || *digits > '9') return -1;
+  char *end = NULL;
+  errno = 0;
+  unsigned long long value = strtoull(digits, &end, 10);
+  if (errno != 0 || !end || *end != '\0') return -1;
+  struct rlimit rl = { .rlim_cur = (rlim_t)value, .rlim_max = (rlim_t)value };
+  return setrlimit(resource, &rl);
+}
+
 int main(int argc, char **argv) {
-  if (argc < 2) {
-    fprintf(stderr, "usage: ir-seccomp-exec <program> [args...]\n");
+  int first = 1;
+  while (first < argc && strncmp(argv[first], "--rlimit=", 9) == 0) {
+    if (apply_rlimit(argv[first]) != 0) {
+      fprintf(stderr, "ir-seccomp-exec: cannot apply %s\n", argv[first]);
+      return 73;
+    }
+    first++;
+  }
+  if (first >= argc) {
+    fprintf(stderr, "usage: ir-seccomp-exec [--rlimit=<name>:<value>]... <program> [args...]\n");
     return 64;
   }
   struct sock_filter filter[] = {
@@ -86,7 +134,7 @@ int main(int argc, char **argv) {
     perror("ir-seccomp-exec: seccomp");
     return 71;
   }
-  execvp(argv[1], argv + 1);
+  execvp(argv[first], argv + first);
   perror("ir-seccomp-exec: exec");
   return 72;
 }
