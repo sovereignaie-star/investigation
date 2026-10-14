@@ -28,9 +28,7 @@
  */
 import { canonicalKey, isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
-import type { HttpTransport, TransportRequest } from "@ir/engine";
-import { TransportError } from "@ir/engine";
-import { ByteBudget } from "@ir/egress";
+import { ByteBudget, RequestBudget } from "@ir/egress";
 import type { Case } from "@ir/store";
 import { runTransform, TransformRunError, type RunTransformResult } from "@ir/transforms";
 import { networkRunFor, openGateway, type NetworkDeps, type NetworkGateway, type NetworkPlan } from "./network.ts";
@@ -129,31 +127,6 @@ export function applicable(entries: readonly RegisteredTransform[], type: string
   return entries.filter((e) => e.subjects[type] !== undefined);
 }
 
-/**
- * Counts requests across the investigation and refuses a request beyond the request budget, or once the byte budget
- * is exhausted (the gateway refuses it too, before DNS). The bytes themselves are charged by the gateway's transport
- * while each response is received (P2-039), not here after the fact.
- *
- * P2-040: this meter is applied to EVERY transport the plan hands out (the transform's page transport AND the
- * robots transport) via `networkRunFor`'s `wrapTransport`, so robots.txt fetches and redirect hops are counted too.
- * The old form wrapped only the transform-facing transport, so a robots.txt fetch (one per new origin in TR-010)
- * consumed DNS, transport and rate budget without ever appearing in `result.requests`.
- */
-function requestMeter(maxRequests: number, state: { requests: number }, bytes: ByteBudget): (t: HttpTransport) => HttpTransport {
-  return (inner: HttpTransport) => ({
-    async fetch(req: TransportRequest, signal: AbortSignal) {
-      if (state.requests >= maxRequests) {
-        throw new TransportError("transport:rate-limit", `investigation request budget exhausted (${maxRequests} requests)`);
-      }
-      if (bytes.exhausted) {
-        throw new TransportError("transport:rate-limit", `investigation byte budget exhausted (${bytes.used}/${bytes.limit} bytes)`);
-      }
-      state.requests++;
-      return inner.fetch(req, signal);
-    },
-  });
-}
-
 type Sleep = (ms: number, signal: AbortSignal) => Promise<void>;
 type StopReason = NonNullable<InvestigationResult["stopReason"]>;
 
@@ -206,7 +179,12 @@ function keyOrUndefined(type: string, value: string): string | undefined {
 
 /** One investigation's mutable state: usage, coverage, frontier, and the stop reason. */
 class Investigation {
-  readonly usage = { requests: 0 };
+  /**
+   * P2-041: the request budget as a `RequestBudget` — one meter shared by every transport of every run, taken
+   * per hop inside the gateway's `runHops` (before DNS), so `state.requests` == actual transport calls.
+   * Replaces P2-040's `requestMeter` (which counted one entry request and could not see redirect hops).
+   */
+  readonly requests: RequestBudget;
   /** P2-039: the hard total byte budget, shared by every request through the gateway. */
   readonly bytes: ByteBudget;
   readonly coverage: CoverageRecord[] = [];
@@ -233,6 +211,7 @@ class Investigation {
   ) {
     this.frontier = [seed];
     this.bytes = new ByteBudget(budget.maxBytes);
+    this.requests = new RequestBudget(budget.maxRequests);
     this.queued = new Set([seed.key]);
     this.now = opts.now ?? (() => Date.now());
     this.sleep = opts.sleep ?? realSleep;
@@ -244,7 +223,7 @@ class Investigation {
   private exhausted(): StopReason | undefined {
     if (this.opts.signal?.aborted) return "cancelled";
     if (this.runs >= this.budget.maxRuns) return "runs";
-    if (this.usage.requests >= this.budget.maxRequests) return "requests";
+    if (this.requests.exhausted) return "requests";
     if (this.bytes.exhausted) return "bytes";
     if (this.timedOut || this.now() - this.startedAt >= this.budget.maxElapsedMs) return "time";
     return undefined;
@@ -298,7 +277,8 @@ class Investigation {
       node.type,
       this.opts.network ?? {},
       this.bytes,
-      requestMeter(this.budget.maxRequests, this.usage, this.bytes),
+      // P2-041: one RequestBudget shared by every run of this investigation; the gateway takes one per hop.
+      this.requests,
     );
     if ("error" in plan) return this.notRun(node, entry, `setup refused: ${plan.error}`);
     if (this.runs > 0) await this.sleep(this.pacingMs, this.opts.signal ?? new AbortController().signal);
@@ -321,7 +301,7 @@ class Investigation {
       this.timedOut = true;
       run.abort();
     }, remaining);
-    const before = this.usage.requests;
+    const before = this.requests.usedCount;
     const base = { entityKey: node.key, transformId: entry.transform.manifest.id, depth: node.depth };
     try {
       const result = await runTransform(entry.transform, {
@@ -340,7 +320,7 @@ class Investigation {
       this.coverage.push({
         ...base,
         state: findings.length > 0 ? "found" : "none",
-        requests: this.usage.requests - before,
+        requests: this.requests.usedCount - before,
         findings: findings.length,
       });
       this.enqueue(childrenOf(findings, node.depth + 1));
@@ -348,7 +328,13 @@ class Investigation {
       if (!(x instanceof TransformRunError)) throw x;
       recordRunFailure(this.c, subjectId, entry.transform, input, x, this.clock);
       const why = this.failure(x);
-      this.coverage.push({ ...base, state: "failed", reason: `[${x.stage}] ${why}`, requests: this.usage.requests - before, findings: 0 });
+      this.coverage.push({
+        ...base,
+        state: "failed",
+        reason: `[${x.stage}] ${why}`,
+        requests: this.requests.usedCount - before,
+        findings: 0,
+      });
     } finally {
       clearTimeout(deadline);
       this.opts.signal?.removeEventListener("abort", onAbort);
@@ -411,7 +397,7 @@ export async function investigate(
     coverage: inv.coverage,
     unexpandable: inv.unexpandable,
     runs: inv.runs,
-    requests: inv.usage.requests,
+    requests: inv.requests.usedCount,
     bytes: inv.bytes.used,
     ...(inv.stopReason ? { stopReason: inv.stopReason } : {}),
   };

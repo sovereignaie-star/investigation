@@ -677,6 +677,39 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
 });
 
 describe.skipIf(!host.full)("P2-040: the request budget counts robots.txt fetches (one meter for every entry request)", () => {
+  // P2-041 regression: a redirect hop inside the gateway is a real transport call (DNS, connect, bytes, rate)
+  // and MUST be counted by the investigation's request budget — the budget is taken per hop inside `runHops`,
+  // before each hop's DNS, so `result.requests` == actual transport calls and nothing starts after exhaustion.
+  // The reproduction (before the fix) showed 3 actual transport calls with `result.requests == 2`.
+  it("budget: requests — redirect hops are counted too; budget 2 + 302 means exactly 2 transport calls, no third (P2-041)", async () => {
+    const WORLD_010: Readonly<Record<string, Resp>> = {
+      "https://www.example.com/robots.txt": json("User-agent: *\nAllow: /\n"),
+      // The page redirects to another path on the same allowed host.
+      "https://www.example.com/": { status: 302, headers: { location: "/final" } } as Resp,
+      "https://www.example.com/final": json("<html>final</html>"),
+    };
+    const dir = tempDir();
+    const x = edge(WORLD_010);
+    const r = await investigate(dir, ["--max-requests", "2", "--transform", "TR-010", "--max-depth", "0"], {
+      hosts: ["www.example.com"],
+      seed: ["url", "https://www.example.com/"],
+      network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
+    });
+    // The transform asks for one page; the robots fetch is hop 1, the page (302) is hop 2. Budget 2 is exact:
+    // the redirect hop would be hop 3 and is refused BEFORE its DNS — no third transport call.
+    expect(r.code).toBe(1);
+    // Exactly two transport calls: robots.txt (allowed) and the page's first hop (302). The redirect is refused.
+    expect(x.calls.map((c) => c.url)).toEqual(["https://www.example.com/robots.txt", "https://www.example.com/"]);
+    // `result.requests` counts every hop that actually ran (2), matching the transport calls exactly.
+    expect(r.result?.requests).toBe(2);
+    // The coverage of the single TR-010 run is a failure (redirect refused by the budget), not an empty success.
+    const k = cell(covOf(r), "TR-010", "url:https://www.example.com/")[0];
+    expect(k.state).toBe("failed");
+    expect(k.reason).toMatch(/request budget exhausted/);
+    // Nothing more can start: no third transport call, no further claims added.
+    expect(x.calls).toHaveLength(2);
+    expect(readCase(dir).entries.some((e) => e.kind === "claim.added")).toBe(false);
+  });
   // P2-040 regression: the request budget must count EVERY request the gateway admits — including the
   // robots.txt fetch a page-fetching transform triggers — and no further request may start once it is exhausted.
   it("budget: requests — robots.txt fetches are counted too; no third transport call starts after exhaustion (P2-040)", async () => {

@@ -50,3 +50,54 @@ export class ByteBudget {
 export function isByteBudget(v: unknown): v is ByteBudget {
   return v instanceof ByteBudget;
 }
+
+/**
+ * P2-041 — a hard total request budget shared by every entry request of one investigation, enforced BEFORE
+ * each hop's DNS (the first hop and every redirect hop inside `runHops`).
+ *
+ * The gateway takes one from the budget before resolving DNS for each hop; a hop that would pass the limit is
+ * refused (and the request fails with `request_budget`), so no redirect can start after the budget is exhausted.
+ * Unlike the outer `requestMeter` (which sees one gateway.request() call = one entry request, invisible to
+ * redirect hops inside it), this counter lives INSIDE the gateway's hop loop, so `state.requests` reflects
+ * every DNS+connect+bytes+rate-consuming transport call.
+ *
+ * JavaScript runs one callback at a time, so `take` is atomic: concurrent requests sharing one meter cannot
+ * together overshoot the limit.
+ */
+export class RequestBudget {
+  private used = 0;
+  private overflowed = false;
+
+  constructor(readonly limit: number) {
+    if (!Number.isSafeInteger(limit) || limit < 0) throw new RangeError(`request budget must be a non-negative integer (got ${limit})`);
+  }
+
+  /** Requests accepted so far (never more than `limit`). */
+  get usedCount(): number {
+    return this.used;
+  }
+
+  get remaining(): number {
+    return this.limit - this.used;
+  }
+
+  /** True once nothing more can start: the limit is reached, or a hop was refused for going past it. */
+  get exhausted(): boolean {
+    return this.overflowed || this.used >= this.limit;
+  }
+
+  /** Accept one more request (one hop), or refuse it (and mark the budget exhausted) when it would pass the limit. */
+  take(): boolean {
+    if (this.used + 1 > this.limit) {
+      this.overflowed = true;
+      return false;
+    }
+    this.used += 1;
+    return true;
+  }
+}
+
+/** Duck-typed check (the gateway's request contract is validated at runtime). */
+export function isRequestBudget(v: unknown): v is RequestBudget {
+  return v instanceof RequestBudget;
+}

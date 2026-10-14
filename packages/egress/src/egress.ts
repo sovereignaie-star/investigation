@@ -10,7 +10,7 @@
  * This module is intentionally self-contained and side-effect-free outside the
  * injected `resolver` / `transport` / `auditSink` / `now` functions.
  */
-import { isByteBudget, type ByteBudget } from "./byte-budget.ts";
+import { isByteBudget, isRequestBudget, type ByteBudget, type RequestBudget } from "./byte-budget.ts";
 import {
   crossHostHeaders,
   inventoryRequest,
@@ -58,7 +58,12 @@ export type EgressReason =
    * P2-039: the request's shared byte budget (`byteBudget`) is exhausted, or receiving this response would pass it.
    * Refused before DNS when nothing is left; otherwise the transport stops reading at the chunk that would overflow.
    */
-  | "byte_budget";
+  | "byte_budget"
+  /**
+   * P2-041: the shared request budget (`requestBudget`) is exhausted — a hop (first or redirect) was refused
+   * before its DNS because the investigation's total request budget has nothing left.
+   */
+  | "request_budget";
 
 export const EGRESS_DENY_CODE = "EGRESS_POLICY_DENIED" as const;
 /** @deprecated Use `EGRESS_DENY_CODE` (the const value) or `EgressReason`. */
@@ -97,6 +102,13 @@ export interface EgressRequest {
    * received; a request starts only while bytes remain, and fails `byte_budget` at the chunk that would pass it.
    */
   byteBudget?: ByteBudget;
+  /**
+   * P2-041: a total request budget shared with other requests (one investigation), counted PER HOP inside the
+   * gateway's redirect loop (the first hop and every redirect). One is taken before each hop's DNS; a hop that
+   * would pass the limit is refused with `request_budget`, so `state.requests` matches every actual transport
+   * call and no redirect starts after exhaustion.
+   */
+  requestBudget?: RequestBudget;
   /**
    * Caller-provided AbortSignal. Cancels the whole request (DNS + transport) at
    * any hop; the signal is merged with the per-hop connect timer and the
@@ -297,6 +309,7 @@ const REQUEST_FIELDS = new Set([
   "capability",
   "staticPaths",
   "byteBudget",
+  "requestBudget",
 ]);
 
 /** Returns true only when `req.capability` is one of the gateway's registered vault capabilities. */
@@ -416,10 +429,13 @@ function validateRequestTypes(req: EgressRequest): EgressResult | null {
   return validateBudgetAndPaths(req);
 }
 
-/** P2-039 fields: `byteBudget` is a ByteBudget; `staticPaths` a short list of exact `host/path` (or `*` + path). */
+/** P2-039/P2-041 fields: `byteBudget` is a ByteBudget, `requestBudget` a RequestBudget, `staticPaths` a short list of exact `host/path` (or `*` + path). */
 function validateBudgetAndPaths(req: EgressRequest): EgressResult | null {
   if (req.byteBudget !== undefined && !isByteBudget(req.byteBudget)) {
     return deny("invalid_request", 0, "byteBudget must be a ByteBudget when provided");
+  }
+  if (req.requestBudget !== undefined && !isRequestBudget(req.requestBudget)) {
+    return deny("invalid_request", 0, "requestBudget must be a RequestBudget when provided");
   }
   if (req.staticPaths === undefined) return null;
   if (!Array.isArray(req.staticPaths) || req.staticPaths.length > MAX_STATIC_PATHS) {
@@ -925,6 +941,21 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       if (now() >= deadline) {
         audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
         return deny("timeout_total", hopCount);
+      }
+      // P2-041: the shared request budget sees EVERY hop (the first hop and every redirect) — take one BEFORE
+      // DNS, so `state.requests` reflects every DNS+connect+bytes+rate-consuming transport call, and no redirect
+      // hop can start once the investigation's request budget is exhausted (the outer requestMeter wraps
+      // gateway.request() once per entry request and cannot see hops inside runHops).
+      const reqBudget = req.requestBudget;
+      if (reqBudget !== undefined) {
+        if (!reqBudget.take()) {
+          audit({ kind: "denied", reason: "request_budget", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+          return deny(
+            "request_budget",
+            hopCount,
+            `investigation request budget exhausted (${reqBudget.usedCount}/${reqBudget.limit} requests)`,
+          );
+        }
       }
       // P2-039: nothing left of the shared byte budget -> no DNS, no transport call (first hop and every redirect).
       const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);

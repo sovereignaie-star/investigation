@@ -33,6 +33,7 @@ import {
   type EgressLimits,
   type EgressTransport,
   type ByteBudget,
+  type RequestBudget,
 } from "@ir/egress";
 import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse } from "@ir/engine";
 import type { Case } from "@ir/store";
@@ -103,8 +104,14 @@ export function networkRunFor(
   subjectType: string,
   deps: NetworkDeps,
   byteBudget?: ByteBudget,
-  /** P2-040: applied to EVERY transport the plan hands out (the page transport AND the robots transport), so the investigation's request counter sees robots.txt fetches and redirect hops too. */
-  wrapTransport?: (t: HttpTransport) => HttpTransport,
+  /**
+   * P2-041: the investigation's request budget — one `RequestBudget` shared by every transport of this run
+   * (the page transport AND the robots transport). The gateway's `runHops` takes one from it before EVERY hop's
+   * DNS (first hop and every redirect), so `state.requests` == actual transport calls == limit, and nothing
+   * starts after exhaustion (replaces P2-040's `wrapTransport`, which saw one entry request and could not see
+   * the redirect hops inside the gateway's hop loop).
+   */
+  requestBudget?: RequestBudget,
 ): NetworkPlan | { error: string } {
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
@@ -129,6 +136,8 @@ export function networkRunFor(
     // P2-039: the registry's fixed bootstrap paths (not case data) and the investigation's shared byte budget.
     ...(entry.staticPaths && entry.staticPaths.length > 0 ? { staticPaths: [...entry.staticPaths] } : {}),
     ...(byteBudget ? { byteBudget } : {}),
+    // P2-041: the investigation's shared request budget, counted per hop inside the gateway.
+    ...(requestBudget ? { requestBudget } : {}),
   };
   const transport = createEgressHttpTransport({ gateway: gw.gateway, baseRequest });
   // The fixed path "/robots.txt" reads as a domain to the content inventory; it is declared a fixed path of this
@@ -137,11 +146,10 @@ export function networkRunFor(
     gateway: gw.gateway,
     baseRequest: { ...baseRequest, staticPaths: [...(baseRequest.staticPaths ?? []), "*/robots.txt"] },
   });
-  // P2-040: the counter wraps both transports (page + robots) BEFORE robotsGuard combines them, so every request
-  // that reaches the gateway — a page, a redirect hop, or a robots.txt fetch — is counted once, and none is sent
-  // once the budget is exhausted. Without this, a robots.txt fetch was invisible to maxRequests.
-  const wrap = wrapTransport ?? ((t: HttpTransport) => t);
-  const guarded = entry.pageFetch ? robotsGuard(wrap(transport), wrap(robotsTransport), c) : wrap(transport);
+  // P2-040/P2-041: the request budget is a field of the gateway request (one per hop, taken inside runHops
+  // before DNS), shared by the page and robots transports — robots.txt fetches and redirect hops are counted,
+  // and nothing is sent once the budget is exhausted.
+  const guarded = entry.pageFetch ? robotsGuard(transport, robotsTransport, c) : transport;
   return { transport: guarded, isolatedModule, allowedHosts: gw.allowedHosts, events: gw.events };
 }
 
