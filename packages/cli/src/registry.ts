@@ -32,6 +32,9 @@ import {
   rdapDomain,
   rdapIp,
   waybackCdx,
+  gleifEntity,
+  secEdgar,
+  nominatimGeocode,
   type Transform,
 } from "@ir/transforms";
 
@@ -104,6 +107,23 @@ const httpUrlInput = (url: string) => {
   return { url };
 };
 
+const leiInput = (lei: string) => {
+  if (!/^[A-Z0-9]{18}\d{2}$/.test(lei)) throw new Error(`"${lei}" is not an LEI`);
+  return { lei };
+};
+const cikInput = (cik: string) => {
+  if (!/^\d{1,10}$/.test(cik)) throw new Error(`"${cik}" is not a CIK`);
+  return { cik };
+};
+const addressInput = (address: string) => {
+  if (address.length < 5 || address.length > 300) throw new Error(`"${address.slice(0, 40)}" is not an address`);
+  return { address };
+};
+const pointInput = (point: string) => {
+  if (!/^-?\d{1,2}(?:\.\d{1,8})?,\s*-?\d{1,3}(?:\.\d{1,8})?$/.test(point)) throw new Error(`"${point}" is not a point`);
+  return { point: point.replace(/\s+/g, "") };
+};
+
 const mod = (file: string) => fileURLToPath(new URL(`../../transforms/src/transforms/${file}`, import.meta.url));
 
 export const REGISTRY: readonly RegisteredTransform[] = [
@@ -169,6 +189,30 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { url: httpUrlInput },
     sends: ["url", "domain"],
     hosts: ["web.archive.org"],
+    pageFetch: false,
+  },
+  {
+    transform: gleifEntity,
+    module: mod("tr-021-gleif.ts"),
+    subjects: { lei_code: leiInput },
+    sends: ["lei_code"],
+    hosts: ["api.gleif.org"],
+    pageFetch: false,
+  },
+  {
+    transform: secEdgar,
+    module: mod("tr-024-sec-edgar.ts"),
+    subjects: { cik_us: cikInput },
+    sends: ["cik_us"],
+    hosts: ["www.sec.gov", "data.sec.gov"],
+    pageFetch: false,
+  },
+  {
+    transform: nominatimGeocode,
+    module: mod("tr-030-nominatim.ts"),
+    subjects: { street_address: addressInput, geo_point: pointInput },
+    sends: ["street_address", "geo_point"],
+    hosts: ["nominatim.openstreetmap.org"],
     pageFetch: false,
   },
 ];
