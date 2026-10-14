@@ -22,7 +22,7 @@ afterAll(() => fs.rmSync(ROOT, { recursive: true, force: true }));
 
 interface Mutation {
   readonly name: string;
-  readonly file: "egress.ts" | "address-policy.ts" | "content-inventory.ts";
+  readonly file: "egress.ts" | "address-policy.ts" | "content-inventory.ts" | "byte-budget.ts";
   readonly from: string;
   readonly to: string;
   /** Further replacements in the same file, for checks that are deliberately layered (defence in depth). */
@@ -321,6 +321,27 @@ const MUTATIONS: readonly Mutation[] = [
     detectedBy: ["T-SEC-SSRF-043"],
   },
   {
+    name: "undeclared-data check only on cross-host redirect hops (the pre-P2-039 rule)",
+    file: "content-inventory.ts",
+    from: "const undeclared = undeclaredIn(findings, sends);",
+    to: "const undeclared = crossHost ? undeclaredIn(findings, sends) : null;",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "fixed-path exemption matches a path prefix",
+    file: "content-inventory.ts",
+    from: "return staticPaths.includes(`${host}${url.pathname}`) ||",
+    to: "return staticPaths.some((e) => `${host}${url.pathname}`.startsWith(e)) ||",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "fixed-path exemption covers every surface, not only the path",
+    file: "content-inventory.ts",
+    from: 'if (fixedPath && surface === "path" &&',
+    to: "if (fixedPath &&",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
     name: "no sent-value check on a cross-host redirect",
     file: "content-inventory.ts",
     from: "if (texts.some((t) => t.includes(v))) {",
@@ -384,7 +405,7 @@ const TIMING_MUTATIONS: readonly Mutation[] = [
 
 async function loadMutant(m: Mutation | null): Promise<Factory> {
   const dir = fs.mkdtempSync(path.join(ROOT, "m-"));
-  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts"]) {
+  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts", "byte-budget.ts"]) {
     let src = fs.readFileSync(path.join(HERE, f), "utf8");
     if (m && m.file === f) {
       expect(src.includes(m.from), `mutation anchor for "${m.name}" not found in ${f}`).toBe(true);

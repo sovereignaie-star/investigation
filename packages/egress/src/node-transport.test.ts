@@ -204,6 +204,70 @@ describe("node-transport (REAL TLS against a local pinned server)", () => {
     }
   });
 
+  it("P2-039: stops reading at the byte-budget boundary WHILE streaming (meter refuses) and destroys the connection", async () => {
+    let clientGone = false;
+    let written = 0;
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
+      res.writeHead(200); // chunked
+      const chunk = "x".repeat(1024);
+      const t = setInterval(() => {
+        res.write(chunk);
+        written++;
+        if (written >= 64) {
+          clearInterval(t);
+          res.end();
+        }
+      }, 5);
+      res.on("close", () => {
+        clientGone = true;
+        clearInterval(t);
+      });
+    });
+    try {
+      let charged = 0;
+      const limit = 4 * 1024;
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } });
+      const p = t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/big`,
+        host: `${FIXTURE_HOST}:${port}`,
+        pinnedIp: "127.0.0.1",
+        method: "GET",
+        meter: (n) => {
+          if (charged + n > limit) return false;
+          charged += n;
+          return true;
+        },
+      });
+      await expect(p).rejects.toMatchObject({ name: "EgressTransportError", reason: "byte_budget" });
+      expect(charged).toBeLessThanOrEqual(limit);
+      await new Promise((r) => setTimeout(r, 100));
+      expect(clientGone).toBe(true);
+      expect(written).toBeLessThan(64); // the server never got to send the whole 64 KiB
+    } finally {
+      close();
+    }
+  });
+
+  it("P2-039: the gateway's per-response cap (maxBodyBytes on the request) is enforced while reading", async () => {
+    const { port, close } = await makeLocalTlsServer(good.cert, good.key, (_req, res) => {
+      res.writeHead(200);
+      res.end("y".repeat(10 * 1024));
+    });
+    try {
+      const t = createNodeTransport({ tlsOptions: { ca: good.cert } }); // own cap 5 MiB
+      const p = t.fetch({
+        url: `https://${FIXTURE_HOST}:${port}/cap`,
+        host: `${FIXTURE_HOST}:${port}`,
+        pinnedIp: "127.0.0.1",
+        method: "GET",
+        maxBodyBytes: 2048,
+      });
+      await expect(p).rejects.toBeInstanceOf(EgressSizeLimitError);
+    } finally {
+      close();
+    }
+  });
+
   it("a gzip bomb is rejected with EgressSizeLimitError AFTER decompression (decoded cap enforced)", async () => {
     // A gzip bomb: a tiny compressed wire size that decodes to a payload far
     // larger than the decoded cap. The raw cap would NOT catch this — the

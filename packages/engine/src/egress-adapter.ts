@@ -15,7 +15,7 @@
  * timer and overall deadline. A cancelled run NEVER resolves to a success, even
  * if the transport completes late.
  */
-import type { EgressGateway } from "@ir/egress";
+import type { EgressGateway, EgressRequest } from "@ir/egress";
 import { TransportError, type HttpTransport, type TransportRequest, type TransportResponse } from "./transport.ts";
 
 export interface EgressAdapterOptions {
@@ -32,6 +32,10 @@ export interface EgressAdapterOptions {
     secret?: string;
     pinnedHost?: string;
     secretProvider?: string;
+    /** P2-039: fixed `host/path` pairs of the caller's own code (not case data); see the gateway's `staticPaths`. */
+    staticPaths?: string[];
+    /** P2-039: the total byte budget this transport's requests share, charged while each response is received. */
+    byteBudget?: EgressRequest["byteBudget"];
   };
 }
 
@@ -64,6 +68,8 @@ const REASON_TO_KIND: Record<
   invalid_request: "transport:ssrf-blocked",
   transport_error: "transport:network",
   content_encoding: "transport:http-error",
+  // P2-039: the investigation's byte budget is a budget refusal, like the request budget.
+  byte_budget: "transport:rate-limit",
 };
 
 /** The typed reason for a cancelled transport request (no fake success). */
