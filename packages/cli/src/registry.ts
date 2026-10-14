@@ -41,6 +41,12 @@ export interface RegisteredTransform {
   /** subject catalog type -> the transform's input object, from the normalized subject value. */
   readonly subjects: Readonly<Record<string, (value: string) => Record<string, unknown>>>;
   readonly sends: readonly string[];
+  /**
+   * P2-039: fixed `host/path` request paths of this transform's own code (bootstrap files). They carry no case data,
+   * so the gateway does not read their file names as identifiers; the rest of each request is inspected as always.
+   * Exact host and whole path only (see `isStaticPath` in @ir/egress). Never derived from a source's answer.
+   */
+  readonly staticPaths?: readonly string[];
   readonly hosts: readonly string[];
   /** Hosts a run may be sent to that are only known from a source's answer (RDAP bootstrap); never auto-allowed. */
   readonly discoveredHosts?: string;
@@ -55,6 +61,25 @@ const domainInput = (raw: string) => {
   const domain = normalizeDomain(raw);
   if (!domain.includes(".")) throw new Error(`"${raw}" is not a registrable domain name`);
   return { domain };
+};
+/**
+ * P2-039: a host name for TR-001. The catalog's `hostname` pattern accepts a single label (and its normaliser only
+ * lower-cases and converts IDN to A-labels), so the builder adds the DNS checks the transform needs: LDH labels of
+ * 1..63 characters, 253 at most, at least two labels (a bare label is not a public name), and a non-numeric last
+ * label (so an IP address written as a host name is refused). A wildcard (`*.example.com`, frequent in CT logs) or an
+ * underscore label is not a host name.
+ */
+const hostnameInput = (raw: string) => {
+  let h: string;
+  try {
+    h = normalizeDomain(raw);
+  } catch {
+    throw new Error(`"${raw}" is not a valid host name (letters, digits and hyphens in dot-separated labels)`);
+  }
+  const labels = h.split(".");
+  if (labels.length < 2) throw new Error(`"${raw}" is not a fully qualified host name (a single label)`);
+  if (/^\d+$/.test(labels[labels.length - 1] ?? "")) throw new Error(`"${raw}" is not a host name (numeric last label)`);
+  return { domain: h };
 };
 const ipv4Input = (ip: string) => {
   if (!isIpv4(ip)) throw new Error(`"${ip}" is not an IPv4 address`);
@@ -85,7 +110,8 @@ export const REGISTRY: readonly RegisteredTransform[] = [
   {
     transform: dnsResolve,
     module: mod("tr-001-dns.ts"),
-    subjects: { domain: domainInput },
+    // P2-039: a host name (a nameserver from TR-001/TR-002, a certificate name from TR-004) is resolved like a domain.
+    subjects: { domain: domainInput, hostname: hostnameInput },
     sends: ["domain"],
     hosts: ["dns.google"],
     pageFetch: false,
@@ -95,6 +121,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     module: mod("tr-002-rdap-domain.ts"),
     subjects: { domain: domainInput },
     sends: ["domain"],
+    staticPaths: ["data.iana.org/rdap/dns.json"],
     hosts: ["data.iana.org"],
     discoveredHosts: "the RDAP server of the domain's TLD named in https://data.iana.org/rdap/dns.json (e.g. rdap.verisign.com for .com)",
     pageFetch: false,
@@ -103,10 +130,11 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     transform: rdapIp,
     module: mod("tr-003-rdap-ip.ts"),
     subjects: { ipv4: ipv4Input, ipv6: ipv6Input, asn: asnInput },
-    // The RDAP path carries the address or the AS number. The bootstrap requests carry no subject, but the gateway's
-    // content inventory reads their file names (ipv4.json, ipv6.json, asn.json) as DNS names, so "domain" is declared
-    // too; without it every TR-003 run is refused as undeclared_data at its first request.
-    sends: ["ip", "asn", "domain"],
+    // The RDAP path carries the address or the AS number. The bootstrap requests carry no subject; their file names
+    // (ipv4.json, ipv6.json, asn.json) read as DNS names to the content inventory, so they are declared as fixed paths
+    // (P2-039) instead of declaring "domain" (which would let any DNS name through on every TR-003 request).
+    sends: ["ip", "asn"],
+    staticPaths: ["data.iana.org/rdap/ipv4.json", "data.iana.org/rdap/ipv6.json", "data.iana.org/rdap/asn.json"],
     hosts: ["data.iana.org"],
     discoveredHosts: "the RIR RDAP server named in https://data.iana.org/rdap/{ipv4,ipv6,asn}.json (e.g. rdap.arin.net)",
     pageFetch: false,

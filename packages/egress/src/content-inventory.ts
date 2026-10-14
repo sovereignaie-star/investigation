@@ -12,8 +12,10 @@
  * Not inspected: the destination host itself (it is the destination, checked by the address policy), and a header
  * value that carries the request's own `secret` (checked by the secret rules; inspecting it would only find the key).
  * Redirect targets are chosen by the server, not by the transform; since P2-032 (ADR-08 section 4) each one is
- * inventoried before the next hop is sent: `redirectContentVerdict` refuses a natural-person identifier on any hop,
- * and on a hop to another host any value the transform itself sent on the first hop.
+ * inventoried before the next hop is sent: `redirectContentVerdict` refuses a natural-person identifier or an
+ * undeclared kind on any hop (same host included since P2-039), and on a hop to another host any value the
+ * transform itself sent on the first hop. Fixed path components the caller declares (`staticPaths`, P2-039) are not
+ * read as case data; the rest of the request is.
  *
  * What this does NOT prove: the detector finds what the catalog can recognise. Data in a form no catalog type
  * matches (free text, an encoding the detector does not undo) is not found. Findings never include the value.
@@ -126,8 +128,42 @@ interface RawFinding extends ContentFinding {
   readonly value: string;
 }
 
-function inventoryRaw(url: URL, headers: Readonly<Record<string, string>> | undefined, secret: string | undefined): RawFinding[] {
+/**
+ * P2-039 — fixed path components. A request path that is a constant of the CALLER's code (not of the transform, not
+ * of the case) is not case data: the RDAP bootstrap files `/rdap/ipv4.json`, `/rdap/dns.json`, or `/robots.txt`.
+ * The detector reads such a file name as a DNS name (`ipv4.json` passes the domain validator), which refused every
+ * TR-003 run until `domain` was declared to silence it. Instead, the gateway request may name exact
+ * `host + pathname` pairs (`data.iana.org/rdap/ipv4.json`; `*` as host = any host the request may reach, for
+ * `/robots.txt`). The exemption is deliberately narrow:
+ * - exact match on the normalised host and the WHOLE encoded pathname (no prefix, no pattern, no decoding first), so
+ *   `/rdap/ipv4.json/example.com` or `/rdap/ipv4.json;x` are inspected in full;
+ * - only the PATH surface is skipped; the query, fragment and every header are inventoried exactly as before;
+ * - natural-person data is never exempt: a path that matches yet carries a natural-person reading still refuses
+ *   (the fixed path would have to be one, which the caller's validation forbids);
+ * - the list is set by trusted parent code (`baseRequest` in the CLI registry), never by the sandboxed transform,
+ *   whose request carries only url, method and headers.
+ */
+export function isStaticPath(url: URL, staticPaths: readonly string[] | undefined): boolean {
+  if (!staticPaths || staticPaths.length === 0) return false;
+  const host = url.hostname
+    .replace(/^\[|\]$/g, "")
+    .toLowerCase()
+    .replace(/\.$/, "");
+  return staticPaths.includes(`${host}${url.pathname}`) || staticPaths.includes(`*${url.pathname}`);
+}
+
+/** A valid `staticPaths` entry: `host/path`, or `*` followed by `/path`, an absolute path of unreserved characters. */
+export const STATIC_PATH_ENTRY =
+  /^(\*|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+)(\/(?:[A-Za-z0-9._~-]+\/)*[A-Za-z0-9._~-]+)$/;
+
+function inventoryRaw(
+  url: URL,
+  headers: Readonly<Record<string, string>> | undefined,
+  secret: string | undefined,
+  staticPaths?: readonly string[],
+): RawFinding[] {
   const out: RawFinding[] = [];
+  const fixedPath = isStaticPath(url, staticPaths);
   for (const [surface, text] of surfaces(url, headers, secret)) {
     for (const hit of extract(text)) {
       const readings = hit.candidates
@@ -135,7 +171,10 @@ function inventoryRaw(url: URL, headers: Readonly<Record<string, string>> | unde
         .filter((c) => !isBareLabel(c.type, hit.value))
         .filter(isStrongReading)
         .map((c) => ({ kind: sendKindOf(c.type, specById(c.type)?.category ?? ""), type: c.type, sensitivity: c.sensitivity }));
-      if (readings.length > 0) out.push({ surface, readings, value: hit.value });
+      if (readings.length === 0) continue;
+      // A fixed path component is not case data, unless it reads as natural-person data (never exempt).
+      if (fixedPath && surface === "path" && !readings.some((r) => r.sensitivity === "natural_person_gate")) continue;
+      out.push({ surface, readings, value: hit.value });
     }
   }
   return out;
@@ -146,8 +185,9 @@ export function inventoryRequest(
   url: URL,
   headers: Readonly<Record<string, string>> | undefined,
   secret: string | undefined,
+  staticPaths?: readonly string[],
 ): ContentFinding[] {
-  return inventoryRaw(url, headers, secret).map(({ surface, readings }) => ({ surface, readings }));
+  return inventoryRaw(url, headers, secret, staticPaths).map(({ surface, readings }) => ({ surface, readings }));
 }
 
 /**
@@ -158,44 +198,54 @@ export function sentValues(
   url: URL,
   headers: Readonly<Record<string, string>> | undefined,
   secret: string | undefined,
+  staticPaths?: readonly string[],
 ): ReadonlySet<string> {
-  return new Set(inventoryRaw(url, headers, secret).map((f) => f.value.toLowerCase()));
+  return new Set(inventoryRaw(url, headers, secret, staticPaths).map((f) => f.value.toLowerCase()));
 }
 
 /** Decoded text of a URL's host and every surface, lower case, for value comparison. */
-function urlTexts(url: URL): string[] {
-  return [url.hostname.replace(/^\[|\]$/g, ""), ...surfaces(url, undefined, undefined).map(([, t]) => t)].map((t) => t.toLowerCase());
+function urlTexts(url: URL, staticPaths?: readonly string[]): string[] {
+  const fixedPath = isStaticPath(url, staticPaths);
+  const texts = surfaces(url, undefined, undefined)
+    .filter(([surface]) => !(fixedPath && surface === "path"))
+    .map(([, t]) => t);
+  return [url.hostname.replace(/^\[|\]$/g, ""), ...texts].map((t) => t.toLowerCase());
 }
 
 /**
- * Redirect content policy (P2-032, ADR-08 section 4), applied to a server-chosen hop BEFORE it is sent:
+ * Redirect content policy (P2-032, ADR-08 section 4; P2-039), applied to a server-chosen hop BEFORE it is sent:
  * - a natural-person identifier anywhere in the hop's URL refuses (`natural_person`), whatever the host;
- * - on a hop to a host other than the first hop's host:
- *   - an identifier whose kind is not in `sends` refuses (`undeclared_data`): the request's declaration bounds what
- *     may flow to a host the transform did not choose (an email the server put in the next URL is undeclared data);
- *   - a value the transform sent on the first hop that reappears in the hop's URL (host, path, query or fragment)
- *     refuses (`undeclared_data`), even when its kind is declared: the transform declared that value for the host it
- *     chose, not for one the server chose.
+ * - on EVERY hop, same host included (P2-039): an identifier whose kind is not in `sends` refuses
+ *   (`undeclared_data`). The request's declaration bounds what the request may carry, whoever chose the URL: a
+ *   same-host redirect to `/lookup?email=...` would otherwise put undeclared data on the wire under the request's
+ *   name. A fixed path the caller declared (`staticPaths`) is not case data on a redirect hop either;
+ * - on a hop to a host other than the first hop's host, in addition: a value the transform sent on the first hop
+ *   that reappears in the hop's URL (host, path, query or fragment) refuses (`undeclared_data`), even when its kind
+ *   is declared: the transform declared that value for the host it chose, not for one the server chose. (A same-host
+ *   hop may repeat it: that host already received it.)
  * Anything else the server put in the URL (its own opaque tokens and paths, which the detector does not read as
- * identifiers) is allowed, so ordinary public redirects keep working. A same-host hop is checked for natural-person
- * identifiers only: the server already holds what it put in its own URL.
- * Known limit: the comparison is on the decoded text; a value the server re-encodes (base64, hashing) is not found.
+ * identifiers) is allowed, so ordinary public redirects keep working.
+ * Known limits: the comparison is on the decoded text; a value the server re-encodes (base64, hex, hashing,
+ * defanged `example[.]com`) is not found; a server file name the detector reads as a domain (`/index.html`) on a
+ * redirect hop refuses unless `domain` is declared or the path is a declared fixed path (fail-closed).
  */
 export function redirectContentVerdict(
   next: URL,
   crossHost: boolean,
   sent: ReadonlySet<string>,
   sends: readonly string[],
+  staticPaths?: readonly string[],
 ): { reason: "natural_person" | "undeclared_data"; detail: string } | null {
-  const findings = inventoryRaw(next, undefined, undefined);
+  const findings = inventoryRaw(next, undefined, undefined, staticPaths);
   for (const f of findings) {
     const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
     if (np) return { reason: "natural_person", detail: `redirect target ${f.surface} carries a natural-person identifier (${np.type})` };
   }
+  const undeclared = undeclaredIn(findings, sends);
+  const hop = crossHost ? "another host" : "the same host";
+  if (undeclared) return { reason: undeclared.reason, detail: `redirect to ${hop}: ${undeclared.detail}` };
   if (!crossHost) return null;
-  const undeclared = judgeInventory(findings, sends);
-  if (undeclared) return { reason: undeclared.reason, detail: `redirect to another host: ${undeclared.detail}` };
-  const texts = urlTexts(next);
+  const texts = urlTexts(next, staticPaths);
   for (const v of sent) {
     if (texts.some((t) => t.includes(v))) {
       return { reason: "undeclared_data", detail: "redirect to another host carries a value the transform sent to the first host" };
@@ -233,6 +283,11 @@ export function judgeInventory(
     const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
     if (np) return { reason: "natural_person", detail: `${f.surface} carries a natural-person identifier (${np.type})` };
   }
+  return undeclaredIn(findings, sends);
+}
+
+/** The first finding none of whose readings is a declared kind (natural-person readings are judged separately). */
+function undeclaredIn(findings: readonly ContentFinding[], sends: readonly string[]): { reason: "undeclared_data"; detail: string } | null {
   for (const f of findings) {
     if (!f.readings.some((r) => sends.includes(r.kind))) {
       const kinds = [...new Set(f.readings.map((r) => r.kind))].join("|");

@@ -148,6 +148,9 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
       const chunks: Buffer[] = [];
       let received = 0; // raw bytes read off the wire (pre-decompression)
       let capped = false;
+      // P2-039: the tighter of this transport's own cap and the gateway's per-response cap for this hop.
+      const wireCap = Math.min(maxBodyBytes, req.maxBodyBytes ?? Number.POSITIVE_INFINITY);
+      const decodedCap = Math.min(maxDecodedBytes, req.maxBodyBytes ?? Number.POSITIVE_INFINITY);
 
       return await new Promise<{ status: number; body?: string; headers?: Record<string, string>; contentLength?: number }>(
         (resolve, reject) => {
@@ -177,11 +180,19 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
                 // Cap WHILE READING — do not buffer past the cap. On overflow,
                 // destroy the stream and REJECT (fail-closed, no truncated
                 // success).
-                if (received > maxBodyBytes) {
+                if (received > wireCap) {
                   capped = true;
                   res.destroy();
                   request.destroy();
                   reject(new EgressSizeLimitError());
+                  return;
+                }
+                // P2-039: the shared byte budget is charged per chunk; the chunk that would pass it is not kept.
+                if (req.meter && !req.meter(chunk.length)) {
+                  capped = true;
+                  res.destroy();
+                  request.destroy();
+                  reject(new EgressTransportError("byte_budget", "egress byte_budget: the response would pass the remaining byte budget"));
                   return;
                 }
                 chunks.push(chunk);
@@ -191,9 +202,19 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
                 const raw = Buffer.concat(chunks);
                 let bodyBuf: Buffer;
                 try {
-                  bodyBuf = decodeBody(raw, headers["content-encoding"], maxDecodedBytes);
+                  bodyBuf = decodeBody(raw, headers["content-encoding"], decodedCap);
                 } catch (e) {
                   reject(e);
+                  return;
+                }
+                // A decoded body larger than its wire size: the difference is charged too (budget >= max(wire, decoded)).
+                if (req.meter && bodyBuf.length > received && !req.meter(bodyBuf.length - received)) {
+                  reject(
+                    new EgressTransportError(
+                      "byte_budget",
+                      "egress byte_budget: the decoded response would pass the remaining byte budget",
+                    ),
+                  );
                   return;
                 }
                 resolve({

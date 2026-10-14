@@ -10,7 +10,18 @@
  * This module is intentionally self-contained and side-effect-free outside the
  * injected `resolver` / `transport` / `auditSink` / `now` functions.
  */
-import { crossHostHeaders, inventoryRequest, judgeInventory, redirectContentVerdict, sentValues } from "./content-inventory.ts";
+import { isByteBudget, type ByteBudget } from "./byte-budget.ts";
+import {
+  crossHostHeaders,
+  inventoryRequest,
+  judgeInventory,
+  redirectContentVerdict,
+  sentValues,
+  STATIC_PATH_ENTRY,
+} from "./content-inventory.ts";
+
+/** Upper bound on `staticPaths` entries per request (a list of fixed files, not a policy). */
+const MAX_STATIC_PATHS = 16;
 import { createHmac, randomBytes } from "node:crypto";
 import { domainToASCII } from "node:url";
 import { classifyAddress } from "./address-policy";
@@ -42,7 +53,12 @@ export type EgressReason =
   /** The transport failed for a reason that is not a policy decision (connection reset, TLS failure, ...). */
   | "transport_error"
   /** The response used a content-encoding the gateway does not decode, or too many stacked layers. */
-  | "content_encoding";
+  | "content_encoding"
+  /**
+   * P2-039: the request's shared byte budget (`byteBudget`) is exhausted, or receiving this response would pass it.
+   * Refused before DNS when nothing is left; otherwise the transport stops reading at the chunk that would overflow.
+   */
+  | "byte_budget";
 
 export const EGRESS_DENY_CODE = "EGRESS_POLICY_DENIED" as const;
 /** @deprecated Use `EGRESS_DENY_CODE` (the const value) or `EgressReason`. */
@@ -69,6 +85,18 @@ export interface EgressRequest {
   pinnedHost?: string;
   /** Provider registry that a `secret` must be bound to. */
   secretProvider?: string;
+  /**
+   * P2-039: exact `host/path` pairs (or `*` + `/path`) whose path is a constant of the CALLER's code, not case data
+   * (`data.iana.org/rdap/ipv4.json`, or `*` + `/robots.txt`). Only the path surface of a matching URL is
+   * exempt from the content inventory; its query, fragment and headers are inspected as always, and a natural-person
+   * reading is never exempt. Set by trusted parent code, never by a sandboxed transform. See `isStaticPath`.
+   */
+  staticPaths?: string[];
+  /**
+   * P2-039: a total byte budget shared with other requests (one investigation). Charged while the response is
+   * received; a request starts only while bytes remain, and fails `byte_budget` at the chunk that would pass it.
+   */
+  byteBudget?: ByteBudget;
   /**
    * Caller-provided AbortSignal. Cancels the whole request (DNS + transport) at
    * any hop; the signal is merged with the per-hop connect timer and the
@@ -131,6 +159,18 @@ export interface EgressTransport {
     method: string;
     headers?: Record<string, string>;
     signal?: AbortSignal;
+    /**
+     * P2-039: the gateway's per-response cap (`maxSizeBytes`) for this hop. A streaming transport stops reading past
+     * it (`size_limit`); the gateway also re-checks the delivered body.
+     */
+    maxBodyBytes?: number;
+    /**
+     * P2-039: charge `n` bytes just read off the wire against the request's byte budget. `false` means the chunk
+     * would pass the budget: the transport must stop reading and reject with `EgressTransportError("byte_budget")`.
+     * Absent when the request has no budget. Bytes a transport does not meter are charged by the gateway when the
+     * response is delivered (and refused then if they do not fit).
+     */
+    meter?: (n: number) => boolean;
   }): Promise<{ status: number; body?: string; headers?: Record<string, string>; contentLength?: number }>;
 }
 
@@ -206,8 +246,8 @@ export interface EgressOptions {
  * precise reason instead of a generic failure. Any other thrown value maps to `transport_error`.
  */
 export class EgressTransportError extends Error {
-  readonly reason: "size_limit" | "content_encoding" | "transport_error";
-  constructor(reason: "size_limit" | "content_encoding" | "transport_error", message: string) {
+  readonly reason: "size_limit" | "content_encoding" | "transport_error" | "byte_budget";
+  constructor(reason: "size_limit" | "content_encoding" | "transport_error" | "byte_budget", message: string) {
     super(message);
     this.name = "EgressTransportError";
     this.reason = reason;
@@ -255,6 +295,8 @@ const REQUEST_FIELDS = new Set([
   "systemContext",
   "signal",
   "capability",
+  "staticPaths",
+  "byteBudget",
 ]);
 
 /** Returns true only when `req.capability` is one of the gateway's registered vault capabilities. */
@@ -371,6 +413,23 @@ function validateRequestTypes(req: EgressRequest): EgressResult | null {
     const v = req[field];
     if (v !== undefined && typeof v !== "string") return deny("invalid_request", 0, message);
   }
+  return validateBudgetAndPaths(req);
+}
+
+/** P2-039 fields: `byteBudget` is a ByteBudget; `staticPaths` a short list of exact `host/path` (or `*` + path). */
+function validateBudgetAndPaths(req: EgressRequest): EgressResult | null {
+  if (req.byteBudget !== undefined && !isByteBudget(req.byteBudget)) {
+    return deny("invalid_request", 0, "byteBudget must be a ByteBudget when provided");
+  }
+  if (req.staticPaths === undefined) return null;
+  if (!Array.isArray(req.staticPaths) || req.staticPaths.length > MAX_STATIC_PATHS) {
+    return deny("invalid_request", 0, `staticPaths must be an array of at most ${MAX_STATIC_PATHS} entries`);
+  }
+  for (const e of req.staticPaths) {
+    if (typeof e !== "string" || !STATIC_PATH_ENTRY.test(e)) {
+      return deny("invalid_request", 0, "staticPaths entries must be host/path or */path (unreserved characters only)");
+    }
+  }
   return null;
 }
 
@@ -449,7 +508,7 @@ function checkContent(req: EgressRequest): EgressResult | null {
   } catch {
     return null;
   }
-  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret), req.sends ?? []);
+  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret, req.staticPaths), req.sends ?? []);
   return verdict ? deny(verdict.reason, 0, verdict.detail) : null;
 }
 
@@ -818,6 +877,32 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     };
   }
 
+  /** P2-039: refuse before DNS when the request's shared byte budget has nothing left. */
+  function budgetExhausted(req: EgressRequest, host: string, hops: number, secretDigest?: string): EgressResult | null {
+    const b = req.byteBudget;
+    if (!b?.exhausted) return null;
+    audit({ kind: "size_limit", reason: "byte_budget", ...auditCtx(req, host, hops, secretDigest) });
+    return deny("byte_budget", hops, `byte budget exhausted (${b.used}/${b.limit} bytes)`);
+  }
+
+  /** P2-039: charge the delivered bytes the transport did not meter; refuse the response if they do not fit. */
+  function chargeUnmetered(
+    req: EgressRequest,
+    resp: TransportResp,
+    meteredBytes: number,
+    host: string,
+    hops: number,
+    secretDigest?: string,
+  ): EgressResult | null {
+    const b = req.byteBudget;
+    if (!b) return null;
+    const delivered = resp.body !== undefined ? Buffer.byteLength(resp.body, "utf8") : 0;
+    const unmetered = delivered - meteredBytes;
+    if (unmetered <= 0 || b.take(unmetered)) return null;
+    audit({ kind: "size_limit", reason: "byte_budget", ...auditCtx(req, host, hops, secretDigest) });
+    return deny("byte_budget", hops, `response would pass the byte budget (${b.used}/${b.limit} bytes used)`);
+  }
+
   async function runHops(
     req: EgressRequest,
     initialUrl: URL,
@@ -829,7 +914,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     let hopCount = 0;
     // P2-032: the first hop's host and the values the transform sent to it; later hops are judged against them.
     const firstHost = normalizeHost(initialUrl.hostname);
-    const sent = sentValues(initialUrl, req.headers, req.secret);
+    const sent = sentValues(initialUrl, req.headers, req.secret, req.staticPaths);
     let hopHeaders = req.headers;
     while (true) {
       // Cancellation before DNS: no resolver call, no transport call.
@@ -841,12 +926,25 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
         return deny("timeout_total", hopCount);
       }
+      // P2-039: nothing left of the shared byte budget -> no DNS, no transport call (first hop and every redirect).
+      const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
+      if (spent) return spent;
       const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
       if ("code" in resolved && resolved.code !== undefined) {
         audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
         return resolved;
       }
-      const hop = await transportHop(req, currentUrl, (resolved as ResolvedAddress).pinnedIp, hopHeaders, hopCount, deadline, abort);
+      const metered = { bytes: 0 };
+      const hop = await transportHop(
+        req,
+        currentUrl,
+        (resolved as ResolvedAddress).pinnedIp,
+        hopHeaders,
+        hopCount,
+        deadline,
+        abort,
+        metered,
+      );
       if ("code" in hop && hop.code !== undefined) return hop;
       const resp = hop as TransportResp;
       // A cancelled request is NEVER a success, even if the transport completed late.
@@ -854,6 +952,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount + 1, secretDigest) });
         return deny("cancelled", hopCount + 1, "request cancelled by caller after transport");
       }
+      // P2-039: charge what the transport did not meter (a body returned whole, or decoded past its wire size).
+      const over = chargeUnmetered(req, resp, metered.bytes, currentUrl.hostname, hopCount + 1, secretDigest);
+      if (over) return over;
       hopCount++;
       const next = await redirectOrFinish(req, currentUrl, resp, hopCount, deadline, abort, { firstHost, sent }, secretDigest);
       if (next.done) return next.result;
@@ -877,6 +978,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     hopCount: number,
     deadline: number,
     abort: AbortCtl,
+    metered: { bytes: number },
   ): Promise<TransportResp | EgressResult> {
     const hopDeadline = Math.min(deadline, now() + limits.connectTimeoutMs);
     if (now() >= hopDeadline) {
@@ -902,6 +1004,19 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         method: req.method ?? "GET",
         headers: headers === undefined ? undefined : { ...headers },
         signal: hopController.signal,
+        maxBodyBytes: limits.maxSizeBytes,
+        ...(req.byteBudget
+          ? {
+              meter: (n: number) => {
+                // A late chunk after the hop settled (timeout, cancel) is not charged: the stream is being torn down.
+                if (hopController.signal.aborted) return false;
+                const budget = req.byteBudget as ByteBudget;
+                if (!budget.take(n)) return false;
+                metered.bytes += n;
+                return true;
+              },
+            }
+          : {}),
       });
       fetching.catch(() => {}); // a late rejection after the race is settled must not become unhandled
       aborted.catch(() => {});
@@ -921,7 +1036,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       // A typed transport failure keeps its reason; anything else is a transport error, never a policy reason.
       const reason: EgressReason = err instanceof EgressTransportError ? err.reason : "transport_error";
       audit({
-        kind: reason === "size_limit" ? "size_limit" : "transport_error",
+        kind: reason === "size_limit" || reason === "byte_budget" ? "size_limit" : "transport_error",
         reason,
         ...auditCtx(req, currentUrl.hostname, hopCount + 1),
         detail: safeDetail,
@@ -1089,7 +1204,13 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     const pathErr = checkProviderPath(req, nextUrl, opts, hopCount);
     if (pathErr) return refuse(pathErr);
     // P2-032 (ADR-08 section 4): the server-chosen URL is inventoried before it is sent.
-    const contentVerdict = redirectContentVerdict(nextUrl, normalizeHost(nextHost) !== first.firstHost, first.sent, req.sends ?? []);
+    const contentVerdict = redirectContentVerdict(
+      nextUrl,
+      normalizeHost(nextHost) !== first.firstHost,
+      first.sent,
+      req.sends ?? [],
+      req.staticPaths,
+    );
     if (contentVerdict) return refuse(deny(contentVerdict.reason, hopCount, contentVerdict.detail));
     if (now() >= deadline) {
       audit({

@@ -13,9 +13,11 @@
  *   is a graph, not a tree.
  * - No repeats, no cycles: a (transform, canonicalKey) pair runs at most once per investigation — a finding that
  *   leads back to an expanded identifier adds its edge but no new run.
- * - Budget: depth, number of runs, number of requests (enforced per request, inside a run), bytes received (checked
- *   before each run; a single response is capped by the gateway), wall time (the running run is cancelled at the
- *   deadline). Cancellation (the caller's signal) stops the running run and everything after it.
+ * - Budget: depth, number of runs, number of requests (enforced per request, inside a run), bytes received (P2-039:
+ *   one `ByteBudget` shared by every request of the investigation and charged by the gateway's transport WHILE each
+ *   response is received; the chunk that would pass it stops the transfer with `byte_budget`, and no request starts
+ *   once it is exhausted; each response is also capped by the gateway's maxSizeBytes), wall time (the running run is
+ *   cancelled at the deadline). Cancellation (the caller's signal) stops the running run and everything after it.
  * - One gateway for the whole investigation: its per-host rate budget is not reset run by run. Runs are paced by
  *   one gateway token interval so consecutive runs against the same source do not drain the per-host budget.
  * - Coverage per (entity, transform): `found` (positive observations), `none` (negative observations), `failed`
@@ -26,8 +28,9 @@
  */
 import { canonicalKey, isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
-import type { HttpTransport, TransportRequest, TransportResponse } from "@ir/engine";
+import type { HttpTransport, TransportRequest } from "@ir/engine";
 import { TransportError } from "@ir/engine";
+import { ByteBudget } from "@ir/egress";
 import type { Case } from "@ir/store";
 import { runTransform, TransformRunError, type RunTransformResult } from "@ir/transforms";
 import { networkRunFor, openGateway, type NetworkDeps, type NetworkGateway, type NetworkPlan } from "./network.ts";
@@ -41,7 +44,10 @@ export interface InvestigationBudget {
   readonly maxRuns: number;
   /** Requests sent through the gateway, over the whole investigation (enforced per request). */
   readonly maxRequests: number;
-  /** Response bytes received; checked before each run (each response is capped by the gateway's maxSizeBytes). */
+  /**
+   * Response bytes received over the whole investigation, enforced while each response is received (P2-039); each
+   * response is also capped by the gateway's maxSizeBytes.
+   */
   readonly maxBytes: number;
   /** Wall time; the run in progress at the deadline is cancelled and recorded as failed. */
   readonly maxElapsedMs: number;
@@ -123,20 +129,22 @@ export function applicable(entries: readonly RegisteredTransform[], type: string
   return entries.filter((e) => e.subjects[type] !== undefined);
 }
 
-const bodyBytes = (body: TransportResponse["body"]): number =>
-  typeof body === "string" ? Buffer.byteLength(body) : body instanceof Uint8Array ? body.byteLength : 0;
-
-/** Counts requests and bytes across the investigation and refuses a request beyond the request budget. */
-function budgeted(inner: HttpTransport, state: { requests: number; bytes: number }, maxRequests: number): HttpTransport {
+/**
+ * Counts requests across the investigation and refuses a request beyond the request budget, or once the byte budget
+ * is exhausted (the gateway refuses it too, before DNS). The bytes themselves are charged by the gateway's transport
+ * while each response is received (P2-039), not here after the fact.
+ */
+function budgeted(inner: HttpTransport, state: { requests: number }, maxRequests: number, bytes: ByteBudget): HttpTransport {
   return {
     async fetch(req: TransportRequest, signal: AbortSignal) {
       if (state.requests >= maxRequests) {
         throw new TransportError("transport:rate-limit", `investigation request budget exhausted (${maxRequests} requests)`);
       }
+      if (bytes.exhausted) {
+        throw new TransportError("transport:rate-limit", `investigation byte budget exhausted (${bytes.used}/${bytes.limit} bytes)`);
+      }
       state.requests++;
-      const res = await inner.fetch(req, signal);
-      state.bytes += bodyBytes(res.body);
-      return res;
+      return inner.fetch(req, signal);
     },
   };
 }
@@ -193,7 +201,9 @@ function keyOrUndefined(type: string, value: string): string | undefined {
 
 /** One investigation's mutable state: usage, coverage, frontier, and the stop reason. */
 class Investigation {
-  readonly usage = { requests: 0, bytes: 0 };
+  readonly usage = { requests: 0 };
+  /** P2-039: the hard total byte budget, shared by every request through the gateway. */
+  readonly bytes: ByteBudget;
   readonly coverage: CoverageRecord[] = [];
   readonly unexpandable: string[] = [];
   readonly frontier: Node[];
@@ -217,6 +227,7 @@ class Investigation {
     seed: Node,
   ) {
     this.frontier = [seed];
+    this.bytes = new ByteBudget(budget.maxBytes);
     this.queued = new Set([seed.key]);
     this.now = opts.now ?? (() => Date.now());
     this.sleep = opts.sleep ?? realSleep;
@@ -229,7 +240,7 @@ class Investigation {
     if (this.opts.signal?.aborted) return "cancelled";
     if (this.runs >= this.budget.maxRuns) return "runs";
     if (this.usage.requests >= this.budget.maxRequests) return "requests";
-    if (this.usage.bytes >= this.budget.maxBytes) return "bytes";
+    if (this.bytes.exhausted) return "bytes";
     if (this.timedOut || this.now() - this.startedAt >= this.budget.maxElapsedMs) return "time";
     return undefined;
   }
@@ -275,7 +286,7 @@ class Investigation {
     if (blocked) return this.notRun(node, entry, blocked);
     const prepared = subjectInput(entry, node.type, node.value);
     if ("error" in prepared) return this.notRun(node, entry, `input refused: ${prepared.error}`);
-    const plan = networkRunFor(this.c, this.gw, entry, node.type, this.opts.network ?? {});
+    const plan = networkRunFor(this.c, this.gw, entry, node.type, this.opts.network ?? {}, this.bytes);
     if ("error" in plan) return this.notRun(node, entry, `setup refused: ${plan.error}`);
     if (this.runs > 0) await this.sleep(this.pacingMs, this.opts.signal ?? new AbortController().signal);
     if (this.opts.signal?.aborted) {
@@ -301,7 +312,7 @@ class Investigation {
     const base = { entityKey: node.key, transformId: entry.transform.manifest.id, depth: node.depth };
     try {
       const result = await runTransform(entry.transform, {
-        transport: budgeted(plan.transport, this.usage, this.budget.maxRequests),
+        transport: budgeted(plan.transport, this.usage, this.budget.maxRequests, this.bytes),
         input,
         ...(this.opts.now ? { now: this.opts.now } : {}),
         ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
@@ -323,15 +334,27 @@ class Investigation {
     } catch (x) {
       if (!(x instanceof TransformRunError)) throw x;
       recordRunFailure(this.c, subjectId, entry.transform, input, x, this.clock);
-      const cancelled = this.opts.signal?.aborted === true;
-      const why = cancelled ? "cancelled" : this.timedOut ? "time budget reached" : x.message;
-      if (cancelled) this.stopReason ??= "cancelled";
-      else if (this.timedOut) this.stopReason ??= "time";
+      const why = this.failure(x);
       this.coverage.push({ ...base, state: "failed", reason: `[${x.stage}] ${why}`, requests: this.usage.requests - before, findings: 0 });
     } finally {
       clearTimeout(deadline);
       this.opts.signal?.removeEventListener("abort", onAbort);
     }
+  }
+
+  /** Why a run failed, and whether that stops the investigation (cancellation, deadline, byte budget). */
+  private failure(x: TransformRunError): string {
+    if (this.opts.signal?.aborted === true) {
+      this.stopReason ??= "cancelled";
+      return "cancelled";
+    }
+    if (this.timedOut) {
+      this.stopReason ??= "time";
+      return "time budget reached";
+    }
+    // P2-039: the byte budget ran out while this run's response was being received.
+    if (this.bytes.exhausted) this.stopReason ??= "bytes";
+    return x.message;
   }
 
   /** One frontier entry per canonical key, whatever the number of parents (each parent's edge is in the ledger). */
@@ -376,7 +399,7 @@ export async function investigate(
     unexpandable: inv.unexpandable,
     runs: inv.runs,
     requests: inv.usage.requests,
-    bytes: inv.usage.bytes,
+    bytes: inv.bytes.used,
     ...(inv.stopReason ? { stopReason: inv.stopReason } : {}),
   };
   c.audit("investigate.completed", seedKey, {

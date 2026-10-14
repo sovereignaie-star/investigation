@@ -21,6 +21,7 @@ export { createSystemResolver, DnsResolutionError } from "./system-resolver";
 export type { LookupAll, SystemResolverOptions } from "./system-resolver";
 export { createProductionEgress, validAllowedHost } from "./production";
 export type { ProductionEgressConfig, ProductionEgressDecision } from "./production";
-export { sendKindOf } from "./content-inventory";
+export { sendKindOf, isStaticPath } from "./content-inventory";
+export { ByteBudget } from "./byte-budget";
 export { parseRobots, robotsFromStatus, ROBOTS_PRODUCT_TOKEN } from "./robots";
 export type { RobotsPolicy } from "./robots";

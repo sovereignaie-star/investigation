@@ -32,6 +32,7 @@ import {
   type EgressGateway,
   type EgressLimits,
   type EgressTransport,
+  type ByteBudget,
 } from "@ir/egress";
 import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse } from "@ir/engine";
 import type { Case } from "@ir/store";
@@ -101,6 +102,7 @@ export function networkRunFor(
   entry: RegisteredTransform,
   subjectType: string,
   deps: NetworkDeps,
+  byteBudget?: ByteBudget,
 ): NetworkPlan | { error: string } {
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
@@ -122,13 +124,16 @@ export function networkRunFor(
     // P2-037: the subject's kind plus every kind the transform's request URLs inevitably carry (registry `sends`).
     sends: [...new Set([kind, ...entry.sends])],
     sensitivity: "normal",
+    // P2-039: the registry's fixed bootstrap paths (not case data) and the investigation's shared byte budget.
+    ...(entry.staticPaths && entry.staticPaths.length > 0 ? { staticPaths: [...entry.staticPaths] } : {}),
+    ...(byteBudget ? { byteBudget } : {}),
   };
   const transport = createEgressHttpTransport({ gateway: gw.gateway, baseRequest });
-  // The fixed path "/robots.txt" reads as a domain to the content inventory, so its request declares `domain` too;
-  // the page requests keep the subject's kind only.
+  // The fixed path "/robots.txt" reads as a domain to the content inventory; it is declared a fixed path of this
+  // code on any allowed host (P2-039) instead of declaring `domain` for the robots request.
   const robotsTransport = createEgressHttpTransport({
     gateway: gw.gateway,
-    baseRequest: { ...baseRequest, sends: [...new Set([...baseRequest.sends, "domain"])] },
+    baseRequest: { ...baseRequest, staticPaths: [...(baseRequest.staticPaths ?? []), "*/robots.txt"] },
   });
   const guarded = entry.pageFetch ? robotsGuard(transport, robotsTransport, c) : transport;
   return { transport: guarded, isolatedModule, allowedHosts: gw.allowedHosts, events: gw.events };

@@ -63,7 +63,8 @@ export const dnsResolve = defineTransform<{ domain: string }>(
   {
     id: "TR-001",
     version: "1.1.0",
-    inputs: ["domain"],
+    // P2-039: a host name (nameserver, certificate name) is queried exactly like a domain.
+    inputs: ["domain", "hostname"],
     outputs: ["ipv4", "ipv6", "mx_record", "hostname", "txt_record"],
     network: { mode: "public", allow: [] },
     secrets: [],
