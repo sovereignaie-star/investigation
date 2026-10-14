@@ -2687,3 +2687,14 @@
   - `packages/egress/src/p2-039.test.ts`: 6 اختبارات P2-041 — ميزانية 1 + 302 (رفض قبل DNS، استدعاء نقل واحد)، ميزانية 2 + 302 (كلتا القفزتين)، بعد النفاد لا DNS ولا نقل، طلبات متزامنة لا تتجاوز الحد (take ذري)، تحقق صحة الحقل، واختبار وحدة `RequestBudget` (atomic، لا يتجاوز، يرفض الحدود السيئة).
 - **الأدلة (كلها تشغيلات فعلية):** `vitest run packages/cli/src/investigate.test.ts` => 23/23؛ `vitest run packages/egress/src/p2-039.test.ts` => 34/34؛ `pnpm run test` => 1469 passed / 5 skipped (live-network كما كان)؛ `pnpm run lint`/`typecheck`/`build`/`governance` => ناجحة جميعها.
 - **التالي:** إنشاء فرع `fix/P2-041-hop-budget`، إيداع (docs+كود معاً GR-01)، فتح PR، مراجعة xuuux-voox، دمج عبر merge-async، إعادة التحقق على main.
+
+### 2026-10-14 — [P2-041] إغلاق: مُدمج في main@026b800 بعد موافقة D-8
+- **المنفّذ:** Perplexity Computer (وكيل ذكاء اصطناعي).
+- **ما تم:**
+  - PR #111: رأس `183f459` (docs + إصلاح `RequestBudget` + اختبارات). مُدمج squash في main بـ`merge-async` (uuid `358c5d0d…`، لا `bypass_rules`) => `026b800`.
+  - موافقة D-8: `xuuux-voox APPROVED@183f459` (موافقة حقيقية على الرأس المُدمج، لا تجاوز).
+  - فحص `security-review-advisory` أعيد تشغيله بعد الموافقة (`gh api …/actions/runs/38599956693/rerun`) => تحول من failure إلى success — لأن سير العمل لا يعمل على حدث المراجعة (وثّقنا هذا سابقاً)، والنصيحة المعتمدة هي إعادة التشغيل يدوياً.
+  - كل الفحوص ناجحة على رأس `183f459` (منها الخمسة المطلوبة): `governance`، `build`، `test`، `gates`، `gitleaks`، `analyze`، `CodeQL`، `zap`، `docker`، `security-review-advisory`.
+  - تحقق محلي على main@026b800 بعد الدمج: `vitest run packages/cli/src/investigate.test.ts` => 23/23؛ `pnpm run governance` => ناجحة.
+- **الأدلة:** `gh api …/pulls/111/reviews` => `xuuux-voox: APPROVED@183f459`؛ `gh api …/pulls/111/merge-async/358c5d0d…` => `status: merged`، `sha: 026b800`؛ `git log origin/main -1` => `026b800`؛ لا PRs مفتوحة (`gh api …/pulls?state=open` => `[]`).
+- **ما يُترك:** بقية مراجعة المرحلة 1 — تتبع مسار البيانات عبر الطبقات، العزل وسياسة الخروج، حتمية إعادة بناء القضية، سلامة الأدلة والاستدلال، التزامن والفشل الجزئي. كل عيب يُكتشف يُسجل كمهمة P2-0xx جديدة بنفس آلية العمل (اختبار إعادة إنتاج قبل الإصلاح، docs في نفس الإيداع، مراجعة D-8، دمج، تحقق بعده).
