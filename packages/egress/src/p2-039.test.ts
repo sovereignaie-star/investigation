@@ -474,3 +474,46 @@ describe("P2-041 the shared request budget counts every redirect hop, taken befo
     expect(() => new RequestBudget(1.5)).toThrow(RangeError);
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// P2-042: the byte budget is checked BEFORE the request budget takes a hop (no request count consumed for a hop the
+// byte budget would refuse anyway, and vice versa the same order is observed by both budgets).
+
+describe("P2-042 the byte budget is consulted before the request budget takes a hop", () => {
+  const REQ: EgressRequest = { ...BOOT, staticPaths: STATIC };
+
+  it("a byte-exhausted budget refuses the hop with byte_budget and does NOT consume the request budget", async () => {
+    // Metered transport: the first request consumes the whole byte budget while it is received.
+    const h = harness([streaming(1000, 250), streaming(100, 10)]);
+    const bytes = new ByteBudget(500);
+    const requests = new RequestBudget(5);
+    const a = await h.gw.request({ ...REQ, byteBudget: bytes, requestBudget: requests });
+    expect(a.ok).toBe(false); // the third chunk of 250 would pass the limit of 500
+    expect(a.reason).toBe("byte_budget");
+    expect(bytes.used).toBe(500);
+    expect(requests.usedCount).toBe(1); // the first hop ran (DNS + transport) and consumed its request slot
+    // The NEXT entry request must be refused by the BYTE budget before DNS and before any request take.
+    // A fresh RequestBudget proves the refusal is attributed to the BYTE budget alone (it takes nothing).
+    const requestsFresh = new RequestBudget(5);
+    const resolvedBefore = h.resolved.length;
+    const b = await h.gw.request({ ...REQ, byteBudget: bytes, requestBudget: requestsFresh });
+    expect(b.ok).toBe(false);
+    expect(b.reason).toBe("byte_budget");
+    expect(b.transportCalls).toBe(0);
+    expect(h.resolved.length).toBe(resolvedBefore); // refused before DNS
+    expect(requestsFresh.usedCount).toBe(0); // P2-042: no request slot for a hop the byte budget refuses before DNS
+    // The ORIGINAL request budget is also unchanged (the original investigation would see the same).
+    expect(requests.usedCount).toBe(1);
+  });
+
+  it("a request-exhausted budget refuses the hop with request_budget and does NOT touch the byte budget", async () => {
+    const h = harness([{ status: 200, body: "x" }]);
+    const bytes = new ByteBudget(1000);
+    const requests = new RequestBudget(0);
+    const r = await h.gw.request({ ...REQ, byteBudget: bytes, requestBudget: requests });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("request_budget");
+    expect(r.transportCalls).toBe(0);
+    expect(bytes.used).toBe(0); // untouched
+  });
+});

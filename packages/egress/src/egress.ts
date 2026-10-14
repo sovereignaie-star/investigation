@@ -893,7 +893,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     };
   }
 
-  /** P2-039: refuse before DNS when the request's shared byte budget has nothing left. */
+  /**
+   * P2-042: refuse before DNS when the request's shared byte budget has nothing left. Checked BEFORE the
+   * request budget takes a hop, so a byte-refused hop consumes no request slot.
+   */
   function budgetExhausted(req: EgressRequest, host: string, hops: number, secretDigest?: string): EgressResult | null {
     const b = req.byteBudget;
     if (!b?.exhausted) return null;
@@ -942,10 +945,16 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
         return deny("timeout_total", hopCount);
       }
-      // P2-041: the shared request budget sees EVERY hop (the first hop and every redirect) — take one BEFORE
-      // DNS, so `state.requests` reflects every DNS+connect+bytes+rate-consuming transport call, and no redirect
-      // hop can start once the investigation's request budget is exhausted (the outer requestMeter wraps
-      // gateway.request() once per entry request and cannot see hops inside runHops).
+      // P2-041/P2-042: the shared request budget sees EVERY hop (the first hop and every redirect) — take one
+      // BEFORE DNS (after the byte budget's pre-DNS check), so `state.requests` reflects every
+      // DNS+connect+bytes+rate-consuming transport call, and no redirect hop can start once the investigation's
+      // request budget is exhausted (the outer requestMeter wraps gateway.request() once per entry request and
+      // cannot see hops inside runHops).
+      // P2-042: the byte budget is checked FIRST: a hop the byte budget would refuse before DNS consumes no
+      // request slot. (Order before P2-042: the request budget took one, THEN the byte budget refused the hop
+      // — a hop that never reached DNS or the transport had still consumed a request of the investigation.)
+      const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
+      if (spent) return spent;
       const reqBudget = req.requestBudget;
       if (reqBudget !== undefined) {
         if (!reqBudget.take()) {
@@ -957,9 +966,6 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
           );
         }
       }
-      // P2-039: nothing left of the shared byte budget -> no DNS, no transport call (first hop and every redirect).
-      const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
-      if (spent) return spent;
       const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
       if ("code" in resolved && resolved.code !== undefined) {
         audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
