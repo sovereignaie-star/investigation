@@ -1,0 +1,61 @@
+/**
+ * P2-010 — TR-019: PGP keys (email/fingerprint → public key).
+ *
+ * Source: keys.openpgp.org (`keys.openpgp.org`), public, no key (LC-B). The
+ * transform queries the key lookup endpoint and emits findings for the public
+ * key fingerprint. Sensitivity is `natural_person_gate` (E-02) because a key
+ * lookup by email can identify a person.
+ *
+ * All network I/O goes through `ctx.http` (egress gateway in production).
+ * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
+ */
+import { defineTransform } from "../manifest.ts";
+import { isEmail, isPgpFingerprint } from "./util.ts";
+
+const API = "https://keys.openpgp.org/vks/v1";
+
+export const pgpKeys = defineTransform<{ email?: string; fingerprint?: string }>(
+  {
+    id: "TR-019",
+    version: "1.0.0",
+    inputs: ["email", "fingerprint"],
+    outputs: ["pgp_fingerprint", "email"],
+    network: { mode: "public", allow: [] },
+    secrets: [],
+    limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
+    sensitivity: "natural_person_gate",
+    license: "LC-B",
+  },
+  async (input, ctx) => {
+    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    if (input.email !== undefined) {
+      const email = input.email.trim();
+      if (!isEmail(email)) throw new Error(`TR-019: invalid email "${input.email}"`);
+      const res = await ctx.http.get(`${API}/by-email/${encodeURIComponent(email)}`);
+      if (res.status === 200 && res.body.trim()) {
+        findings.push({
+          predicate: "has_pgp_key",
+          objectType: "email",
+          objectValue: email,
+          confidence: 0.9,
+          explanation: `keys.openpgp.org: public key found for ${email}`,
+        });
+      }
+    }
+    if (input.fingerprint !== undefined) {
+      const fingerprint = input.fingerprint.trim();
+      if (!isPgpFingerprint(fingerprint)) throw new Error(`TR-019: invalid PGP fingerprint "${input.fingerprint}"`);
+      const res = await ctx.http.get(`${API}/by-fingerprint/${encodeURIComponent(fingerprint.replace(/\s/g, ""))}`);
+      if (res.status === 200 && res.body.trim()) {
+        findings.push({
+          predicate: "has_pgp_key",
+          objectType: "pgp_fingerprint",
+          objectValue: fingerprint,
+          confidence: 0.9,
+          explanation: `keys.openpgp.org: public key found for fingerprint ${fingerprint}`,
+        });
+      }
+    }
+    return { findings };
+  },
+);
