@@ -34,6 +34,7 @@ import {
   runSandboxedTransform,
   type Assurance,
   type SandboxOutcome,
+  type ResourceLimits,
   type SandboxResult,
 } from "@ir/transform-sandbox";
 import { TransformOutputSchema, type TransformOutput } from "./output.ts";
@@ -53,6 +54,12 @@ export interface RunTransformIsolatedOptions {
   readonly requireAssurance?: Assurance;
   /** Wall-clock backstop for the whole sandboxed run. Default 30_000. */
   readonly sandboxTimeoutMs?: number;
+  /**
+   * Resource limits for the sandboxed process (P2-034; merged over the sandbox defaults: 2 GiB address space,
+   * 512 MiB V8 heap, 64 MiB files, 256 descriptors, 60 CPU seconds, 16 MiB output). The timeout is not a
+   * memory bound; these are.
+   */
+  readonly sandboxLimits?: Partial<ResourceLimits>;
   /** Injectable clock for deterministic rate-limit tests. */
   readonly now?: () => number;
   /** Injectable sleep for deterministic rate-limit tests. */
@@ -267,6 +274,9 @@ function stageForKind(kind: string): TransformRunError["stage"] {
 /** Build the failure message for a non-zero sandbox exit. */
 function exitMessage(sandboxOutcome: SandboxResult, sandboxTimeoutMs: number): string {
   if (sandboxOutcome.timedOut) return `sandboxed run timed out after ${sandboxTimeoutMs}ms`;
+  if (sandboxOutcome.outputLimitExceeded) {
+    return `sandboxed run killed: output exceeded ${sandboxOutcome.limits.maxOutputBytes} bytes`;
+  }
   const stderr = sandboxOutcome.stderr.trim().slice(0, 1000);
   return `sandboxed run failed: exit ${sandboxOutcome.exitCode}${stderr ? `: ${stderr}` : ""}`;
 }
@@ -371,6 +381,7 @@ export async function runTransformIsolated(modulePath: string, opts: RunTransfor
   const sandboxOutcome = await runSandboxedTransform(BOOTSTRAP, {
     requireAssurance: opts.requireAssurance,
     timeoutMs: sandboxTimeoutMs,
+    limits: opts.sandboxLimits,
     stdinData: Buffer.from(bundle).toString("base64") + "\n" + JSON.stringify(opts.input) + "\n",
     ipcHandler: (msg, stdin) => handleIpcMessage(state, msg, stdin),
     signal,

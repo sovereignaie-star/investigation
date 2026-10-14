@@ -20,6 +20,7 @@ import { runTransform, TransformRunError } from "./runner.ts";
 
 const MODULE = fileURLToPath(new URL("./transforms/tr-iso-test-transforms.spec.ts", import.meta.url));
 const TR010 = fileURLToPath(new URL("./transforms/tr-010-http-scan.ts", import.meta.url));
+const TR089 = fileURLToPath(new URL("./transforms/tr-089-eml-msg.ts", import.meta.url));
 
 const sim = createSimServer([
   { match: "https://example.com/", response: { status: 200, body: "<html></html>", headers: { server: "nginx" } } },
@@ -227,5 +228,39 @@ describe.skipIf(!fullAvailable)("T-ISO: isolated runner against the real sandbox
     // The error message is the transform's own (bounded, no log injection): the parent
     // relays it exactly as the in-process runner does, but never records it as evidence.
     expect(err.message).toContain("SUPER_SECRET_TOKEN_XYZ");
+  });
+
+  it("T-ISO-0089 (P2-034): a hostile MSG fails closed inside the sandbox; a valid one parses there", async () => {
+    const { buildMsg } = await import("./transforms/ole2-builder.test-helper.ts");
+    const good = buildMsg({
+      subject: "s",
+      senderEmail: "a@example.org",
+      displayTo: "b@example.org",
+      transportHeaders: "",
+      body: "hello https://example.org/x",
+      attachmentFilename: "a.bin",
+      attachmentData: Buffer.from("payload"),
+    });
+    const ok = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { content: good.toString("base64"), format: "msg" },
+      requireIsolation: true,
+      isolatedModule: TR089,
+      transformId: "TR-089",
+    });
+    expect(ok.output.findings.some((f) => f.predicate === "has_url" || f.objectValue === "https://example.org/x")).toBe(true);
+
+    const bad = Buffer.from(good);
+    // Directory entry 1 (__properties_version1.0) declares 4 GiB: refused before allocation, run fails, parent lives.
+    bad.writeUInt32LE(0xffffffff, 2 * 512 + 128 + 0x78);
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { content: bad.toString("base64"), format: "msg" },
+      requireIsolation: true,
+      isolatedModule: TR089,
+      transformId: "TR-089",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(String(err.message)).toMatch(/TR-089: stream declares 4294967295 bytes/);
   });
 });

@@ -17,8 +17,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEgressGateway, type EgressAuditEvent } from "@ir/egress";
+import { buildSeccompLauncher } from "./build.ts";
 import { runAtLevel } from "./enforce.ts";
 import {
+  DEFAULT_RESOURCE_LIMITS,
   isAborted,
   isRefusal,
   probeIsolation,
@@ -376,6 +378,111 @@ setInterval(() => {}, 1000);
           expect(alive).toBe(false);
         }
       });
+
+      // P2-034: resource limits. None of these cases commits large memory: the address-space case ASKS for more
+      // than the limit and the kernel refuses the mapping; the heap case uses a 32 MiB heap.
+      it("T-SBX-013: an allocation above the address-space limit is refused inside the sandbox (RLIMIT_AS in force)", async (ctx) => {
+        if (skip()) return ctx.skip();
+        const r = done(
+          await run(`
+import * as fs from "node:fs";
+const line = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max address space"));
+let alloc;
+try { Buffer.alloc(3 * 1024 * 1024 * 1024); alloc = "ALLOCATED"; } catch (e) { alloc = "REFUSED_" + e.name; }
+console.log(JSON.stringify({ line, alloc }));
+`),
+        );
+        const out = JSON.parse(r.stdout.trim()) as { line: string; alloc: string };
+        expect(out.line.split(/\s+/)).toContain(String(DEFAULT_RESOURCE_LIMITS.addressSpaceBytes));
+        expect(out.alloc).toBe("REFUSED_RangeError");
+        expect(r.limits.addressSpaceBytes).toBe(DEFAULT_RESOURCE_LIMITS.addressSpaceBytes);
+      });
+
+      it("T-SBX-014: the V8 heap cap stops a growing JS heap (fatal OOM, not host memory)", async (ctx) => {
+        if (skip()) return ctx.skip();
+        const r = await runAtLevel(level, `const keep = []; for (;;) keep.push(new Array(1e5).fill({ x: 1 }));`, {
+          timeoutMs: 20_000,
+          limits: { heapMb: 32 },
+        });
+        if (isRefusal(r) || isAborted(r)) throw new Error("unexpected refusal");
+        expect(r.ok).toBe(false);
+        expect(r.timedOut).toBe(false);
+        expect(r.stderr).toMatch(/heap out of memory|Reached heap limit/i);
+      });
+
+      it("T-SBX-015: RLIMIT_FSIZE stops a file larger than the limit", async (ctx) => {
+        if (skip()) return ctx.skip();
+        const r = await runAtLevel(
+          level,
+          `
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+process.on("SIGXFSZ", () => {});
+const f = path.join(os.tmpdir(), "big-" + process.pid);
+try { fs.writeFileSync(f, Buffer.alloc(2 * 1024 * 1024)); console.log("WROTE " + fs.statSync(f).size); }
+catch (e) { console.log("ERR_" + e.code); }
+finally { try { fs.rmSync(f); } catch {} }
+`,
+          { timeoutMs: 20_000, limits: { fileSizeBytes: 1024 * 1024 } },
+        );
+        if (isRefusal(r) || isAborted(r)) throw new Error("unexpected refusal");
+        // Either the write fails (EFBIG) or SIGXFSZ ends the process; it never writes the 2 MiB file.
+        expect(r.stdout).not.toMatch(/WROTE 2097152/);
+        if (r.exitCode === 0) expect(r.stdout.trim()).toBe("ERR_EFBIG");
+      });
+
+      it("T-SBX-016: RLIMIT_NOFILE caps open descriptors", async (ctx) => {
+        if (skip()) return ctx.skip();
+        const r = done(
+          await runAtLevel(
+            level,
+            `
+import * as fs from "node:fs";
+const fds = [];
+let code = "NONE";
+try { for (let i = 0; i < 200; i++) fds.push(fs.openSync("/proc/self/stat", "r")); } catch (e) { code = e.code; }
+console.log(code + " " + fds.length);
+`,
+            { timeoutMs: 20_000, limits: { openFiles: 64 } },
+          ),
+        );
+        const [code, count] = r.stdout.trim().split(" ");
+        expect(code).toBe("EMFILE");
+        expect(Number(count)).toBeLessThan(64);
+      });
+
+      it("T-SBX-017: output beyond maxOutputBytes kills the tree and the parent keeps at most the cap", async (ctx) => {
+        if (skip()) return ctx.skip();
+        const r = await runAtLevel(level, `const line = "x".repeat(1023) + "\\n"; for (;;) process.stdout.write(line);`, {
+          timeoutMs: 20_000,
+          limits: { maxOutputBytes: 64 * 1024 },
+        });
+        if (isRefusal(r) || isAborted(r)) throw new Error("unexpected refusal");
+        expect(r.outputLimitExceeded).toBe(true);
+        expect(r.timedOut).toBe(false);
+        expect(r.ok).toBe(false);
+        expect(r.stdout.length + r.stderr.length).toBeLessThanOrEqual(64 * 1024);
+      });
+
+      it("T-SBX-018: the /tmp tmpfs is size-limited where bubblewrap supports --size", async (ctx) => {
+        if (skip() || level !== "full" || !report.tmpfsSize) return ctx.skip();
+        const r = done(
+          await runAtLevel(
+            level,
+            `
+import * as fs from "node:fs";
+let written = 0;
+try { for (let i = 0; i < 64; i++) { fs.writeFileSync("/tmp/f" + i, Buffer.alloc(512 * 1024)); written += 512 * 1024; } console.log("OK " + written); }
+catch (e) { console.log(e.code + " " + written); }
+`,
+            { timeoutMs: 20_000, limits: { tmpfsBytes: 4 * 1024 * 1024 } },
+          ),
+        );
+        const [code, written] = r.stdout.trim().split(" ");
+        expect(code).toBe("ENOSPC");
+        expect(Number(written)).toBeLessThanOrEqual(4 * 1024 * 1024);
+      });
     });
   }
 
@@ -396,6 +503,24 @@ setInterval(() => {}, 1000);
       await new Promise((r) => setTimeout(r, 50));
       expect(unixSeen).toBe(before + 1);
     });
+    it("without the launcher there is no address-space limit (so T-SBX-013 is not vacuous)", async () => {
+      const out = await unsandboxed(
+        `import * as fs from "node:fs"; console.log(fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max address space")));`,
+      );
+      expect(out).toMatch(/unlimited/);
+    });
+
+    it("the launcher refuses a malformed limit instead of running with weaker ones (exit 73)", () => {
+      const launcher = report.launcher ? spawnSync("cc", ["--version"]).status === 0 : false;
+      if (!launcher) return;
+      const build = buildSeccompLauncher();
+      expect(build.launcherPath).toBeTruthy();
+      for (const bad of ["--rlimit=as:12x", "--rlimit=bogus:1", "--rlimit=as:", "--rlimit=:5"]) {
+        const r = spawnSync(build.launcherPath as string, [bad, "/bin/true"], { encoding: "utf8" });
+        expect(r.status, bad).toBe(73);
+      }
+    });
+
     it("the case file is readable", async () => {
       expect(await unsandboxed(`import * as fs from "node:fs"; console.log(fs.readFileSync(process.env.IR_CANARY, "utf8"));`)).toBe(
         "CONFIDENTIAL_CASE_DATA",
