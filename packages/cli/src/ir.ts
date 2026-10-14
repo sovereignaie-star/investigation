@@ -1,16 +1,18 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { canonicalKey, isoNow, systemClock, ulidFactory, type Clock } from "@ir/core";
+import { isoNow, systemClock, ulidFactory, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
 import type { ExpandResult } from "@ir/ledger";
 import { project, projectionHash, type Projection } from "@ir/ledger/projections";
 import { formatReport, openCase, readCheckpointFile, verifyCase, type Case } from "@ir/store";
 import { createSimServer, type SimRule } from "@ir/sim";
-import { httpScan, runTransform, TransformRunError, type RunTransformResult, type Transform } from "@ir/transforms";
+import { runTransform, TransformRunError, type RunTransformResult, type Transform } from "@ir/transforms";
 import type { HttpTransport } from "@ir/engine";
+import type { EgressAuditEvent } from "@ir/egress";
 import { LegalBasis, type CaseInit } from "@ir/schema";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
+import { registered, subjectInput, type RegisteredTransform } from "./registry.ts";
 import { recordRunFailure, recordRunSuccess } from "./run-record.ts";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
@@ -43,6 +45,12 @@ export interface CliOptions {
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   /** Tests only: replaces the real resolver/transport of `--network`; every policy and opt-in stays real. */
   network?: NetworkDeps;
+  /**
+   * P2-037 — cancels a running `ir run` (the entry point aborts it on SIGINT/SIGTERM). The run signal reaches the
+   * sandbox, every pending gateway request and the transport; the cancelled run is recorded as an error, never as
+   * an empty success.
+   */
+  signal?: AbortSignal;
 }
 
 /** Case created by `ir run` when the target directory has no case yet (P2-022). */
@@ -53,11 +61,6 @@ const DEFAULT_CASE = {
 } as const;
 
 /** Transforms the CLI can run. Grows as transform batches land (P2-009/010/026/030). */
-const TRANSFORMS: Transform[] = [httpScan];
-
-function transformById(id: string): Transform | undefined {
-  return TRANSFORMS.find((t) => t.manifest.id === id);
-}
 
 function passphraseFrom(file: string | undefined): { passphrase?: string } {
   if (file) return { passphrase: readFileSync(file, "utf8").replace(/\r?\n$/, "") };
@@ -273,18 +276,31 @@ function openRunCase(dir: string, v: RunValues, clock: Clock): Case | string {
 /** Simulation (default) or the real network through @ir/egress with the transform isolated (`--network`). */
 function runRoute(
   c: Case,
-  transform: Transform,
+  entry: RegisteredTransform,
   subjectType: string,
   v: RunValues,
   opts: CliOptions,
-): { transport: HttpTransport; isolatedModule?: string; allowedHosts?: readonly string[] } | { error: string } {
+):
+  | { transport: HttpTransport; isolatedModule?: string; allowedHosts?: readonly string[]; events?: readonly EgressAuditEvent[] }
+  | { error: string } {
   if (!v.network) return { transport: createSimServer(v.sim ? readSimRules(v.sim) : []).transport };
   if (c.info().legalBasis === "training_simulation") {
     return { error: "--network: this is a simulation case (legal basis training_simulation); use a case with a real basis" };
   }
-  const plan = planNetworkRun(c, transform, subjectType, v["allow-host"] ?? [], opts.network ?? {});
+  const plan = planNetworkRun(c, entry, subjectType, v["allow-host"] ?? [], opts.network ?? {});
   if ("error" in plan) return plan;
-  return { transport: plan.transport, isolatedModule: plan.isolatedModule, allowedHosts: plan.allowedHosts };
+  return { transport: plan.transport, isolatedModule: plan.isolatedModule, allowedHosts: plan.allowedHosts, events: plan.events };
+}
+
+/**
+ * P2-037 — a clear message when the gateway refused a host the operator did not list. The host list is never
+ * widened from a source's answer (an RDAP server found in an IANA bootstrap included): the operator decides.
+ */
+function hostRefusalHint(entry: RegisteredTransform, events: readonly EgressAuditEvent[] | undefined): string {
+  const refused = [...new Set((events ?? []).filter((e) => e.kind === "denied" && e.reason === "host_not_allowed").map((e) => e.host))];
+  if (refused.length === 0) return "";
+  const discovered = entry.discoveredHosts ? ` (${entry.transform.manifest.id} reaches ${entry.discoveredHosts})` : "";
+  return `; refused before connecting: ${refused.join(", ")} not on --allow-host${discovered} — add it with --allow-host only if that source is authorised`;
 }
 
 /**
@@ -304,15 +320,24 @@ async function runTransformCommand(
   opts: CliOptions,
 ): Promise<number> {
   try {
-    const transform = transformById(transformId);
-    if (!transform) {
+    // P2-037: only registered transforms run, and the subject is checked against the transform's declared
+    // subjects and the catalog format before any case is opened or any request is made.
+    const entry = registered(transformId);
+    if (!entry) {
       err(`ir run: unknown transform "${transformId}"`);
       return 2;
     }
+    const transform = entry.transform;
     if (!specById(subjectType)) {
       err(`ir run: subject type "${subjectType}" is not a catalog identifier type`);
       return 2;
     }
+    const prepared = subjectInput(entry, subjectType, subjectValue);
+    if ("error" in prepared) {
+      err(`ir run: ${prepared.error}`);
+      return 2;
+    }
+    const { input, key: subjectKey } = prepared;
     const clock = opts.clock ?? systemClock;
     const c = openRunCase(dir, v, clock);
     if (typeof c === "string") {
@@ -324,14 +349,12 @@ async function runTransformCommand(
         err("ir run: refusing to run a transform against an encrypted case (P2-022)");
         return 2;
       }
-      const subjectKey = canonicalKey(subjectType, subjectValue);
-      const subjectId = ensureSubject(c, subjectKey, subjectType, clock);
-      const route = runRoute(c, transform, subjectType, v, opts);
+      const route = runRoute(c, entry, subjectType, v, opts);
       if ("error" in route) {
         err(`ir run: ${route.error}`);
         return 2;
       }
-      const input = { [transform.manifest.inputs[0]]: subjectValue };
+      const subjectId = ensureSubject(c, subjectKey, subjectType, clock);
       let result: RunTransformResult;
       try {
         result = await runTransform(transform, {
@@ -339,6 +362,7 @@ async function runTransformCommand(
           input,
           now: opts.now,
           sleep: opts.sleep,
+          ...(opts.signal ? { signal: opts.signal } : {}),
           // P2-036: evidence fetch times come from the case clock, like every other ledger timestamp.
           fetchedAt: () => isoNow(clock),
           ...(route.isolatedModule
@@ -350,7 +374,7 @@ async function runTransformCommand(
           // P2-036: the error observation cites the failed request's own evidence (or a run record naming the
           // stage, message and every response received) — never the last response, never an empty success.
           recordRunFailure(c, subjectId, transform, input, x, clock);
-          err(`ir run: ${x.message}`);
+          err(`ir run: ${x.message}${hostRefusalHint(entry, route.events)}`);
           return 1;
         }
         throw x;
@@ -394,7 +418,12 @@ async function runTransformCommand(
 // Run only as the entry point (bin symlinks resolve to the real file), not when imported by tests.
 const isEntry = process.argv[1] !== undefined && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
 if (isEntry) {
-  main(process.argv.slice(2)).then(
+  // P2-037: Ctrl-C / SIGTERM cancel the run through its signal (the sandbox and pending requests are stopped and the
+  // cancellation is recorded in the case) instead of killing the process mid-write.
+  const cancel = new AbortController();
+  process.once("SIGINT", () => cancel.abort());
+  process.once("SIGTERM", () => cancel.abort());
+  main(process.argv.slice(2), undefined, undefined, { signal: cancel.signal }).then(
     (code) => {
       process.exitCode = code;
     },

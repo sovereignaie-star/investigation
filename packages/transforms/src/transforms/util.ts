@@ -90,3 +90,114 @@ export function isEthTxHash(raw: string): boolean {
 export function isSha256(raw: string): boolean {
   return /^[a-fA-F0-9]{64}$/.test(raw.trim());
 }
+
+/**
+ * P2-037 — a source answered with a status the transform cannot read as data: fail the run (a server error or an
+ * unexpected status is never "no findings"). `allowed` lists the statuses that carry a meaningful answer.
+ */
+export function expectStatus(res: { status: number }, allowed: readonly number[], what: string): void {
+  if (!allowed.includes(res.status)) throw new Error(`${what} answered HTTP ${res.status}`);
+}
+
+/**
+ * P2-037 — a DNS-over-HTTPS JSON answer (dns.google `/resolve`): `Status` is the DNS RCODE. NOERROR (0) carries the
+ * answers, NXDOMAIN (3) is a genuine "no such name" (no findings). Any other RCODE (SERVFAIL, REFUSED, ...) means the
+ * question was not answered: the run fails instead of reporting an empty result.
+ */
+export interface DohAnswer {
+  readonly name?: string;
+  readonly type?: number;
+  readonly data?: string;
+}
+export function parseDoh(res: { status: number; body: string }, what: string): DohAnswer[] {
+  expectStatus(res, [200], what);
+  const data = parseJson(res.body, what) as { Status?: unknown; Answer?: unknown };
+  if (typeof data !== "object" || data === null || typeof data.Status !== "number") throw new Error(`${what}: DoH answer has no Status`);
+  if (data.Status === 3) return [];
+  if (data.Status !== 0) throw new Error(`${what}: DNS RCODE ${data.Status} (question not answered)`);
+  if (data.Answer === undefined) return [];
+  if (!Array.isArray(data.Answer)) throw new Error(`${what}: DoH Answer is not a list`);
+  return data.Answer as DohAnswer[];
+}
+
+/** IPv4 dotted quad -> 32-bit unsigned integer (caller validated with `isIpv4`). */
+export function ipv4ToInt(ip: string): number {
+  return ip
+    .trim()
+    .split(".")
+    .reduce((acc, p) => acc * 256 + Number(p), 0);
+}
+
+/** 32-bit unsigned integer -> IPv4 dotted quad. */
+export function intToIpv4(n: number): string {
+  return [24, 16, 8, 0].map((s) => Math.floor(n / 2 ** s) % 256).join(".");
+}
+
+/**
+ * P2-037 — the exact list of aligned IPv4 CIDR blocks covering `start..end` inclusive (RFC 4632 aggregation of an
+ * arbitrary range). Every block has its host bits zero, so it matches the catalog `cidr` pattern and denotes the
+ * network itself, not an address inside it. Throws on a malformed or inverted range.
+ */
+export function ipv4RangeToCidrs(start: string, end: string): string[] {
+  if (!isIpv4(start) || !isIpv4(end)) throw new Error(`invalid IPv4 range "${start}" - "${end}"`);
+  let lo = ipv4ToInt(start);
+  const hi = ipv4ToInt(end);
+  if (lo > hi) throw new Error(`inverted IPv4 range "${start}" - "${end}"`);
+  const out: string[] = [];
+  while (lo <= hi) {
+    // Largest block aligned at `lo` that does not run past `hi`.
+    let size = 1;
+    while (lo % (size * 2) === 0 && lo + size * 2 - 1 <= hi && size < 2 ** 32) size *= 2;
+    out.push(`${intToIpv4(lo)}/${32 - Math.log2(size)}`);
+    lo += size;
+  }
+  return out;
+}
+
+/** True when `prefix/len` is an IPv4 network address (host bits zero) with 0 <= len <= 32. */
+export function isAlignedIpv4Cidr(cidr: string): boolean {
+  if (!isPrefix(cidr)) return false;
+  const [ip, bits] = cidr.trim().split("/");
+  const len = Number(bits);
+  const size = 2 ** (32 - len);
+  return ipv4ToInt(ip) % size === 0;
+}
+
+/** Strict IPv6 text -> 128-bit BigInt (accepts `::` compression and an embedded IPv4 tail); throws when malformed. */
+export function ipv6ToBigInt(raw: string): bigint {
+  let s = raw.trim().toLowerCase();
+  if (!isIpv6(s)) throw new Error(`invalid IPv6 "${raw}"`);
+  const v4 = /(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
+  if (v4) {
+    if (!isIpv4(v4[1])) throw new Error(`invalid IPv6 "${raw}"`);
+    const n = ipv4ToInt(v4[1]);
+    s = s.slice(0, -v4[1].length) + `${Math.floor(n / 65536).toString(16)}:${(n % 65536).toString(16)}`;
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) throw new Error(`invalid IPv6 "${raw}"`);
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - head.length - tail.length;
+  if ((halves.length === 1 && missing !== 0) || (halves.length === 2 && missing < 1)) throw new Error(`invalid IPv6 "${raw}"`);
+  const groups = [...head, ...Array<string>(halves.length === 2 ? missing : 0).fill("0"), ...tail];
+  let n = 0n;
+  for (const g of groups) {
+    if (!/^[0-9a-f]{1,4}$/.test(g)) throw new Error(`invalid IPv6 "${raw}"`);
+    n = (n << 16n) | BigInt(parseInt(g, 16));
+  }
+  return n;
+}
+
+/** True when `ip` (IPv6) lies inside `prefix/len` (IPv6 CIDR). Malformed prefixes are "not inside". */
+export function ipv6InCidr(ip: string, cidr: string): boolean {
+  const m = /^([0-9a-fA-F:.]+)\/(\d{1,3})$/.exec(cidr.trim());
+  if (!m || Number(m[2]) > 128) return false;
+  let net: bigint;
+  try {
+    net = ipv6ToBigInt(m[1]);
+  } catch {
+    return false;
+  }
+  const shift = BigInt(128 - Number(m[2]));
+  return ipv6ToBigInt(ip) >> shift === net >> shift;
+}

@@ -20,7 +20,6 @@
  *   reason and transport-call count; the response is stored as evidence by the caller (URL, status, fetchedAt).
  */
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { specById } from "@ir/core/identifiers";
 import {
   createProductionEgress,
@@ -35,15 +34,7 @@ import {
 } from "@ir/egress";
 import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse } from "@ir/engine";
 import type { Case } from "@ir/store";
-import type { Transform } from "@ir/transforms";
-
-/** Module paths for transforms that may run in the sandbox (bundled from source; never executed in the parent). */
-const ISOLATED_MODULES: Readonly<Record<string, string>> = {
-  "TR-010": fileURLToPath(new URL("../../transforms/src/transforms/tr-010-http-scan.ts", import.meta.url)),
-};
-
-/** Transforms that fetch pages and therefore obey robots.txt (ADR-08 decision C; TR-042 joins when it exists). */
-const PAGE_FETCH_TRANSFORMS = new Set(["TR-010"]);
+import type { RegisteredTransform } from "./registry.ts";
 
 const PUBLIC_SEND_KINDS = new Set(["domain", "ip", "asn", "hash", "url", "certificate"]);
 
@@ -68,7 +59,7 @@ export interface NetworkPlan {
 
 export function planNetworkRun(
   c: Case,
-  transform: Transform,
+  entry: RegisteredTransform,
   subjectType: string,
   allowHosts: readonly string[],
   deps: NetworkDeps,
@@ -79,8 +70,9 @@ export function planNetworkRun(
   if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
     return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
   }
-  const modules = deps.isolatedModules ?? ISOLATED_MODULES;
-  const isolatedModule = modules[transform.manifest.id];
+  const transform = entry.transform;
+  // P2-037: the sandbox module comes from the registry entry (one explicit path per registered transform).
+  const isolatedModule = deps.isolatedModules ? deps.isolatedModules[transform.manifest.id] : entry.module;
   if (!isolatedModule || !existsSync(isolatedModule)) {
     return { error: `--network: ${transform.manifest.id} has no sandbox module here; network runs are isolated only` };
   }
@@ -110,7 +102,8 @@ export function planNetworkRun(
     caseId,
     purposeRef: `case:${caseId}`,
     transform: `${transform.manifest.id}@${transform.manifest.version}`,
-    sends: [kind],
+    // P2-037: the subject's kind plus every kind the transform's request URLs inevitably carry (registry `sends`).
+    sends: [...new Set([kind, ...entry.sends])],
     sensitivity: "normal",
   };
   const transport = createEgressHttpTransport({ gateway: decision.gateway, baseRequest });
@@ -118,9 +111,9 @@ export function planNetworkRun(
   // the page requests keep the subject's kind only.
   const robotsTransport = createEgressHttpTransport({
     gateway: decision.gateway,
-    baseRequest: { ...baseRequest, sends: [...new Set([kind, "domain"])] },
+    baseRequest: { ...baseRequest, sends: [...new Set([...baseRequest.sends, "domain"])] },
   });
-  const guarded = PAGE_FETCH_TRANSFORMS.has(transform.manifest.id) ? robotsGuard(transport, robotsTransport, c) : transport;
+  const guarded = entry.pageFetch ? robotsGuard(transport, robotsTransport, c) : transport;
   return { transport: guarded, isolatedModule, allowedHosts: decision.allowedHosts, events };
 }
 
