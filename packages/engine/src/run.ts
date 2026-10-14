@@ -8,6 +8,7 @@
  */
 import { Budget, BudgetExceededError, type BudgetCaps, type BudgetSnapshot } from "./budget.ts";
 import { CancellationError, createCancellationToken, type CancellationToken } from "./cancel.ts";
+import { naturalPersonGate, type PurposeConfirmation } from "./gate.ts";
 import { PriorityQueue } from "./queue.ts";
 import { TransportError, type HttpTransport, type TransportRequest, type TransportResponse } from "./transport.ts";
 
@@ -19,6 +20,8 @@ export interface RunInput {
   readonly priority?: number;
   readonly depth?: number;
   readonly costEstimate?: number;
+  /** Sensitivity of the input (E-02/E-08); a natural-person input needs a purpose confirmation. */
+  readonly sensitivity?: "normal" | "natural_person_gate" | "minor";
 }
 
 export interface RunResult {
@@ -49,6 +52,8 @@ export interface EngineOptions {
   readonly maxRetries?: number;
   /** Sleep used for retry backoff; injectable for deterministic tests. */
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** Purpose confirmation for natural-person expansions (E-02, P2-013). */
+  readonly purposeConfirmation?: PurposeConfirmation;
 }
 
 export interface RunHandle {
@@ -86,6 +91,7 @@ export class RunEngine {
     retryBaseMs: number;
     maxRetries: number;
     sleep: (ms: number, signal: AbortSignal) => Promise<void>;
+    purposeConfirmation?: PurposeConfirmation;
   };
   private readonly transport: HttpTransport;
   private draining = false;
@@ -153,11 +159,42 @@ export class RunEngine {
               { once: true },
             );
           })),
+      purposeConfirmation: opts.purposeConfirmation,
     };
   }
 
   /** Registers a run and returns a handle whose runId is stable across drain() calls. */
   submit(input: RunInput): RunHandle {
+    // P2-013 / E-02: a natural-person input without a purpose confirmation is refused before it
+    // is queued — it never reaches the transport (zero transport attempts). The refusal is
+    // recorded as a failed run so the caller can inspect the reason.
+    const gate = naturalPersonGate(input, this.opts.purposeConfirmation);
+    if (!gate.allowed) {
+      const runId = `run-${(this.records.size + 1).toString(36).padStart(4, "0")}-${this.opts.random(6)}`;
+      const token = createCancellationToken();
+      const record: RunRecord = {
+        runId,
+        input,
+        token,
+        phase: "failed",
+        transportAttempts: 0,
+        processed: 0,
+        failure: { kind: "transform", message: gate.message },
+      };
+      this.records.set(runId, record);
+      this.results.set(runId, {
+        runId,
+        phase: "failed",
+        budget: { nodes: 0, depth: 0, requests: 0, costEstimate: 0, elapsedMs: 0 },
+        processed: 0,
+        transportAttempts: 0,
+        failure: { kind: "transform", message: gate.message },
+      });
+      return {
+        runId,
+        cancel: () => false,
+      };
+    }
     const runId = `run-${(this.records.size + 1).toString(36).padStart(4, "0")}-${this.opts.random(6)}`;
     const token = createCancellationToken();
     const record: RunRecord = {
@@ -193,6 +230,18 @@ export class RunEngine {
   /** True if a run with this id was ever submitted (P2-019: SSE existence check). */
   has(runId: string): boolean {
     return this.records.has(runId);
+  }
+
+  /**
+   * Restarts a failed run (P2-025): creates a NEW run with the same input, a fresh
+   * cancellation token and a fresh budget, and queues it for the next drain. The
+   * original run's result is left untouched (its history is preserved). Returns the
+   * new handle, or undefined when the source run is unknown or not failed.
+   */
+  restart(runId: string): RunHandle | undefined {
+    const rec = this.records.get(runId);
+    if (!rec || rec.phase !== "failed") return undefined;
+    return this.submit(rec.input);
   }
 
   /**
@@ -316,10 +365,14 @@ export class RunEngine {
         // Race the transport against the deadline so a transport that ignores the
         // abort signal cannot keep the run pending past the time budget.
         const res = await this.raceWithDeadline(this.transport.fetch(req, combined), rec.token.signal, timeoutSignal, remainingMs);
+        // Error-class retry decision (P2-025): transient classes (5xx, 429) are retried;
+        // permanent classes (4xx, auth) are not. The Retry-After header, when present,
+        // overrides the exponential backoff for the next wait.
         if (res.status >= 500 || res.status === 429) {
+          const retryAfterMs = this.retryAfterMs(res, remainingMs);
           throw new TransportError("transport:http-error", `HTTP ${res.status}`, {
             retryable: true,
-            retryAfterMs: res.status === 429 ? 200 : undefined,
+            retryAfterMs,
           });
         }
         return res;
@@ -337,12 +390,32 @@ export class RunEngine {
         }
         if (err instanceof TransportError && err.retryable && attempt < this.opts.maxRetries) {
           attempt++;
-          await this.backoffWait(rec, timeoutSignal, remainingMs, attempt);
+          await this.backoffWait(rec, timeoutSignal, remainingMs, attempt, err.retryAfterMs);
           continue;
         }
         throw err;
       }
     }
+  }
+
+  /**
+   * Parses the Retry-After header (P2-025): a delta-seconds value or an HTTP-date.
+   * Returns the wait in ms, capped at the remaining time budget, or undefined when
+   * the header is absent or unparseable (the caller then uses exponential backoff).
+   */
+  private retryAfterMs(res: TransportResponse, remainingMs: number): number | undefined {
+    const raw = res.headers?.["retry-after"];
+    if (!raw) return undefined;
+    const trimmed = raw.trim();
+    if (/^\d+$/.test(trimmed)) {
+      return Math.min(Number(trimmed) * 1000, remainingMs);
+    }
+    const date = Date.parse(trimmed);
+    if (Number.isFinite(date)) {
+      const delta = date - this.opts.now();
+      return delta > 0 ? Math.min(delta, remainingMs) : 0;
+    }
+    return undefined;
   }
 
   private remainingTimeMs(budget: Budget): number {
@@ -420,8 +493,17 @@ export class RunEngine {
     }
   }
 
-  private async backoffWait(rec: RunRecord, timeoutSignal: AbortSignal, remainingMs: number, attempt: number): Promise<void> {
-    const waitMs = Math.min(this.opts.retryBaseMs * 2 ** attempt, remainingMs);
+  private async backoffWait(
+    rec: RunRecord,
+    timeoutSignal: AbortSignal,
+    remainingMs: number,
+    attempt: number,
+    retryAfterMs?: number,
+  ): Promise<void> {
+    // P2-025: a Retry-After header (when present) overrides the exponential backoff;
+    // otherwise the backoff is retryBaseMs * 2^attempt (attempt already incremented),
+    // capped at the time budget.
+    const waitMs = retryAfterMs !== undefined ? retryAfterMs : Math.min(this.opts.retryBaseMs * 2 ** attempt, remainingMs);
     const combined = AbortSignal.any([rec.token.signal, timeoutSignal]);
     // The backoff wait is bounded by the SAME shared race as the transport: a sleep
     // implementation that ignores its abort signal cannot hold the run past either
