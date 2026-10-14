@@ -23,6 +23,87 @@ import { registrableDomain } from "@ir/core/psl";
 import { defineTransform } from "../manifest.ts";
 import type { TransformContext } from "../transform.ts";
 
+/**
+ * Resource limits (P2-034). Every size read from the input (OLE2 header fields, directory entry sizes, sector
+ * chains, property counts, MIME nesting, base64 payloads) is checked against these BEFORE any buffer is allocated
+ * or any loop is entered, so a malformed or hostile file is refused with a typed error instead of exhausting
+ * memory, looping forever or overflowing the stack. The parser never trusts a size it has not bounded by the
+ * bytes it actually holds.
+ */
+export interface Tr089Limits {
+  /** Maximum length of `input.content` (characters; EML text or base64 MSG). */
+  readonly maxInputChars: number;
+  /** Maximum size of a decoded MSG compound file (bytes). */
+  readonly maxMsgBytes: number;
+  /** Maximum total bytes produced by decoding EML transfer encodings (base64 / quoted-printable) across all parts. */
+  readonly maxDecodedBytes: number;
+  /** Maximum MIME multipart nesting depth. */
+  readonly maxMimeDepth: number;
+  /** Maximum number of MIME parts in one message. */
+  readonly maxMimeParts: number;
+  /** Maximum number of OLE2 directory entries. */
+  readonly maxDirEntries: number;
+  /** Maximum number of MSG attachments. */
+  readonly maxAttachments: number;
+}
+
+export const TR089_LIMITS: Tr089Limits = Object.freeze({
+  maxInputChars: 40 * 1024 * 1024,
+  maxMsgBytes: 25 * 1024 * 1024,
+  maxDecodedBytes: 32 * 1024 * 1024,
+  maxMimeDepth: 32,
+  maxMimeParts: 2_000,
+  maxDirEntries: 65_536,
+  maxAttachments: 1_000,
+});
+
+/** A typed refusal: the input is malformed or exceeds a limit. Always thrown before the offending allocation. */
+export class Tr089InputError extends Error {
+  constructor(
+    readonly reason:
+      | "input_too_large"
+      | "invalid_base64"
+      | "msg_too_large"
+      | "decoded_too_large"
+      | "mime_too_deep"
+      | "mime_too_many_parts"
+      | "invalid_mime"
+      | "invalid_ole2"
+      | "ole2_out_of_bounds"
+      | "ole2_cycle"
+      | "ole2_too_many_entries"
+      | "too_many_attachments",
+    message: string,
+  ) {
+    super(`TR-089: ${message}`);
+    this.name = "Tr089InputError";
+  }
+}
+
+const BASE64_BODY = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/**
+ * Decode base64 only after bounding its decoded size by the encoded length (3 bytes per 4 characters), so the
+ * output buffer can never exceed `maxBytes`. Whitespace is ignored; any other non-alphabet character is refused.
+ */
+export function decodeBase64Bounded(text: string, maxBytes: number, what: string): Buffer {
+  // The caller bounds `text` by maxInputChars first, so this copy is bounded too.
+  const clean = text.replace(/\s+/g, "");
+  if (!BASE64_BODY.test(clean)) throw new Tr089InputError("invalid_base64", `${what} is not valid base64`);
+  const padding = clean.endsWith("==") ? 2 : clean.endsWith("=") ? 1 : 0;
+  const decodedLength = Math.floor((clean.length * 3) / 4) - padding;
+  if (decodedLength > maxBytes) {
+    throw new Tr089InputError("decoded_too_large", `${what} would decode to ${decodedLength} bytes (limit ${maxBytes})`);
+  }
+  return Buffer.from(clean, "base64");
+}
+
+/** Per-message decoding budget shared by every MIME part. */
+interface DecodeBudget {
+  remaining: number;
+  parts: number;
+}
+
 export interface EmailParseInput {
   /** Raw email content: EML text, or MSG as base64 (auto-detected). */
   content: string;
@@ -82,18 +163,32 @@ function parseHeaders(raw: string): Array<{ name: string; value: string }> {
   return out;
 }
 
-/** Decode a MIME part body given its Content-Transfer-Encoding. */
-function decodeBody(body: string, encoding: string): Buffer {
+/** Decode a MIME part body given its Content-Transfer-Encoding, charging the output to the message budget. */
+function decodeBody(body: string, encoding: string, budget: DecodeBudget): Buffer {
   const enc = encoding.trim().toLowerCase();
+  let out: Buffer;
   if (enc === "base64") {
-    const clean = body.replace(/\s+/g, "");
-    return Buffer.from(clean, "base64");
-  }
-  if (enc === "quoted-printable") {
+    // A part's body may carry trailing junk after the payload (e.g. epilogue text); keep the historic lenient
+    // behaviour of ignoring non-alphabet characters, but bound the output before decoding.
+    const clean = body.replace(/[^A-Za-z0-9+/=]/g, "");
+    if (Math.floor((clean.length * 3) / 4) > budget.remaining) {
+      throw new Tr089InputError("decoded_too_large", "MIME parts decode to more than the message budget");
+    }
+    out = Buffer.from(clean, "base64");
+  } else if (enc === "quoted-printable") {
+    if (body.length > budget.remaining) {
+      throw new Tr089InputError("decoded_too_large", "MIME parts decode to more than the message budget");
+    }
     const q = body.replace(/=\r?\n/g, "").replace(/=([0-9A-Fa-f]{2})/g, (_m, h) => String.fromCharCode(parseInt(h, 16)));
-    return Buffer.from(q, "latin1");
+    out = Buffer.from(q, "latin1");
+  } else {
+    if (Buffer.byteLength(body, "utf8") > budget.remaining) {
+      throw new Tr089InputError("decoded_too_large", "MIME parts decode to more than the message budget");
+    }
+    out = Buffer.from(body, "utf8");
   }
-  return Buffer.from(body, "utf8");
+  budget.remaining -= out.length;
+  return out;
 }
 
 /** Extract the boundary from a Content-Type header value. */
@@ -185,47 +280,69 @@ function extractUrls(text: string): string[] {
   return out;
 }
 
-/** Parse a MIME tree into body text and attachments. */
-function walkMime(
-  raw: string,
-  headers: Array<{ name: string; value: string }>,
-  acc: { bodyParts: string[]; attachments: Array<{ filename: string; content: Buffer }> },
-): void {
+interface MimeAcc {
+  bodyParts: string[];
+  attachments: Array<{ filename: string; content: Buffer }>;
+  budget: DecodeBudget;
+  limits: Tr089Limits;
+}
+
+/** Parse a MIME tree into body text and attachments. Depth and part count are bounded (no stack exhaustion). */
+function walkMime(raw: string, headers: Array<{ name: string; value: string }>, acc: MimeAcc, depth: number): void {
+  if (depth > acc.limits.maxMimeDepth) {
+    throw new Tr089InputError("mime_too_deep", `MIME nesting deeper than ${acc.limits.maxMimeDepth}`);
+  }
+  acc.budget.parts++;
+  if (acc.budget.parts > acc.limits.maxMimeParts) {
+    throw new Tr089InputError("mime_too_many_parts", `more than ${acc.limits.maxMimeParts} MIME parts`);
+  }
   const contentType = headers.find((h) => h.name === "content-type")?.value ?? "text/plain";
   const boundary = boundaryOf(contentType);
   if (boundary) {
-    walkMultipart(raw, boundary, acc);
+    walkMultipart(raw, boundary, acc, depth);
     return;
   }
   walkLeaf(raw, headers, contentType, acc);
 }
 
-function walkMultipart(
-  raw: string,
-  boundary: string,
-  acc: { bodyParts: string[]; attachments: Array<{ filename: string; content: Buffer }> },
-): void {
-  const parts = raw.split(new RegExp(`--${escapeRegExp(boundary)}`, "g"));
-  for (const part of parts.slice(1)) {
-    const trimmed = part.replace(/^\r?\n/, "");
+function walkMultipart(raw: string, boundary: string, acc: MimeAcc, depth: number): void {
+  // RFC 2046: a boundary is 1..70 characters; a longer one is malformed and would only inflate the split cost.
+  if (boundary.length > 70) throw new Tr089InputError("invalid_mime", "MIME boundary longer than 70 characters");
+  // RFC 2046 5.1.1: a delimiter is a whole line "--boundary" (optionally followed by "--" for the close delimiter
+  // and trailing whitespace). Matching whole lines means "--b1" does not split a part at "--b10".
+  const open = `--${boundary}`;
+  const parts: string[] = [];
+  let current: string[] | undefined;
+  let closed = false;
+  for (const line of raw.split("\n")) {
+    const bare = line.replace(/[ \t\r]+$/, "");
+    if (!closed && (bare === open || bare === `${open}--`)) {
+      if (current) parts.push(current.join("\n"));
+      if (parts.length > acc.limits.maxMimeParts) {
+        throw new Tr089InputError("mime_too_many_parts", `more than ${acc.limits.maxMimeParts} MIME parts`);
+      }
+      current = bare === open ? [] : undefined;
+      closed = bare !== open;
+      continue;
+    }
+    current?.push(line);
+  }
+  if (current) parts.push(current.join("\n"));
+  for (const part of parts) {
+    const trimmed = part;
     const sep = trimmed.search(/\r?\n\r?\n|\n\n/);
     if (sep < 0) continue;
     const partHeaders = parseHeaders(trimmed.slice(0, sep));
     const partBody = trimmed.slice(sep).replace(/^\r?\n/, "");
-    walkMime(partBody, partHeaders, acc);
+    walkMime(partBody, partHeaders, acc, depth + 1);
   }
 }
 
-function walkLeaf(
-  raw: string,
-  headers: Array<{ name: string; value: string }>,
-  contentType: string,
-  acc: { bodyParts: string[]; attachments: Array<{ filename: string; content: Buffer }> },
-): void {
+function walkLeaf(raw: string, headers: Array<{ name: string; value: string }>, contentType: string, acc: MimeAcc): void {
   const cte = headers.find((h) => h.name === "content-transfer-encoding")?.value ?? "";
   const cd = headers.find((h) => h.name === "content-disposition")?.value ?? "";
   const isAttachment = /attachment/i.test(cd) || /filename\s*=/i.test(cd) || /^image\//i.test(contentType.trim());
-  const decoded = decodeBody(raw, cte);
+  const decoded = decodeBody(raw, cte, acc.budget);
   if (isAttachment) {
     const fn = /filename\s*=\s*(?:"([^"]+)"|([^;\s]+))/.exec(cd) ?? /name\s*=\s*(?:"([^"]+)"|([^;\s]+))/.exec(contentType);
     const filename = fn ? decodeEncodedWords(fn[1] ?? fn[2] ?? "attachment") : "attachment";
@@ -240,12 +357,11 @@ function walkLeaf(
   }
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /** Parse an EML message (RFC 5322 + MIME). */
-export function parseEml(raw: string): ParsedEmail {
+export function parseEml(raw: string, limits: Tr089Limits = TR089_LIMITS): ParsedEmail {
+  if (raw.length > limits.maxInputChars) {
+    throw new Tr089InputError("input_too_large", `EML is ${raw.length} characters (limit ${limits.maxInputChars})`);
+  }
   const sep = raw.search(/\r?\n\r?\n/);
   if (sep < 0) throw new Error("TR-089: EML has no header/body separator");
   const headerBlock = raw.slice(0, sep);
@@ -265,11 +381,13 @@ export function parseEml(raw: string): ParsedEmail {
     received.push({ hosts, ip });
   }
 
-  const acc: { bodyParts: string[]; attachments: Array<{ filename: string; content: Buffer }> } = {
+  const acc: MimeAcc = {
     bodyParts: [],
     attachments: [],
+    budget: { remaining: limits.maxDecodedBytes, parts: 0 },
+    limits,
   };
-  walkMime(bodyBlock, headers, acc);
+  walkMime(bodyBlock, headers, acc, 0);
   const body = acc.bodyParts.join("\n").trim();
   const urls = extractUrls(body);
   const attachments = acc.attachments.map((a) => ({
@@ -298,132 +416,245 @@ export function parseEml(raw: string): ParsedEmail {
  * ------------------------------------------------------------------ */
 
 const OLE_MAGIC = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+const MAX_REG_SECTOR = 0xfffffffa; // [MS-CFB] 2.1: 0xFFFFFFFB.. are special values, never sector numbers
 const END_OF_CHAIN = 0xfffffffe;
 const FREE_SECTOR = 0xffffffff;
+const NO_STREAM = 0xffffffff;
+const DIR_ENTRY_SIZE = 128;
+const MINI_STREAM_CUTOFF = 4096;
 
-/** Minimal OLE2 compound-file reader: header, FAT, directory, streams. */
+interface DirEntry {
+  name: string;
+  type: number;
+  start: number;
+  size: number;
+  child: number;
+  left: number;
+  right: number;
+}
+
+/**
+ * Minimal OLE2 compound-file reader ([MS-CFB]): header, FAT, directory, streams.
+ *
+ * Hardened (P2-034) against hostile files:
+ *  - header fields are validated (sector shift 9 or 12, mini sector shift 6, byte order, offsets per [MS-CFB] 2.2);
+ *  - every sector number is checked against the number of sectors the file really holds;
+ *  - every chain walk (DIFAT, FAT, directory, mini FAT, stream) keeps a visited set and stops at a cycle;
+ *  - a stream's declared size is checked against the bytes its chain can hold (and the file size) BEFORE
+ *    `Buffer.alloc`, so an entry claiming 2^63 bytes is refused without allocating;
+ *  - the directory red-black tree is walked iteratively with a visited set (no recursion, no infinite walk).
+ */
 export class Ole2 {
   private readonly buf: Buffer;
   private readonly sectorShift: number;
   private readonly miniSectorShift: number;
-  private readonly fat: number[];
+  private readonly sectorCount: number;
+  private readonly fat: Uint32Array;
   private readonly miniFat: number[];
-  private readonly dir: Array<{ name: string; type: number; start: number; size: number; child: number; left: number; right: number }>;
+  private readonly dir: DirEntry[];
   private readonly miniStream: Buffer;
+  private readonly limits: Tr089Limits;
 
-  constructor(buf: Buffer) {
+  constructor(buf: Buffer, limits: Tr089Limits = TR089_LIMITS) {
     if (buf.length < 512 || !buf.subarray(0, 8).equals(OLE_MAGIC)) {
-      throw new Error("TR-089: not an OLE2 compound document (MSG)");
+      throw new Tr089InputError("invalid_ole2", "not an OLE2 compound document (MSG)");
+    }
+    if (buf.length > limits.maxMsgBytes) {
+      throw new Tr089InputError("msg_too_large", `MSG is ${buf.length} bytes (limit ${limits.maxMsgBytes})`);
     }
     this.buf = buf;
+    this.limits = limits;
+    if (buf.readUInt16LE(0x1c) !== 0xfffe) throw new Tr089InputError("invalid_ole2", "OLE2 byte order mark is not 0xFFFE");
     this.sectorShift = buf.readUInt16LE(0x1e);
     this.miniSectorShift = buf.readUInt16LE(0x20);
+    if (this.sectorShift !== 9 && this.sectorShift !== 12) {
+      throw new Tr089InputError("invalid_ole2", `OLE2 sector shift ${this.sectorShift} (must be 9 or 12)`);
+    }
+    if (this.miniSectorShift !== 6) {
+      throw new Tr089InputError("invalid_ole2", `OLE2 mini sector shift ${this.miniSectorShift} (must be 6)`);
+    }
+    // Sector 0 starts right after the header, which occupies one sector ([MS-CFB] 2.2).
+    this.sectorCount = Math.max(0, Math.floor((buf.length - this.sectorSize) / this.sectorSize));
+    // [MS-CFB] 2.2 header offsets.
     const firstDirSector = buf.readUInt32LE(0x30);
-    const firstMiniFat = buf.readUInt32LE(0x40);
-    const miniFatCount = buf.readUInt32LE(0x44);
+    const firstMiniFat = buf.readUInt32LE(0x3c);
+    const miniFatCount = buf.readUInt32LE(0x40);
+    const firstDifat = buf.readUInt32LE(0x44);
+    const difatCount = buf.readUInt32LE(0x48);
 
-    this.fat = this.buildFat();
+    this.fat = this.buildFat(firstDifat, difatCount);
     this.dir = this.buildDir(firstDirSector);
     this.miniFat = this.buildMiniFat(firstMiniFat, miniFatCount);
 
     // The mini stream is the root entry's stream (holds sub-4KB streams).
-    const root = this.dir.find((d) => d.type === 5);
-    this.miniStream = root ? this.readStream(root.start, root.size, false) : Buffer.alloc(0);
-  }
-
-  private readSector(s: number): Buffer {
-    const off = (s + 1) * this.sectorSize;
-    return this.buf.subarray(off, off + this.sectorSize);
-  }
-
-  private buildFat(): number[] {
-    const fat: number[] = [];
-    const readFatSector = (s: number) => {
-      const sec = this.readSector(s);
-      for (let i = 0; i + 4 <= sec.length; i += 4) fat.push(sec.readUInt32LE(i));
-    };
-    for (let i = 0; i < 109; i++) {
-      const v = this.buf.readUInt32LE(0x4c + i * 4);
-      if (v === FREE_SECTOR) break;
-      readFatSector(v);
-    }
-    // DIFAT sectors (chained).
-    const firstDif = this.buf.readUInt32LE(0x44);
-    const difCount = this.buf.readUInt32LE(0x48);
-    let dif = firstDif;
-    for (let d = 0; d < difCount && dif !== END_OF_CHAIN && dif !== FREE_SECTOR; d++) {
-      const sec = this.readSector(dif);
-      for (let i = 0; i + 4 <= sec.length - 4; i += 4) {
-        const v = sec.readUInt32LE(i);
-        if (v !== FREE_SECTOR) readFatSector(v);
-      }
-      dif = sec.readUInt32LE(sec.length - 4);
-    }
-    return fat;
-  }
-
-  private buildDir(
-    firstDirSector: number,
-  ): Array<{ name: string; type: number; start: number; size: number; child: number; left: number; right: number }> {
-    const dir: Array<{ name: string; type: number; start: number; size: number; child: number; left: number; right: number }> = [];
-    let dirSector = firstDirSector;
-    while (dirSector !== END_OF_CHAIN && dirSector !== FREE_SECTOR) {
-      const sec = this.readSector(dirSector);
-      for (let i = 0; i + 128 <= sec.length; i += 128) {
-        const nameLen = sec.readUInt16LE(i + 0x40);
-        const name = nameLen > 0 ? sec.subarray(i, i + nameLen - 2).toString("utf16le") : "";
-        const type = sec.readUInt8(i + 0x42);
-        const start = sec.readUInt32LE(i + 0x74);
-        const size = Number(sec.readBigUInt64LE(i + 0x78));
-        const child = sec.readUInt32LE(i + 0x4c);
-        const left = sec.readUInt32LE(i + 0x44);
-        const right = sec.readUInt32LE(i + 0x48);
-        dir.push({ name, type, start, size, child, left, right });
-      }
-      dirSector = this.fat[dirSector] ?? END_OF_CHAIN;
-    }
-    return dir;
-  }
-
-  private buildMiniFat(firstMiniFat: number, miniFatCount: number): number[] {
-    const miniFat: number[] = [];
-    let mf = firstMiniFat;
-    for (let m = 0; m < miniFatCount && mf !== END_OF_CHAIN && mf !== FREE_SECTOR; m++) {
-      const sec = this.readSector(mf);
-      for (let i = 0; i + 4 <= sec.length; i += 4) miniFat.push(sec.readUInt32LE(i));
-      mf = this.fat[mf] ?? END_OF_CHAIN;
-    }
-    return miniFat;
+    const root = this.dir[0];
+    if (!root || root.type !== 5) throw new Tr089InputError("invalid_ole2", "OLE2 directory has no root entry");
+    this.miniStream = root.size > 0 ? this.readStream(root.start, root.size, false) : Buffer.alloc(0);
   }
 
   get sectorSize(): number {
     return 1 << this.sectorShift;
   }
 
-  private readStream(start: number, size: number, useMini: boolean): Buffer {
-    const out = Buffer.alloc(size);
-    if (useMini) {
-      const miniSize = 1 << this.miniSectorShift;
-      let s = start;
-      let off = 0;
-      while (s !== END_OF_CHAIN && s !== FREE_SECTOR && off < size) {
-        const chunk = this.miniStream.subarray(s * miniSize, s * miniSize + miniSize);
-        const n = Math.min(chunk.length, size - off);
-        chunk.copy(out, off, 0, n);
-        off += n;
-        s = this.miniFat[s] ?? END_OF_CHAIN;
+  private checkSector(s: number, what: string): void {
+    if (s > MAX_REG_SECTOR || s >= this.sectorCount) {
+      throw new Tr089InputError("ole2_out_of_bounds", `${what} sector ${s} is outside the file (${this.sectorCount} sectors)`);
+    }
+  }
+
+  private readSector(s: number, what: string): Buffer {
+    this.checkSector(s, what);
+    const off = (s + 1) * this.sectorSize;
+    return this.buf.subarray(off, off + this.sectorSize);
+  }
+
+  /**
+   * Follow a FAT chain from `start`, returning at most `maxLength` sector numbers. Refuses a sector outside the
+   * file, a FREE/special value inside the chain, and any sector seen twice (cycle).
+   */
+  private chain(start: number, maxLength: number, what: string): number[] {
+    const out: number[] = [];
+    const seen = new Set<number>();
+    let s = start;
+    while (s !== END_OF_CHAIN) {
+      if (out.length >= maxLength) break;
+      this.checkSector(s, what);
+      if (seen.has(s)) throw new Tr089InputError("ole2_cycle", `${what} chain revisits sector ${s}`);
+      seen.add(s);
+      out.push(s);
+      s = s < this.fat.length ? this.fat[s] : END_OF_CHAIN;
+    }
+    return out;
+  }
+
+  private buildFat(firstDifat: number, difatCount: number): Uint32Array {
+    const fatSectors: number[] = [];
+    const seen = new Set<number>();
+    const addFatSector = (v: number) => {
+      this.checkSector(v, "FAT");
+      if (seen.has(v)) throw new Tr089InputError("ole2_cycle", `FAT sector ${v} listed twice`);
+      seen.add(v);
+      fatSectors.push(v);
+    };
+    for (let i = 0; i < 109; i++) {
+      const v = this.buf.readUInt32LE(0x4c + i * 4);
+      if (v === FREE_SECTOR || v === END_OF_CHAIN) break;
+      addFatSector(v);
+    }
+    // DIFAT sectors (chained through their last slot). Each one is a real sector of this file, so their number
+    // can never exceed the sector count; a larger header count is refused before any loop.
+    if (difatCount > this.sectorCount) {
+      throw new Tr089InputError("ole2_out_of_bounds", `DIFAT count ${difatCount} exceeds the ${this.sectorCount} sectors in the file`);
+    }
+    const difSeen = new Set<number>();
+    let dif = firstDifat;
+    for (let d = 0; d < difatCount && dif !== END_OF_CHAIN && dif !== FREE_SECTOR; d++) {
+      if (difSeen.has(dif)) throw new Tr089InputError("ole2_cycle", `DIFAT chain revisits sector ${dif}`);
+      difSeen.add(dif);
+      const sec = this.readSector(dif, "DIFAT");
+      for (let i = 0; i + 4 <= sec.length - 4; i += 4) {
+        const v = sec.readUInt32LE(i);
+        if (v !== FREE_SECTOR) addFatSector(v);
       }
-    } else {
-      let s = start;
-      let off = 0;
-      while (s !== END_OF_CHAIN && s !== FREE_SECTOR && off < size) {
-        const sec = this.buf.subarray((s + 1) * this.sectorSize, (s + 1) * this.sectorSize + this.sectorSize);
-        const n = Math.min(sec.length, size - off);
-        sec.copy(out, off, 0, n);
-        off += n;
-        s = this.fat[s] ?? END_OF_CHAIN;
+      dif = sec.readUInt32LE(sec.length - 4);
+    }
+    // Bounded: at most sectorCount FAT sectors (each distinct and inside the file).
+    const perSector = this.sectorSize / 4;
+    const fat = new Uint32Array(fatSectors.length * perSector);
+    fatSectors.forEach((fs, k) => {
+      const sec = this.readSector(fs, "FAT");
+      for (let i = 0; i < perSector; i++) fat[k * perSector + i] = sec.readUInt32LE(i * 4);
+    });
+    return fat;
+  }
+
+  private buildDir(firstDirSector: number): DirEntry[] {
+    const dir: DirEntry[] = [];
+    const perSector = this.sectorSize / DIR_ENTRY_SIZE;
+    const maxSectors = Math.ceil(this.limits.maxDirEntries / perSector);
+    const sectors = this.chain(firstDirSector, maxSectors + 1, "directory");
+    if (sectors.length > maxSectors) {
+      throw new Tr089InputError("ole2_too_many_entries", `directory has more than ${this.limits.maxDirEntries} entries`);
+    }
+    for (const dirSector of sectors) {
+      const sec = this.readSector(dirSector, "directory");
+      for (let i = 0; i + DIR_ENTRY_SIZE <= sec.length; i += DIR_ENTRY_SIZE) {
+        // Name length is in bytes including the UTF-16 terminator, at most 64 ([MS-CFB] 2.6.1).
+        const nameLen = Math.min(sec.readUInt16LE(i + 0x40), 64);
+        const name = nameLen >= 2 ? sec.subarray(i, i + nameLen - 2).toString("utf16le") : "";
+        const type = sec.readUInt8(i + 0x42);
+        const start = sec.readUInt32LE(i + 0x74);
+        // Version 3 files (512-byte sectors) only define the low 32 bits of the size ([MS-CFB] 2.6.3).
+        const size = this.sectorShift === 9 ? sec.readUInt32LE(i + 0x78) : Number(sec.readBigUInt64LE(i + 0x78) & 0x1f_ffff_ffff_ffffn);
+        const child = sec.readUInt32LE(i + 0x4c);
+        const left = sec.readUInt32LE(i + 0x44);
+        const right = sec.readUInt32LE(i + 0x48);
+        dir.push({ name, type, start, size, child, left, right });
       }
     }
+    return dir;
+  }
+
+  private buildMiniFat(firstMiniFat: number, miniFatCount: number): number[] {
+    if (miniFatCount === 0 || firstMiniFat === END_OF_CHAIN) return [];
+    if (miniFatCount > this.sectorCount) {
+      throw new Tr089InputError("ole2_out_of_bounds", `mini FAT count ${miniFatCount} exceeds the ${this.sectorCount} sectors in the file`);
+    }
+    const miniFat: number[] = [];
+    for (const mf of this.chain(firstMiniFat, miniFatCount, "mini FAT")) {
+      const sec = this.readSector(mf, "mini FAT");
+      for (let i = 0; i + 4 <= sec.length; i += 4) miniFat.push(sec.readUInt32LE(i));
+    }
+    return miniFat;
+  }
+
+  /**
+   * Read a stream. The declared `size` comes from the (untrusted) directory, so it is bounded by the bytes the
+   * stream's chain can actually reference before the output buffer is allocated.
+   */
+  private readStream(start: number, size: number, useMini: boolean): Buffer {
+    if (!Number.isSafeInteger(size) || size < 0) throw new Tr089InputError("ole2_out_of_bounds", `stream size ${size} is invalid`);
+    const container = useMini ? this.miniStream.length : this.buf.length;
+    if (size > container) {
+      throw new Tr089InputError(
+        "ole2_out_of_bounds",
+        `stream declares ${size} bytes but its ${useMini ? "mini stream" : "file"} holds ${container}`,
+      );
+    }
+    if (size === 0) return Buffer.alloc(0);
+    if (useMini) {
+      const miniSize = 1 << this.miniSectorShift;
+      const miniCount = Math.floor(this.miniStream.length / miniSize);
+      const need = Math.ceil(size / miniSize);
+      const sectors: number[] = [];
+      const seen = new Set<number>();
+      let s = start;
+      while (sectors.length < need) {
+        if (s === END_OF_CHAIN || s > MAX_REG_SECTOR || s >= miniCount) {
+          throw new Tr089InputError("ole2_out_of_bounds", `mini stream chain ends before ${size} bytes (sector ${s})`);
+        }
+        if (seen.has(s)) throw new Tr089InputError("ole2_cycle", `mini FAT chain revisits sector ${s}`);
+        seen.add(s);
+        sectors.push(s);
+        s = s < this.miniFat.length ? this.miniFat[s] : END_OF_CHAIN;
+      }
+      const out = Buffer.alloc(size);
+      sectors.forEach((ms, k) => {
+        const from = ms * miniSize;
+        this.miniStream.copy(out, k * miniSize, from, from + Math.min(miniSize, size - k * miniSize));
+      });
+      return out;
+    }
+    const need = Math.ceil(size / this.sectorSize);
+    const sectors = this.chain(start, need, "stream");
+    if (sectors.length < need) {
+      throw new Tr089InputError("ole2_out_of_bounds", `stream chain holds ${sectors.length} sectors, ${need} needed for ${size} bytes`);
+    }
+    const out = Buffer.alloc(size);
+    sectors.forEach((fs, k) => {
+      const sec = this.readSector(fs, "stream");
+      sec.copy(out, k * this.sectorSize, 0, Math.min(sec.length, size - k * this.sectorSize));
+    });
     return out;
   }
 
@@ -431,7 +662,7 @@ export class Ole2 {
   stream(name: string): Buffer | undefined {
     const e = this.dir.find((d) => d.type === 2 && d.name === name);
     if (!e) return undefined;
-    return this.readStream(e.start, e.size, e.size < 4096);
+    return this.readStream(e.start, e.size, e.size < MINI_STREAM_CUTOFF);
   }
 
   /** Read a named stream inside a storage (e.g. an attachment's properties). */
@@ -440,17 +671,29 @@ export class Ole2 {
     if (!storage) return undefined;
     const found = this.findInTree(storage.child, streamName);
     if (!found) return undefined;
-    return this.readStream(found.start, found.size, found.size < 4096);
+    return this.readStream(found.start, found.size, found.size < MINI_STREAM_CUTOFF);
   }
 
-  /** In-order walk of the directory tree rooted at idx, looking for a stream by name. */
-  private findInTree(idx: number, name: string): { start: number; size: number } | undefined {
-    if (idx === FREE_SECTOR || idx >= this.dir.length) return undefined;
-    const e = this.dir[idx];
-    const left = this.findInTree(e.left, name);
-    if (left) return left;
-    if (e.type === 2 && e.name === name) return { start: e.start, size: e.size };
-    return this.findInTree(e.right, name);
+  /**
+   * Walk the directory tree rooted at `root` (left/right siblings) looking for a stream by name. Iterative with
+   * a visited set: a hostile file whose left/right pointers form a cycle is refused instead of recursing forever.
+   */
+  private findInTree(root: number, name: string): { start: number; size: number } | undefined {
+    const stack: number[] = [root];
+    const seen = new Set<number>();
+    while (stack.length > 0) {
+      const idx = stack.pop() as number;
+      if (idx === NO_STREAM) continue;
+      if (idx >= this.dir.length) {
+        throw new Tr089InputError("ole2_out_of_bounds", `directory entry ${idx} is outside the directory (${this.dir.length} entries)`);
+      }
+      if (seen.has(idx)) throw new Tr089InputError("ole2_cycle", `directory tree revisits entry ${idx}`);
+      seen.add(idx);
+      const e = this.dir[idx];
+      if (e.type === 2 && e.name === name) return { start: e.start, size: e.size };
+      stack.push(e.right, e.left);
+    }
+    return undefined;
   }
 }
 
@@ -518,7 +761,9 @@ export function parseProperties(stream: Buffer): Map<number, unknown> {
         const lo = raw.readUInt32LE(0);
         const hi = raw.readUInt32LE(4);
         const ms = (Number(hi) * 2 ** 32 + lo) / 10000 - 11644473600000;
-        value = new Date(ms).toISOString();
+        const date = new Date(ms);
+        // A hostile FILETIME outside the Date range would make toISOString() throw a RangeError.
+        value = Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
         break;
       }
       case 0x0040: {
@@ -563,14 +808,12 @@ export function resolveStreams(props: Map<number, unknown>, ole: Ole2): Map<numb
 }
 
 /** Parse an MSG (Outlook) message. */
-export function parseMsg(base64: string): ParsedEmail {
-  let buf: Buffer;
-  try {
-    buf = Buffer.from(base64.replace(/\s+/g, ""), "base64");
-  } catch {
-    throw new Error("TR-089: MSG content is not valid base64");
+export function parseMsg(base64: string, limits: Tr089Limits = TR089_LIMITS): ParsedEmail {
+  if (base64.length > limits.maxInputChars) {
+    throw new Tr089InputError("input_too_large", `MSG base64 is ${base64.length} characters (limit ${limits.maxInputChars})`);
   }
-  const ole = new Ole2(buf);
+  const buf = decodeBase64Bounded(base64, limits.maxMsgBytes, "MSG content");
+  const ole = new Ole2(buf, limits);
   const props = resolveStreams(parseProperties(ole.stream("__properties_version1.0") ?? Buffer.alloc(0)), ole);
   const str = (tag: number) => {
     const v = props.get(tag);
@@ -587,7 +830,7 @@ export function parseMsg(base64: string): ParsedEmail {
     received: parseReceivedChain(str(PT.transportHeaders) ?? ""),
     body,
     urls: extractUrls(body),
-    attachments: parseMsgAttachments(ole, props),
+    attachments: parseMsgAttachments(ole, props, limits),
   };
 }
 
@@ -610,9 +853,14 @@ function parseReceivedChain(transportHeaders: string): Array<{ hosts: string[]; 
 }
 
 /** Read attachment sub-storages and hash their contents. */
-function parseMsgAttachments(ole: Ole2, props: Map<number, unknown>): Array<{ filename: string; sha256: string }> {
+function parseMsgAttachments(ole: Ole2, props: Map<number, unknown>, limits: Tr089Limits): Array<{ filename: string; sha256: string }> {
   const attachments: Array<{ filename: string; sha256: string }> = [];
-  const count = typeof props.get(PT.attachmentCount) === "number" ? (props.get(PT.attachmentCount) as number) : 0;
+  const raw = props.get(PT.attachmentCount);
+  const count = typeof raw === "number" && Number.isInteger(raw) && raw > 0 ? raw : 0;
+  // The count is an untrusted int32: refuse it before looping (up to 2^31 lookups otherwise).
+  if (count > limits.maxAttachments) {
+    throw new Tr089InputError("too_many_attachments", `MSG declares ${count} attachments (limit ${limits.maxAttachments})`);
+  }
   for (let i = 0; i < count; i++) {
     const name = `__attach_version1.0_#${i.toString().padStart(8, "0")}`;
     const aprops = resolveStreams(parseProperties(ole.storageStream(name, "__properties_version1.0") ?? Buffer.alloc(0)), ole);
@@ -659,6 +907,9 @@ export const emlMsgParse = defineTransform<EmailParseInput>(
   async (input: EmailParseInput, _ctx: TransformContext) => {
     if (!input || typeof input.content !== "string" || input.content.length === 0) {
       throw new Error("TR-089: input.content is required");
+    }
+    if (input.content.length > TR089_LIMITS.maxInputChars) {
+      throw new Tr089InputError("input_too_large", `input is ${input.content.length} characters (limit ${TR089_LIMITS.maxInputChars})`);
     }
     const format = detectFormat(input.content);
     const parsed = format === "msg" ? parseMsg(input.content) : parseEml(input.content);
