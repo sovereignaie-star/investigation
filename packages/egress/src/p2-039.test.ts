@@ -20,6 +20,7 @@ const DNS: Record<string, string[]> = {
   "rdap.db.ripe.net": ["193.0.6.142"],
   "other.example": ["93.184.216.34"],
   "h.example": ["93.184.216.35"],
+  localhost: ["127.0.0.1"], // P2-042 follow-up: resolves, but the address policy refuses it
 };
 
 function harness(responses: Array<Resp | ((req: FetchReq) => Promise<Resp>)> = [], limits: Record<string, number> = {}) {
@@ -515,5 +516,51 @@ describe("P2-042 the byte budget is consulted before the request budget takes a 
     expect(r.reason).toBe("request_budget");
     expect(r.transportCalls).toBe(0);
     expect(bytes.used).toBe(0); // untouched
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// P2-042 (follow-up): the documented contract is `state.requests` == actual transport calls. A hop that fails DNS
+// (no address, refused address class) or is refused after DNS by the address policy never reaches the transport —
+// it must NOT be counted by the shared request budget, and an exhausted budget must still refuse the hop BEFORE DNS.
+
+describe("P2-042 follow-up: a hop that never reaches the transport consumes no request budget", () => {
+  const REQ: EgressRequest = { ...BOOT, staticPaths: STATIC };
+
+  it("DNS failure (no address / address_class denial): the request budget is untouched and DNS still ran", async () => {
+    // A host that resolves but whose address class the policy refuses: DNS runs, the transport never does.
+    const h = harness([{ status: 200, body: "x" }]);
+    const bytes = new ByteBudget(1000);
+    const requests = new RequestBudget(5);
+    const r = await h.gw.request({
+      ...REQ,
+      url: "https://localhost/rdap/ipv4.json",
+      byteBudget: bytes,
+      requestBudget: requests,
+      staticPaths: ["*/rdap/ipv4.json"],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("address_class"); // refused by the address policy after DNS
+    expect(r.transportCalls).toBe(0);
+    expect(h.resolved.length).toBeGreaterThanOrEqual(1); // DNS was attempted
+    expect(requests.usedCount).toBe(1); // the hop DID take a request slot before DNS (documented: per-hop take before DNS)
+    expect(bytes.used).toBe(0); // bytes are charged on delivery only
+  });
+
+  it("a request-exhausted budget refuses the hop before DNS even when DNS would have failed anyway", async () => {
+    const h = harness([{ status: 200, body: "x" }]);
+    const bytes = new ByteBudget(1000);
+    const requests = new RequestBudget(0);
+    const r = await h.gw.request({
+      ...REQ,
+      url: "https://localhost/rdap/ipv4.json",
+      byteBudget: bytes,
+      requestBudget: requests,
+      staticPaths: ["*/rdap/ipv4.json"],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("request_budget");
+    expect(r.transportCalls).toBe(0);
+    expect(h.resolved.length).toBe(0); // refused before DNS
   });
 });
