@@ -10,6 +10,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isEmail, parseJson } from "./util.ts";
 
 const DOH = "https://dns.google/resolve";
@@ -32,10 +33,11 @@ export const emailTech = defineTransform<{ email: string }>(
     if (!isEmail(email)) throw new Error(`TR-020: invalid email "${input.email}"`);
     const domain = email.split("@")[1] ?? "";
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (DISPOSABLE.test(email)) {
       findings.push({
         predicate: "is_disposable",
+        derivedFrom: "input",
         objectType: "email_disposable",
         objectValue: email,
         confidence: 0.9,
@@ -50,6 +52,7 @@ export const emailTech = defineTransform<{ email: string }>(
       if (answer.data) {
         findings.push({
           predicate: "has_mx_record",
+          evidence: [res.requestId],
           objectType: "mx_record",
           objectValue: answer.data,
           confidence: 0.9,
@@ -60,6 +63,7 @@ export const emailTech = defineTransform<{ email: string }>(
     if (answers.length === 0) {
       findings.push({
         predicate: "has_no_mx_record",
+        evidence: [res.requestId],
         objectType: "domain",
         objectValue: domain,
         confidence: 0.8,

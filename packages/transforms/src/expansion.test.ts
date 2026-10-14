@@ -31,6 +31,7 @@ function linkTransform() {
     return {
       findings: links.map((href, i) => ({
         predicate: "links_to",
+        evidence: [res.requestId],
         objectType: "url",
         objectValue: href,
         confidence: 1,

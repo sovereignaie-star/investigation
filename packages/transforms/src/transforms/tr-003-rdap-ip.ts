@@ -9,13 +9,14 @@
  * Limits: rps 2, timeoutMs 10s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isAsn, isIpv4, isIpv6, parseJson } from "./util.ts";
 import type { TransformContext } from "../transform.ts";
 
 const IANA_IPV4 = "https://data.iana.org/rdap/ipv4.json";
 const IANA_ASN = "https://data.iana.org/rdap/asn.json";
 
-type Finding = { predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string };
+type Finding = TransformFinding;
 
 export const rdapIp = defineTransform<{ ip: string }>(
   {
@@ -54,6 +55,7 @@ async function resolveAsn(asn: string, ctx: TransformContext): Promise<{ finding
   if (data.name) {
     findings.push({
       predicate: "asn_named",
+      evidence: [res.requestId],
       objectType: "organization",
       objectValue: data.name,
       confidence: 1,
@@ -65,6 +67,7 @@ async function resolveAsn(asn: string, ctx: TransformContext): Promise<{ finding
     if (name && (ent.roles ?? []).includes("registrant")) {
       findings.push({
         predicate: "owned_by",
+        evidence: [res.requestId],
         objectType: "organization",
         objectValue: name,
         confidence: 0.9,
@@ -96,6 +99,7 @@ async function resolveIp(ip: string, ctx: TransformContext): Promise<{ findings:
   if (data.startAddress && data.endAddress) {
     findings.push({
       predicate: "in_network",
+      evidence: [res.requestId],
       objectType: "cidr",
       objectValue: `${data.startAddress}-${data.endAddress}`,
       confidence: 1,
@@ -105,6 +109,7 @@ async function resolveIp(ip: string, ctx: TransformContext): Promise<{ findings:
   if (data.name) {
     findings.push({
       predicate: "network_named",
+      evidence: [res.requestId],
       objectType: "organization",
       objectValue: data.name,
       confidence: 1,
@@ -116,6 +121,7 @@ async function resolveIp(ip: string, ctx: TransformContext): Promise<{ findings:
     if (name && (ent.roles ?? []).includes("registrant")) {
       findings.push({
         predicate: "owned_by",
+        evidence: [res.requestId],
         objectType: "organization",
         objectValue: name,
         confidence: 0.9,

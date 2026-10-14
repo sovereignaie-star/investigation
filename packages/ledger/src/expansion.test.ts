@@ -261,4 +261,53 @@ describe("expansion (P2-002)", () => {
     });
     expect(p.issues).toEqual([]);
   });
+
+  it("P2-036: each finding cites its own evidence records; observations are not bound to the last record", () => {
+    const f = fixture();
+    const subject = f.entity("domain", "example.com");
+    const evA = f.evidence("tr-001");
+    const evMx = f.evidence("tr-001");
+    const evLast = f.evidence("tr-001");
+    const out = {
+      findings: [
+        { predicate: "resolves_to", objectType: "ipv4", objectValue: "192.0.2.7", confidence: 1, explanation: "A", evidenceIds: [evA] },
+        {
+          predicate: "has_mx_record",
+          objectType: "mx_record",
+          objectValue: "10 mail.example.com",
+          confidence: 1,
+          explanation: "MX",
+          evidenceIds: [evMx, evLast],
+        },
+      ],
+    };
+    const res = expandFindings(out, subject, { ledger: f.ledger, transformId: "tr-001", clock: f.clock });
+    expect(res.claimIds).toHaveLength(2);
+    const p = project(f.ledger.entries());
+    const obs = f.ledger
+      .entries()
+      .filter((e) => e.kind === "observation.added")
+      .map((e) => e.payload as { claimId?: string; evidenceId: string; kind: string });
+    const byClaim = (claimId: string) => obs.filter((o) => o.claimId === claimId).map((o) => o.evidenceId);
+    expect(byClaim(res.claimIds[0])).toEqual([evA]);
+    expect(byClaim(res.claimIds[1])).toEqual([evMx, evLast]);
+    expect(p.issues).toEqual([]);
+  });
+
+  it("P2-036: a finding with neither evidenceIds nor an output-wide evidence id is refused, nothing appended", () => {
+    const f = fixture();
+    const subject = f.entity("domain", "example.com");
+    const before = f.ledger.entries().length;
+    const out = { findings: [{ predicate: "resolves_to", objectType: "ipv4", objectValue: "192.0.2.7", confidence: 1, explanation: "A" }] };
+    expect(() => expandFindings(out, subject, { ledger: f.ledger, transformId: "tr-001", clock: f.clock })).toThrow(/has no evidence/);
+    expect(() =>
+      expandFindings({ findings: [{ ...out.findings[0], evidenceIds: [] }] }, subject, {
+        ledger: f.ledger,
+        transformId: "tr-001",
+        clock: f.clock,
+      }),
+    ).toThrow(/at least one evidence/);
+    expect(f.ledger.entries().length).toBe(before);
+    expect(() => recordOutcome(subject, "negative", { ledger: f.ledger, transformId: "tr-001", clock: f.clock })).toThrow(/must cite/);
+  });
 });

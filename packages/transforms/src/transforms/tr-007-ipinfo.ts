@@ -10,6 +10,7 @@
  * Limits: rps 2, timeoutMs 10s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isIpv4, isIpv6, parseJson } from "./util.ts";
 
 const IPINFO = "https://ipinfo.io";
@@ -37,12 +38,13 @@ export const ipInfo = defineTransform<{ ip: string }>(
       country?: string;
     };
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (data.org) {
       const [asn, ...orgParts] = data.org.split(" ");
       if (asn?.startsWith("AS")) {
         findings.push({
           predicate: "has_asn",
+          evidence: [res.requestId],
           objectType: "asn",
           objectValue: asn,
           confidence: 0.9,
@@ -53,6 +55,7 @@ export const ipInfo = defineTransform<{ ip: string }>(
       if (org) {
         findings.push({
           predicate: "hosted_by",
+          evidence: [res.requestId],
           objectType: "organization",
           objectValue: org,
           confidence: 0.9,
@@ -63,6 +66,7 @@ export const ipInfo = defineTransform<{ ip: string }>(
     if (data.city) {
       findings.push({
         predicate: "located_in_city",
+        evidence: [res.requestId],
         objectType: "city",
         objectValue: data.city,
         confidence: 0.7,
@@ -72,6 +76,7 @@ export const ipInfo = defineTransform<{ ip: string }>(
     if (data.country) {
       findings.push({
         predicate: "located_in_country",
+        evidence: [res.requestId],
         objectType: "country",
         objectValue: data.country,
         confidence: 0.7,

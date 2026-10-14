@@ -27,6 +27,9 @@ const sim = createSimServer([
   { match: "https://slow.example/", response: { status: 200, body: "slow", delayMs: 5_000 } },
   { match: "https://big.example/", response: { status: 200, body: "x".repeat(2_000_000) } },
   { match: "https://unmatched.example/", response: { status: 200, body: "ok" } },
+  { match: "https://a.example/", response: { status: 200, body: "A", delayMs: 60 } },
+  { match: "https://b.example/", response: { status: 200, body: "B", delayMs: 30 } },
+  { match: "https://c.example/", response: { status: 200, body: "C" } },
 ]);
 
 const host = await probeIsolation();
@@ -262,5 +265,51 @@ describe.skipIf(!fullAvailable)("T-ISO: isolated runner against the real sandbox
     }).catch((e) => e);
     expect(err).toBeInstanceOf(TransformRunError);
     expect(String(err.message)).toMatch(/TR-089: stream declares 4294967295 bytes/);
+  });
+
+  it("T-ISO-110 (P2-036): concurrent requests across IPC — each finding cites its own request's record", async () => {
+    sim.reset();
+    const urls = ["https://a.example/", "https://b.example/", "https://c.example/"];
+    const result = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: urls.join(" ") },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-110",
+    });
+    expect(result.evidence).toHaveLength(3);
+    // Completion order differs from issue order; only the request id ties a record to its request.
+    expect(result.evidence[result.evidence.length - 1].url).toBe("https://a.example/");
+    for (const f of result.output.findings) {
+      const rec = result.evidence.find((e) => e.requestId === f.evidence?.[0]);
+      expect(rec?.url).toBe(f.objectValue);
+      expect(rec?.body).toBe(f.explanation);
+    }
+  });
+
+  it("T-ISO-111 (P2-036): a binding to a request the parent never served is refused", async () => {
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://example.com/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-111",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("validation");
+    expect(err.message).toMatch(/cites request 41/);
+  });
+
+  it("T-ISO-112 (P2-036): a request failure swallowed in the sandbox fails the run", async () => {
+    const err = await runTransform(undefined, {
+      transport: sim.transport,
+      input: { url: "https://big.example/" },
+      requireIsolation: true,
+      isolatedModule: MODULE,
+      transformId: "TR-112",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(TransformRunError);
+    expect(err.stage).toBe("request");
+    expect(err.evidence[0].error).toBeDefined();
   });
 });

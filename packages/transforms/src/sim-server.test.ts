@@ -31,6 +31,7 @@ function scanTransform() {
       findings: [
         {
           predicate: "has_http_response",
+          evidence: [res.requestId],
           objectType: "http_status",
           objectValue: String(res.status),
           confidence: 1,

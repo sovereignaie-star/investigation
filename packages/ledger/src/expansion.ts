@@ -14,7 +14,8 @@
  *   - a literal attribute (objectType is not an identifier type, e.g. "technology", "http_status"):
  *     the claim carries the literal value and shows up as a node attribute, not an edge.
  *
- * Every claim is recorded with a positive observation citing the evidence that produced it, so the
+ * Every claim is recorded with a positive observation citing the evidence that produced it — one per evidence
+ * record when the finding names several (P2-036: `Finding.evidenceIds`, never "the last response") — so the
  * graph, table and coverage projections stay consistent (P1-016). A finding whose object value
  * cannot be normalized to its declared type is recorded as an error observation, never a claim
  * (fail-closed, D-018: no raw text is ever used as an identifier).
@@ -33,6 +34,13 @@ export interface Finding {
   objectId?: string;
   confidence: number;
   explanation: string;
+  /**
+   * P2-036 — the ledger evidence ids this finding rests on (one per source response it was derived from). When set,
+   * the claim gets one positive observation per id; when absent, `ExpandOptions.evidenceId` is the single record
+   * backing the whole output (a run with one source of evidence, e.g. a local file). One of the two is required:
+   * a finding is never recorded without the evidence that proves it.
+   */
+  evidenceIds?: string[];
 }
 
 export interface TransformOutputLike {
@@ -45,8 +53,11 @@ export interface ExpandOptions {
   ledger: Ledger;
   /** The transform that produced the findings. */
   transformId: string;
-  /** The evidence id that backs these findings. */
-  evidenceId: string;
+  /**
+   * The evidence id that backs findings that carry no `evidenceIds` of their own, and the evidence cited by
+   * `recordOutcome`. A multi-request run binds each finding through `Finding.evidenceIds` instead (P2-036).
+   */
+  evidenceId?: string;
   /** Clock for ids/timestamps; defaults to the system clock. */
   clock?: Clock;
   /** Id factory; defaults to a monotonic ULID factory on the clock. */
@@ -71,6 +82,7 @@ export interface ExpandResult {
  * as untouched. P2-006.
  */
 export function recordOutcome(subjectId: string, kind: "negative" | "error", opts: ExpandOptions, note?: string): string {
+  if (!opts.evidenceId) throw new Error(`recordOutcome(${kind}): an outcome observation must cite an evidence id`);
   const clock = opts.clock ?? systemClock;
   const id = opts.newId ?? ulidFactory(clock);
   const observationId = id();
@@ -106,6 +118,7 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
   let rejectedCount = 0;
 
   for (const finding of output.findings) {
+    const evidenceIds = findingEvidence(finding, opts);
     const claimId = id();
     if (isIdentifierType(finding.objectType)) {
       // Typed identifier object → entity + edge claim.
@@ -119,10 +132,12 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
           id: id(),
           entityId: subjectId,
           transformId: opts.transformId,
-          evidenceId: opts.evidenceId,
+          evidenceId: evidenceIds[0],
           observedAt: now,
           kind: "error",
-          note: `finding object ${finding.objectType}:${finding.objectValue} is not a valid ${finding.objectType}`,
+          note:
+            `finding object ${finding.objectType}:${finding.objectValue} is not a valid ${finding.objectType}` +
+            (evidenceIds.length > 1 ? ` (evidence: ${evidenceIds.join(", ")})` : ""),
         });
         continue;
       }
@@ -137,14 +152,7 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
         explanation: finding.explanation,
       });
       claimIds.push(claimId);
-      opts.ledger.append("observation.added", {
-        id: id(),
-        claimId,
-        transformId: opts.transformId,
-        evidenceId: opts.evidenceId,
-        observedAt: now,
-        kind: "positive",
-      });
+      appendPositive(opts, id, claimId, evidenceIds, now);
     } else {
       // Literal attribute → claim with a value (shows as a node attribute, not an edge).
       attributeCount++;
@@ -157,14 +165,7 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
         explanation: finding.explanation,
       });
       claimIds.push(claimId);
-      opts.ledger.append("observation.added", {
-        id: id(),
-        claimId,
-        transformId: opts.transformId,
-        evidenceId: opts.evidenceId,
-        observedAt: now,
-        kind: "positive",
-      });
+      appendPositive(opts, id, claimId, evidenceIds, now);
     }
   }
   return { objectEntityIds, claimIds, attributeCount, rejectedCount };
@@ -177,6 +178,37 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
  */
 export function expandForParents(output: TransformOutputLike, parentIds: readonly string[], opts: ExpandOptions): ExpandResult[] {
   return parentIds.map((subjectId) => expandFindings(output, subjectId, opts));
+}
+
+/**
+ * P2-036 — the evidence a finding rests on: its own `evidenceIds` (each must be non-empty) or the output-wide
+ * `opts.evidenceId`. Neither is a programming error, not a finding to record without proof.
+ */
+function findingEvidence(finding: Finding, opts: ExpandOptions): string[] {
+  if (finding.evidenceIds !== undefined) {
+    if (finding.evidenceIds.length === 0 || finding.evidenceIds.some((e) => e.length === 0)) {
+      throw new Error(`finding ${finding.predicate} ${finding.objectType}: evidenceIds must name at least one evidence record`);
+    }
+    return [...new Set(finding.evidenceIds)];
+  }
+  if (opts.evidenceId) return [opts.evidenceId];
+  throw new Error(
+    `finding ${finding.predicate} ${finding.objectType} has no evidence: set Finding.evidenceIds or ExpandOptions.evidenceId`,
+  );
+}
+
+/** One positive observation per evidence record the claim rests on: each record independently observed it. */
+function appendPositive(opts: ExpandOptions, id: () => string, claimId: string, evidenceIds: readonly string[], now: string): void {
+  for (const evidenceId of evidenceIds) {
+    opts.ledger.append("observation.added", {
+      id: id(),
+      claimId,
+      transformId: opts.transformId,
+      evidenceId,
+      observedAt: now,
+      kind: "positive",
+    });
+  }
 }
 
 /** The literal value of a finding: a number/boolean when the string parses, else the string. */

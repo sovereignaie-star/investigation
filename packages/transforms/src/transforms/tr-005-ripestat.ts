@@ -11,6 +11,7 @@
  * Limits: rps 2, timeoutMs 10s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isAsn, isIpv4, isIpv6, isPrefix, parseJson } from "./util.ts";
 
 const RIPESTAT = "https://stat.ripe.net/data";
@@ -29,7 +30,7 @@ export const ripestat = defineTransform<{ resource: string }>(
   },
   async (input, ctx) => {
     const raw = input.resource.trim();
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
 
     if (isAsn(raw)) {
       const asn = raw.toUpperCase();
@@ -38,6 +39,7 @@ export const ripestat = defineTransform<{ resource: string }>(
       if (data.data?.holder) {
         findings.push({
           predicate: "asn_named",
+          evidence: [res.requestId],
           objectType: "organization",
           objectValue: data.data.holder,
           confidence: 0.9,
@@ -54,6 +56,7 @@ export const ripestat = defineTransform<{ resource: string }>(
         if (a.asn) {
           findings.push({
             predicate: "announced_by",
+            evidence: [res.requestId],
             objectType: "asn",
             objectValue: `AS${a.asn}`,
             confidence: 0.9,
@@ -71,6 +74,7 @@ export const ripestat = defineTransform<{ resource: string }>(
       if (p.prefix) {
         findings.push({
           predicate: "in_prefix",
+          evidence: [res.requestId],
           objectType: "bgp_prefix",
           objectValue: p.prefix,
           confidence: 0.9,

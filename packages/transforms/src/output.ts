@@ -22,6 +22,18 @@ export const TransformFindingSchema = z.object({
   confidence: z.number().min(0).max(1),
   /** Human-readable explanation of how the finding was derived. */
   explanation: z.string().min(1),
+  /**
+   * P2-036 — the evidence this finding was derived from: the `requestId` of every `ctx.http` response it rests on
+   * (`TransformHttpResponse.requestId`, assigned by the runner when the request is issued). The runner refuses an
+   * output whose findings do not say which response produced them once the run made a request: nothing is bound to
+   * "the last response" by guess. Every id must name a request of the same run that received a response.
+   */
+  evidence: z.array(z.number().int().nonnegative()).min(1).optional(),
+  /**
+   * P2-036 — set instead of `evidence` when the finding is computed from the transform's input alone (a static rule
+   * of the transform, no source response). The caller binds it to the run record, never to a source response.
+   */
+  derivedFrom: z.literal("input").optional(),
 });
 
 /** The full output of a transform run. */

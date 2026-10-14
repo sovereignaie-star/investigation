@@ -48,6 +48,7 @@ export const savePageNow = defineTransform<{ url: string }>(
       findings: [
         {
           predicate: "has_archive_snapshot",
+          evidence: [res.requestId],
           objectType: "url",
           objectValue: snapshot,
           confidence: 0.9,

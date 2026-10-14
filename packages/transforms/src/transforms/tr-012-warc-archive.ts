@@ -14,6 +14,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 5MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 
 const MAX_BYTES = 5_000_000;
 
@@ -46,9 +47,10 @@ export const warcArchive = defineTransform<{ url: string }>(
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [
+    const findings: TransformFinding[] = [
       {
         predicate: "has_content_hash",
+        evidence: [res.requestId],
         objectType: "sha256_hash",
         objectValue: hash,
         confidence: 1,
@@ -56,6 +58,7 @@ export const warcArchive = defineTransform<{ url: string }>(
       },
       {
         predicate: "has_archive_snapshot",
+        evidence: [res.requestId],
         objectType: "url",
         objectValue: target,
         confidence: 1,

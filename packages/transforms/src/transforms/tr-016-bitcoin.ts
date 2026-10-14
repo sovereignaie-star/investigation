@@ -9,6 +9,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isBitcoinAddress, parseJson } from "./util.ts";
 
 const API = "https://mempool.space/api";
@@ -35,10 +36,11 @@ export const bitcoinAddress = defineTransform<{ address: string }>(
     };
     const chain = data.chain_stats;
     const balance = chain ? (chain.funded_txo_sum ?? 0) - (chain.spent_txo_sum ?? 0) : undefined;
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (balance !== undefined) {
       findings.push({
         predicate: "has_balance",
+        evidence: [res.requestId],
         objectType: "bitcoin_address",
         objectValue: address,
         confidence: 0.9,
@@ -48,6 +50,7 @@ export const bitcoinAddress = defineTransform<{ address: string }>(
     if (chain && chain.tx_count !== undefined) {
       findings.push({
         predicate: "has_transaction_count",
+        evidence: [res.requestId],
         objectType: "bitcoin_address",
         objectValue: address,
         confidence: 0.9,
