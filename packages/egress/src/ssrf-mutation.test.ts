@@ -298,6 +298,70 @@ const MUTATIONS: readonly Mutation[] = [
     to: "if (true) return",
     detectedBy: ["T-SEC-SSRF-038"],
   },
+  // P2-032: redirect content policy (ADR-08 section 4)
+  {
+    name: "redirect content verdict not applied",
+    file: "egress.ts",
+    from: "if (contentVerdict) return refuse(",
+    to: "if (false as boolean) return refuse(",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "no natural-person check on a redirect target",
+    file: "content-inventory.ts",
+    from: 'if (np) return { reason: "natural_person", detail: `redirect target',
+    to: 'if (false as boolean) return { reason: "natural_person", detail: `redirect target',
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "no undeclared-data check on a cross-host redirect",
+    file: "content-inventory.ts",
+    from: "if (undeclared) return { reason: undeclared.reason",
+    to: "if (false as boolean) return { reason: undeclared!.reason",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "no sent-value check on a cross-host redirect",
+    file: "content-inventory.ts",
+    from: "if (texts.some((t) => t.includes(v))) {",
+    to: "if (false as boolean) {",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "every redirect treated as same-host",
+    file: "egress.ts",
+    from: "normalizeHost(nextHost) !== first.firstHost",
+    to: "false",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "transform headers re-sent to a cross-host hop",
+    file: "egress.ts",
+    from: "hopHeaders = normalizeHost(currentUrl.hostname) === firstHost ? req.headers : crossHostHeaders(req.headers);",
+    to: "hopHeaders = req.headers;",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "no safe list on a cross-host hop",
+    file: "content-inventory.ts",
+    from: "if (!CROSS_HOST_SAFE_HEADERS.has(name.toLowerCase())) continue;",
+    to: "",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "safe-listed header values not inspected",
+    file: "content-inventory.ts",
+    from: "if (extract(value).length > 0) continue;",
+    to: "",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
+  {
+    name: "headers dropped on every hop (over-refusal is also a regression)",
+    file: "egress.ts",
+    from: "hopHeaders = normalizeHost(currentUrl.hostname) === firstHost ? req.headers : crossHostHeaders(req.headers);",
+    to: "hopHeaders = crossHostHeaders(req.headers);",
+    detectedBy: ["T-SEC-SSRF-043"],
+  },
 ];
 
 /** Mutations of the time limits, detected by the fake-clock cases in `ssrf-timing-cases.ts` (023, 034). */

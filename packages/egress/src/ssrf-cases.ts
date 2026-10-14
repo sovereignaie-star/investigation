@@ -45,6 +45,8 @@ export interface SsrfCase {
     readonly transportCalls: number;
     readonly resolverCalls?: number;
     readonly destinations?: ReadonlyArray<{ host: string; pinnedIp: string }>;
+    /** Headers handed to the transport on each call, in order (P2-032: headers on a cross-host hop). */
+    readonly headers?: ReadonlyArray<Readonly<Record<string, string>> | undefined>;
   };
 }
 
@@ -53,6 +55,7 @@ export interface Observed {
   readonly transportCalls: number;
   readonly resolverCalls: number;
   readonly destinations: Array<{ host: string; pinnedIp: string }>;
+  readonly headers: Array<Record<string, string> | undefined>;
 }
 
 export const BASE_REQUEST: EgressRequest = {
@@ -70,6 +73,7 @@ const PUB2 = "93.184.216.35";
 
 export async function executeCase(factory: Factory, c: SsrfCase): Promise<Observed> {
   const destinations: Array<{ host: string; pinnedIp: string }> = [];
+  const headers: Array<Record<string, string> | undefined> = [];
   let resolverCalls = 0;
   const perHostCalls = new Map<string, number>();
   let responseIndex = 0;
@@ -98,6 +102,7 @@ export async function executeCase(factory: Factory, c: SsrfCase): Promise<Observ
       transport: {
         fetch: async (r) => {
           destinations.push({ host: r.host, pinnedIp: r.pinnedIp });
+          headers.push(r.headers === undefined ? undefined : { ...r.headers });
           const resp = c.responses?.[responseIndex++] ?? { status: 200, body: "ok" };
           if ("throw" in resp) throw new Error(resp.throw);
           return { ...resp };
@@ -113,6 +118,7 @@ export async function executeCase(factory: Factory, c: SsrfCase): Promise<Observ
       transportCalls: destinations.length - before,
       resolverCalls: resolverCalls - beforeResolver,
       destinations: destinations.slice(before),
+      headers: headers.slice(before),
     };
   } finally {
     for (const [k, v] of Object.entries(saved)) {
@@ -148,6 +154,9 @@ export function mismatches(c: SsrfCase, o: Observed): string[] {
   }
   if (e.destinations !== undefined && JSON.stringify(o.destinations) !== JSON.stringify(e.destinations)) {
     out.push(`destinations: expected ${JSON.stringify(e.destinations)}, got ${JSON.stringify(o.destinations)}`);
+  }
+  if (e.headers !== undefined && JSON.stringify(o.headers) !== JSON.stringify(e.headers)) {
+    out.push(`headers: expected ${JSON.stringify(e.headers)}, got ${JSON.stringify(o.headers)}`);
   }
   return out;
 }
@@ -850,6 +859,164 @@ export const SSRF_CASES: readonly SsrfCase[] = [
     req: { body: "alice@example.org" } as unknown as Partial<EgressRequest>,
     dns: { "example.com": [PUB] },
     expect: denied("unknown_field", 0, 0),
+  },
+  // 043 — redirect content policy (P2-032, ADR-08 section 4): every server-chosen hop is inventoried before it is sent
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: an undeclared email in a cross-host redirect URL is refused before the second hop",
+    req: { url: "https://a.example/", sends: ["domain"] },
+    dns: { "a.example": [PUB], "b.example": [PUB2] },
+    responses: [redirectTo("https://b.example/?q=alice%40example.org")],
+    expect: {
+      ok: false,
+      reason: "undeclared_data",
+      transportCalls: 1,
+      resolverCalls: 1,
+      destinations: [{ host: "a.example", pinnedIp: PUB }],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: a natural-person identifier in a same-host redirect URL is refused (any host)",
+    req: { url: "https://a.example/", sends: ["domain"] },
+    dns: { "a.example": [PUB] },
+    responses: [redirectTo("/doc/A1234567")],
+    expect: {
+      ok: false,
+      reason: "natural_person",
+      transportCalls: 1,
+      resolverCalls: 1,
+      destinations: [{ host: "a.example", pinnedIp: PUB }],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: a natural-person identifier in a cross-host redirect URL is refused even when every public kind is declared",
+    req: { url: "https://a.example/", sends: ["domain", "ip", "asn", "hash", "url", "certificate"] },
+    dns: { "a.example": [PUB], "b.example": [PUB2] },
+    responses: [redirectTo("https://b.example/doc/A1234567")],
+    expect: {
+      ok: false,
+      reason: "natural_person",
+      transportCalls: 1,
+      resolverCalls: 1,
+      destinations: [{ host: "a.example", pinnedIp: PUB }],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: a declared value the transform sent to host A is refused on a hop to host B",
+    req: { url: "https://a.example/lookup/8.8.8.8", sends: ["ip"] },
+    dns: { "a.example": [PUB], "b.example": [PUB2] },
+    responses: [redirectTo("https://b.example/q?addr=8.8.8.8")],
+    expect: {
+      ok: false,
+      reason: "undeclared_data",
+      transportCalls: 1,
+      resolverCalls: 1,
+      destinations: [{ host: "a.example", pinnedIp: PUB }],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: a value the transform sent is refused when the server makes it the next host",
+    req: { url: "https://a.example/lookup/victim-site.org", sends: ["domain"] },
+    dns: { "a.example": [PUB], "victim-site.org": [PUB2] },
+    responses: [redirectTo("https://victim-site.org/")],
+    expect: {
+      ok: false,
+      reason: "undeclared_data",
+      transportCalls: 1,
+      resolverCalls: 1,
+      destinations: [{ host: "a.example", pinnedIp: PUB }],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: control: the same sent value on a same-host redirect is followed",
+    req: { url: "https://a.example/lookup/8.8.8.8", sends: ["ip"] },
+    dns: { "a.example": [PUB] },
+    responses: [redirectTo("/v2/lookup/8.8.8.8"), { status: 200, body: "ok" }],
+    expect: {
+      ok: true,
+      transportCalls: 2,
+      resolverCalls: 2,
+      destinations: [
+        { host: "a.example", pinnedIp: PUB },
+        { host: "a.example", pinnedIp: PUB },
+      ],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: acceptance: a public redirect to another host whose URL carries only server tokens is followed",
+    req: { url: "https://a.example/start", sends: ["domain"] },
+    dns: { "a.example": [PUB], "b.example": [PUB2] },
+    responses: [redirectTo("https://b.example/landing/Zq7xKpLm?session=Rt9wQvBn&step=welcome#top"), { status: 200, body: "b" }],
+    expect: {
+      ok: true,
+      transportCalls: 2,
+      resolverCalls: 2,
+      destinations: [
+        { host: "a.example", pinnedIp: PUB },
+        { host: "b.example", pinnedIp: PUB2 },
+      ],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: headers: a cross-host hop gets only the safe list; a custom header and Authorization-like data are dropped",
+    req: {
+      url: "https://a.example/",
+      sends: ["ip"],
+      headers: { "x-lookup": "8.8.8.8", accept: "application/json", "accept-language": "en", "x-session": "opaque" },
+    },
+    dns: { "a.example": [PUB], "b.example": [PUB2] },
+    responses: [redirectTo("https://b.example/"), { status: 200, body: "b" }],
+    expect: {
+      ok: true,
+      transportCalls: 2,
+      destinations: [
+        { host: "a.example", pinnedIp: PUB },
+        { host: "b.example", pinnedIp: PUB2 },
+      ],
+      headers: [
+        { "x-lookup": "8.8.8.8", accept: "application/json", "accept-language": "en", "x-session": "opaque" },
+        { accept: "application/json", "accept-language": "en" },
+      ],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: headers: a safe-listed header whose value carries an identifier is dropped on a cross-host hop",
+    req: { url: "https://a.example/", sends: ["ip"], headers: { accept: "text/html", "accept-language": "8.8.8.8" } },
+    dns: { "a.example": [PUB], "b.example": [PUB2] },
+    responses: [redirectTo("https://b.example/"), { status: 200, body: "b" }],
+    expect: {
+      ok: true,
+      transportCalls: 2,
+      destinations: [
+        { host: "a.example", pinnedIp: PUB },
+        { host: "b.example", pinnedIp: PUB2 },
+      ],
+      headers: [{ accept: "text/html", "accept-language": "8.8.8.8" }, { accept: "text/html" }],
+    },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "redirect: headers: control: a same-host hop keeps the transform's headers unchanged",
+    req: { url: "https://a.example/", sends: ["ip"], headers: { "x-lookup": "8.8.8.8" } },
+    dns: { "a.example": [PUB] },
+    responses: [redirectTo("/next"), { status: 200, body: "a" }],
+    expect: {
+      ok: true,
+      transportCalls: 2,
+      destinations: [
+        { host: "a.example", pinnedIp: PUB },
+        { host: "a.example", pinnedIp: PUB },
+      ],
+      headers: [{ "x-lookup": "8.8.8.8" }, { "x-lookup": "8.8.8.8" }],
+    },
   },
   {
     id: "T-SEC-SSRF-043",

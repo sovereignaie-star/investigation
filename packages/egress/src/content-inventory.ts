@@ -11,7 +11,9 @@
  * contract has no body (GET/HEAD only; a `body` field is an unknown field), so there is no body surface to inspect.
  * Not inspected: the destination host itself (it is the destination, checked by the address policy), and a header
  * value that carries the request's own `secret` (checked by the secret rules; inspecting it would only find the key).
- * Redirect targets are chosen by the server, not by the transform, and are not inventoried.
+ * Redirect targets are chosen by the server, not by the transform; since P2-032 (ADR-08 section 4) each one is
+ * inventoried before the next hop is sent: `redirectContentVerdict` refuses a natural-person identifier on any hop,
+ * and on a hop to another host any value the transform itself sent on the first hop.
  *
  * What this does NOT prove: the detector finds what the catalog can recognise. Data in a form no catalog type
  * matches (free text, an encoding the detector does not undo) is not found. Findings never include the value.
@@ -120,13 +122,12 @@ function surfaces(
   return out;
 }
 
-/** Every detected value on the request's own surfaces, in surface order. Values are never returned. */
-export function inventoryRequest(
-  url: URL,
-  headers: Readonly<Record<string, string>> | undefined,
-  secret: string | undefined,
-): ContentFinding[] {
-  const out: ContentFinding[] = [];
+interface RawFinding extends ContentFinding {
+  readonly value: string;
+}
+
+function inventoryRaw(url: URL, headers: Readonly<Record<string, string>> | undefined, secret: string | undefined): RawFinding[] {
+  const out: RawFinding[] = [];
   for (const [surface, text] of surfaces(url, headers, secret)) {
     for (const hit of extract(text)) {
       const readings = hit.candidates
@@ -134,8 +135,88 @@ export function inventoryRequest(
         .filter((c) => !isBareLabel(c.type, hit.value))
         .filter(isStrongReading)
         .map((c) => ({ kind: sendKindOf(c.type, specById(c.type)?.category ?? ""), type: c.type, sensitivity: c.sensitivity }));
-      if (readings.length > 0) out.push({ surface, readings });
+      if (readings.length > 0) out.push({ surface, readings, value: hit.value });
     }
+  }
+  return out;
+}
+
+/** Every detected value on the request's own surfaces, in surface order. Values are never returned. */
+export function inventoryRequest(
+  url: URL,
+  headers: Readonly<Record<string, string>> | undefined,
+  secret: string | undefined,
+): ContentFinding[] {
+  return inventoryRaw(url, headers, secret).map(({ surface, readings }) => ({ surface, readings }));
+}
+
+/**
+ * The case-data values the transform put on the first hop (P2-032), normalised for comparison (lower case). These
+ * values stay inside the gateway: they are compared with later hops and never returned in a result, audit or detail.
+ */
+export function sentValues(
+  url: URL,
+  headers: Readonly<Record<string, string>> | undefined,
+  secret: string | undefined,
+): ReadonlySet<string> {
+  return new Set(inventoryRaw(url, headers, secret).map((f) => f.value.toLowerCase()));
+}
+
+/** Decoded text of a URL's host and every surface, lower case, for value comparison. */
+function urlTexts(url: URL): string[] {
+  return [url.hostname.replace(/^\[|\]$/g, ""), ...surfaces(url, undefined, undefined).map(([, t]) => t)].map((t) => t.toLowerCase());
+}
+
+/**
+ * Redirect content policy (P2-032, ADR-08 section 4), applied to a server-chosen hop BEFORE it is sent:
+ * - a natural-person identifier anywhere in the hop's URL refuses (`natural_person`), whatever the host;
+ * - on a hop to a host other than the first hop's host:
+ *   - an identifier whose kind is not in `sends` refuses (`undeclared_data`): the request's declaration bounds what
+ *     may flow to a host the transform did not choose (an email the server put in the next URL is undeclared data);
+ *   - a value the transform sent on the first hop that reappears in the hop's URL (host, path, query or fragment)
+ *     refuses (`undeclared_data`), even when its kind is declared: the transform declared that value for the host it
+ *     chose, not for one the server chose.
+ * Anything else the server put in the URL (its own opaque tokens and paths, which the detector does not read as
+ * identifiers) is allowed, so ordinary public redirects keep working. A same-host hop is checked for natural-person
+ * identifiers only: the server already holds what it put in its own URL.
+ * Known limit: the comparison is on the decoded text; a value the server re-encodes (base64, hashing) is not found.
+ */
+export function redirectContentVerdict(
+  next: URL,
+  crossHost: boolean,
+  sent: ReadonlySet<string>,
+  sends: readonly string[],
+): { reason: "natural_person" | "undeclared_data"; detail: string } | null {
+  const findings = inventoryRaw(next, undefined, undefined);
+  for (const f of findings) {
+    const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
+    if (np) return { reason: "natural_person", detail: `redirect target ${f.surface} carries a natural-person identifier (${np.type})` };
+  }
+  if (!crossHost) return null;
+  const undeclared = judgeInventory(findings, sends);
+  if (undeclared) return { reason: undeclared.reason, detail: `redirect to another host: ${undeclared.detail}` };
+  const texts = urlTexts(next);
+  for (const v of sent) {
+    if (texts.some((t) => t.includes(v))) {
+      return { reason: "undeclared_data", detail: "redirect to another host carries a value the transform sent to the first host" };
+    }
+  }
+  return null;
+}
+
+/**
+ * Headers forwarded on a hop to another host (P2-032). The transform's headers were checked for the host it chose;
+ * a server-chosen host gets only these content-free negotiation headers, and only when their value carries no
+ * detected identifier. Everything else (custom headers, Authorization, cookies) is dropped.
+ */
+const CROSS_HOST_SAFE_HEADERS = new Set(["accept", "accept-language"]);
+export function crossHostHeaders(headers: Readonly<Record<string, string>> | undefined): Record<string, string> | undefined {
+  if (headers === undefined) return undefined;
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    if (!CROSS_HOST_SAFE_HEADERS.has(name.toLowerCase())) continue;
+    if (extract(value).length > 0) continue;
+    out[name] = value;
   }
   return out;
 }

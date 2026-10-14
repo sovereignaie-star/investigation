@@ -292,12 +292,10 @@ describe("coverage bookkeeping", () => {
   });
 });
 
-describe("T-SEC-SSRF-043 scope boundary: server-chosen redirect targets (known gap, P2-003 2026-10-13)", () => {
-  // The content check inventories what the TRANSFORM put in the request. A redirect target is chosen by the server;
-  // each hop is re-checked for scheme, port, credentials, host list, address class and pinning, but its URL content is
-  // NOT inventoried. This test states the gap as it is, so it cannot be mistaken for protection: it must be changed
-  // (and this row re-classified) when the follow-up decided in ADR-08 section 4 is implemented.
-  it("a public-mode redirect to another public host whose URL carries an undeclared email address is followed today", async () => {
+describe("T-SEC-SSRF-043 redirect content policy (P2-032, ADR-08 section 4; formerly the known gap of P2-003 2026-10-13)", () => {
+  // Each server-chosen hop is inventoried BEFORE it is sent, and the transform's headers go only to the host it chose.
+  // The redirect content cases with mutation controls are in ssrf-cases.ts; these two are the former gap tests, flipped.
+  it("a public-mode redirect to another public host whose URL carries an undeclared email address is refused before the second hop", async () => {
     const destinations: Array<{ host: string; pinnedIp: string }> = [];
     const g = createEgressGateway({
       resolver: { resolve: async () => ["93.184.216.34"] },
@@ -311,16 +309,13 @@ describe("T-SEC-SSRF-043 scope boundary: server-chosen redirect targets (known g
       },
     });
     const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["domain"] });
-    expect(r.ok).toBe(true);
-    expect(destinations).toEqual([
-      { host: "example.com", pinnedIp: "93.184.216.34" },
-      { host: "other.example", pinnedIp: "93.184.216.34" },
-    ]);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("undeclared_data");
+    expect(r.transportCalls).toBe(1);
+    expect(destinations).toEqual([{ host: "example.com", pinnedIp: "93.184.216.34" }]);
   });
 
-  it("the transform's own headers (already checked for host A) are re-sent unchanged to a server-chosen host B today", async () => {
-    // Second part of the same gap (second review, 2026-10-13): every hop reuses req.headers. A declared value sent to
-    // host A also reaches host B, which the transform never chose. Follow-up task P2-032 must change this test.
+  it("the transform's own headers (checked for host A) are dropped on a server-chosen host B, except the safe list", async () => {
     const seen: Array<{ host: string; headers: Record<string, string> | undefined }> = [];
     const g = createEgressGateway({
       resolver: { resolve: async () => ["93.184.216.34"] },
@@ -331,10 +326,28 @@ describe("T-SEC-SSRF-043 scope boundary: server-chosen redirect targets (known g
         },
       },
     });
-    const headers = { "x-lookup": "8.8.8.8" };
+    const headers = { "x-lookup": "8.8.8.8", accept: "application/json", "accept-language": "en" };
     const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["ip"], headers });
     expect(r.ok).toBe(true);
     expect(seen.map((h) => h.host)).toEqual(["example.com", "other.example"]);
-    expect(seen[1]?.headers).toEqual(headers);
+    expect(seen[0]?.headers).toEqual(headers);
+    expect(seen[1]?.headers).toEqual({ accept: "application/json", "accept-language": "en" });
+  });
+
+  it("control: on a same-host redirect the transform's headers are kept unchanged", async () => {
+    const seen: Array<Record<string, string> | undefined> = [];
+    const g = createEgressGateway({
+      resolver: { resolve: async () => ["93.184.216.34"] },
+      transport: {
+        fetch: async (r) => {
+          seen.push(r.headers);
+          return seen.length === 1 ? { status: 301, headers: { location: "/v2/" } } : { status: 200, body: "ok" };
+        },
+      },
+    });
+    const headers = { "x-lookup": "8.8.8.8" };
+    const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["ip"], headers });
+    expect(r.ok).toBe(true);
+    expect(seen).toEqual([headers, headers]);
   });
 });

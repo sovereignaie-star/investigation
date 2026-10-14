@@ -7,7 +7,7 @@
  * This module is intentionally self-contained and side-effect-free outside the
  * injected `resolver` / `transport` / `auditSink` / `now` functions.
  */
-import { inventoryRequest, judgeInventory } from "./content-inventory.ts";
+import { crossHostHeaders, inventoryRequest, judgeInventory, redirectContentVerdict, sentValues } from "./content-inventory.ts";
 import { createHmac, randomBytes } from "node:crypto";
 import { domainToASCII } from "node:url";
 import { classifyAddress } from "./address-policy";
@@ -796,6 +796,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   }
 
   type AbortCtl = ReturnType<typeof makeRequestAbort>;
+  /** P2-032: the first hop's normalised host and the case-data values the transform sent to it. */
+  type FirstHop = { readonly firstHost: string; readonly sent: ReadonlySet<string> };
   type TransportResp = Awaited<ReturnType<EgressTransport["fetch"]>>;
 
   function isCancelled(req: EgressRequest, abort: AbortCtl): boolean {
@@ -822,6 +824,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   ): Promise<EgressResult> {
     let currentUrl = initialUrl;
     let hopCount = 0;
+    // P2-032: the first hop's host and the values the transform sent to it; later hops are judged against them.
+    const firstHost = normalizeHost(initialUrl.hostname);
+    const sent = sentValues(initialUrl, req.headers, req.secret);
+    let hopHeaders = req.headers;
     while (true) {
       // Cancellation before DNS: no resolver call, no transport call.
       if (isCancelled(req, abort)) {
@@ -837,7 +843,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
         return resolved;
       }
-      const hop = await transportHop(req, currentUrl, (resolved as ResolvedAddress).pinnedIp, hopCount, deadline, abort);
+      const hop = await transportHop(req, currentUrl, (resolved as ResolvedAddress).pinnedIp, hopHeaders, hopCount, deadline, abort);
       if ("code" in hop && hop.code !== undefined) return hop;
       const resp = hop as TransportResp;
       // A cancelled request is NEVER a success, even if the transport completed late.
@@ -846,9 +852,11 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         return deny("cancelled", hopCount + 1, "request cancelled by caller after transport");
       }
       hopCount++;
-      const next = await redirectOrFinish(req, currentUrl, resp, hopCount, deadline, abort, secretDigest);
+      const next = await redirectOrFinish(req, currentUrl, resp, hopCount, deadline, abort, { firstHost, sent }, secretDigest);
       if (next.done) return next.result;
       currentUrl = next.url;
+      // P2-032: the transform's headers go only to the host it chose; another host gets the safe list only.
+      hopHeaders = normalizeHost(currentUrl.hostname) === firstHost ? req.headers : crossHostHeaders(req.headers);
     }
   }
 
@@ -862,6 +870,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     req: EgressRequest,
     currentUrl: URL,
     pinnedIp: string,
+    headers: Readonly<Record<string, string>> | undefined,
     hopCount: number,
     deadline: number,
     abort: AbortCtl,
@@ -888,7 +897,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
         pinnedIp,
         method: req.method ?? "GET",
-        headers: req.headers,
+        headers: headers === undefined ? undefined : { ...headers },
         signal: hopController.signal,
       });
       fetching.catch(() => {}); // a late rejection after the race is settled must not become unhandled
@@ -989,12 +998,50 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     hopCount: number,
     deadline: number,
     abort: ReturnType<typeof makeRequestAbort>,
+    first: FirstHop,
     secretDigest?: string,
   ): Promise<{ done: true; result: EgressResult } | { done: false; url: URL }> {
     if (isRedirect(resp) && resp.headers?.location) {
-      return redirectHop(req, currentUrl, resp, hopCount, deadline, secretDigest);
+      return redirectHop(req, currentUrl, resp, hopCount, deadline, first, secretDigest);
     }
     return finishHop(req, currentUrl, resp, hopCount, abort, secretDigest);
+  }
+
+  /** Redirect target host: the same allowedHosts and pinnedHost checks the original request passed (T-SEC-SSRF-045). */
+  function redirectHostCheck(req: EgressRequest, nextHost: string, hopCount: number, secretDigest?: string): EgressResult | null {
+    if (allowedSet) {
+      if (!allowedSet.has(normalizeHost(nextHost))) {
+        audit({
+          kind: "denied",
+          reason: "host_not_allowed",
+          caseId: req.caseId,
+          systemContext: req.systemContext,
+          transform: req.transform,
+          host: nextHost,
+          transportCalls: hopCount,
+          secretDigest,
+        });
+        return deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is not on the allowedHosts list`);
+      }
+    }
+    // Redirects to a different host are NOT allowed when a secret or a pin is in play.
+    if (req.pinnedHost !== undefined) {
+      const normalizedPin = normalizeHost(req.pinnedHost);
+      if (normalizedPin === "" || normalizeHost(nextHost) !== normalizedPin) {
+        audit({
+          kind: "denied",
+          reason: "host_not_allowed",
+          caseId: req.caseId,
+          systemContext: req.systemContext,
+          transform: req.transform,
+          host: nextHost,
+          transportCalls: hopCount,
+          secretDigest,
+        });
+        return deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is outside pinnedHost "${req.pinnedHost}"`);
+      }
+    }
+    return null;
   }
 
   /** Redirect hop: validate the target and either continue or deny. */
@@ -1004,6 +1051,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     resp: { status: number; body?: string; headers?: Record<string, string>; contentLength?: number },
     hopCount: number,
     deadline: number,
+    first: FirstHop,
     secretDigest?: string,
   ): Promise<{ done: true; result: EgressResult } | { done: false; url: URL }> {
     const location = resp.headers?.location;
@@ -1033,46 +1081,13 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // original request passed. A redirect to an unlisted host is denied, even
     // for public-mode requests when allowedHosts is set.
     const nextHost = nextUrl.hostname.replace(/^\[|\]$/g, "");
-    if (allowedSet) {
-      if (!allowedSet.has(normalizeHost(nextHost))) {
-        audit({
-          kind: "denied",
-          reason: "host_not_allowed",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host: nextHost,
-          transportCalls: hopCount,
-          secretDigest,
-        });
-        return {
-          done: true,
-          result: deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is not on the allowedHosts list`),
-        };
-      }
-    }
-    // Redirects to a different host are NOT allowed when a secret or a pin is in play.
-    if (req.pinnedHost !== undefined) {
-      const normalizedPin = normalizeHost(req.pinnedHost);
-      if (normalizedPin === "" || normalizeHost(nextHost) !== normalizedPin) {
-        audit({
-          kind: "denied",
-          reason: "host_not_allowed",
-          caseId: req.caseId,
-          systemContext: req.systemContext,
-          transform: req.transform,
-          host: nextHost,
-          transportCalls: hopCount,
-          secretDigest,
-        });
-        return {
-          done: true,
-          result: deny("host_not_allowed", hopCount, `redirect to "${nextHost}" is outside pinnedHost "${req.pinnedHost}"`),
-        };
-      }
-    }
+    const hostErr = redirectHostCheck(req, nextHost, hopCount, secretDigest);
+    if (hostErr) return { done: true, result: hostErr };
     const pathErr = checkProviderPath(req, nextUrl, opts, hopCount);
     if (pathErr) return refuse(pathErr);
+    // P2-032 (ADR-08 section 4): the server-chosen URL is inventoried before it is sent.
+    const contentVerdict = redirectContentVerdict(nextUrl, normalizeHost(nextHost) !== first.firstHost, first.sent, req.sends ?? []);
+    if (contentVerdict) return refuse(deny(contentVerdict.reason, hopCount, contentVerdict.detail));
     if (now() >= deadline) {
       audit({
         kind: "timeout",
