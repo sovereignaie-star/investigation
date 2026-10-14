@@ -16,7 +16,8 @@
  *   - a failed run: one error observation citing the failed request's own evidence when a request failed, otherwise
  *     a LOCAL run record that names the stage, the message and every response the run had received.
  */
-import { isoNow, type Clock } from "@ir/core";
+import { isoNow, ulidFactory, type Clock } from "@ir/core";
+import { project } from "@ir/ledger/projections";
 import { expandFindings, recordOutcome, type ExpandResult, type Finding } from "@ir/ledger";
 import type { Case } from "@ir/store";
 import type { RunTransformResult, Transform, TransformEvidence, TransformFinding, TransformRunError } from "@ir/transforms";
@@ -180,4 +181,23 @@ export function recordRunFailure(
     `[${x.stage}] ${x.message}`,
   );
   return requests;
+}
+
+/**
+ * The case entity for a subject: the existing node with that canonical key, else a new entity. One node per
+ * identifier, whichever run or investigation reaches it (D-019/D-020).
+ */
+export function ensureSubject(c: Case, key: string, type: string, clock: Clock): string {
+  const p = project(c.entries());
+  const existing = p.graph.nodes.find((n) => n.canonicalKey === key);
+  if (existing) return existing.id;
+  const id = ulidFactory(clock)();
+  c.append("entity.added", {
+    id,
+    type,
+    canonicalKey: key,
+    labels: { en: key.slice(key.indexOf(":") + 1) },
+    props: {},
+  });
+  return id;
 }

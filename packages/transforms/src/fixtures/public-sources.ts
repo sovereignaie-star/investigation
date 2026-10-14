@@ -23,7 +23,8 @@ export const HOSTS = {
   wayback: "web.archive.org",
 } as const;
 
-const doh = (status: number, answers: Array<{ name: string; type: number; data: string }> = []) =>
+/** A dns.google JSON answer (also used by tests that build their own DNS world). */
+export const doh = (status: number, answers: Array<{ name: string; type: number; data: string }> = []) =>
   JSON.stringify({ Status: status, TC: false, RD: true, RA: true, AD: false, CD: false, Answer: answers.map((a) => ({ ...a, TTL: 300 })) });
 
 /** TR-001 — dns.google answers for example.com, by RR type number. */

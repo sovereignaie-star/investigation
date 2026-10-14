@@ -29,6 +29,7 @@ import {
   type RobotsPolicy,
   type DnsResolver,
   type EgressAuditEvent,
+  type EgressGateway,
   type EgressLimits,
   type EgressTransport,
 } from "@ir/egress";
@@ -57,27 +58,19 @@ export interface NetworkPlan {
   readonly events: EgressAuditEvent[];
 }
 
-export function planNetworkRun(
-  c: Case,
-  entry: RegisteredTransform,
-  subjectType: string,
-  allowHosts: readonly string[],
-  deps: NetworkDeps,
-): NetworkPlan | { error: string } {
-  const spec = specById(subjectType);
-  if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
-  const kind = sendKindOf(spec.id, spec.category);
-  if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
-    return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
-  }
-  const transform = entry.transform;
-  // P2-037: the sandbox module comes from the registry entry (one explicit path per registered transform).
-  const isolatedModule = deps.isolatedModules ? deps.isolatedModules[transform.manifest.id] : entry.module;
-  if (!isolatedModule || !existsSync(isolatedModule)) {
-    return { error: `--network: ${transform.manifest.id} has no sandbox module here; network runs are isolated only` };
-  }
+/**
+ * P2-038 — one gateway for a whole investigation: its per-host rate budget, address checks and audit sink are
+ * shared by every run, so a series of transforms against the same source cannot reset the budget run by run.
+ */
+export interface NetworkGateway {
+  readonly gateway: EgressGateway;
+  readonly allowedHosts: readonly string[];
+  /** Gateway decisions seen so far (also written to the case audit chain). */
+  readonly events: EgressAuditEvent[];
+}
+
+export function openGateway(c: Case, allowHosts: readonly string[], deps: NetworkDeps): NetworkGateway | { error: string } {
   const events: EgressAuditEvent[] = [];
-  const caseId = c.info().id;
   const decision = createProductionEgress({
     allowedHosts: allowHosts,
     env: deps.env ?? process.env,
@@ -98,6 +91,30 @@ export function planNetworkRun(
     },
   });
   if (!decision.enabled) return { error: `--network: ${decision.reason}` };
+  return { gateway: decision.gateway, allowedHosts: decision.allowedHosts, events };
+}
+
+/** The transport and sandbox module for one transform run on one subject type, through an open gateway. */
+export function networkRunFor(
+  c: Case,
+  gw: NetworkGateway,
+  entry: RegisteredTransform,
+  subjectType: string,
+  deps: NetworkDeps,
+): NetworkPlan | { error: string } {
+  const spec = specById(subjectType);
+  if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
+  const kind = sendKindOf(spec.id, spec.category);
+  if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
+    return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
+  }
+  const transform = entry.transform;
+  // P2-037: the sandbox module comes from the registry entry (one explicit path per registered transform).
+  const isolatedModule = deps.isolatedModules ? deps.isolatedModules[transform.manifest.id] : entry.module;
+  if (!isolatedModule || !existsSync(isolatedModule)) {
+    return { error: `--network: ${transform.manifest.id} has no sandbox module here; network runs are isolated only` };
+  }
+  const caseId = c.info().id;
   const baseRequest = {
     caseId,
     purposeRef: `case:${caseId}`,
@@ -106,15 +123,39 @@ export function planNetworkRun(
     sends: [...new Set([kind, ...entry.sends])],
     sensitivity: "normal",
   };
-  const transport = createEgressHttpTransport({ gateway: decision.gateway, baseRequest });
+  const transport = createEgressHttpTransport({ gateway: gw.gateway, baseRequest });
   // The fixed path "/robots.txt" reads as a domain to the content inventory, so its request declares `domain` too;
   // the page requests keep the subject's kind only.
   const robotsTransport = createEgressHttpTransport({
-    gateway: decision.gateway,
+    gateway: gw.gateway,
     baseRequest: { ...baseRequest, sends: [...new Set([...baseRequest.sends, "domain"])] },
   });
   const guarded = entry.pageFetch ? robotsGuard(transport, robotsTransport, c) : transport;
-  return { transport: guarded, isolatedModule, allowedHosts: decision.allowedHosts, events };
+  return { transport: guarded, isolatedModule, allowedHosts: gw.allowedHosts, events: gw.events };
+}
+
+/** One `ir run --network`: its own gateway and one transform run. */
+export function planNetworkRun(
+  c: Case,
+  entry: RegisteredTransform,
+  subjectType: string,
+  allowHosts: readonly string[],
+  deps: NetworkDeps,
+): NetworkPlan | { error: string } {
+  // The subject and module checks come before the gateway is opened (no audit noise for a refused plan).
+  const spec = specById(subjectType);
+  if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
+  const kind = sendKindOf(spec.id, spec.category);
+  if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
+    return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
+  }
+  const isolatedModule = deps.isolatedModules ? deps.isolatedModules[entry.transform.manifest.id] : entry.module;
+  if (!isolatedModule || !existsSync(isolatedModule)) {
+    return { error: `--network: ${entry.transform.manifest.id} has no sandbox module here; network runs are isolated only` };
+  }
+  const gw = openGateway(c, allowHosts, deps);
+  if ("error" in gw) return gw;
+  return networkRunFor(c, gw, entry, subjectType, deps);
 }
 
 async function bodyText(r: TransportResponse): Promise<string> {
