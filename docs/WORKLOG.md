@@ -2623,3 +2623,25 @@
 - **ما لم يُجرَ:** اختبار live، مراجعة كود كاملة سطر-بسطر، تحقق من تغطية كل تفاصيل الفحص advisory المشار إليه (فُحص بُنْيَته الفعلية في `.github/workflows/security-review.yml` ولا يشمل مراجعة الحالة كفحص مطلوب).
 - **الأدلة:** `gh api …/pulls/104/files?per_page=100` => 9 ملفات، لا `registry.ts`. `node scripts/governance/check.mjs --consistency` => متسق.
 - **التالي:** البدء في المراجعة الهندسية المستقلة الآن (بدأت أدناه بتحليل ميزانية الطلبات عبر `robotsGuard` في `network.ts`/`investigate.ts`) وتحويل كل ملاحظة إلى اختبار أو إصلاح.
+
+### 2026-10-14 — [P2-040] فتح مهمة: ميزانية طلبات التحقيق لا تحصي طلبات robots.txt
+- **المنفّذ:** Perplexity Computer (وكيل ذكاء اصطناعي).
+- **ما تم:** أثناء المراجعة الهندسية المستقلة للمرحلة 1 (المطلوبة بعد إغلاق سلسلة الدمج) رُصدت فجوة في عدّ الميزانية، ففُتحت مهمة P2-040 لها. الاستنتاج من قراءة الشيفرة الفعلية على main@7cf5ade:
+  - في \`packages/cli/src/investigate.ts\` يُلف عدّاد الميزانية \`budgeted()\` طبقة \`plan.transport\` التي تُخرجها \`networkRunFor()\`، أي أن العدّاد يرى استدعاءات \`ctx.http\` من المحوّل فقط.
+  - في \`packages/cli/src/network.ts\` تلف \`robotsGuard()\` \`transport\` و\`robotsTransport\`؛ طلب \`robots.txt\` (أوّل صفحة لكل أصل في TR-010) يخرج من \`robotsTransport\` الذي لا يمر بعدّاد الميزانية أبداً.
+  - في \`packages/egress/src/egress.ts\` يعمل البوابة على الحقيقة: عدّ \`transportCalls\` لكل أصل، وفحص العنوان، والمعدل — كلها تُستهلك فعلياً لطلب robots. لذلك عدد الطلبات الفعلية يمكن أن يصل نظرياً إلى 2×\`maxRequests\` مع TR-010، و\`result.requests\` يبلغ نصف الاستهلاك الحقيقي.
+  - ميزانية البايتات (\`ByteBudget\` من P2-039) تُخصم في طبقة النقل نفسها، لذلك لا تتأثر بهذه الفجوة. الفجوة في عدّاد الطلبات فقط.
+- **ما لم يتم:** إصلاح أو اختبار في هذا الإيداع — الإيداع يضيف المهمة إلى الخارطة والحالة فقط؛ الإصلاح يأتي في فرع مستقل مع اختبار انحدار.
+- **الأدلة:** شيفرة \`packages/cli/src/{investigate,network}.ts\` و\`packages/egress/src/{egress,byte-budget}.ts\` على main@7cf5ade؛ \`grep -n "budgeted(" packages/cli/src/investigate.ts\` => السطر 137/315؛ \`grep -n "robotsTransport\|robotsGuard" packages/cli/src/network.ts\` => 105/129.
+- **التالي:** تنفيذ P2-040: عدّ مشترك يلف كل طلب إدخال (طلب المحوّل، وكل قفزة، وrobots) بحيث يتطابق عدد استدعاءات النقل مع القرارات المُبلغ عنها، واختبار انحدار بميزانية صغيرة يثبت عدم بدء DNS بعد النفاد.
+
+### 2026-10-14 — [P2-040] تنفيذ الإصلاح: عدّ مشترك واحد لكل طلب إدخال (page، robots)
+- **المنفّذ:** Perplexity Computer (وكيل ذكاء اصطناعي).
+- **ما تم:**
+  - `packages/cli/src/network.ts`: أضيف `wrapTransport` إلى توقيع `networkRunFor()` (نوع `(t: HttpTransport) => HttpTransport`)، ويُلف قبل أن يدمج `robotsGuard()` النقلين، فيتعدّ كل طلب إدخال: طلب صفحة المحوّل وطلب `robots.txt` (عندما يشغّله محوّل `pageFetch` مثل TR-010). التصميم: العدّ على الحدود، قبل أي مجزّئ (robotsGuard / حلقة القفزات في البوابة) — العدّ قبل المجزّئ يرى كل أصل لكل طلب، لا ما يمرّ بـ`ctx.http` فقط.
+  - `packages/cli/src/investigate.ts`: `budgeted()` (كان يلف `plan.transport` فقط) استُبدل بـ`requestMeter(budget, state, bytes)` التي تعيد دالة لفّ النقل؛ `attempt()` يمرّرها إلى `networkRunFor()` كوسيط سادس، فصار كل طلب إدخال (صفحة أو robots) يُحصى ويُقتطع قبل بدء أي DNS.
+  - `packages/cli/src/investigate.test.ts`: اختبار انحدار جديد «P2-040: the request budget counts robots.txt fetches» — تشغيل TR-010 وحده على أصل واحد مع ميزانية طلب واحدة. النتيجة المُتحقّق منها: طلب `robots.txt` واحد يصل إلى النقل، وصفحة المحوّل تُرفض قبل DNS («request budget exhausted»)، `result.requests == 1`، لا يبدأ طلب ثانٍ ولا DNS بعد النفاد، ولا تُضاف claims. أُضيف `www.example.com: ["93.184.216.34"]` إلى خريطة `DNS` للاختبار (كان يفشل بـNXDOMAIN قبل هذا التعديل فلا يمكن قياس السلوك).
+  - تحقق يدوي خارج vitest (tsx) قبل الاعتماد على الاختبار: أُعيد إنتاج السيناريو بـ`main()` مباشرة وثبت أن `robots.txt` هو الطلب الوحيد، والميزانية=1 تُنفد عليه، وTR-010 يُرفض قبل DNS (`result.requests == 1`، `reason: [request] investigation request budget exhausted`).
+- **ما لم يتم / حد معروف:** لم يُعدّ العداد قفزات إعادة التوجيه داخل البوابة (`runHops` في `packages/egress/src/egress.ts`) — تحدّها حدود البوابة نفسها (per-origin `maxHops`، `transportCalls`، والمعدل). الميزانية القابلة للإبلاغ تحصي طلبات الإدخال فقط، لا القفزات الداخلية.
+- **الأدلة:** `node_modules/.bin/vitest run packages/cli/src/investigate.test.ts` => 22/22؛ `pnpm run test` => 1462 passed / 5 skipped (live-network كما كان)؛ `pnpm run typecheck` و`pnpm run lint` و`pnpm run build` و`pnpm run governance` => ناجحة جميعها؛ `node scripts/governance/check.mjs --last` => الرأس الأخير (docs) موثق.
+- **التالي:** إدخال القمة إلى PR #109، تحديث صف P2-040 في `STATUS.md` إلى done مع الأدلة، مراجعة D-8، ثم الدمج.

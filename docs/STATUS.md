@@ -414,13 +414,8 @@
 | D-055 | عالٍ | مُصلح في PR #68 المدمج | `lib/api-client-react/src/custom-fetch.ts` على `main` يمرر إلى `fetch` روابط تخرج عن الأصل نفسه: `//evil.example/x` و`/\evil.example/x` و`/<TAB>/evil.example/x` وأشكال مشابهة (17 اختباراً تفشل على نسخة `main`). الإصلاح يقرر الأصل بمحلل WHATWG، ويرفض قبل استدعاء `fetch` مع قاعدة أو بدونها؛ `custom-fetch.test.ts` |
 | D-056 | متوسط | مُصلح في PR #68 المدمج | `apps/server/src/lib/providers.ts` على `main` يختبر مفتاح VirusTotal بطلب `https://www.virustotal.com/8.8.8.8`، وهذا ليس مسار واجهة VirusTotal v3، فلا يمكن أن يؤكد مفتاحاً صالحاً. الإصلاح: سجل `PROVIDER_TESTS` يحدد لكل مزود مضيفه ومساره (`/api/v3/ip_addresses/8.8.8.8` لـ VirusTotal)، والبوابة ترفض أي مسار آخر لسر المزود في كل قفزة (T-SEC-SSRF-042). الاختبار: `vault.test.ts` › `each provider's key test requests its real API endpoint, with the key only in that provider's header` و`ssrf-matrix.test.ts` (042) مع ضابط سلبي |
 
+### مهام أضيفت لاحقاً (رتّبها في جدول مرحلتها)
 
-
-
-
-
-
-
-
-
-
+| المعرّف | المهمة | الحالة | الدليل |
+|---|---|---|---|
+| P2-040 | تصحيح ميزانية طلبات التحقيق: عدّاد طلبات التحقيق `investigate.ts` يلف `robotsGuard` من خارجها، فطلب `robots.txt` (مصدر جديد لكل أصل) يستهلك DNS ونقلاً ومعدل البوابة دون أن يُحصى في `maxRequests` ولا في الاستخدام المُبلغ عنه. المطلوب: عدّ مشترك في طبقة بوابة التحقيق تلف كل طلب إدخال (الطلب، وكل قفزة إعادة توجيه، وطلب robots) بحيث يكون الفرق بين `state.requests` وعدد القرارات الفعلية للبوابة صفراً، واختبار انحدار (ميزانية 2، TR-010 مكتشف صفحات، robots يسمح، أدخل صفحة بميزانية 2 فيفشل بعد قرارين ولا يبدأ DNS ثالثاً) | in_progress | PR #109 (فرع `fix/P2-040-request-budget`): إصلاح مُنفّذ محلياً — `networkRunFor(wrapTransport)` يلف النقلين قبل `robotsGuard()`، و`requestMeter()` تحل محل `budgeted()` في `investigate.ts`؛ اختبار انحدار «P2-040: the request budget counts robots.txt fetches» (22/22 في investigate.test.ts). |

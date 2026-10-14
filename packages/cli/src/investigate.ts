@@ -133,9 +133,14 @@ export function applicable(entries: readonly RegisteredTransform[], type: string
  * Counts requests across the investigation and refuses a request beyond the request budget, or once the byte budget
  * is exhausted (the gateway refuses it too, before DNS). The bytes themselves are charged by the gateway's transport
  * while each response is received (P2-039), not here after the fact.
+ *
+ * P2-040: this meter is applied to EVERY transport the plan hands out (the transform's page transport AND the
+ * robots transport) via `networkRunFor`'s `wrapTransport`, so robots.txt fetches and redirect hops are counted too.
+ * The old form wrapped only the transform-facing transport, so a robots.txt fetch (one per new origin in TR-010)
+ * consumed DNS, transport and rate budget without ever appearing in `result.requests`.
  */
-function budgeted(inner: HttpTransport, state: { requests: number }, maxRequests: number, bytes: ByteBudget): HttpTransport {
-  return {
+function requestMeter(maxRequests: number, state: { requests: number }, bytes: ByteBudget): (t: HttpTransport) => HttpTransport {
+  return (inner: HttpTransport) => ({
     async fetch(req: TransportRequest, signal: AbortSignal) {
       if (state.requests >= maxRequests) {
         throw new TransportError("transport:rate-limit", `investigation request budget exhausted (${maxRequests} requests)`);
@@ -146,7 +151,7 @@ function budgeted(inner: HttpTransport, state: { requests: number }, maxRequests
       state.requests++;
       return inner.fetch(req, signal);
     },
-  };
+  });
 }
 
 type Sleep = (ms: number, signal: AbortSignal) => Promise<void>;
@@ -286,7 +291,15 @@ class Investigation {
     if (blocked) return this.notRun(node, entry, blocked);
     const prepared = subjectInput(entry, node.type, node.value);
     if ("error" in prepared) return this.notRun(node, entry, `input refused: ${prepared.error}`);
-    const plan = networkRunFor(this.c, this.gw, entry, node.type, this.opts.network ?? {}, this.bytes);
+    const plan = networkRunFor(
+      this.c,
+      this.gw,
+      entry,
+      node.type,
+      this.opts.network ?? {},
+      this.bytes,
+      requestMeter(this.budget.maxRequests, this.usage, this.bytes),
+    );
     if ("error" in plan) return this.notRun(node, entry, `setup refused: ${plan.error}`);
     if (this.runs > 0) await this.sleep(this.pacingMs, this.opts.signal ?? new AbortController().signal);
     if (this.opts.signal?.aborted) {
@@ -312,7 +325,7 @@ class Investigation {
     const base = { entityKey: node.key, transformId: entry.transform.manifest.id, depth: node.depth };
     try {
       const result = await runTransform(entry.transform, {
-        transport: budgeted(plan.transport, this.usage, this.budget.maxRequests, this.bytes),
+        transport: plan.transport,
         input,
         ...(this.opts.now ? { now: this.opts.now } : {}),
         ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),

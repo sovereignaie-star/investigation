@@ -30,6 +30,8 @@ const DNS: Readonly<Record<string, string[]>> = {
   "rdap.verisign.com": ["72.13.58.10"],
   "rdap.arin.net": ["199.71.0.150"],
   "crt.sh": ["91.199.212.73"],
+  // P2-040: TR-010 fetches a page by URL; the page host must be resolvable for the robots.txt fetch to happen.
+  "www.example.com": ["93.184.216.34"],
 };
 
 type Resp = Awaited<ReturnType<EgressTransport["fetch"]>>;
@@ -671,5 +673,38 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
     const t4 = cell(covOf(r), "TR-004", "domain:example.com")[0];
     expect(t4?.state).toBe("failed");
     expect(t4?.reason).toMatch(/time budget reached/);
+  });
+});
+
+describe.skipIf(!host.full)("P2-040: the request budget counts robots.txt fetches (one meter for every entry request)", () => {
+  // P2-040 regression: the request budget must count EVERY request the gateway admits — including the
+  // robots.txt fetch a page-fetching transform triggers — and no further request may start once it is exhausted.
+  it("budget: requests — robots.txt fetches are counted too; no third transport call starts after exhaustion (P2-040)", async () => {
+    // The transform asks for ONE page; the plan adds a robots.txt fetch per origin, so the world has TWO entry
+    // requests. The budget is 1: the robots fetch consumes it, the page itself is refused BEFORE the transport call,
+    // and nothing further starts. With the old counter (which saw only ctx.http fetches) the robots fetch was
+    // invisible and the page would have been sent.
+    const WORLD_010: Readonly<Record<string, Resp>> = {
+      "https://www.example.com/robots.txt": json("User-agent: *\nAllow: /\n"),
+    };
+    const dir = tempDir();
+    const x = edge(WORLD_010);
+    const r = await investigate(dir, ["--max-requests", "1", "--transform", "TR-010", "--max-depth", "0"], {
+      hosts: ["www.example.com"],
+      seed: ["url", "https://www.example.com/"],
+      network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
+    });
+    expect(r.code).toBe(1);
+    // Only the robots fetch reached the transport; the page was refused before DNS.
+    expect(x.calls.map((c) => c.url)).toEqual(["https://www.example.com/robots.txt"]);
+    // The coverage of the single TR-010 run is a failure, not an empty success.
+    const k = cell(covOf(r), "TR-010", "url:https://www.example.com/")[0];
+    expect(k.state).toBe("failed");
+    expect(k.reason).toMatch(/request budget exhausted/);
+    // The reported request count includes the robots fetch: the budget is genuinely exhausted.
+    expect(r.result?.requests).toBe(1);
+    // Nothing more can start: no further transport call, no further claim added.
+    expect(x.calls).toHaveLength(1);
+    expect(readCase(dir).entries.some((e) => e.kind === "claim.added")).toBe(false);
   });
 });
