@@ -422,7 +422,7 @@ const evidenceUrls = (entries: ReturnType<typeof readCase>["entries"]) =>
   );
 
 describe("P2-039 TR-001 accepts host names (registry input builder)", () => {
-  it("a valid host name is accepted and normalised; invalid names and non-names are refused before any request", async () => {
+  it.skipIf(!host.full)("a valid host name is accepted, normalised and resolved by TR-001 through the isolated run", async () => {
     const ok = edge();
     const r = await investigate(tempDir(), ["--transform", "TR-001", "--max-depth", "0"], {
       seed: ["hostname", "WWW.Example.COM."],
@@ -433,7 +433,9 @@ describe("P2-039 TR-001 accepts host names (registry input builder)", () => {
     expect(r.result?.seedKey).toBe("hostname:www.example.com");
     expect(stateOf(covOf(r), "TR-001", "hostname:www.example.com")).toBe("found");
     expect(ok.calls.every((c) => c.url.includes("name=www.example.com&"))).toBe(true);
+  });
 
+  it("invalid names and values that are not host names are refused before any request (no isolation needed)", async () => {
     for (const bad of ["bad_host.example.com", "-a.example.com", "a..example.com", "*.example.com", `${"a".repeat(64)}.example.com`]) {
       const x = edge();
       const b = await investigate(tempDir(), ["--transform", "TR-001"], {
