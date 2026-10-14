@@ -1,8 +1,11 @@
 /**
- * Egress gateway (P2-003 / ADR-08). SIMULATION ONLY in this cycle:
- * no real network transport, no real DNS resolver, no env var that enables the
- * network. The gateway is a policy boundary that decides, based on a request
- * contract, whether a transport call is allowed, and enforces limits.
+ * Egress gateway (P2-003 / ADR-08). The gateway is a policy boundary that decides, based on a request contract,
+ * whether a transport call is allowed, and enforces limits. It performs no I/O of its own: the resolver and the
+ * transport are injected. The real ones (system-resolver.ts, node-transport.ts) are joined to it in exactly one
+ * place, production.ts, which is off unless `IR_ENABLE_NETWORK=1` and always restricted to an explicit host list;
+ * its single caller is `ir run --network` (packages/cli). The server keeps FAIL_CLOSED_TRANSPORT (its engine has
+ * no case or evidence store) and the vault test path keeps its injected transport. No env var here enables the
+ * network, and `IR_OFFLINE=1` refuses every request.
  *
  * This module is intentionally self-contained and side-effect-free outside the
  * injected `resolver` / `transport` / `auditSink` / `now` functions.

@@ -8,10 +8,15 @@ import { project, projectionHash, type Projection } from "@ir/ledger/projections
 import { formatReport, openCase, readCheckpointFile, verifyCase, type Case } from "@ir/store";
 import { createSimServer, type SimRule } from "@ir/sim";
 import { httpScan, runTransform, TransformRunError, type RunTransformResult, type Transform, type TransformEvidence } from "@ir/transforms";
+import type { HttpTransport } from "@ir/engine";
+import { LegalBasis, type CaseInit } from "@ir/schema";
+import { planNetworkRun, type NetworkDeps } from "./network.ts";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
        ir project <case-dir> [--at seq] [--expect sha256] [--passphrase-file file] [--json]
        ir run <case-dir> <transform-id> <subject-type> <subject-value> [--sim rules.json] [--json] [--passphrase-file file]
+       ir run <case-dir> <transform-id> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
+              [--purpose text --legal-basis basis] [--json]
 
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
   project: rebuilds the graph, table and coverage views from the chain, offline (optionally as of seq --at),
@@ -19,6 +24,10 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
   run:     runs a transform against a subject in the deterministic simulation world (@ir/sim), stores the
            response as evidence, and expands the findings into the ledger. --sim loads a JSON array of sim
            rules (see @ir/sim); without it every URL returns 200 with an empty body. Refuses encrypted cases.
+  run --network (P2-003): real network through @ir/egress only, with the transform in the T-SBX sandbox. Needs
+           IR_ENABLE_NETWORK=1 in the environment (IR_OFFLINE=1 always wins) and at least one --allow-host; every
+           request and redirect hop must stay on that list. A new case needs --purpose and --legal-basis (not
+           training_simulation); a simulation case is refused. Every gateway decision goes to the case audit chain.
   Encrypted cases: the passphrase is read from --passphrase-file or IR_CASE_PASSPHRASE, never from the command line.
   Exit codes: 0 intact, 1 integrity failure, 2 usage or I/O error.`;
 
@@ -31,6 +40,8 @@ export interface CliOptions {
   clock?: Clock;
   now?: () => number;
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** Tests only: replaces the real resolver/transport of `--network`; every policy and opt-in stays real. */
+  network?: NetworkDeps;
 }
 
 /** Case created by `ir run` when the target directory has no case yet (P2-022). */
@@ -72,6 +83,10 @@ export async function main(
         at: { type: "string" },
         expect: { type: "string" },
         sim: { type: "string" },
+        network: { type: "boolean" },
+        "allow-host": { type: "string", multiple: true },
+        purpose: { type: "string" },
+        "legal-basis": { type: "string" },
         help: { type: "boolean", short: "h" },
       },
     });
@@ -171,6 +186,10 @@ function runProject(
 
 type RunValues = {
   sim?: string | undefined;
+  network?: boolean | undefined;
+  "allow-host"?: string[] | undefined;
+  purpose?: string | undefined;
+  "legal-basis"?: string | undefined;
   json?: boolean | undefined;
   "passphrase-file"?: string | undefined;
 };
@@ -274,6 +293,49 @@ function runSummary(
   return lines.join("\n");
 }
 
+/** The case record for a new `--network` case: a real purpose and legal basis, never the simulation one. */
+function networkCase(v: RunValues): CaseInit | undefined | string {
+  const purpose = v.purpose?.trim() ?? "";
+  const basis = v["legal-basis"] ?? "";
+  // No case fields: the case must already exist (openCase refuses to create one without a purpose, E-01).
+  if (purpose === "" && basis === "") return undefined;
+  if (purpose.length < 10) return "--network: --purpose must state the purpose (>= 10 characters)";
+  const parsed = LegalBasis.safeParse(basis);
+  if (!parsed.success || parsed.data === "training_simulation") {
+    return `--network: --legal-basis must be one of ${LegalBasis.options.filter((b) => b !== "training_simulation").join(", ")}`;
+  }
+  return { title: "ir run --network", purpose, legalBasis: parsed.data };
+}
+
+/** Opens (or creates) the case for `ir run`; a `--network` case gets a real purpose and basis (or must exist). */
+function openRunCase(dir: string, v: RunValues, clock: Clock): Case | string {
+  if (v.network && v.sim) return "--network and --sim are exclusive";
+  const create = v.network ? networkCase(v) : DEFAULT_CASE;
+  if (typeof create === "string") return create;
+  const { passphrase } = passphraseFrom(v["passphrase-file"]);
+  const createOpt: { create?: CaseInit } = create ? { create } : {};
+  return passphrase === undefined
+    ? openCase(dir, { actor: "ir-cli", clock, ...createOpt })
+    : openCase(dir, { actor: "ir-cli", clock, passphrase, ...createOpt });
+}
+
+/** Simulation (default) or the real network through @ir/egress with the transform isolated (`--network`). */
+function runRoute(
+  c: Case,
+  transform: Transform,
+  subjectType: string,
+  v: RunValues,
+  opts: CliOptions,
+): { transport: HttpTransport; isolatedModule?: string; allowedHosts?: readonly string[] } | { error: string } {
+  if (!v.network) return { transport: createSimServer(v.sim ? readSimRules(v.sim) : []).transport };
+  if (c.info().legalBasis === "training_simulation") {
+    return { error: "--network: this is a simulation case (legal basis training_simulation); use a case with a real basis" };
+  }
+  const plan = planNetworkRun(c, transform, subjectType, v["allow-host"] ?? [], opts.network ?? {});
+  if ("error" in plan) return plan;
+  return { transport: plan.transport, isolatedModule: plan.isolatedModule, allowedHosts: plan.allowedHosts };
+}
+
 /**
  * `ir run` (P2-022): runs a transform against a subject in the deterministic simulation world, stores the response
  * as evidence, and expands the findings into the ledger. The subject is a catalog identifier type; the transform's
@@ -300,12 +362,12 @@ async function runTransformCommand(
       err(`ir run: subject type "${subjectType}" is not a catalog identifier type`);
       return 2;
     }
-    const { passphrase } = passphraseFrom(v["passphrase-file"]);
     const clock = opts.clock ?? systemClock;
-    const c =
-      passphrase === undefined
-        ? openCase(dir, { actor: "ir-cli", clock, create: DEFAULT_CASE })
-        : openCase(dir, { actor: "ir-cli", clock, passphrase, create: DEFAULT_CASE });
+    const c = openRunCase(dir, v, clock);
+    if (typeof c === "string") {
+      err(`ir run: ${c}`);
+      return 2;
+    }
     try {
       if (c.encrypted) {
         err("ir run: refusing to run a transform against an encrypted case (P2-022)");
@@ -313,12 +375,23 @@ async function runTransformCommand(
       }
       const subjectKey = canonicalKey(subjectType, subjectValue);
       const subjectId = ensureSubject(c, subjectKey, subjectType, clock);
-      const rules = v.sim ? readSimRules(v.sim) : [];
-      const sim = createSimServer(rules);
+      const route = runRoute(c, transform, subjectType, v, opts);
+      if ("error" in route) {
+        err(`ir run: ${route.error}`);
+        return 2;
+      }
       const input = { [transform.manifest.inputs[0]]: subjectValue };
       let result: RunTransformResult;
       try {
-        result = await runTransform(transform, { transport: sim.transport, input, now: opts.now, sleep: opts.sleep });
+        result = await runTransform(transform, {
+          transport: route.transport,
+          input,
+          now: opts.now,
+          sleep: opts.sleep,
+          ...(route.isolatedModule
+            ? { requireIsolation: true, isolatedModule: route.isolatedModule, transformId: transform.manifest.id }
+            : {}),
+        });
       } catch (x) {
         if (x instanceof TransformRunError) {
           const evidenceId = storeRunEvidence(c, x.evidence, transform, clock);
@@ -346,6 +419,7 @@ async function runTransformCommand(
           JSON.stringify(
             {
               transformId,
+              network: route.isolatedModule ? { mode: "real", allowedHosts: route.allowedHosts, isolated: true } : { mode: "simulation" },
               subject: { type: subjectType, value: subjectValue, entityId: subjectId },
               requestCount: result.requestCount,
               findings: result.output.findings,

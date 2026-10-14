@@ -1,0 +1,175 @@
+/**
+ * Real-network mode for `ir run` (P2-003). This is the production path that joins an investigation case to the
+ * internet, and it is narrow on purpose:
+ *
+ * - Opt-in twice: the operator passes `--network` AND the environment says `IR_ENABLE_NETWORK=1`
+ *   (`IR_OFFLINE=1` always wins). Without both, nothing is sent.
+ * - Never global: `--allow-host` names every host the run may reach (request and every redirect hop). There is
+ *   no wildcard and no "any host" value.
+ * - One gateway: the transform's `ctx.http` goes to `createEgressHttpTransport` -> `@ir/egress` (address
+ *   classification of every resolved address, a pinned connection, TLS verified for the hostname, content
+ *   inventory, redirect policy, size/time/rate limits, cancellation). This module adds no network code.
+ * - Isolated: the transform runs in the T-SBX sandbox (`requireIsolation: true` with its module path); its only
+ *   network is the IPC channel to this gateway. A transform without a known module path is refused.
+ * - Public data only: the subject must be a catalog type the public mode may send (domain, ip, asn, hash, url,
+ *   certificate) with normal sensitivity. Natural-person subjects stay refused until P2-013.
+ * - Polite: page-fetching transforms (TR-010) obey the source's robots.txt (RFC 9309, ADR-08 decision C). It is
+ *   fetched through the same gateway once per origin per run; 4xx means no file (allowed), 5xx or unreachable
+ *   means complete disallow. A disallowed page is refused before the gateway is asked for it.
+ * - Recorded: every gateway decision (allowed and denied) is written to the case's audit chain with the host,
+ *   reason and transport-call count; the response is stored as evidence by the caller (URL, status, fetchedAt).
+ */
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { specById } from "@ir/core/identifiers";
+import {
+  createProductionEgress,
+  parseRobots,
+  robotsFromStatus,
+  sendKindOf,
+  type RobotsPolicy,
+  type DnsResolver,
+  type EgressAuditEvent,
+  type EgressLimits,
+  type EgressTransport,
+} from "@ir/egress";
+import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse } from "@ir/engine";
+import type { Case } from "@ir/store";
+import type { Transform } from "@ir/transforms";
+
+/** Module paths for transforms that may run in the sandbox (bundled from source; never executed in the parent). */
+const ISOLATED_MODULES: Readonly<Record<string, string>> = {
+  "TR-010": fileURLToPath(new URL("../../transforms/src/transforms/tr-010-http-scan.ts", import.meta.url)),
+};
+
+/** Transforms that fetch pages and therefore obey robots.txt (ADR-08 decision C; TR-042 joins when it exists). */
+const PAGE_FETCH_TRANSFORMS = new Set(["TR-010"]);
+
+const PUBLIC_SEND_KINDS = new Set(["domain", "ip", "asn", "hash", "url", "certificate"]);
+
+/** Injected only by tests: the real resolver/transport are replaced, every policy and opt-in stays real. */
+export interface NetworkDeps {
+  readonly env?: Readonly<Record<string, string | undefined>>;
+  readonly resolver?: DnsResolver;
+  readonly transport?: EgressTransport;
+  /** Tighter gateway limits (tests of the timeout/size refusals). Production uses the gateway defaults. */
+  readonly limits?: EgressLimits;
+  /** Overrides the module path table (tests of the "unknown module" refusal). */
+  readonly isolatedModules?: Readonly<Record<string, string>>;
+}
+
+export interface NetworkPlan {
+  readonly transport: HttpTransport;
+  readonly isolatedModule: string;
+  readonly allowedHosts: readonly string[];
+  /** Gateway decisions seen during the run (also written to the case audit chain). */
+  readonly events: EgressAuditEvent[];
+}
+
+export function planNetworkRun(
+  c: Case,
+  transform: Transform,
+  subjectType: string,
+  allowHosts: readonly string[],
+  deps: NetworkDeps,
+): NetworkPlan | { error: string } {
+  const spec = specById(subjectType);
+  if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
+  const kind = sendKindOf(spec.id, spec.category);
+  if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
+    return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
+  }
+  const modules = deps.isolatedModules ?? ISOLATED_MODULES;
+  const isolatedModule = modules[transform.manifest.id];
+  if (!isolatedModule || !existsSync(isolatedModule)) {
+    return { error: `--network: ${transform.manifest.id} has no sandbox module here; network runs are isolated only` };
+  }
+  const events: EgressAuditEvent[] = [];
+  const caseId = c.info().id;
+  const decision = createProductionEgress({
+    allowedHosts: allowHosts,
+    env: deps.env ?? process.env,
+    ...(deps.resolver ? { resolver: deps.resolver } : {}),
+    ...(deps.transport ? { transport: deps.transport } : {}),
+    ...(deps.limits ? { limits: deps.limits } : {}),
+    auditSink: {
+      record(e) {
+        events.push(e);
+        // A refusal before DNS may carry no host; the target is then the transform that asked.
+        c.audit(`egress.${e.kind}`, e.host || e.transform || "egress", {
+          transform: e.transform ?? null,
+          reason: e.reason ?? null,
+          transportCalls: e.transportCalls,
+          ...(e.detail ? { detail: e.detail } : {}),
+        });
+      },
+    },
+  });
+  if (!decision.enabled) return { error: `--network: ${decision.reason}` };
+  const baseRequest = {
+    caseId,
+    purposeRef: `case:${caseId}`,
+    transform: `${transform.manifest.id}@${transform.manifest.version}`,
+    sends: [kind],
+    sensitivity: "normal",
+  };
+  const transport = createEgressHttpTransport({ gateway: decision.gateway, baseRequest });
+  // The fixed path "/robots.txt" reads as a domain to the content inventory, so its request declares `domain` too;
+  // the page requests keep the subject's kind only.
+  const robotsTransport = createEgressHttpTransport({
+    gateway: decision.gateway,
+    baseRequest: { ...baseRequest, sends: [...new Set([kind, "domain"])] },
+  });
+  const guarded = PAGE_FETCH_TRANSFORMS.has(transform.manifest.id) ? robotsGuard(transport, robotsTransport, c) : transport;
+  return { transport: guarded, isolatedModule, allowedHosts: decision.allowedHosts, events };
+}
+
+async function bodyText(r: TransportResponse): Promise<string> {
+  if (typeof r.body === "string") return r.body;
+  if (r.body instanceof Uint8Array) return new TextDecoder().decode(r.body);
+  return new Response(r.body).text();
+}
+
+/**
+ * Wraps the gateway transport with the robots.txt policy. The robots.txt request is an ordinary gateway request
+ * (same host list, address checks, limits, audit). Its outcome and each refusal are written to the audit chain
+ * with the host only (no path: the path may carry the subject).
+ */
+export function robotsGuard(inner: HttpTransport, robotsTransport: HttpTransport, c: Case): HttpTransport {
+  const policies = new Map<string, Promise<RobotsPolicy>>();
+  const policyFor = (origin: string, host: string, signal: AbortSignal): Promise<RobotsPolicy> => {
+    let p = policies.get(origin);
+    if (!p) {
+      p = (async () => {
+        let policy: RobotsPolicy;
+        try {
+          const r = await robotsTransport.fetch({ method: "GET", url: `${origin}/robots.txt` }, signal);
+          policy = r.status >= 200 && r.status < 300 ? parseRobots(await bodyText(r)) : robotsFromStatus(r.status);
+        } catch (x) {
+          // A gateway refusal (address class, host list, content) or a cancellation is the answer for the page
+          // too: report it as is. Only a failure to reach the source makes robots.txt "unreachable".
+          if (x instanceof TransportError && (x.kind === "transport:cancelled" || x.kind === "transport:ssrf-blocked")) throw x;
+          policy = robotsFromStatus("unreachable");
+        }
+        c.audit("robots.policy", host, { basis: policy.basis });
+        return policy;
+      })();
+      policies.set(origin, p);
+    }
+    return p;
+  };
+  return {
+    async fetch(req, signal) {
+      const u = new URL(req.url);
+      if (u.pathname === "/robots.txt") return robotsTransport.fetch(req, signal);
+      const policy = await policyFor(u.origin, u.hostname, signal);
+      if (!policy.isAllowed(u.pathname + u.search)) {
+        c.audit("robots.disallowed", u.hostname, { basis: policy.basis });
+        throw new TransportError("transport:ssrf-blocked", `robots.txt on ${u.hostname} disallows this path (${policy.basis})`, {
+          retryable: false,
+        });
+      }
+      return inner.fetch(req, signal);
+    },
+  };
+}
