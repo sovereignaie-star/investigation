@@ -12,6 +12,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isEthereumAddress, parseJson } from "./util.ts";
 
 const API = "https://api.etherscan.io/api";
@@ -34,10 +35,11 @@ export const ethereumAddress = defineTransform<{ address: string }>(
     // The secret is injected by the egress gateway as a header (never in the URL).
     const res = await ctx.http.get(`${API}?module=account&action=balance&address=${encodeURIComponent(address)}&tag=latest`);
     const data = parseJson(res.body, "Etherscan") as { status?: string; result?: string };
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (data.status === "1" && data.result !== undefined) {
       findings.push({
         predicate: "has_balance",
+        evidence: [res.requestId],
         objectType: "ethereum_address",
         objectValue: address,
         confidence: 0.9,

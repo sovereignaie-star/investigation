@@ -12,6 +12,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isIpv4, isIpv6, parseJson } from "./util.ts";
 
 const SHODAN = "https://api.shodan.io";
@@ -37,10 +38,11 @@ export const shodanHost = defineTransform<{ ip: string }>(
       data?: Array<{ port?: number; product?: string; transport?: string }>;
     };
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     for (const port of data.ports ?? []) {
       findings.push({
         predicate: "has_open_port",
+        evidence: [res.requestId],
         objectType: "port_service",
         objectValue: String(port),
         confidence: 0.9,
@@ -51,6 +53,7 @@ export const shodanHost = defineTransform<{ ip: string }>(
       if (svc.product) {
         findings.push({
           predicate: "runs_service",
+          evidence: [res.requestId],
           objectType: "technology",
           objectValue: svc.product,
           confidence: 0.8,

@@ -9,6 +9,7 @@
  * Limits: rps 2 (one burst of 6 queries), timeoutMs 10s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { normalizeDomain, parseJson } from "./util.ts";
 
 const DOH = "https://dns.google/resolve";
@@ -37,7 +38,7 @@ export const dnsResolve = defineTransform<{ domain: string }>(
   },
   async (input, ctx) => {
     const domain = normalizeDomain(input.domain);
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
 
     for (const t of TYPES) {
       const url = `${DOH}?name=${encodeURIComponent(domain)}&type=${t.type}`;
@@ -60,6 +61,7 @@ export const dnsResolve = defineTransform<{ domain: string }>(
         if (!value) continue;
         findings.push({
           predicate: t.predicate,
+          evidence: [res.requestId],
           objectType: t.objectType,
           objectValue: value,
           confidence: 1,

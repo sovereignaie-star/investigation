@@ -32,7 +32,14 @@ function okTransform() {
     const res = await ctx.http.get(input.url);
     return {
       findings: [
-        { predicate: "has_http_response", objectType: "http_status", objectValue: String(res.status), confidence: 1, explanation: "t" },
+        {
+          predicate: "has_http_response",
+          evidence: [res.requestId],
+          objectType: "http_status",
+          objectValue: String(res.status),
+          confidence: 1,
+          explanation: "t",
+        },
       ],
     };
   });

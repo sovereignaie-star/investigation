@@ -9,6 +9,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { parseJson } from "./util.ts";
 
 const API = "https://www.wikidata.org/w/api.php";
@@ -18,7 +19,7 @@ interface WikidataEntity {
   descriptions?: Record<string, { value?: string }>;
 }
 
-type Finding = { predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string };
+type Finding = TransformFinding;
 
 function entityFinding(predicate: string, qid: string, value: string, confidence: number, explanation: string): Finding {
   return { predicate, objectType: "url", objectValue: `https://www.wikidata.org/wiki/${qid}`, confidence, explanation };
@@ -56,9 +57,9 @@ export const wikidataEntity = defineTransform<{ qid: string }>(
     const findings: Finding[] = [];
     if (!entity) return { findings };
     const label = labelFinding(qid, entity);
-    if (label) findings.push(label);
+    if (label) findings.push({ ...label, evidence: [res.requestId] });
     const description = descriptionFinding(qid, entity);
-    if (description) findings.push(description);
+    if (description) findings.push({ ...description, evidence: [res.requestId] });
     return { findings };
   },
 );

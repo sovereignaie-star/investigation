@@ -12,6 +12,7 @@
  * every response saved as evidence by the runner (T-RULE-01..05).
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import type { TransformContext } from "../transform.ts";
 
 export interface HttpScanInput {
@@ -45,9 +46,10 @@ export const httpScan = defineTransform<HttpScanInput>(
       throw new Error(`TR-010: unsupported protocol "${url.protocol}"`);
     }
     const res = await ctx.http.get(url.toString());
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [
+    const findings: TransformFinding[] = [
       {
         predicate: "has_http_response",
+        evidence: [res.requestId],
         objectType: "http_status",
         objectValue: String(res.status),
         confidence: 1,
@@ -59,6 +61,7 @@ export const httpScan = defineTransform<HttpScanInput>(
       if (value) {
         findings.push({
           predicate: "has_technology",
+          evidence: [res.requestId],
           objectType: "technology",
           objectValue: `${label}: ${value}`,
           confidence: 0.9,

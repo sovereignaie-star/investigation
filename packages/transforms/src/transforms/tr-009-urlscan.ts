@@ -11,6 +11,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { normalizeDomain, parseJson } from "./util.ts";
 
 const URLSCAN = "https://urlscan.io";
@@ -39,13 +40,14 @@ export const urlscanSearch = defineTransform<{ url: string }>(
       results?: Array<{ page?: { url?: string; domain?: string } }>;
     };
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     const seen = new Set<string>();
     for (const result of data.results ?? []) {
       if (result.page?.url && !seen.has(result.page.url)) {
         seen.add(result.page.url);
         findings.push({
           predicate: "has_scan",
+          evidence: [res.requestId],
           objectType: "url",
           objectValue: result.page.url,
           confidence: 0.8,
@@ -55,6 +57,7 @@ export const urlscanSearch = defineTransform<{ url: string }>(
       if (result.page?.domain && result.page.domain !== domain) {
         findings.push({
           predicate: "has_subdomain",
+          evidence: [res.requestId],
           objectType: "hostname",
           objectValue: result.page.domain,
           confidence: 0.8,

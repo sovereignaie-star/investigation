@@ -10,6 +10,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isEmail, isPgpFingerprint } from "./util.ts";
 
 const API = "https://keys.openpgp.org/vks/v1";
@@ -27,7 +28,7 @@ export const pgpKeys = defineTransform<{ email?: string; fingerprint?: string }>
     license: "LC-B",
   },
   async (input, ctx) => {
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (input.email !== undefined) {
       const email = input.email.trim();
       if (!isEmail(email)) throw new Error(`TR-019: invalid email "${input.email}"`);
@@ -35,6 +36,7 @@ export const pgpKeys = defineTransform<{ email?: string; fingerprint?: string }>
       if (res.status === 200 && res.body.trim()) {
         findings.push({
           predicate: "has_pgp_key",
+          evidence: [res.requestId],
           objectType: "email",
           objectValue: email,
           confidence: 0.9,
@@ -49,6 +51,7 @@ export const pgpKeys = defineTransform<{ email?: string; fingerprint?: string }>
       if (res.status === 200 && res.body.trim()) {
         findings.push({
           predicate: "has_pgp_key",
+          evidence: [res.requestId],
           objectType: "pgp_fingerprint",
           objectValue: fingerprint,
           confidence: 0.9,

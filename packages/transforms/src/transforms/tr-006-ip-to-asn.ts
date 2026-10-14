@@ -9,6 +9,7 @@
  * Limits: rps 2, timeoutMs 10s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isIpv4, parseJson } from "./util.ts";
 
 const DOH = "https://dns.google/resolve";
@@ -37,10 +38,11 @@ export const ipToAsn = defineTransform<{ ip: string }>(
 
     const txt = answer.replace(/^"|"$/g, "");
     const [asn, prefix, , ,] = txt.split("|").map((s) => s.trim());
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (asn) {
       findings.push({
         predicate: "has_asn",
+        evidence: [res.requestId],
         objectType: "asn",
         objectValue: `AS${asn}`,
         confidence: 1,
@@ -50,6 +52,7 @@ export const ipToAsn = defineTransform<{ ip: string }>(
     if (prefix) {
       findings.push({
         predicate: "in_prefix",
+        evidence: [res.requestId],
         objectType: "bgp_prefix",
         objectValue: prefix,
         confidence: 1,

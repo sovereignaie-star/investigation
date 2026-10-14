@@ -9,11 +9,12 @@
  * Limits: rps 2, timeoutMs 10s, maxBytes 1MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { normalizeDomain, parseJson } from "./util.ts";
 
 const IANA_BOOTSTRAP = "https://data.iana.org/rdap/dns.json";
 
-type Finding = { predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string };
+type Finding = TransformFinding;
 
 export const rdapDomain = defineTransform<{ domain: string }>(
   {
@@ -45,7 +46,7 @@ export const rdapDomain = defineTransform<{ domain: string }>(
       status?: string[];
       nameservers?: Array<{ ldhName?: string }>;
     };
-    return { findings: buildFindings(domain, data) };
+    return { findings: buildFindings(domain, data, res.requestId) };
   },
 );
 
@@ -58,11 +59,13 @@ function buildFindings(
     status?: string[];
     nameservers?: Array<{ ldhName?: string }>;
   },
+  requestId: number,
 ): Finding[] {
   const findings: Finding[] = [];
   if (data.registrar?.name) {
     findings.push({
       predicate: "registered_with",
+      evidence: [requestId],
       objectType: "organization",
       objectValue: data.registrar.name,
       confidence: 1,
@@ -74,6 +77,7 @@ function buildFindings(
     if (ev.eventAction === "registration") {
       findings.push({
         predicate: "registered_on",
+        evidence: [requestId],
         objectType: "date",
         objectValue: ev.eventDate,
         confidence: 1,
@@ -82,6 +86,7 @@ function buildFindings(
     } else if (ev.eventAction === "expiration") {
       findings.push({
         predicate: "expires_on",
+        evidence: [requestId],
         objectType: "date",
         objectValue: ev.eventDate,
         confidence: 1,
@@ -92,6 +97,7 @@ function buildFindings(
   for (const s of data.status ?? []) {
     findings.push({
       predicate: "has_domain_status",
+      evidence: [requestId],
       objectType: "domain_status",
       objectValue: s,
       confidence: 1,
@@ -102,6 +108,7 @@ function buildFindings(
     if (ns.ldhName) {
       findings.push({
         predicate: "has_name_server",
+        evidence: [requestId],
         objectType: "hostname",
         objectValue: ns.ldhName.replace(/\.$/, ""),
         confidence: 1,

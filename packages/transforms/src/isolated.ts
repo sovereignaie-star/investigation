@@ -39,7 +39,14 @@ import {
 } from "@ir/transform-sandbox";
 import { TransformOutputSchema, type TransformOutput } from "./output.ts";
 import { createTransformHttp, type TransformHttp } from "./transform.ts";
-import { RateLimiter, TransformRunError, recordingTransport, type RunTransformResult, type TransformEvidence } from "./runner.ts";
+import {
+  RateLimiter,
+  TransformRunError,
+  checkFindingEvidence,
+  recordingTransport,
+  type RunTransformResult,
+  type TransformEvidence,
+} from "./runner.ts";
 
 export interface RunTransformIsolatedOptions {
   /** The injected transport (the egress gateway in production). */
@@ -64,6 +71,8 @@ export interface RunTransformIsolatedOptions {
   readonly now?: () => number;
   /** Injectable sleep for deterministic rate-limit tests. */
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /** P2-036 — stamps each evidence record's fetch time (see `RunTransformOptions.fetchedAt`). */
+  readonly fetchedAt?: () => string;
 }
 
 /** Classify a transport rejection into a stable evidence kind. */
@@ -163,7 +172,7 @@ rl.on("line", (l) => {
   const p = pending.get(msg.id);
   if (!p) return;
   pending.delete(msg.id);
-  if (msg.ok) p.resolve({ status: msg.status, headers: msg.headers ?? {}, body: msg.body ?? "" });
+  if (msg.ok) p.resolve({ requestId: msg.requestId, status: msg.status, headers: msg.headers ?? {}, body: msg.body ?? "" });
   else {
     const err = new Error(msg.error?.message ?? "request failed");
     err.kind = msg.error?.kind ?? "transport";
@@ -201,6 +210,7 @@ interface IpcState {
   readonly signal: AbortSignal;
   readonly now: () => number;
   readonly sleep: (ms: number, sig: AbortSignal) => Promise<void>;
+  readonly fetchedAt: (() => string) | undefined;
   http: TransformHttp | undefined;
   manifestError: string | undefined;
   outcome: { ok: boolean; output?: unknown; error?: { kind: string; message: string } } | undefined;
@@ -216,7 +226,15 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
         const manifest = TransformManifestSchema.parse(msg.manifest);
         const limiter = new RateLimiter(manifest.limits.rps, state.now, state.sleep);
         state.http = createTransformHttp(
-          recordingTransport(state.transport, state.evidence, limiter, manifest.limits.timeoutMs, manifest.limits.maxBytes, state.signal),
+          recordingTransport(
+            state.transport,
+            state.evidence,
+            limiter,
+            manifest.limits.timeoutMs,
+            manifest.limits.maxBytes,
+            state.signal,
+            state.fetchedAt,
+          ),
           state.signal,
         );
       } catch (err) {
@@ -237,7 +255,17 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
         }
       };
       state.http[method](String(msg.url)).then(
-        (res) => answer(JSON.stringify({ id: msg.id, ok: true, status: res.status, headers: res.headers ?? {}, body: res.body }) + "\n"),
+        (res) =>
+          answer(
+            JSON.stringify({
+              id: msg.id,
+              ok: true,
+              requestId: res.requestId,
+              status: res.status,
+              headers: res.headers ?? {},
+              body: res.body,
+            }) + "\n",
+          ),
         (err) =>
           answer(
             JSON.stringify({
@@ -330,6 +358,9 @@ function settleIsolatedRun(sandboxOutcome: SandboxOutcome, state: IpcState, sand
   } catch (err) {
     throw new TransformRunError("validation", err instanceof Error ? err.message : String(err), evidence);
   }
+  // P2-036: the same evidence contract as the in-process runner. The child cannot mint request ids: the ids it
+  // cites are checked against the records the parent made for the requests it actually served.
+  checkFindingEvidence(validated, evidence);
   return { output: validated, requestCount: evidence.filter((e) => e.status !== undefined).length, evidence };
 }
 
@@ -363,6 +394,7 @@ export async function runTransformIsolated(modulePath: string, opts: RunTransfor
     signal,
     now,
     sleep,
+    fetchedAt: opts.fetchedAt,
     http: undefined,
     manifestError: undefined,
     outcome: undefined,

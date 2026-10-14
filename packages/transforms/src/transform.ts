@@ -23,8 +23,14 @@ export interface TransformHttp {
   head(url: string, headers?: Readonly<Record<string, string>>): Promise<TransformHttpResponse>;
 }
 
-/** A response as seen by a transform: status, headers, and body text. */
+/** A response as seen by a transform: status, headers, body text, and the id of the request that produced it. */
 export interface TransformHttpResponse {
+  /**
+   * P2-036 — the run-local id of this request (0, 1, 2, ... in the order the requests were issued), assigned by the
+   * runner before the request is sent and recorded on its evidence (`TransformEvidence.requestId`). A finding cites
+   * the responses it rests on by these ids (`TransformFinding.evidence`).
+   */
+  readonly requestId: number;
   readonly status: number;
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
@@ -68,7 +74,12 @@ export function createTransformHttp(transport: HttpTransport, signal?: AbortSign
       throw new CancellationError("cancelled before the response was accepted");
     }
     const body = typeof res.body === "string" ? res.body : res.body instanceof Uint8Array ? new TextDecoder().decode(res.body) : "";
+    // The runner's recording transport stamps the request id it assigned (P2-036); a transport that does not record
+    // evidence has no id to give, and a finding citing -1 is refused by the runner's evidence binding.
+    const stamped = (res as { requestId?: unknown }).requestId;
+    const requestId = typeof stamped === "number" ? stamped : -1;
     return {
+      requestId,
       status: res.status,
       headers: res.headers ?? {},
       body,

@@ -3,14 +3,15 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { canonicalKey, isoNow, systemClock, ulidFactory, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
-import { expandFindings, recordOutcome, type ExpandResult } from "@ir/ledger";
+import type { ExpandResult } from "@ir/ledger";
 import { project, projectionHash, type Projection } from "@ir/ledger/projections";
 import { formatReport, openCase, readCheckpointFile, verifyCase, type Case } from "@ir/store";
 import { createSimServer, type SimRule } from "@ir/sim";
-import { httpScan, runTransform, TransformRunError, type RunTransformResult, type Transform, type TransformEvidence } from "@ir/transforms";
+import { httpScan, runTransform, TransformRunError, type RunTransformResult, type Transform } from "@ir/transforms";
 import type { HttpTransport } from "@ir/engine";
 import { LegalBasis, type CaseInit } from "@ir/schema";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
+import { recordRunFailure, recordRunSuccess } from "./run-record.ts";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
        ir project <case-dir> [--at seq] [--expect sha256] [--passphrase-file file] [--json]
@@ -194,56 +195,6 @@ type RunValues = {
   "passphrase-file"?: string | undefined;
 };
 
-/** The mime type of a stored evidence blob, from the response's content-type (defaults to text/plain). */
-function mimeFrom(headers: Readonly<Record<string, string>> | undefined): string {
-  const ct = headers?.["content-type"] ?? headers?.["Content-Type"];
-  if (!ct) return "text/plain";
-  const mime = ct.split(";")[0].trim().toLowerCase();
-  return /^[\w.+-]+\/[\w.+-]+$/.test(mime) ? mime : "text/plain";
-}
-
-/**
- * Stores every recorded request outcome as evidence (D1: raw response, content-addressed). Returns the id of the
- * final response — the one the transform's findings are based on. A run that made no request (e.g. refused before
- * any request) stores a synthetic LOCAL record so observations always cite real evidence.
- */
-/** The ledger's transformId is a lowercase Slug; manifest ids are uppercase (TR-010 → tr-010). */
-function ledgerTransformId(transform: Transform): string {
-  return transform.manifest.id.toLowerCase();
-}
-
-function storeRunEvidence(c: Case, evidence: TransformEvidence[], transform: Transform, clock: Clock): string {
-  const ids: string[] = [];
-  for (const ev of evidence) {
-    const stored = c.addEvidence({
-      bytes: new TextEncoder().encode(ev.body ?? ""),
-      mime: mimeFrom(ev.headers),
-      request: {
-        method: ev.method === "HEAD" ? "HEAD" : "GET",
-        url: ev.url,
-        headers: {},
-        ...(ev.status !== undefined ? { status: ev.status } : {}),
-      },
-      transformId: ledgerTransformId(transform),
-      version: transform.manifest.version,
-      fetchedAt: isoNow(clock),
-    });
-    ids.push(stored.id);
-  }
-  if (ids.length === 0) {
-    const stored = c.addEvidence({
-      bytes: new TextEncoder().encode(""),
-      mime: "text/plain",
-      request: { method: "LOCAL", url: "local://ir-run", headers: {} },
-      transformId: ledgerTransformId(transform),
-      version: transform.manifest.version,
-      fetchedAt: isoNow(clock),
-    });
-    return stored.id;
-  }
-  return ids[ids.length - 1];
-}
-
 /** Reuses the subject node when it already exists (D-020: one node per canonical key), else creates it. */
 function ensureSubject(c: Case, key: string, type: string, clock: Clock): string {
   const p = project(c.entries());
@@ -388,30 +339,25 @@ async function runTransformCommand(
           input,
           now: opts.now,
           sleep: opts.sleep,
+          // P2-036: evidence fetch times come from the case clock, like every other ledger timestamp.
+          fetchedAt: () => isoNow(clock),
           ...(route.isolatedModule
             ? { requireIsolation: true, isolatedModule: route.isolatedModule, transformId: transform.manifest.id }
             : {}),
         });
       } catch (x) {
         if (x instanceof TransformRunError) {
-          const evidenceId = storeRunEvidence(c, x.evidence, transform, clock);
-          recordOutcome(subjectId, "error", { ledger: c.ledger, transformId: ledgerTransformId(transform), evidenceId, clock }, x.message);
+          // P2-036: the error observation cites the failed request's own evidence (or a run record naming the
+          // stage, message and every response received) — never the last response, never an empty success.
+          recordRunFailure(c, subjectId, transform, input, x, clock);
           err(`ir run: ${x.message}`);
           return 1;
         }
         throw x;
       }
-      const evidenceId = storeRunEvidence(c, result.evidence, transform, clock);
-      const expand = expandFindings(result.output, subjectId, {
-        ledger: c.ledger,
-        transformId: ledgerTransformId(transform),
-        evidenceId,
-        clock,
-      });
-      const negative = result.output.findings.length === 0;
-      if (negative) {
-        recordOutcome(subjectId, "negative", { ledger: c.ledger, transformId: ledgerTransformId(transform), evidenceId, clock });
-      }
+      // P2-036: every finding is bound to the evidence of the request(s) it cites (TransformFinding.evidence).
+      const recorded = recordRunSuccess(c, subjectId, transform, input, result, clock);
+      const { expand, negative } = recorded;
       const p = project(c.entries());
       const hash = projectionHash(p);
       if (v.json) {
@@ -422,7 +368,9 @@ async function runTransformCommand(
               network: route.isolatedModule ? { mode: "real", allowedHosts: route.allowedHosts, isolated: true } : { mode: "simulation" },
               subject: { type: subjectType, value: subjectValue, entityId: subjectId },
               requestCount: result.requestCount,
+              requests: recorded.requests,
               findings: result.output.findings,
+              bindings: recorded.bindings,
               expand,
               projection: { seq: p.seq, sha256: hash, counts: p.counts },
             },

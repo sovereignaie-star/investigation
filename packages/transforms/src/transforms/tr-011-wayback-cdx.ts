@@ -10,6 +10,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { parseJson } from "./util.ts";
 
 const CDX = "https://web.archive.org/cdx/search/cdx";
@@ -37,13 +38,14 @@ export const waybackCdx = defineTransform<{ url: string }>(
     const res = await ctx.http.get(url);
     const data = parseJson(res.body, "Wayback CDX") as Array<Array<string>>;
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     // CDX JSON output: first row is the header, subsequent rows are [timestamp, original, statuscode]
     for (const row of data.slice(1)) {
       const [timestamp, original] = row;
       if (!timestamp || !original) continue;
       findings.push({
         predicate: "has_archive_snapshot",
+        evidence: [res.requestId],
         objectType: "url",
         objectValue: `https://web.archive.org/web/${timestamp}/${original}`,
         confidence: 1,

@@ -25,6 +25,7 @@ export const isoOk = defineTransform(
       findings: [
         {
           predicate: "has_http_response",
+          evidence: [res.requestId],
           objectType: "http_status",
           objectValue: String(res.status),
           confidence: 1,
@@ -141,6 +142,7 @@ export const isoShortTimeout = defineTransform(
       findings: [
         {
           predicate: "has_http_response",
+          evidence: [res.requestId],
           objectType: "http_status",
           objectValue: String(res.status),
           confidence: 1,
@@ -148,5 +150,47 @@ export const isoShortTimeout = defineTransform(
         },
       ],
     };
+  },
+);
+
+/**
+ * TR-110 (P2-036): three concurrent requests; each finding cites the request it came from. Used to prove request ids
+ * cross the IPC boundary intact and are checked against the parent's records.
+ */
+export const isoMultiRequest = defineTransform(
+  { ...BASE, id: "TR-110", limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 } },
+  async (input: { url: string }, ctx) => {
+    const urls = input.url.split(" ");
+    const responses = await Promise.all(urls.map((u) => ctx.http.get(u)));
+    return {
+      findings: responses.map((res, i) => ({
+        predicate: "links_to",
+        evidence: [res.requestId],
+        objectType: "url",
+        objectValue: urls[i],
+        confidence: 1,
+        explanation: res.body,
+      })),
+    };
+  },
+);
+
+/** TR-111 (P2-036): cites a request id the parent never served (a forged binding must be refused). */
+export const isoForgedEvidence = defineTransform(
+  { ...BASE, id: "TR-111", limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 } },
+  async (input: { url: string }, ctx) => {
+    await ctx.http.get(input.url);
+    return {
+      findings: [{ predicate: "links_to", evidence: [41], objectType: "url", objectValue: input.url, confidence: 1, explanation: "x" }],
+    };
+  },
+);
+
+/** TR-112 (P2-036): swallows a failed request and reports "nothing found" (must not become an empty success). */
+export const isoSwallowedFailure = defineTransform(
+  { ...BASE, id: "TR-112", limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 } },
+  async (input: { url: string }, ctx) => {
+    await ctx.http.get(input.url).catch(() => undefined);
+    return { findings: [] };
   },
 );

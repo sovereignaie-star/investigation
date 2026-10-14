@@ -57,10 +57,23 @@ export interface RunTransformOptions {
   now?: () => number;
   /** Injectable sleep for deterministic rate-limit tests. */
   sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
+  /**
+   * P2-036 — the clock that stamps each evidence record's fetch time (ISO 8601). Defaults to the wall clock; the
+   * caller passes its case clock so evidence and ledger entries share one time source.
+   */
+  fetchedAt?: () => string;
 }
 
 /** A recorded request outcome: success (status/headers/body) or failure (error). */
 export interface TransformEvidence {
+  /**
+   * P2-036 — run-local request id (0, 1, 2, ... in issue order), assigned before the request is sent. Findings cite
+   * it (`TransformFinding.evidence`); records are appended when the request settles, so the array order is the
+   * completion order and only this id says which request a record belongs to.
+   */
+  readonly requestId: number;
+  /** When the outcome was recorded (ISO 8601, `RunTransformOptions.fetchedAt`): the fetch time of the evidence. */
+  readonly fetchedAt: string;
   readonly url: string;
   readonly method: string;
   /** Present only on a successful response. */
@@ -137,6 +150,61 @@ export class RateLimiter {
   }
 }
 
+/** A response from the recording transport: the transport's response plus the request id it was recorded under. */
+export interface RecordedTransportResponse extends TransportResponse {
+  readonly requestId: number;
+}
+
+/**
+ * P2-036 — the evidence contract between a run's findings and its recorded requests. Applied by both runners after
+ * the output passes `TransformOutputSchema`, so a run that does not satisfy it is a failure, never a success:
+ *
+ * - a request that failed (transport error, refusal, timeout, size limit, cancellation) fails the run even when the
+ *   transform caught the error and returned normally: a swallowed failure must not become an empty or partial
+ *   success (stage `request`, the failed request's own kind and message);
+ * - once the run made a request, every finding says what it rests on: `evidence` (the `requestId` of each response
+ *   it was derived from) or `derivedFrom: "input"`, never both, never neither (stage `validation`);
+ * - every cited id names a request of this run that received a response (a status); an unknown id or a request
+ *   without a response is refused (stage `validation`);
+ * - a run that made no request has no response to cite: `evidence` is refused there.
+ *
+ * Nothing is inferred: a single-request run states its one id like any other run.
+ */
+export function checkFindingEvidence(output: TransformOutput, evidence: readonly TransformEvidence[]): void {
+  const failed = evidence.find((e) => e.error !== undefined);
+  if (failed?.error) {
+    throw new TransformRunError(
+      failed.error.kind === "cancel" ? "cancel" : "request",
+      `request ${failed.requestId} failed (${failed.error.kind}) and the transform still returned an output: ${failed.error.message}`,
+      [...evidence],
+    );
+  }
+  const answered = new Set(evidence.filter((e) => e.status !== undefined).map((e) => e.requestId));
+  output.findings.forEach((f, i) => {
+    const where = `finding ${i} (${f.predicate} ${f.objectType})`;
+    if (f.evidence !== undefined && f.derivedFrom !== undefined) {
+      throw new TransformRunError("validation", `${where} cites both source responses and the input; it must cite one`, [...evidence]);
+    }
+    if (f.evidence === undefined) {
+      if (evidence.length > 0 && f.derivedFrom === undefined) {
+        throw new TransformRunError(
+          "validation",
+          `${where} cites no evidence: a run that makes requests must bind each finding to the response(s) it was derived from (evidence: [requestId]) or mark it derivedFrom "input"`,
+          [...evidence],
+        );
+      }
+      return;
+    }
+    for (const ref of f.evidence) {
+      if (!answered.has(ref)) {
+        throw new TransformRunError("validation", `${where} cites request ${ref}, which is not a recorded response of this run`, [
+          ...evidence,
+        ]);
+      }
+    }
+  });
+}
+
 /** Wrap a transport so every request is counted, limited, and recorded as evidence. */
 export function recordingTransport(
   transport: HttpTransport,
@@ -145,16 +213,21 @@ export function recordingTransport(
   timeoutMs: number,
   maxBytes: number,
   runSignal: AbortSignal,
+  stamp: () => string = () => new Date().toISOString(),
 ): HttpTransport {
+  let nextRequestId = 0;
   return {
-    async fetch(req: TransportRequest, _fetchSignal: AbortSignal): Promise<TransportResponse> {
+    async fetch(req: TransportRequest, _fetchSignal: AbortSignal): Promise<RecordedTransportResponse> {
+      // P2-036: the id is fixed when the request is issued, before any await, so concurrent requests keep the id of
+      // the call that made them whatever order they settle in.
+      const requestId = nextRequestId++;
       // The transform's declared per-request timeout, combined with the run signal.
       const timeoutSignal = AbortSignal.timeout(timeoutMs);
       const combined = AbortSignal.any([runSignal, timeoutSignal]);
       let recorded = false;
-      const record = (e: TransformEvidence) => {
+      const record = (e: Omit<TransformEvidence, "requestId" | "fetchedAt">) => {
         if (!recorded) {
-          evidence.push(e);
+          evidence.push({ requestId, fetchedAt: stamp(), ...e });
           recorded = true;
         }
       };
@@ -179,7 +252,7 @@ export function recordingTransport(
           throw new CancellationError(err.message);
         }
         record({ url: req.url, method: req.method, status: res.status, headers: res.headers ?? {}, body });
-        return res;
+        return { ...res, requestId };
       } catch (err) {
         if (err instanceof TransformRunError) throw err;
         if (err instanceof CancellationError) {
@@ -228,6 +301,7 @@ export async function runTransform<TInput>(
         requireAssurance: opts.requireAssurance,
         sandboxTimeoutMs: opts.sandboxTimeoutMs,
         now: opts.now,
+        fetchedAt: opts.fetchedAt,
         sleep: opts.sleep,
       });
     }
@@ -260,7 +334,7 @@ export async function runTransform<TInput>(
   const evidence: TransformEvidence[] = [];
   const limiter = new RateLimiter(manifest.limits.rps, now, sleep);
   const http = createTransformHttp(
-    recordingTransport(opts.transport, evidence, limiter, manifest.limits.timeoutMs, manifest.limits.maxBytes, signal),
+    recordingTransport(opts.transport, evidence, limiter, manifest.limits.timeoutMs, manifest.limits.maxBytes, signal, opts.fetchedAt),
     signal,
   );
   const ctx: TransformContext = { http, manifest, input: opts.input, signal };
@@ -282,5 +356,6 @@ export async function runTransform<TInput>(
   } catch (err) {
     throw new TransformRunError("validation", err instanceof Error ? err.message : String(err), evidence);
   }
+  checkFindingEvidence(validated, evidence);
   return { output: validated, requestCount: evidence.filter((e) => e.status !== undefined).length, evidence };
 }

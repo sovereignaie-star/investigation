@@ -9,6 +9,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { normalizeDomain, parseJson } from "./util.ts";
 
 const CRT_SH = "https://crt.sh";
@@ -36,7 +37,7 @@ export const certTransparency = defineTransform<{ domain: string }>(
       not_before?: string;
     }>;
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     const seen = new Set<string>();
     for (const cert of certs) {
       const names = String(cert.name_value ?? "").split("\n");
@@ -46,6 +47,7 @@ export const certTransparency = defineTransform<{ domain: string }>(
         seen.add(n);
         findings.push({
           predicate: "has_subdomain",
+          evidence: [res.requestId],
           objectType: "hostname",
           objectValue: n,
           confidence: 0.9,
@@ -55,6 +57,7 @@ export const certTransparency = defineTransform<{ domain: string }>(
       if (cert.serial_number) {
         findings.push({
           predicate: "has_certificate",
+          evidence: [res.requestId],
           objectType: "ssl_cert_hash",
           objectValue: cert.serial_number,
           confidence: 0.9,

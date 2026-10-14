@@ -10,6 +10,7 @@
  * Limits: rps 1, timeoutMs 15s, maxBytes 2MB.
  */
 import { defineTransform } from "../manifest.ts";
+import type { TransformFinding } from "../output.ts";
 import { isGitlabUsername, parseJson } from "./util.ts";
 
 const API = "https://gitlab.com/api/v4";
@@ -40,11 +41,12 @@ export const gitlabProfile = defineTransform<{ username: string }>(
     }>;
     const user = users[0];
 
-    const findings: Array<{ predicate: string; objectType: string; objectValue: string; confidence: number; explanation: string }> = [];
+    const findings: TransformFinding[] = [];
     if (!user) return { findings };
     if (user.name) {
       findings.push({
         predicate: "has_display_name",
+        evidence: [userRes.requestId],
         objectType: "gitlab_username",
         objectValue: user.name,
         confidence: 0.9,
@@ -54,6 +56,7 @@ export const gitlabProfile = defineTransform<{ username: string }>(
     if (user.public_email) {
       findings.push({
         predicate: "has_public_email",
+        evidence: [userRes.requestId],
         objectType: "email",
         objectValue: user.public_email,
         confidence: 0.9,
@@ -63,6 +66,7 @@ export const gitlabProfile = defineTransform<{ username: string }>(
     if (user.location) {
       findings.push({
         predicate: "has_location",
+        evidence: [userRes.requestId],
         objectType: "gitlab_username",
         objectValue: user.location,
         confidence: 0.8,
@@ -76,6 +80,7 @@ export const gitlabProfile = defineTransform<{ username: string }>(
       if (project.web_url) {
         findings.push({
           predicate: "owns_repository",
+          evidence: [projectsRes.requestId],
           objectType: "git_repo",
           objectValue: project.web_url,
           confidence: 0.9,
