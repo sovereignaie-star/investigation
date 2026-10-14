@@ -32,6 +32,49 @@ import { buildSeccompLauncher } from "./build.ts";
 
 export type Assurance = "full" | "network-only";
 
+/**
+ * Resource limits for one sandboxed run (P2-034). The wall-clock timeout alone does NOT bound memory, disk or
+ * output: a transform can allocate gigabytes or print without end well inside 30 s. These limits are enforced
+ * by the kernel (setrlimit in the launcher, inherited by every descendant), by V8 (heap cap), by bubblewrap
+ * (tmpfs size, when the installed bwrap supports `--size`) and by the parent (output cap).
+ */
+export interface ResourceLimits {
+  /** RLIMIT_AS: address space of the transform process (and each descendant). Allocations beyond it fail. */
+  readonly addressSpaceBytes: number;
+  /** V8 old-space cap (`--max-old-space-size`, MiB): JS heap exhaustion is a clean fatal error, not swap. */
+  readonly heapMb: number;
+  /** RLIMIT_FSIZE: largest file the transform may write (SIGXFSZ beyond). */
+  readonly fileSizeBytes: number;
+  /** RLIMIT_NOFILE: open descriptors. */
+  readonly openFiles: number;
+  /** RLIMIT_CPU: CPU seconds (SIGXCPU/SIGKILL beyond); independent of the wall-clock timeout. */
+  readonly cpuSeconds: number;
+  /** Size of the private /tmp tmpfs at level "full" (applied only when bwrap supports `--size`). */
+  readonly tmpfsBytes: number;
+  /** Parent-side cap on stdout + stderr bytes; the process tree is killed when exceeded. */
+  readonly maxOutputBytes: number;
+}
+
+export const DEFAULT_RESOURCE_LIMITS: ResourceLimits = Object.freeze({
+  // Node 24 reserves ~1.2 GiB of address space at start-up (code range, thread stacks); 2 GiB leaves the
+  // transform roughly 700 MiB of real allocations. Measured on Linux 6.x / Node 24.
+  addressSpaceBytes: 2 * 1024 * 1024 * 1024,
+  heapMb: 512,
+  fileSizeBytes: 64 * 1024 * 1024,
+  openFiles: 256,
+  cpuSeconds: 60,
+  tmpfsBytes: 64 * 1024 * 1024,
+  maxOutputBytes: 16 * 1024 * 1024,
+});
+
+function resolveLimits(partial: Partial<ResourceLimits> | undefined): ResourceLimits {
+  const limits = { ...DEFAULT_RESOURCE_LIMITS, ...(partial ?? {}) };
+  for (const [key, value] of Object.entries(limits)) {
+    if (!Number.isSafeInteger(value) || value <= 0) throw new TypeError(`sandbox limit ${key} must be a positive integer`);
+  }
+  return limits;
+}
+
 export interface SandboxOptions {
   /** Minimum isolation the caller accepts. Default "full". "network-only" leaves file reads unisolated. */
   readonly requireAssurance?: Assurance;
@@ -51,6 +94,8 @@ export interface SandboxOptions {
    * `SandboxAborted` outcome instead of a result. The transform cannot observe the abort before it is killed.
    */
   readonly signal?: AbortSignal;
+  /** Resource limits (merged over DEFAULT_RESOURCE_LIMITS). */
+  readonly limits?: Partial<ResourceLimits>;
 }
 
 export interface SandboxResult {
@@ -61,6 +106,10 @@ export interface SandboxResult {
   readonly stderr: string;
   readonly timedOut: boolean;
   readonly assurance: Assurance;
+  /** The parent killed the tree because stdout + stderr exceeded `limits.maxOutputBytes`. */
+  readonly outputLimitExceeded: boolean;
+  /** The limits this run was started with. */
+  readonly limits: ResourceLimits;
 }
 
 export interface SandboxRefusal {
@@ -89,6 +138,10 @@ export interface IsolationReport {
   readonly launcher: boolean;
   readonly networkOnly: boolean;
   readonly full: boolean;
+  /** The probe saw its address-space limit in /proc/self/limits AND an allocation above it was refused. */
+  readonly memoryLimit: boolean;
+  /** The installed bubblewrap can size the /tmp tmpfs (`--size`, bubblewrap >= 0.10). */
+  readonly tmpfsSize: boolean;
   readonly detail: readonly string[];
 }
 
@@ -112,16 +165,39 @@ function nodeBinary(): { path: string; prefix: string } {
 }
 
 /** argv for running `node --input-type=module --eval source` at the given assurance level. */
-function command(assurance: Assurance, launcherPath: string, source: string): { file: string; args: string[] } {
+let bwrapSizeSupport: boolean | undefined;
+
+/** bubblewrap gained `--size` (tmpfs size) in 0.10.0; older versions reject the option. */
+function bwrapSupportsSize(): boolean {
+  if (bwrapSizeSupport !== undefined) return bwrapSizeSupport;
+  const r = spawnSync("bwrap", ["--version"], { encoding: "utf8" });
+  const m = /(\d+)\.(\d+)/.exec(r.stdout ?? "");
+  bwrapSizeSupport = r.status === 0 && !!m && (Number(m[1]) > 0 || Number(m[2]) >= 10);
+  return bwrapSizeSupport;
+}
+
+function launcherLimitArgs(limits: ResourceLimits): string[] {
+  return [
+    `--rlimit=as:${limits.addressSpaceBytes}`,
+    `--rlimit=fsize:${limits.fileSizeBytes}`,
+    `--rlimit=nofile:${limits.openFiles}`,
+    `--rlimit=cpu:${limits.cpuSeconds}`,
+    "--rlimit=core:0",
+  ];
+}
+
+function command(assurance: Assurance, launcherPath: string, source: string, limits: ResourceLimits): { file: string; args: string[] } {
   const node = nodeBinary();
-  const nodeArgs = [node.path, "--input-type=module", "--eval", source];
-  if (assurance === "network-only") return { file: launcherPath, args: nodeArgs };
+  const nodeArgs = [node.path, `--max-old-space-size=${limits.heapMb}`, "--input-type=module", "--eval", source];
+  const launched = [...launcherLimitArgs(limits), ...nodeArgs];
+  if (assurance === "network-only") return { file: launcherPath, args: launched };
   const binds: string[] = [];
   for (const d of ["/usr", "/lib", "/lib64", "/bin"]) binds.push("--ro-bind-try", d, d);
   // The node prefix is bound AFTER the tmpfs: a node installed under /tmp (or any
   // path later shadowed by --tmpfs) must not be hidden by the tmpfs mount. When
   // node lives under /usr it is already covered by the ro-bind-try above.
   const nodeBind = node.prefix.startsWith("/usr/") ? [] : ["--ro-bind", node.prefix, node.prefix];
+  const tmpfsSize = bwrapSupportsSize() ? ["--size", String(limits.tmpfsBytes)] : [];
   return {
     file: "bwrap",
     args: [
@@ -138,13 +214,14 @@ function command(assurance: Assurance, launcherPath: string, source: string): { 
       "/proc",
       "--dev",
       "/dev",
+      ...tmpfsSize,
       "--tmpfs",
       "/tmp",
       ...nodeBind,
       "--chdir",
       "/tmp",
       LAUNCHER_IN_SANDBOX,
-      ...nodeArgs,
+      ...launched,
     ],
   };
 }
@@ -157,7 +234,7 @@ function runOnce(
   timeoutMs: number,
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const { file, args } = command(assurance, launcherPath, source);
+    const { file, args } = command(assurance, launcherPath, source, DEFAULT_RESOURCE_LIMITS);
     const p = spawn(file, args, { env, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
@@ -195,6 +272,10 @@ out.push("unix:" + await tryConnect({ path: process.env.IR_PROBE_UNIX }));
 try { fs.readFileSync(process.env.IR_PROBE_FILE, "utf8"); out.push("file:READ"); } catch (e) { out.push("file:ERR_" + e.code); }
 const pids = fs.readdirSync("/proc").filter((x) => /^[0-9]+$/.test(x));
 out.push("ppid-visible:" + pids.includes(String(process.env.IR_PROBE_PARENT_PID)));
+const asLine = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max address space")) || "";
+out.push("as-limit:" + (asLine.split(/\\s+/).includes(process.env.IR_PROBE_AS) ? "SET" : "MISSING"));
+// Ask for the whole address-space budget at once: the kernel refuses the mapping, so nothing is committed.
+try { Buffer.alloc(Number(process.env.IR_PROBE_AS)); out.push("mem:ALLOCATED"); } catch (e) { out.push("mem:REFUSED"); }
 console.log(out.join(" "));
 `;
 
@@ -206,12 +287,35 @@ export function probeIsolation(): Promise<IsolationReport> {
   return reportPromise;
 }
 
+/**
+ * Resource limits are part of the assurance (P2-034): a level whose probe does not show the address-space limit
+ * in /proc/self/limits, and an allocation of the whole budget refused, is not offered.
+ */
+function memoryProbeOk(out: string): boolean {
+  return /as-limit:SET/.test(out) && /mem:REFUSED/.test(out);
+}
+
+function networkOnlyProbeOk(r: { code: number | null; stdout: string }): boolean {
+  return r.code === 0 && /tcp:ERR_EACCES unix:ERR_EACCES/.test(r.stdout) && memoryProbeOk(r.stdout);
+}
+
+function fullProbeOk(r: { code: number | null; stdout: string }): boolean {
+  return (
+    r.code === 0 &&
+    /tcp:ERR_EACCES/.test(r.stdout) &&
+    /unix:ERR_(EACCES|ENOENT)/.test(r.stdout) &&
+    /file:ERR_ENOENT/.test(r.stdout) &&
+    /ppid-visible:false/.test(r.stdout) &&
+    memoryProbeOk(r.stdout)
+  );
+}
+
 async function doProbe(): Promise<IsolationReport> {
   const detail: string[] = [];
   const build = buildSeccompLauncher();
   if (!build.supported || !build.launcherPath) {
     detail.push(build.detail ?? "launcher unavailable");
-    return { launcher: false, networkOnly: false, full: false, detail };
+    return { launcher: false, networkOnly: false, full: false, memoryLimit: false, tmpfsSize: false, detail };
   }
   const dir = mkdtempSync(join(realpathSync(tmpdir()), "ir-sbx-probe-"));
   const canary = join(dir, "canary.txt");
@@ -234,9 +338,11 @@ async function doProbe(): Promise<IsolationReport> {
       IR_PROBE_UNIX: unixPath,
       IR_PROBE_FILE: canary,
       IR_PROBE_PARENT_PID: String(process.pid),
+      IR_PROBE_AS: String(DEFAULT_RESOURCE_LIMITS.addressSpaceBytes),
     };
     const netOnly = await runOnce("network-only", build.launcherPath, PROBE_SOURCE, childEnv(env, "network-only"), 10_000);
-    const netOnlyOk = netOnly.code === 0 && /tcp:ERR_EACCES unix:ERR_EACCES/.test(netOnly.stdout) && seen === 0;
+    const netOnlyOk = networkOnlyProbeOk(netOnly) && seen === 0;
+    const memoryLimit = netOnly.code === 0 && memoryProbeOk(netOnly.stdout);
     if (!netOnlyOk)
       detail.push(`network-only probe failed: code=${netOnly.code} out=${netOnly.stdout.trim()} err=${netOnly.stderr.trim()} seen=${seen}`);
     let fullOk = false;
@@ -244,16 +350,10 @@ async function doProbe(): Promise<IsolationReport> {
     if (!hasBwrap) detail.push("bubblewrap not installed");
     else if (netOnlyOk) {
       const full = await runOnce("full", build.launcherPath, PROBE_SOURCE, childEnv(env, "full"), 10_000);
-      fullOk =
-        full.code === 0 &&
-        /tcp:ERR_EACCES/.test(full.stdout) &&
-        /unix:ERR_(EACCES|ENOENT)/.test(full.stdout) &&
-        /file:ERR_ENOENT/.test(full.stdout) &&
-        /ppid-visible:false/.test(full.stdout) &&
-        seen === 0;
+      fullOk = fullProbeOk(full) && seen === 0;
       if (!fullOk) detail.push(`full probe failed: code=${full.code} out=${full.stdout.trim()} err=${full.stderr.trim()} seen=${seen}`);
     }
-    return { launcher: true, networkOnly: netOnlyOk, full: fullOk, detail };
+    return { launcher: true, networkOnly: netOnlyOk, full: fullOk, memoryLimit, tmpfsSize: hasBwrap && bwrapSupportsSize(), detail };
   } finally {
     tcp.close();
     unix.close();
@@ -290,7 +390,8 @@ export async function runAtLevel(
   if (!report.networkOnly) return { refused: true, reason: "probe_failed", detail: report.detail.join("; ") };
   if (level === "full" && !report.full) return { refused: true, reason: "isolation_unavailable", detail: report.detail.join("; ") };
   const assurance: Assurance = level;
-  const { file, args } = command(assurance, build.launcherPath, source);
+  const limits = resolveLimits(opts.limits);
+  const { file, args } = command(assurance, build.launcherPath, source, limits);
 
   return new Promise((resolve, reject) => {
     // detached: the transform gets its own process group so a timeout kills grandchildren too.
@@ -299,6 +400,8 @@ export async function runAtLevel(
     let stdout = "";
     let stderr = "";
     let timedOut = false;
+    let outputLimitExceeded = false;
+    let outputBytes = 0;
     let settled = false;
     const settle = (fn: () => void) => {
       if (settled) return;
@@ -331,8 +434,26 @@ export async function runAtLevel(
       }
       signal.addEventListener("abort", onAbort, { once: true });
     }
+    const killTree = () => {
+      try {
+        if (child.pid) process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    };
+    // Parent-side output cap: without it a transform printing in a loop grows `stdout` in THIS process until the
+    // parent itself runs out of memory, whatever limits the child has.
+    const overOutput = (b: Buffer): boolean => {
+      if (outputLimitExceeded) return true;
+      outputBytes += b.length;
+      if (outputBytes <= limits.maxOutputBytes) return false;
+      outputLimitExceeded = true;
+      killTree();
+      return true;
+    };
     let lineBuf = "";
     child.stdout?.on("data", (b: Buffer) => {
+      if (overOutput(b)) return;
       const text = b.toString();
       stdout += text;
       if (!opts.ipcHandler) return;
@@ -350,12 +471,26 @@ export async function runAtLevel(
         if (msg !== null && typeof msg === "object" && !Array.isArray(msg)) opts.ipcHandler(msg as Record<string, unknown>, stdin);
       }
     });
-    child.stderr?.on("data", (b: Buffer) => (stderr += b.toString()));
+    child.stderr?.on("data", (b: Buffer) => {
+      if (!overOutput(b)) stderr += b.toString();
+    });
     child.on("error", (e) => {
       settle(() => reject(e));
     });
     child.on("close", (code, sig) => {
-      settle(() => resolve({ ok: code === 0 && !timedOut, exitCode: code, signal: sig, stdout, stderr, timedOut, assurance }));
+      settle(() =>
+        resolve({
+          ok: code === 0 && !timedOut && !outputLimitExceeded,
+          exitCode: code,
+          signal: sig,
+          stdout,
+          stderr,
+          timedOut,
+          assurance,
+          outputLimitExceeded,
+          limits,
+        }),
+      );
     });
     if (stdin) {
       if (opts.stdinData !== undefined) {
