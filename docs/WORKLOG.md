@@ -2328,6 +2328,11 @@
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04). لا مسار D-8 في هذا التغيير (`packages/cli` ليس ضمن المسارات الـ13).
 - **التالي:** P2-021 (خط اعتماد الأدوات) أو P2-024/029 (أرصدة المفاتيح) بعد دمج P2-015؛ P2-026/030 (دفعات المحوّلات) بعد P2-021؛ P2-027 (محلّل البريد) بعد P1-006+P2-004؛ P2-028 (طبقة الوكيل) بعد P2-003.
 
+### 2026-10-14 — [P0-017] دمج تحديث Dependabot: orval 8.5.3 → 8.22.0 (PR #95)
+- **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
+- **ما تم:** إيداع Dependabot يرفع `orval` من `8.5.3` إلى `8.22.0` في `lib/api-spec/package.json`. كان فشل CI حقيقياً: `pnpm install --frozen-lockfile` يفشل لأن `pnpm-lock.yaml` لم يُحدَّث للنسخة الجديدة. أُعيد توليد القفل بـ `pnpm install --lockfile-only` (pnpm 10.34.6، Node 24.7) فأصبح يحتوي `@orval/*@8.22.0`. أُضيف إيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017] (GR-15).
+- **الأدلة:** `pnpm install --lockfile-only` ناجح؛ القفل يحتوي orval 8.22.0.
+- **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04).
 ### 2026-10-14 — [P0-017] دمج تحديث Dependabot: @vitejs/plugin-react 5.2.0 → 6.1.2 (PR #58)
 - **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
 - **ما تم:** إيداع Dependabot يرفع `@vitejs/plugin-react` من `^5.0.4` إلى `^6.1.2` في كتالوج `pnpm-workspace.yaml` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017].
@@ -2357,3 +2362,9 @@
   - `apps/sandbox/src/components/ui/sidebar.tsx`: عرض زائف حتمي بدل `Math.random()` في useMemo.
 - **الأدلة:** `pnpm run lint` نظيف (0 أخطاء)؛ `pnpm run typecheck` نظيف؛ `pnpm test` => 63 ملفاً / 872 نجاح / 12 تخطي.
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
+
+### 2026-10-14 — [P0-017] دمج #95 (orval 8.22.0) بعد تحديث القفل
+
+- **ما تم:** دُمج `main` في فرع #95 وأعيد توليد `pnpm-lock.yaml` (كان القفل لا يطابق البيان فيفشل `pnpm install --frozen-lockfile` في build/test/gates).
+- **الأدلة:** `pnpm install --frozen-lockfile` => نجاح؛ `pnpm run typecheck` => 0؛ `eslint` => 0.
+- **ملاحظة:** `pnpm -C lib/api-spec run codegen` بـ orval 8.22 يولد `z.looseObject` (zod 4) والمشروع على zod 3.25؛ الكود المولَّد المودَع لم يتغير، ويُعالج التوافق في طلب الدمج الموحد [P0-017].
