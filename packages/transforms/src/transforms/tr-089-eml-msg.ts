@@ -102,23 +102,67 @@ function boundaryOf(contentType: string): string | undefined {
   return m ? (m[1] ?? m[2]) : undefined;
 }
 
-/** Strip HTML tags and decode common entities (for the HTML body part). */
-function htmlToText(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+const HTML_ENTITIES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'" };
+
+/**
+ * Remove every `<name ...> ... </name ...>` block (case-insensitive) with a linear indexOf scan. An unterminated
+ * block drops the rest of the document, so no script/style text can leak into the extracted body (P2-033: replaces
+ * the `<script[\s\S]*?<\/script>` regexes CodeQL flagged as js/bad-tag-filter and js/polynomial-redos).
+ */
+function dropBlocks(html: string, name: string): string {
+  const lower = html.toLowerCase();
+  const open = `<${name}`;
+  const close = `</${name}`;
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const start = lower.indexOf(open, i);
+    if (start === -1) return out + html.slice(i);
+    out += html.slice(i, start) + " ";
+    const end = lower.indexOf(close, start + open.length);
+    if (end === -1) return out;
+    const gt = lower.indexOf(">", end + close.length);
+    if (gt === -1) return out;
+    i = gt + 1;
+  }
 }
+
+/** Strip HTML tags and decode common entities (for the HTML body part). Linear time; entities decode in one pass. */
+function htmlToText(html: string): string {
+  const src = dropBlocks(dropBlocks(html, "script"), "style");
+  let text = "";
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    if (ch === "<") {
+      const gt = src.indexOf(">", i + 1);
+      if (gt === -1) break; // unterminated tag: drop the remainder
+      const tag = src
+        .slice(i + 1, gt)
+        .trim()
+        .toLowerCase();
+      text += tag === "br" || tag === "br/" || tag.startsWith("br ") || tag === "/p" ? "\n" : " ";
+      i = gt + 1;
+      continue;
+    }
+    if (ch === "&") {
+      const semi = src.indexOf(";", i + 1);
+      const name = semi !== -1 && semi - i <= 6 ? src.slice(i + 1, semi).toLowerCase() : "";
+      const decoded = HTML_ENTITIES[name];
+      if (decoded !== undefined) {
+        // Single pass: the decoded character is never re-scanned, so "&amp;lt;" stays "&lt;" (js/double-escaping).
+        text += decoded;
+        i = semi + 1;
+        continue;
+      }
+    }
+    text += ch;
+    i++;
+  }
+  return text.replace(/\s+/g, " ").trim();
+}
+
+const URL_TRAILING_PUNCTUATION = new Set([".", ",", ";", ":", "!", "?", ")", "]", "}", ">", '"', "'", "،", "؛"]);
 
 /** Extract URLs from text using a linear scan (no catastrophic backtracking). */
 function extractUrls(text: string): string[] {
@@ -126,8 +170,10 @@ function extractUrls(text: string): string[] {
   const re = /\bhttps?:\/\/[^\s<>"']+/gi;
   for (const m of text.matchAll(re)) {
     let v = m[0];
-    // Trim trailing punctuation that is not part of the URL.
-    v = v.replace(/[.,;:!?)\]}>"'،؛]+$/g, "");
+    // Trim trailing punctuation that is not part of the URL (linear loop instead of a backtracking regex).
+    let end = v.length;
+    while (end > 0 && URL_TRAILING_PUNCTUATION.has(v[end - 1] ?? "")) end--;
+    v = v.slice(0, end);
     try {
       const u = new URL(v);
       if (u.protocol === "http:" || u.protocol === "https:") out.push(u.toString());

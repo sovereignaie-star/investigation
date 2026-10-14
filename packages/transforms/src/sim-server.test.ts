@@ -8,9 +8,9 @@
  * uses — and asserts the exact outcome. No real sockets, no DNS, no network.
  */
 import { describe, expect, it } from "vitest";
-import { defineTransform } from "@ir/transforms/manifest";
-import { runTransform, TransformRunError } from "@ir/transforms/runner";
-import { createSimServer } from "./server.ts";
+import { defineTransform } from "./manifest.ts";
+import { runTransform, TransformRunError } from "./runner.ts";
+import { createSimServer } from "@ir/sim/server";
 
 const MANIFEST = {
   id: "TR-010",

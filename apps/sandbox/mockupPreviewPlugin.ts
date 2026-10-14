@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "fs";
+import { glob } from "fs/promises";
 import path from "path";
-import glob from "fast-glob";
 import chokidar from "chokidar";
 import type { FSWatcher } from "chokidar";
 import type { Plugin } from "vite";
@@ -36,10 +36,15 @@ export function mockupPreviewPlugin(): Plugin {
   }
 
   async function discoverComponents(): Promise<Array<DiscoveredComponent>> {
-    const files = await glob(`${MOCKUPS_DIR}/**/*.tsx`, {
-      cwd: root,
-      ignore: ["**/_*/**", "**/_*.tsx"],
-    });
+    // Node's built-in fs.glob (stable in Node 24) replaces fast-glob, which pulled in the unpatched `braces` package
+    // (GHSA stack-exhaustion DoS, no fixed release). Paths with a segment starting with "_" are private helpers.
+    const files: string[] = [];
+    for await (const entry of glob(`${MOCKUPS_DIR}/**/*.tsx`, { cwd: root })) {
+      const posix = entry.split(path.sep).join("/");
+      if (posix.split("/").some((segment) => segment.startsWith("_"))) continue;
+      files.push(posix);
+    }
+    files.sort();
 
     return files.map((f) => ({
       globKey: "./" + f.slice("src/".length),

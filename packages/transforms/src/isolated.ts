@@ -25,7 +25,6 @@
  * in-process execution.
  */
 import { dirname } from "node:path";
-import { buildSync } from "esbuild";
 import { CancellationError } from "@ir/engine/cancel";
 import type { HttpTransport } from "@ir/engine/transport";
 import { TransformManifest as TransformManifestSchema } from "@ir/schema";
@@ -77,8 +76,16 @@ function classifyKind(err: unknown): string {
  * Bundle a transform module into a single self-contained ESM string. The wrapper
  * selects the transform by id from the module's exports. Bundling does NOT
  * execute the module — the parent never runs the transform's code.
+ *
+ * esbuild is imported lazily (P2-033): a top-level import made every bundle that
+ * reaches `@ir/transforms` (the `ir` CLI in the server image) evaluate esbuild's
+ * CommonJS entry at start-up, which crashes an ESM bundle ("Dynamic require of
+ * fs is not supported") and needs `node_modules` at runtime. Only isolated runs
+ * need the bundler, so only they load it. The specifier is a literal, so the
+ * no-direct-network analyzer still sees exactly what is loaded.
  */
-export function bundleTransform(modulePath: string, transformId: string): string {
+export async function bundleTransform(modulePath: string, transformId: string): Promise<string> {
+  const { buildSync } = await import("esbuild");
   const wrapper =
     `import * as mod from ${JSON.stringify(modulePath)};\n` +
     `const def = Object.values(mod).find((v) => v && typeof v === "object" && v.manifest && v.manifest.id === ${JSON.stringify(transformId)});\n` +
@@ -355,7 +362,7 @@ export async function runTransformIsolated(modulePath: string, opts: RunTransfor
 
   let bundle: string;
   try {
-    bundle = bundleTransform(modulePath, transformId);
+    bundle = await bundleTransform(modulePath, transformId);
   } catch (err) {
     throw new TransformRunError("refused", `could not bundle transform module: ${err instanceof Error ? err.message : String(err)}`, []);
   }

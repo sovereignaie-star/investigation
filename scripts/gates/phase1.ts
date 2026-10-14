@@ -455,13 +455,26 @@ async function cdpVisit(
  * page rendered, made at least one request, and every request went to the server's own origin.
  */
 async function browserNetwork(): Promise<{ ok: boolean; measured: Record<string, unknown> }> {
+  // P2-033: on shared CI runners headless Chrome sometimes never prints its DevTools URL (the dbus noise in the log
+  // is harmless; the start simply stalls). A start-up stall says nothing about the app, so only that failure is
+  // retried, with a fresh profile and port each time; every other outcome (including foreign requests) is final.
+  let last: { ok: boolean; measured: Record<string, unknown> } = { ok: false, measured: {} };
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    last = await browserNetworkOnce(attempt);
+    const error = last.measured["error"];
+    if (!(typeof error === "string" && error.includes("Chrome did not start"))) break;
+  }
+  return last;
+}
+
+async function browserNetworkOnce(attempt: number): Promise<{ ok: boolean; measured: Record<string, unknown> }> {
   const chrome = findChrome();
   const serverJs = path.join(ROOT, "apps", "server", "dist", "index.mjs");
   if (!chrome) return { ok: false, measured: { error: "no Chrome/Chromium found (set CHROME_PATH)" } };
   if (!existsSync(serverJs)) return { ok: false, measured: { error: `${serverJs} missing (run pnpm run build first)` } };
   const data = mkdtempSync(path.join(tmpdir(), "ir-gate-web-"));
   const profile = mkdtempSync(path.join(tmpdir(), "ir-gate-chrome-"));
-  const port = 19_000 + (process.pid % 1000);
+  const port = 19_000 + ((process.pid + attempt * 7) % 1000);
   const origin = `http://127.0.0.1:${port}`;
   const server = spawn(process.execPath, [serverJs], {
     cwd: ROOT,
@@ -502,7 +515,7 @@ async function browserNetwork(): Promise<{ ok: boolean; measured: Record<string,
   try {
     const devtools = await new Promise<string>((resolve, reject) => {
       let err = "";
-      const t = setTimeout(() => reject(new Error(`Chrome did not start: ${err.slice(0, 300)}`)), 15_000);
+      const t = setTimeout(() => reject(new Error(`Chrome did not start (attempt ${attempt}): ${err.slice(0, 300)}`)), 30_000);
       browser.stderr.on("data", (b: Buffer) => {
         err += b.toString();
         const m = /DevTools listening on (ws:\/\/\S+)/.exec(err);
@@ -526,6 +539,7 @@ async function browserNetwork(): Promise<{ ok: boolean; measured: Record<string,
       ok: loaded && rendered > 0 && requests.length > 0 && foreign.length === 0 && problems.length === 0,
       measured: {
         browser: path.basename(chrome),
+        attempt,
         loaded,
         renderedChars: rendered,
         requests: requests.length,

@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { emlMsgParse } from "./tr-089-eml-msg.ts";
+import { emlMsgParse, parseEml } from "./tr-089-eml-msg.ts";
 import { buildMsg, sha256 } from "./ole2-builder.test-helper.ts";
 import { runTransform } from "../runner.ts";
 import type { HttpTransport } from "@ir/engine/transport";
@@ -141,5 +141,33 @@ describe("TR-089 eml-msg", () => {
     expect(hashes).toContain(sha256(attachment));
     const names = f.filter((x) => x.objectType === "filename").map((x) => x.objectValue);
     expect(names).toContain("report.xlsx");
+  });
+});
+
+// P2-033: the HTML body is reduced to text by a linear scanner (CodeQL js/bad-tag-filter, js/double-escaping,
+// js/polynomial-redos on the previous regex chain).
+describe("TR-089 HTML body hardening (P2-033)", () => {
+  const html = (body: string) => `From: a@example.org\r\nSubject: h\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${body}\r\n`;
+
+  it("drops script/style blocks regardless of case or a spaced closing tag", () => {
+    const parsed = parseEml(html(`<p>keep</p><SCRIPT type="x">alert('a')</script ><style>p{color:red}</STYLE>tail https://ok.example/x).`));
+    expect(parsed.body).toBe("keep tail https://ok.example/x).");
+    expect(parsed.body).not.toContain("alert");
+    expect(parsed.body).not.toContain("color");
+    expect(parsed.urls).toEqual(["https://ok.example/x"]);
+  });
+
+  it("an unterminated script block drops the remainder instead of leaking it", () => {
+    expect(parseEml(html(`before<script>secret()`)).body).toBe("before");
+  });
+
+  it("decodes entities in one pass (no double unescaping)", () => {
+    expect(parseEml(html(`a &amp;lt;b&amp;gt; &lt;c&gt; &quot;d&quot; &#39;e&#39;`)).body).toBe(`a &lt;b&gt; <c> "d" 'e'`);
+  });
+
+  it("stays linear on adversarial input", () => {
+    const t0 = performance.now();
+    parseEml(html("<script".repeat(20_000) + "<".repeat(50_000) + "https://x.example/" + ".".repeat(50_000)));
+    expect(performance.now() - t0).toBeLessThan(2_000);
   });
 });
