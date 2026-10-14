@@ -2398,3 +2398,8 @@
 - **CI على PR #98 (الرأس `fix/P2-034-tr089-hardening`):** governance وbuild وtest وgates وgitleaks وanalyze وCodeQL وzap وdocker ناجحة؛ `security-review-advisory` فاشل لغياب موافقة `@xuuux-voox` (غير مطلوب، متوقع).
 - **دليل الفرض:** مع نجاح الفحوص المطلوبة كلها بقي `mergeStateStatus=BLOCKED`، فاشتراط مالك الشيفرة مفروض فعلاً. لم يُدمج الطلب ولم يُعطّل أي إعداد حماية.
 - **التنبيهات:** Dependabot المفتوحة = 0؛ CodeQL المفتوحة على `main` = 0 وعلى `refs/pull/98/head` = 0 (قراءة API في 2026-10-14).
+
+### 2026-10-14 — [P2-034] تثبيت T-SBX-017 على CI
+- **الملاحظة:** تشغيل CI على الرأس `f5a9973` (`test`، run 38495552745) فشل في T-SBX-017 على مستوى network-only: `outputLimitExceeded=false`. كان الاختبار يكتب بحلقة لا نهائية عبر `process.stdout.write` (غير متزامن، فيتراكم في ذاكرة الطفل ويخضع للجدولة تحت التغطية)، فنتيجته تتبع التوقيت لا الضابط.
+- **الإصلاح:** يكتب الطفل الآن 1 MiB ثابتاً بـ `fs.writeSync(1, ...)`، فيرى الأب أكثر من الحد في كل تشغيل ما لم يقتل الشجرة أولاً، ويُطبع في الفشل رمز الخروج والإشارة وطول المخرجات. لم يتغير الضابط في `enforce.ts`.
+- **الأدلة:** `vitest run packages/sandbox/src/tsbx.test.ts -t T-SBX-017` ثلاث مرات => نجاح على المستويين؛ `vitest run packages/sandbox` => 41 نجاحاً / 3 تخطٍ؛ eslint على الحزمة 0.

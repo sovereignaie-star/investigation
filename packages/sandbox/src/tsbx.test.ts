@@ -454,15 +454,19 @@ console.log(code + " " + fds.length);
 
       it("T-SBX-017: output beyond maxOutputBytes kills the tree and the parent keeps at most the cap", async (ctx) => {
         if (skip()) return ctx.skip();
-        const r = await runAtLevel(level, `const line = "x".repeat(1023) + "\\n"; for (;;) process.stdout.write(line);`, {
-          timeoutMs: 20_000,
-          limits: { maxOutputBytes: 64 * 1024 },
-        });
+        const r = await runAtLevel(
+          level,
+          // A fixed 1 MiB written synchronously (no async buffering in the child): the parent sees more than the cap
+          // on every run unless it kills the tree first, so the outcome does not depend on scheduling.
+          `import * as fs from "node:fs"; const chunk = Buffer.alloc(1024, 120); for (let i = 0; i < 1024; i++) fs.writeSync(1, chunk);`,
+          { timeoutMs: 20_000, limits: { maxOutputBytes: 64 * 1024 } },
+        );
         if (isRefusal(r) || isAborted(r)) throw new Error("unexpected refusal");
-        expect(r.outputLimitExceeded).toBe(true);
-        expect(r.timedOut).toBe(false);
-        expect(r.ok).toBe(false);
-        expect(r.stdout.length + r.stderr.length).toBeLessThanOrEqual(64 * 1024);
+        const diag = `exit=${String(r.exitCode)} signal=${String(r.signal)} stdout=${r.stdout.length} stderr=${r.stderr.slice(0, 300)}`;
+        expect(r.outputLimitExceeded, diag).toBe(true);
+        expect(r.timedOut, diag).toBe(false);
+        expect(r.ok, diag).toBe(false);
+        expect(r.stdout.length + r.stderr.length, diag).toBeLessThanOrEqual(64 * 1024);
       });
 
       it("T-SBX-018: the /tmp tmpfs is size-limited where bubblewrap supports --size", async (ctx) => {
