@@ -326,7 +326,7 @@ describe("P2-037 connectors: input checks before the sandbox or the network (eve
         network: { env: ON, resolver: x.resolver, transport: x.transport },
       });
       expect(r.code).toBe(2);
-      expect(r.err).toMatch(new RegExp(`${s.id} does not accept subject type "${wrong[0]}"`));
+      expect(r.err).toContain(`${s.id} does not accept subject type "${wrong[0]}"`);
       expect(x.calls).toEqual([]);
     });
   }
