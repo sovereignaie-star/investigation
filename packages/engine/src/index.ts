@@ -4,3 +4,7 @@ export * from "./queue.ts";
 export * from "./transport.ts";
 export * from "./run.ts";
 export * from "./egress-adapter.ts";
+export * from "./cache.ts";
+export * from "./gate.ts";
+export * from "./replay.ts";
+export * from "./expansion.ts";
