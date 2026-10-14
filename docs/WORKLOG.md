@@ -2645,3 +2645,13 @@
 - **ما لم يتم / حد معروف:** لم يُعدّ العداد قفزات إعادة التوجيه داخل البوابة (`runHops` في `packages/egress/src/egress.ts`) — تحدّها حدود البوابة نفسها (per-origin `maxHops`، `transportCalls`، والمعدل). الميزانية القابلة للإبلاغ تحصي طلبات الإدخال فقط، لا القفزات الداخلية.
 - **الأدلة:** `node_modules/.bin/vitest run packages/cli/src/investigate.test.ts` => 22/22؛ `pnpm run test` => 1462 passed / 5 skipped (live-network كما كان)؛ `pnpm run typecheck` و`pnpm run lint` و`pnpm run build` و`pnpm run governance` => ناجحة جميعها؛ `node scripts/governance/check.mjs --last` => الرأس الأخير (docs) موثق.
 - **التالي:** إدخال القمة إلى PR #109، تحديث صف P2-040 في `STATUS.md` إلى done مع الأدلة، مراجعة D-8، ثم الدمج.
+
+### 2026-10-14 — [P2-040] إغلاق: مُدمج في main@c3d4435 بعد موافقة D-8
+- **المنفّذ:** Perplexity Computer (وكيل ذكاء اصطناعي).
+- **ما تم:**
+  - PR #109: رأس `7c9785c` (docs 229a6f4 + إصلاح + اختبار انحدار + إصلاح حالة الاختبار `www.example.com`). مُدمج squash في main بـ`merge-async` (uuid `3d4d2701…`، لا `bypass_rules`) => `c3d4435`.
+  - موافقة D-8: `xuuux-voox APPROVED@7c9785cd74b9e20522199dd1d22584fdc40e72f4` (موافقة حقيقية على الرأس المُدمج، لا تجاوز).
+  - فحوص رأس `7c9785c` (11 ناجحة، من الخمسة المطلوبة كلها): `governance`، `build`، `test`، `gates`، `gitleaks`، `analyze`، `CodeQL`، `zap`، `docker`، `security-review-advisory` (مرتين في اللوحة).
+  - تحقق محلي على main@c3d4435 بعد الدمج: `pnpm run governance` => ناجحة؛ `vitest run packages/cli/src/investigate.test.ts` => 22/22.
+- **الأدلة:** `gh api …/pulls/109/reviews` => `xuuux-voox: APPROVED@7c9785c`؛ `gh api …/pulls/109/merge-async/3d4d2701…` => `status: merged`، `sha: c3d4435`؛ `git log origin/main -1` => `c3d4435`؛ `gh api …/commits/7c9785…/check-runs?per_page=100` => 11 ناجحة.
+- **ما لم يتم / ما يُترك:** قفزات إعادة التوجيه داخل البوابة (`runHops`) تحدّها حدود البوابة نفسها، لا يُحصيها هذا العدّاد (مُوثّق كحد معروف، لا فجوة). المراجعة الهندسية المستقلة (المرحلة 1) تُكمل: مسار البيانات عبر الطبقات، تحقق العزل، حتمية إعادة بناء الإسقاط.
