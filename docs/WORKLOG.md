@@ -2342,4 +2342,9 @@
 - **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
 - **ما تم:** إيداع Dependabot يرفع `react-resizable-panels` من `2.1.9` إلى `4.14.4`. كان فشل البناء حقيقياً: v4 إعادة كتابة كاملة للـ API — `PanelGroup`/`PanelResizeHandle` لم يعودا موجودين (أخطاء TS2339 في `apps/sandbox/src/components/ui/resizable.tsx`). هُجّر المكوّن إلى API الجديد: `Group` بدل `PanelGroup`، `Panel` كما هو، `Separator` بدل `PanelResizeHandle`. المكوّن غير مستورد في أي مكان (لا استخدام فعلي).
 - **الأدلة:** `pnpm run lint` نظيف؛ `pnpm run typecheck` نظيف؛ `pnpm test` => 63 ملفاً / 872 نجاح / 12 تخطي.
+
+### 2026-10-14 — [P0-017] دمج تحديث Dependabot: thread-stream 3.1.0 → 4.2.0 (PR #59)
+- **المنفّذ:** وكيل آلي (Lindy Assistant) بطلب المالك «ادمج كل طلبات الدمج غير المنتهية».
+- **ما تم:** إيداع Dependabot يرفع `thread-stream` من `^3.1.0` إلى `^4.2.0` في `apps/server/package.json` مع تحديث `pnpm-lock.yaml`. الفحوص المطلوبة (build/test/gates/gitleaks/analyze/CodeQL) خضراء على رأس الفرع؛ فحص الحوكمة فقط كان فاشلاً لغياب إيداع محكوم (GR-15)، فحُلّ بإيداع محكوم يحدّث STATUS وWORKLOG ويذكر [P0-017]. المسار `apps/server/` ضمن D-8 — يلزم مراجعة مالك الشيفرة على الرأس الجديد قبل الدمج.
+- **الأدلة:** `pnpm install --frozen-lockfile` ناجح في CI (build/test/gates خضراء).
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
