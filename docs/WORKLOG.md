@@ -2438,3 +2438,38 @@
 - **تحديث إضافي:**
   - P2-034 صار done بإيداع الدمج `e54a496`.
   - صف G-15 ورأس `T-SBX_ENFORCEMENT.md` يذكران الآن أن حدود الموارد مدمجة. وتبقى الفجوات الثلاث غير المحلولة مسجلة: لا NPROC ولا cgroup، و`/tmp` على bwrap < 0.10، و`runTransform` غير المعزول.
+
+### 2026-10-14 — [P2-003] الوصول الشبكي الحقيقي عبر `@ir/egress` في مسار إنتاج واحد مضبوط
+- **المنفّذ:** وكيل آلي (Perplexity Computer) على فرع `feat/P2-003-real-network` من `main` بعد دمج #99 (`2bb2a5a`).
+- **الحالة قبل البدء (فحص لا افتراض):** `createNodeTransport` موجود ومختبر (تثبيت العنوان وTLS باسم المضيف)، لكن لا محلل DNS حقيقي، ولا مستدعٍ إنتاجي للنقل. ترويسة `egress.ts` تقول «SIMULATION ONLY»، والخادم على `FAIL_CLOSED_TRANSPORT`، ومحرّك الخادم بلا قضية ولا مخزن أدلة، فلا يصلح لتسجيل الأدلة. المسار الذي يربط الجلب بالقضية والأدلة والادعاءات هو `ir run` في CLI.
+- **ما تم:**
+  - `packages/egress/src/system-resolver.ts`: `dns.promises.lookup` بـ `all: true`، بلا تخزين مؤقت، ورفض للجواب الفارغ أو غير IP أو الزائد عن 64.
+  - `production.ts`: `createProductionEgress`، مطفأ افتراضياً، وقائمة مضيفين إلزامية بأسماء فقط.
+  - `robots.ts`: RFC 9309.
+  - `packages/cli/src/network.ts` و`ir run --network --allow-host --purpose --legal-basis`: المحوّل معزول إلزامياً، وكل قرار للبوابة في `c.audit("egress.*")`، وحارس robots.txt لـ TR-010.
+  - بناء CLI ينسخ `seccomp-launcher.c` بجانب الحزمة، لأن العزل كان يفشل مغلقاً في الملف المبني لغياب المصدر.
+  - `.github/workflows/live-network.yml`: تشغيل يدوي فقط.
+- **قرار مسجل:** طلب robots.txt يعلن `domain` إضافة إلى نوع الموضوع، لأن الكاشف يقرأ «robots.txt» في المسار اسم نطاق (قياس: `undeclared_data (path carries undeclared data (domain))`). طلبات الصفحات تبقى بنوع الموضوع وحده.
+- **الأدلة (شُغّلت فعلاً):**
+  - `vitest run packages/cli` => 32 نجاحاً / 2 تخطٍ، والتخطي هو الاختباران الحيان.
+  - `production.test.ts` 11، و`robots.test.ts` 10.
+  - `IR_LIVE_NETWORK_TESTS=1 vitest run packages/cli/src/live-network.test.ts` => 2 نجاحاً: `https://example.com/` بالحالة 200، والحجم 577، وsha256 `25ddf2c883e0d1958ea971d279a7e4f0fd446724ee3db7db19dadabd4a62e484`.
+  - الملف المبني: `IR_ENABLE_NETWORK=1 node packages/cli/dist/ir.mjs run … --network --allow-host example.com` => خروج 0، ونتيجتان (`http_status 200` و`server: cloudflare`)، و`ir verify` => OK. وبلا المتغير => خروج 2. ومضيف خارج القائمة => `host_not_allowed`.
+  - `pnpm install --frozen-lockfile` 0، و`lint` 0، و`typecheck` 0، و`build` 0.
+  - `pnpm run test:coverage` => 95 ملفاً / 1233 نجاحاً / 4 تخطٍ. التغطية: core 99.27%، وledger 98.83%، وegress 97.02%، وengine 94.81%.
+  - Dependabot وCodeQL المفتوحة: 0.
+- **لم يتم / شروط باقية:** قياس حد المعدل التشغيلي (P2-008)، ومراجعة D-8 لهذا الطلب، ودمج #98 (حدود الموارد)، وفجوات العزل (NPROC/cgroup، و`/tmp` على bwrap < 0.10، و`runTransform` داخل العملية في مسار المحاكاة). الخادم لم يُوصل بالشبكة عمداً. التفاصيل في `docs/security/P2-003-ACCEPTANCE.md`.
+
+### 2026-10-14 — [P2-003] تحديث الفرع بعد دمج #98 (P2-034) و#101 (P2-035)
+- **حل التعارضات يدوياً:**
+  - STATUS، جدول البوابات: أُخذ صف G-13 من هذا الفرع (قياس 2026-10-14، وسقف يشمل engine وegress)، وصفّا G-14 وG-15 من `main` (P2-035).
+  - عدّاد المرحلة 2 أعيد حسابه آلياً من الصفوف => 35 مهمة، 21 done، 3 in_progress (P2-001 وP2-003 وP2-020).
+  - WORKLOG: مداخل `main` كما هي، ثم مداخل هذا الفرع.
+- **تحديث `P2-003-ACCEPTANCE.md`:**
+  - G-15 صار مستوفى مع فجوات مسجلة، لأن حدود الموارد مدمجة (`e54a496`) و`--network` يرثها عبر `runTransformIsolated`.
+  - حُذف بند «حدود P2-034 غير مدمجة».
+  - صياغة شرط حد المعدل صُححت: القياس شرط من ADR-08 البند و، وليس من معيار P2-008.
+- **الأدلة بعد التحديث (شُغّلت فعلاً):**
+  - `pnpm install --frozen-lockfile` 0، و`lint` 0، و`typecheck` 0، و`build` 0.
+  - `pnpm run test:coverage` => 96 ملفاً / 1284 نجاحاً / 5 تخطٍ.
+  - `IR_LIVE_NETWORK_TESTS=1 vitest run packages/cli/src/live-network.test.ts` => نجاح مع حدود الموارد المدمجة.

@@ -7,17 +7,21 @@
     "ir": "./dist/ir.mjs"
   },
   "scripts": {
-    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --external:esbuild --banner:js=\"#!/usr/bin/env node\"",
+    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --external:esbuild --banner:js=\"#!/usr/bin/env node\" && node -e \"require('node:fs').copyFileSync('../sandbox/src/seccomp-launcher.c','dist/seccomp-launcher.c')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@ir/core": "workspace:*",
+    "@ir/egress": "workspace:*",
+    "@ir/engine": "workspace:*",
     "@ir/ledger": "workspace:*",
+    "@ir/schema": "workspace:*",
     "@ir/sim": "workspace:*",
     "@ir/store": "workspace:*",
     "@ir/transforms": "workspace:*"
   },
   "devDependencies": {
+    "@ir/transform-sandbox": "workspace:*",
     "@types/node": "catalog:",
     "esbuild": "0.28.2"
   }

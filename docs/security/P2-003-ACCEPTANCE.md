@@ -1,0 +1,52 @@
+# شروط قبول P2-003 والوصول الشبكي الحقيقي
+
+> **آخر تحديث:** 2026-10-14، فرع `feat/P2-003-real-network`. هذه الوثيقة تحصر شروط قبول P2-003 وT-SEC-SSRF وG-13 وG-14 وG-15 كما هي فعلاً، وتربط كل شرط بدليل يمكن إعادة تشغيله. **«مستوفى» هنا يعني أن الدليل موجود ويعيد إنتاج النتيجة، لا أن أحداً قرّر التفعيل.**
+
+## قرار الانتقال (موثق صراحة)
+
+- **ما يُفعَّل:** مسار واحد للإنتاج: `ir run <case> TR-010 <type> <value> --network --allow-host <host>...` في `packages/cli`.
+- **شروط التشغيل:** يعمل فقط حين تجتمع كلها:
+  - `IR_ENABLE_NETWORK=1` في البيئة، و`IR_OFFLINE=1` يلغيه دائماً.
+  - قائمة مضيفين صريحة غير فارغة، تُطبق على الطلب وعلى كل قفزة.
+  - قضية بغرض مذكور وأساس قانوني حقيقي، لا `training_simulation`.
+  - موضوع من البيانات العامة فقط.
+  - محوّل معزول في T-SBX.
+- **ما لا يُفعَّل:**
+  - لا تفعيل عام.
+  - الخادم يبقى على `FAIL_CLOSED_TRANSPORT`، لأن محرّكه بلا قضية ولا مخزن أدلة.
+  - مسار `/api/vault/:name/test` يبقى بنقل محقون.
+  - لا محوّلات غير موثوقة: المسموح TR-010 وحده، وهو محوّل من الطرف الأول.
+- **سبب الحصر:** فجوات العزل في القسم الأخير لم تُحل بعد. توسيع التشغيل إلى شيفرات غير موثوقة ممنوع حتى تُحل.
+
+## الشروط والأدلة
+
+| # | الشرط | المصدر | الحالة | الدليل القابل لإعادة التشغيل |
+|---|---|---|---|---|
+| 1 | حالات T-SEC-SSRF-001..048 «مُثبتة» بشروط 8.3.1 | ROADMAP 8.3.1، صف P2-003 | مستوفى | `docs/adr/reference/T-SEC-SSRF-COVERAGE.md`: مُثبت 48، جزئي 0. `pnpm exec vitest run packages/egress` (فحص التطابق `ssrf-coverage-doc.test.ts` + الطفرات `ssrf-mutation.test.ts`) |
+| 2 | محتوى كل قفزة إعادة توجيه يُفحص قبل إرسالها، وترويسات المحوّل لا تصل لمضيف آخر | ADR-08 القسم 4 (P2-032) | مستوفى، مدمج | PR #99، إيداع الدمج `2bb2a5a`. الحالات T-SEC-SSRF-043 الجديدة و9 طفرات |
+| 3 | DNS حقيقي يعيد **كل** العناوين، والبوابة تصنفها كلها قبل أي اتصال | هذا التوجيه، ADR-08 | مستوفى (هذا الفرع) | `packages/egress/src/system-resolver.ts`. `production.test.ts`: عنوان خاص بين عناوين عامة يرفض الطلب كله و`transportCalls=0`، وفشل البحث يعطي `address_class`، و`localhost` بـ `node:dns` الحقيقي يُرفض قبل الاتصال |
+| 4 | الاتصال بالعنوان المثبت فقط، والتحقق من TLS باسم المضيف | ADR-08 | مستوفى (قائم) | `node-transport.test.ts`: `connects to the pinned IP for a name that does NOT resolve via DNS (SNI/hostname verified)` و`rejects a certificate that does NOT match the URL hostname` |
+| 5 | `@ir/egress` بوابة الشبكة الوحيدة، بلا fetch مباشر | ADR-08، G-11 | مستوفى | `scripts/checks/no-direct-network.test.ts` (ضمن `pnpm test`). `node:dns` لا يُستورد إلا في `packages/egress/src` |
+| 6 | النقل الحقيقي موصول بمسار إنتاج واحد، ومطفأ افتراضياً، وغير عام | هذا التوجيه | مستوفى (هذا الفرع) | `packages/egress/src/production.ts`. `production.test.ts` (مطفأ بلا `IR_ENABLE_NETWORK=1`، و`IR_OFFLINE` يغلب، والقائمة الفارغة والعناوين الحرفية و`*` والمنافذ مرفوضة). `packages/cli/src/network.test.ts` (8 حالات رفض قبل أي إرسال) |
+| 7 | اختبار من البداية إلى النهاية، حتمي في CI | هذا التوجيه | مستوفى (هذا الفرع) | `network.test.ts`: TR-010 معزول، ثم IPC، ثم البوابة، ثم القضية. يثبت دليلاً مخزناً (URL والحالة و`fetchedAt` وsha256)، وادعاءات مربوطة بالدليل عبر الملاحظات، وقرار البوابة في سلسلة التدقيق. ويثبت الرفض لكل من: العنوان الخاص، والمضيف خارج القائمة، والتحويل خارج القائمة، والتحويل بمحتوى غير معلن، والبيانات غير المعلنة، والحجم، والمهلة، وrobots.txt |
+| 8 | اختبار اتصال حقيقي منفصل ومضبوط | هذا التوجيه | مستوفى محلياً، ومتاح يدوياً في CI | `IR_LIVE_NETWORK_TESTS=1 pnpm exec vitest run packages/cli/src/live-network.test.ts`. تشغيل 2026-10-14 على هذا المضيف: `https://example.com/` بالحالة 200 والحجم 577 وsha256 `25ddf2c8…`، ومضيف خارج القائمة يُرفض. سير العمل `.github/workflows/live-network.yml` يُشغَّل يدوياً فقط، ولم يُشغَّل على GitHub بعد |
+| 9 | احترام robots.txt وUser-Agent صريح في محوّلات جلب الصفحات | ADR-08 القسم 6، البند ج | مستوفى لـ TR-010 (هذا الفرع) | `packages/egress/src/robots.ts` (RFC 9309) و`robots.test.ts`. والحارس في `packages/cli/src/network.ts`: 4xx يسمح، و5xx أو تعذّر الوصول يمنع كلياً، والصفحة الممنوعة لا تُطلب. وUser-Agent `InvestigationRoom-egress/1` (`node-transport.ts`). TR-042 غير موجود بعد |
+| 10 | الإلغاء | ADR-08 | مستوفى (قائم) | `packages/egress/src/ssrf-matrix.test.ts` › `cancellation during DNS settles as cancelled without reaching the transport`، و`packages/engine/src/egress-adapter.test.ts` › `cancellation reaches the gateway path and fails the run with kind=cancel`، و`packages/engine/src/cancel.test.ts`. و`transport:cancelled` يمر من حارس robots كما هو، دون تحويله إلى «unreachable». **لا يكشف CLI إشارة إلغاء للمشغّل** |
+| 11 | G-13: تغطية النواة ≥ 85% | ROADMAP 8.5 | مستوفى | `pnpm run test:coverage` في 2026-10-14 على هذا الفرع: core 99.27%، ledger 98.83%، egress 97.02%، engine 94.81% أسطراً، والملفان الجديدان 100%. السقف (`vitest.config.ts`، 85% أسطراً لكل حزمة) يشمل core وledger وengine وegress، ويُفرض في الفحص المطلوب `test`. هذا يستوفي شرط «دخول egress سقف G-13» (ADR-08، قرار المالك 4) |
+| 12 | G-14: SSRF suite خضراء | ROADMAP G-14 | الأدلة مكتملة، والاعتماد بقرار المراجع | البندان 1 و2. الفحص المطلوب `test` أخضر على `main` بعد `2bb2a5a` |
+| 13 | G-15: T-SBX خضراء | ROADMAP G-15 | مستوفى، مع فجوات مسجلة | T-SBX خضراء على CI بمستوى full. حدود الموارد مدمجة (P2-034، PR #98، `e54a496`)، و`--network` يرث حدودها الافتراضية عبر `runTransformIsolated`. فجوات القسم الأخير (1–3) قائمة |
+| 14 | قيمة حد المعدل التشغيلية مربوطة بالقياس | ADR-08 البند و | **غير مستوفى** | القيمة المؤقتة المحافظة مطبقة (1 طلب/ثانية لكل مضيف، ودفعة 4). القياس لم يُنفذ، وليس من معيار قبول P2-008 (done، `fb48a2a`). يبقى التشغيل محصوراً بقائمة مضيفين صريحة حتى يُنفذ |
+| 15 | تنبيهات Dependabot وCodeQL | هذا التوجيه | مستوفى في 2026-10-14 | قراءة API: Dependabot المفتوحة 0، وCodeQL المفتوحة 0 |
+| 16 | مراجعات D-8 مستقلة | D-8، CODEOWNERS | **بانتظار** | #99 و#98 مدمجان بموافقة D-8 على رأسيهما النهائيين. أما طلب سحب هذا الفرع (#100) يمس `packages/egress/` و`.github/workflows/`، فلا يُدمج بلا موافقة `@xuuux-voox` |
+| 17 | الأشخاص الطبيعيون | E-02، P2-013 | محظور في الشبكة | `--network` يرفض أي موضوع حساسيته ليست `normal`، والبوابة لا تقبل في النمط العام إلا domain وip وasn وhash وurl وcertificate |
+
+## فجوات العزل غير المحلولة (تمنع توسيع تشغيل شيفرة غير موثوقة)
+
+1. **لا حد لعدد العمليات ولا cgroup:**
+   - لا `RLIMIT_NPROC` ولا cgroup ذاكرة أو PIDs.
+   - كل عملية داخل العزل محدودة بـ RLIMIT_AS، لكن عددها غير محدود ضمن المهلة.
+2. **`/tmp` غير محدود الحجم مع bubblewrap أقدم من 0.10** (`--size` غير مدعوم فيها). ومشغّلات Ubuntu 24.04 في CI تعمل بـ 0.9.
+3. **`runTransform` غير المعزول بلا حدود موارد:**
+   - المسار داخل العملية يشغّل المحوّل في عملية الأب.
+   - `--network` لا يستعمله أبداً، فهو يشترط `requireIsolation`.
+   - لكن مسار المحاكاة الافتراضي (`ir run` بلا `--network`) ما زال داخل العملية.

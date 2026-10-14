@@ -672,9 +672,18 @@ importers:
       '@ir/core':
         specifier: workspace:*
         version: link:../core
+      '@ir/egress':
+        specifier: workspace:*
+        version: link:../egress
+      '@ir/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@ir/ledger':
         specifier: workspace:*
         version: link:../ledger
+      '@ir/schema':
+        specifier: workspace:*
+        version: link:../schema
       '@ir/sim':
         specifier: workspace:*
         version: link:../sim
@@ -685,6 +694,9 @@ importers:
         specifier: workspace:*
         version: link:../transforms
     devDependencies:
+      '@ir/transform-sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2

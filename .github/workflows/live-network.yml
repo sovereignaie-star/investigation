@@ -1,0 +1,33 @@
+name: live-network
+# P2-003: LIVE acceptance test of `ir run --network` (real DNS, pinned TLS, isolated transform, real case).
+# Manual dispatch only: it is never part of the required checks, never runs on pull requests, and needs no secret.
+# The deterministic version of the same path runs in `ci` (packages/cli/src/network.test.ts).
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: live-network
+  cancel-in-progress: false
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install bubblewrap (the transform must run at the "full" isolation level)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --unshare-all --ro-bind / / true && echo "bwrap: user namespaces available" || echo "bwrap: unavailable here"
+      - name: Live run against https://example.com/ through @ir/egress
+        env:
+          IR_LIVE_NETWORK_TESTS: "1"
+        run: pnpm exec vitest run packages/cli/src/live-network.test.ts
