@@ -103,6 +103,8 @@ export function networkRunFor(
   subjectType: string,
   deps: NetworkDeps,
   byteBudget?: ByteBudget,
+  /** P2-040: applied to EVERY transport the plan hands out (the page transport AND the robots transport), so the investigation's request counter sees robots.txt fetches and redirect hops too. */
+  wrapTransport?: (t: HttpTransport) => HttpTransport,
 ): NetworkPlan | { error: string } {
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
@@ -135,7 +137,11 @@ export function networkRunFor(
     gateway: gw.gateway,
     baseRequest: { ...baseRequest, staticPaths: [...(baseRequest.staticPaths ?? []), "*/robots.txt"] },
   });
-  const guarded = entry.pageFetch ? robotsGuard(transport, robotsTransport, c) : transport;
+  // P2-040: the counter wraps both transports (page + robots) BEFORE robotsGuard combines them, so every request
+  // that reaches the gateway — a page, a redirect hop, or a robots.txt fetch — is counted once, and none is sent
+  // once the budget is exhausted. Without this, a robots.txt fetch was invisible to maxRequests.
+  const wrap = wrapTransport ?? ((t: HttpTransport) => t);
+  const guarded = entry.pageFetch ? robotsGuard(wrap(transport), wrap(robotsTransport), c) : wrap(transport);
   return { transport: guarded, isolatedModule, allowedHosts: gw.allowedHosts, events: gw.events };
 }
 
