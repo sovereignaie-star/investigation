@@ -2362,3 +2362,9 @@
   - `apps/sandbox/src/components/ui/sidebar.tsx`: عرض زائف حتمي بدل `Math.random()` في useMemo.
 - **الأدلة:** `pnpm run lint` نظيف (0 أخطاء)؛ `pnpm run typecheck` نظيف؛ `pnpm test` => 63 ملفاً / 872 نجاح / 12 تخطي.
 - **الامتثال الحوكمي:** STATUS.md محدّث وWORKLOG مُلحق في نفس الإيداع (GR-01)، معرّف المهمة في الرسالة (GR-03/GR-04)، إيداع بشري واحد في الـ PR يذكر [P0-017] (GR-15).
+
+### 2026-10-14 — [P0-017] دمج #95 (orval 8.22.0) بعد تحديث القفل
+
+- **ما تم:** دُمج `main` في فرع #95 وأعيد توليد `pnpm-lock.yaml` (كان القفل لا يطابق البيان فيفشل `pnpm install --frozen-lockfile` في build/test/gates).
+- **الأدلة:** `pnpm install --frozen-lockfile` => نجاح؛ `pnpm run typecheck` => 0؛ `eslint` => 0.
+- **ملاحظة:** `pnpm -C lib/api-spec run codegen` بـ orval 8.22 يولد `z.looseObject` (zod 4) والمشروع على zod 3.25؛ الكود المولَّد المودَع لم يتغير، ويُعالج التوافق في طلب الدمج الموحد [P0-017].
