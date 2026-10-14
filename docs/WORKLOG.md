@@ -2393,3 +2393,8 @@
 - **حماية `main` (مقيسة لا مفترضة):** `require_code_owner_reviews=true`، `required_approving_review_count=0`، `dismiss_stale_reviews=true`، `require_last_push_approval=false`، `enforce_admins=true`، فحوص مطلوبة ستة، تاريخ خطي، لا دفع قسري/حذف، بلا rulesets. صُحح التناقض: REVIEW_SCOPE كان يقول «غير مفروض بعد (2026-10-12)» وSTATUS يقول «محمي» بلا تفصيل؛ صار الاثنان يذكران الإعداد الفعلي واستثناء 2026-10-14.
 - **ما لم يتم / مخاطر قائمة:** لا cgroup ولا RLIMIT_NPROC (عدد العمليات غير محدود ضمن المهلة؛ كل عملية محدودة بـ 2 GiB عنوان)؛ tmpfs غير محدود الحجم على bwrap < 0.10؛ `runTransform` داخل العملية بلا حدود موارد (TR-089 غير موصول بالخادم/CLI حالياً، وأي توصيل يجب أن يكون معزولاً).
 - **التالي:** مراجعة D-8 من `@xuuux-voox` على الرأس النهائي؛ ثم P2-032 على فرع مستقل.
+
+### 2026-10-14 — [P2-034] نتيجة CI ودليل فرض مراجعة مالك الشيفرة
+- **CI على PR #98 (الرأس `fix/P2-034-tr089-hardening`):** governance وbuild وtest وgates وgitleaks وanalyze وCodeQL وzap وdocker ناجحة؛ `security-review-advisory` فاشل لغياب موافقة `@xuuux-voox` (غير مطلوب، متوقع).
+- **دليل الفرض:** مع نجاح الفحوص المطلوبة كلها بقي `mergeStateStatus=BLOCKED`، فاشتراط مالك الشيفرة مفروض فعلاً. لم يُدمج الطلب ولم يُعطّل أي إعداد حماية.
+- **التنبيهات:** Dependabot المفتوحة = 0؛ CodeQL المفتوحة على `main` = 0 وعلى `refs/pull/98/head` = 0 (قراءة API في 2026-10-14).
