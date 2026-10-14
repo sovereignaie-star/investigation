@@ -7,7 +7,7 @@
     "ir": "./dist/ir.mjs"
   },
   "scripts": {
-    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --banner:js=\"#!/usr/bin/env node\"",
+    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --external:esbuild --banner:js=\"#!/usr/bin/env node\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

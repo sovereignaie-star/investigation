@@ -1,13 +1,15 @@
 /**
  * P2-023 — expansion strategies (T-EXP): BFS / DFS / priority ordering, depth /
  * node / time / cost limits, custom stop rules, dedup, and deterministic
- * integration with `@ir/sim` (P2-008). No external connections.
+ * integration with `@ir/sim` (P2-008). No external connections. Lives in
+ * `@ir/transforms` (P2-033) so `@ir/engine` keeps no test-only edge back to
+ * its dependants (that edge made the workspace graph cyclic).
  */
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim";
-import { defineTransform } from "@ir/transforms/manifest";
-import { runTransform } from "@ir/transforms/runner";
-import { ExpansionEngine, defaultExpand, defaultScore, type ExpansionNode, type Finding } from "./expansion.ts";
+import { defineTransform } from "./manifest.ts";
+import { runTransform } from "./runner.ts";
+import { ExpansionEngine, defaultExpand, defaultScore, type ExpansionNode, type Finding } from "@ir/engine/expansion";
 
 const MANIFEST = {
   id: "TR-999",

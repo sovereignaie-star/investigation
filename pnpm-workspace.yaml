@@ -39,6 +39,8 @@ onlyBuiltDependencies:
 overrides:
   # P0-022: one yaml version so vite is not instantiated twice (TS2769 in mockup-sandbox vite.config.ts).
   yaml: ^2.9.1
+  # P2-033: js-yaml < 4.3.2 has three CPU-exhaustion advisories (merge keys, !!omap); orval 8.22 pins 4.2.0.
+  "js-yaml@<4.3.2": ^4.3.2
   "@esbuild-kit/esm-loader": npm:tsx@^4.21.0
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64": "-"

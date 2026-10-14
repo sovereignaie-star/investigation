@@ -37,6 +37,14 @@ pnpm start                       # خدمة واحدة: الواجهة والو�
 
 للتطوير: `pnpm --filter @ir/server run dev` (المنفذ 8080) و`pnpm --filter @ir/web run dev` (المنفذ 5173، ويحوّل `/api` إلى الخادم).
 
+فحوص إضافية قبل فتح طلب دمج:
+
+```bash
+pnpm run governance                  # حارس الوثائق (STATUS/WORKLOG/ROADMAP)
+pnpm run gates:phase1                # بوابات القبول G-08..G-13 (تحتاج `pnpm run build` وChrome/Chromium أو CHROME_PATH)
+pnpm -C lib/api-spec run codegen     # يعيد توليد lib/api-zod وlib/api-client-react من openapi.yaml؛ تشغيله مرتين لا يغير شيئاً
+```
+
 ## النشر
 
 خدمة واحدة: الخادم يقدّم الواجهة المبنية والواجهة البرمجية معاً، ويقرأ `PORT` من المنصة.

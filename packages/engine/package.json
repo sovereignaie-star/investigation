@@ -23,8 +23,6 @@
     "@ir/egress": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "@ir/sim": "workspace:*",
-    "@ir/transforms": "workspace:*"
+    "@types/node": "catalog:"
   }
 }
