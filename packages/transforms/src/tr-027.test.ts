@@ -31,6 +31,16 @@ ${body}
 
 const MATCH = /^https:\/\/main\.un\.org\/securitycouncil\/sites\/un\.org\/files\/sc-sanctions-list\/xml\/consolidated\.xml$/;
 
+/** D-018: every emitted object value must satisfy its catalog type's own pattern. */
+import { specById, matchesSpec } from "@ir/core/identifiers";
+
+function expectCatalogValid(type: string, value: string): void {
+  const spec = specById(type);
+  if (!spec) throw new Error(`catalog type ${type} exists`);
+  const m = matchesSpec(spec, value);
+  expect(m.pattern, `${type} pattern accepts "${value}"`).toBe(true);
+}
+
 describe("TR-027 un sc consolidated", () => {
   it("an individual name in the file yields an un_reference finding with the party's reference number", async () => {
     const file = unFile([{ ref: "LYi.001", type: "INDIVIDUAL", names: ["عبد القادر محمد البغدادي"] }]);
@@ -41,6 +51,7 @@ describe("TR-027 un sc consolidated", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({ predicate: "is_on_un_sc_list", objectType: "un_reference", objectValue: "LYi.001" });
     expect(findings[0].evidence).toHaveLength(1);
+    expectCatalogValid("un_reference", findings[0].objectValue);
   });
 
   it("an entity name (the whole name lives in FIRST_NAME) yields the party's reference number", async () => {
@@ -49,6 +60,7 @@ describe("TR-027 un sc consolidated", () => {
     const result = await runTransform(unScConsolidated, { transport: sim.transport, input: { name: "المؤسسة الليبية للاستثمار" } });
     expect(result.output.findings).toHaveLength(1);
     expect(result.output.findings[0].objectValue).toBe("LYe.001");
+    expectCatalogValid("un_reference", result.output.findings[0].objectValue);
   });
 
   it("an alias match yields the party's reference number", async () => {

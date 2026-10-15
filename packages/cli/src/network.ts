@@ -41,6 +41,15 @@ import type { RegisteredTransform } from "./registry.ts";
 
 const PUBLIC_SEND_KINDS = new Set(["domain", "ip", "asn", "hash", "url", "certificate"]);
 
+/**
+ * E-02 (P2-013): the natural-person subject types the CLI may run when the investigation's purpose
+ * confirmation is present. person_name is a screening subject (a name the operator typed); the
+ * transforms that take it download fixed files and match locally, so the name never appears in a
+ * request URL, header or body. The egress inventory still refuses any natural-person identifier
+ * found on the wire (?passport=AB123456), so this set does not weaken outbound inspection.
+ */
+const PURPOSE_CONFIRMED_SUBJECTS = new Set(["person_name"]);
+
 /** Injected only by tests: the real resolver/transport are replaced, every policy and opt-in stays real. */
 export interface NetworkDeps {
   readonly env?: Readonly<Record<string, string | undefined>>;
@@ -116,8 +125,14 @@ export function networkRunFor(
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
   const kind = sendKindOf(spec.id, spec.category);
-  if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
-    return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
+  // E-02 (P2-013): a natural-person subject (person_name, natural_person_gate) may run only when the
+  // investigation's purpose confirmation is present in the run plan; the engine's gate refuses without one,
+  // so the subject never reaches this function without it. The subject IS the screening input (the name is
+  // what the operator typed), it never appears in a request URL/header/body — the transforms download fixed
+  // files and match locally — and the inventory still refuses any natural-person identifier found on the wire.
+  const personGateOk = spec.sensitivity === "natural_person_gate" && PURPOSE_CONFIRMED_SUBJECTS.has(spec.id);
+  if (spec.sensitivity === "minor" || (!PUBLIC_SEND_KINDS.has(kind) && !personGateOk)) {
+    return { error: `--network: subject type "${subjectType}" is not data the gateway may send (P2-013)` };
   }
   const transform = entry.transform;
   // P2-037: the sandbox module comes from the registry entry (one explicit path per registered transform).
@@ -161,12 +176,23 @@ export function planNetworkRun(
   allowHosts: readonly string[],
   deps: NetworkDeps,
 ): NetworkPlan | { error: string } {
+  // E-02 (P2-013): a natural-person subject runs only under a case whose stated purpose is the
+  // confirmation (E-01 requires a >= 10-char purpose at case creation; an empty purpose means the
+  // case predates that record and cannot gate a person run).
+  const spec0 = specById(subjectType);
+  if (spec0?.sensitivity === "natural_person_gate" && c.info().purpose.trim() === "") {
+    return { error: `--network: subject type "${subjectType}" is a natural-person subject; this case has no stated purpose (E-01/E-02)` };
+  }
   // The subject and module checks come before the gateway is opened (no audit noise for a refused plan).
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
   const kind = sendKindOf(spec.id, spec.category);
-  if (spec.sensitivity !== "normal" || !PUBLIC_SEND_KINDS.has(kind)) {
-    return { error: `--network: subject type "${subjectType}" is not public data the gateway may send (P2-013 pending)` };
+  // E-02 (P2-013): the same natural-person-subject rule as networkRunFor (person_name is a screening
+  // subject; the transforms that take it download fixed files and match locally, so the name never
+  // appears on the wire).
+  const personGateOk = spec.sensitivity === "natural_person_gate" && PURPOSE_CONFIRMED_SUBJECTS.has(spec.id);
+  if (spec.sensitivity === "minor" || (!PUBLIC_SEND_KINDS.has(kind) && !personGateOk)) {
+    return { error: `--network: subject type "${subjectType}" is not data the gateway may send (P2-013)` };
   }
   const isolatedModule = deps.isolatedModules ? deps.isolatedModules[entry.transform.manifest.id] : entry.module;
   if (!isolatedModule || !existsSync(isolatedModule)) {

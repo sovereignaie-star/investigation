@@ -56,11 +56,49 @@ export function extract(text: string, opts: ExtractOptions = {}): Extracted[] {
   const minSpecificity = opts.minSpecificity ?? 0.5;
   const toks = tokens(text);
   const out: Extracted[] = [];
-  toks.forEach((t, i) => {
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
     const context = [...toks.slice(Math.max(0, i - before), i), ...toks.slice(i + 1, i + 1 + after)].map((x) => x.value).join(" ");
     const candidates = detect(t.value, { context });
     const best = candidates[0];
     if (best && reportable(best, minSpecificity)) out.push({ ...t, best, candidates });
-  });
+    // P2-011: a person name is multi-word by pattern (person_name), so a token alone never matches it.
+    // Check adjacent-token spans for the multi-word type; the longest match wins, removes the
+    // single-token hits it covers and consumes its tokens.
+    const span = personNameSpan(toks, i, before, after, minSpecificity);
+    if (span === undefined) continue;
+    const covered = out.filter((h) => h.start >= span.hit.start && h.end <= span.hit.end);
+    for (const c of covered) out.splice(out.indexOf(c), 1);
+    out.push(span.hit);
+    i += span.consumed; // the remaining tokens of the span are consumed
+  }
+  out.sort((a, b) => a.start - b.start);
   return out;
+}
+
+/**
+ * P2-011: the longest adjacent-token span (3 then 2 tokens) that reads as a person_name, or undefined.
+ * The hit covers the whole span (a person name "Bob Smith" suppresses the single-token "Bob"/"Smith"
+ * readings it subsumes, so the inventory judges the whole name, not its parts).
+ */
+function personNameSpan(
+  toks: Token[],
+  i: number,
+  before: number,
+  after: number,
+  minSpecificity: number,
+): { hit: Extracted; consumed: number } | undefined {
+  for (const span of [3, 2]) {
+    if (i + span > toks.length) continue;
+    const words = toks.slice(i, i + span);
+    const value = words.map((w) => w.value).join(" ");
+    const context = [...toks.slice(Math.max(0, i - before), i), ...toks.slice(i + span, i + span + after)].map((x) => x.value).join(" ");
+    const spanBest = detect(value, { context })[0];
+    if (spanBest?.type !== "person_name" || !reportable(spanBest, minSpecificity)) continue;
+    return {
+      hit: { start: words[0].start, end: words[words.length - 1].end, value, best: spanBest, candidates: detect(value, { context }) },
+      consumed: span - 1,
+    };
+  }
+  return undefined;
 }

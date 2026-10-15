@@ -291,6 +291,13 @@ const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
 /** Data kinds that are allowed in `sends` for the public mode before P2-013. */
 const PUBLIC_ALLOWED_SENDS = new Set(["domain", "ip", "asn", "hash", "url", "certificate"]);
 
+/**
+ * E-02 (P2-013): the extra `sends` kinds a natural-person-subject run may declare. The subject (the name
+ * the operator typed) never appears in a URL, header or body: the person transforms download fixed files
+ * and match locally, so `person_name` in `sends` is a marker of the gated run, not wire data.
+ */
+const PERSON_SUBJECT_SENDS = new Set(["person_name"]);
+
 /** Fields allowed on `EgressRequest` at runtime (closed contract). */
 const REQUEST_FIELDS = new Set([
   "caseId",
@@ -540,8 +547,13 @@ function checkSensitivity(sensitivity: string | undefined): EgressResult | null 
 
 function checkSends(sends: string[] | undefined): EgressResult | null {
   if (sends === undefined) return deny("missing_manifest");
+  // E-02 (P2-013): a natural-person subject's run declares person_name as its only extra kind; the
+  // run itself is gated by the engine (a case with a stated purpose), and the subject never appears
+  // in a URL, header or body (the person transforms download fixed files and match locally). The
+  // wire-level inspection (judgeInventory) is unchanged: any natural-person identifier found on the
+  // wire is refused whatever sends says.
   for (const kind of sends) {
-    if (!PUBLIC_ALLOWED_SENDS.has(kind)) return deny("undeclared_data");
+    if (!PUBLIC_ALLOWED_SENDS.has(kind) && !PERSON_SUBJECT_SENDS.has(kind)) return deny("undeclared_data");
   }
   return null;
 }
