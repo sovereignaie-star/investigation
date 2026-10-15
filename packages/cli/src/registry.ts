@@ -32,6 +32,7 @@ import {
   rdapDomain,
   rdapIp,
   waybackCdx,
+  ofacSdn,
   gleifEntity,
   secEdgar,
   nominatimGeocode,
@@ -115,6 +116,10 @@ const cikInput = (cik: string) => {
   if (!/^\d{1,10}$/.test(cik)) throw new Error(`"${cik}" is not a CIK`);
   return { cik };
 };
+const personNameInput = (name: string) => {
+  if (name.length < 3 || name.length > 200) throw new Error(`"${name.slice(0, 40)}" is not a person name`);
+  return { name };
+};
 const addressInput = (address: string) => {
   if (address.length < 5 || address.length > 300) throw new Error(`"${address.slice(0, 40)}" is not an address`);
   return { address };
@@ -189,6 +194,15 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { url: httpUrlInput },
     sends: ["url", "domain"],
     hosts: ["web.archive.org"],
+    pageFetch: false,
+  },
+  {
+    transform: ofacSdn,
+    module: mod("tr-026-ofac-sdn.ts"),
+    // E-02: a person name is a natural-person subject; the engine's gate requires a purpose confirmation.
+    subjects: { person_name: personNameInput },
+    sends: ["person_name"],
+    hosts: ["www.treasury.gov"],
     pageFetch: false,
   },
   {

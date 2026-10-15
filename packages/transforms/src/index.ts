@@ -24,6 +24,7 @@ export * from "./transforms/tr-018-wikidata.ts";
 export * from "./transforms/tr-019-pgp-keys.ts";
 export * from "./transforms/tr-020-email-tech.ts";
 export * from "./transforms/tr-021-gleif.ts";
+export * from "./transforms/tr-026-ofac-sdn.ts";
 export * from "./transforms/tr-024-sec-edgar.ts";
 export * from "./transforms/tr-030-nominatim.ts";
 export * from "./transforms/tr-089-eml-msg.ts";

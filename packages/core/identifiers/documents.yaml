@@ -1,5 +1,54 @@
 # Identifier catalog: Documents (53 types). Schema: IdentifierSpec in @ir/schema (5.6).
 # Edit here, then run: pnpm --filter @ir/core run gen:data
+- id: sdn_uid
+  category: Documents
+  labels:
+    en: OFAC SDN UID
+    ar: معرّف قائمة العقوبات SDN
+  description: The OFAC Specially Designated Nationals (SDN) list entry UID
+  icon: ⚖️
+  color: red
+  patterns:
+    - ^\d{3,10}$
+  validator: null
+  examples:
+    positive:
+      - "9754"
+      - "28526"
+    negative:
+      - "9754A"
+  sensitivity: normal
+- id: person_name
+  category: Documents
+  labels:
+    en: Person Full Name
+    ar: اسم شخص كامل
+  description: A free-text person name (used as a sanctions-screening subject; not an entity id)
+  icon: 👤
+  color: gray
+  patterns:
+    - ^[\p{L}][\p{L}\s'’.-]{2,199}$
+  flags: u
+  validator: null
+  examples:
+    positive:
+      - "John Smith"
+      - "Ahmed Al-Sayed"
+    negative:
+      - "ab"
+      - "12345"
+  context:
+    keywords:
+      - name
+      - person
+      - full name
+      - individual
+      - subject
+      - sanctions
+      - اسم
+      - شخص
+    required: true
+  sensitivity: natural_person_gate
 - id: passport_generic
   category: Documents
   labels:
