@@ -11,9 +11,9 @@ const files = readdirSync(dir)
   .sort();
 
 describe("identifier catalog (P1-003, P1-004, P1-008)", () => {
-  it("T-IDL-001/002: 377 types with unique ids, each valid against IdentifierSpec", () => {
-    expect(IDENTIFIER_SPECS.length).toBe(377);
-    expect(new Set(IDENTIFIER_SPECS.map((s) => s.id)).size).toBe(377);
+  it("T-IDL-001/002: 378 types with unique ids, each valid against IdentifierSpec", () => {
+    expect(IDENTIFIER_SPECS.length).toBe(378);
+    expect(new Set(IDENTIFIER_SPECS.map((s) => s.id)).size).toBe(378);
     for (const s of IDENTIFIER_SPECS) expect(IdentifierSpec.safeParse(s).error?.issues ?? [], s.id).toEqual([]);
   });
 
@@ -65,7 +65,7 @@ describe("identifier catalog (P1-003, P1-004, P1-008)", () => {
 
   it("D-011: identity documents are behind the natural-person gate; a legal-entity number is not", () => {
     const gated = IDENTIFIER_SPECS.filter((s) => s.sensitivity === "natural_person_gate").map((s) => s.id);
-    expect(gated.length).toBe(54);
+    expect(gated.length).toBe(55);
     for (const id of ["passport_generic", "national_id_sa", "iqama_sa", "ssn_us", "aadhar_in", "mrz_line"]) expect(gated).toContain(id);
     expect(specById("cnpj_br")?.sensitivity).toBe("normal");
   });

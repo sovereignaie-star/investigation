@@ -34,6 +34,7 @@ import {
   waybackCdx,
   ofacSdn,
   unScConsolidated,
+  euSanctions,
   gleifEntity,
   secEdgar,
   nominatimGeocode,
@@ -213,6 +214,15 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { person_name: personNameInput },
     sends: ["person_name"],
     hosts: ["main.un.org"],
+    pageFetch: false,
+  },
+  {
+    transform: euSanctions,
+    module: mod("tr-028-eu-sanctions.ts"),
+    // E-02: a person name is a natural-person subject; the engine's gate requires a purpose confirmation.
+    subjects: { person_name: personNameInput },
+    sends: ["person_name"],
+    hosts: ["webgate.ec.europa.eu"],
     pageFetch: false,
   },
   {
