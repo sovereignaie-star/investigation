@@ -53,7 +53,11 @@ const SITES: readonly Site[] = [
     exists: (res) => {
       if (res.status !== 200) throw new Error(`TR-039: GitLab returned ${res.status} — existence undetermined`);
       const parsed = JSON.parse(res.body) as unknown[];
-      return Array.isArray(parsed) && parsed.length > 0;
+      // The documented semantics (TL-tr039) are "200 + a JSON array"; a 200 with any other body shape
+      // (e.g. an error object from a proxy) is outside them and fails the run closed — it must never
+      // be silently read as "no account".
+      if (!Array.isArray(parsed)) throw new Error("TR-039: GitLab returned 200 with a non-array body — existence undetermined");
+      return parsed.length > 0;
     },
     objectType: "gitlab_username",
   },

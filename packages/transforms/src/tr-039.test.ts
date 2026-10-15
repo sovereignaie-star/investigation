@@ -77,6 +77,16 @@ describe("TR-039 username presence", () => {
     expect(sim.requestCount()).toBe(0);
   });
 
+  it("a 200 whose body is outside the documented semantics (valid JSON, not an array) fails the run closed", async () => {
+    const sim = createSimServer([
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify({ message: "403 Forbidden" }) } },
+    ]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(
+      /GitLab returned 200 with a non-array body/,
+    );
+  });
+
   it("is gated on natural persons (E-02)", () => {
     expect(usernamePresence.manifest.sensitivity).toBe("natural_person_gate");
   });
