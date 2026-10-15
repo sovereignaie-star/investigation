@@ -1069,6 +1069,27 @@ export const SSRF_CASES: readonly SsrfCase[] = [
   },
   {
     id: "T-SEC-SSRF-043",
+    title: "content: a free-text person name in the query (?name=Bob) is not a natural-person identifier refusal",
+    req: { url: "https://example.com/screen?name=Bob%20Smith", sends: [] },
+    dns: { "example.com": [PUB] },
+    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: a validated natural-person identifier through the same key (?passport=AB123456) is still refused",
+    req: { url: "https://example.com/screen?passport=AB123456", sends: [] },
+    dns: { "example.com": [PUB] },
+    expect: denied("natural_person", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: a natural-person identifier in the URL path (?id=AB123456 form is query; path form /check/AB123456) is refused",
+    req: { url: "https://example.com/check/AB123456", sends: [] },
+    dns: { "example.com": [PUB] },
+    expect: denied("natural_person", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
     title: "content: a natural-person identifier found through its key (?passport=AB123456) is still refused",
     req: { url: "https://example.com/check?passport=AB123456", sends: ["domain"] },
     dns: { "example.com": [PUB] },

@@ -1,41 +1,61 @@
 /**
  * P2-011 — TR-026 contract test (T-RULE-06). Runs the OFAC SDN transform against
  * a deterministic sim and asserts SDN matches; the gate (E-02) is enforced by the engine.
+ * The fixture mirrors the official schema (sdnList/sdnEntry/aka), verified against the live file
+ * downloaded 2026-10-15.
  */
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
 import { ofacSdn } from "./transforms/tr-026-ofac-sdn.ts";
 import { runTransform } from "./runner.ts";
 
-function sdnFile(entries: Array<{ uid: string; name: string; aliases?: string[] }>): string {
+function sdnFile(entries: Array<{ uid: string; lastName: string; firstName?: string; type: string; akas?: string[] }>): string {
   const body = entries
     .map((e) => {
-      const aliases = (e.aliases ?? []).map((a) => `<alias>${a}</alias>`).join("");
-      return `<party uid="${e.uid}"><name>${e.name}</name><category>Individual</category>${aliases}</party>`;
+      const aka = (e.akas ?? []).map((a) => `<aka><category>strong</category><lastName>${a}</lastName></aka>`).join("");
+      const first = e.firstName ? `<firstName>${e.firstName}</firstName>` : "";
+      return `<sdnEntry><uid>${e.uid}</uid><lastName>${e.lastName}</lastName>${first}<sdnType>${e.type}</sdnType><akaList>${aka}</akaList></sdnEntry>`;
     })
     .join("");
-  return `<sdnList>${body}</sdnList>`;
+  return `<?xml version="1.0" standalone="yes"?>
+<sdnList xmlns="https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML">
+  <publshInformation><Publish_Date>10/14/2026</Publish_Date></publshInformation>
+  ${body}
+</sdnList>`;
 }
 
+const MATCH = /^https:\/\/www\.treasury\.gov\/ofac\/downloads\/sdn\.xml$/;
+
 describe("TR-026 ofac sdn", () => {
-  it("a name in the file yields an sdn_uid finding with the party's uid", async () => {
-    const file = sdnFile([{ uid: "9754", name: "Danil Kroshkin", aliases: ["Danil Kroshkin", "D. Kroshkin"] }]);
-    const sim = createSimServer([
-      { match: /^https:\/\/www\.treasury\.gov\/ofac\/downloads\/sdn\.xml$/, response: { status: 200, body: file } },
-    ]);
-    const result = await runTransform(ofacSdn, { transport: sim.transport, input: { name: "Danil Kroshkin" } });
+  it("an entity name in the file yields an sdn_uid finding with the party's uid", async () => {
+    const file = sdnFile([{ uid: "36", lastName: "AEROCARIBBEAN AIRLINES", type: "Entity", akas: ["AERO-CARIBBEAN"] }]);
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: file } }]);
+    const result = await runTransform(ofacSdn, { transport: sim.transport, input: { name: "AEROCARIBBEAN AIRLINES" } });
     expect(result.requestCount).toBe(1);
     const findings = result.output.findings;
     expect(findings).toHaveLength(1);
-    expect(findings[0]).toMatchObject({ predicate: "is_on_sdn_list", objectType: "sdn_uid", objectValue: "9754" });
-    expect(findings[0].evidence).toEqual([result.output.findings[0].evidence?.[0]]);
+    expect(findings[0]).toMatchObject({ predicate: "is_on_sdn_list", objectType: "sdn_uid", objectValue: "36" });
+    expect(findings[0].evidence).toHaveLength(1);
+  });
+
+  it("an aka match yields the party's uid (the official file stores akas under akaList)", async () => {
+    const file = sdnFile([{ uid: "36", lastName: "AEROCARIBBEAN AIRLINES", type: "Entity", akas: ["AERO-CARIBBEAN"] }]);
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: file } }]);
+    const result = await runTransform(ofacSdn, { transport: sim.transport, input: { name: "AERO-CARIBBEAN" } });
+    expect(result.output.findings).toHaveLength(1);
+    expect(result.output.findings[0].objectValue).toBe("36");
+  });
+
+  it("an individual with first+last name yields the party's uid", async () => {
+    const file = sdnFile([{ uid: "173", lastName: "Kroshkin", firstName: "Danil", type: "Individual" }]);
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: file } }]);
+    const result = await runTransform(ofacSdn, { transport: sim.transport, input: { name: "Danil Kroshkin" } });
+    expect(result.output.findings).toHaveLength(1);
   });
 
   it("a name not in the file yields an empty finding, not an error", async () => {
-    const file = sdnFile([{ uid: "9754", name: "Danil Kroshkin" }]);
-    const sim = createSimServer([
-      { match: /^https:\/\/www\.treasury\.gov\/ofac\/downloads\/sdn\.xml$/, response: { status: 200, body: file } },
-    ]);
+    const file = sdnFile([{ uid: "36", lastName: "AEROCARIBBEAN AIRLINES", type: "Entity" }]);
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: file } }]);
     const result = await runTransform(ofacSdn, { transport: sim.transport, input: { name: "John Doe" } });
     expect(result.output.findings).toEqual([]);
   });
@@ -46,11 +66,23 @@ describe("TR-026 ofac sdn", () => {
     expect(sim.requestCount()).toBe(0);
   });
 
-  it("a malformed file (unterminated party) fails the run, never silently returns fewer parties", async () => {
-    const broken = '<sdnList><party uid="1"><name>X</name>';
-    const sim = createSimServer([
-      { match: /^https:\/\/www\.treasury\.gov\/ofac\/downloads\/sdn\.xml$/, response: { status: 200, body: broken } },
-    ]);
-    await expect(runTransform(ofacSdn, { transport: sim.transport, input: { name: "John Doe" } })).rejects.toThrow(/unterminated party/);
+  it("a wrong-root document (an HTML error page) fails the run, never silently returns an empty list", async () => {
+    const html = "<html><body>Service unavailable</body></html>";
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: html } }]);
+    await expect(runTransform(ofacSdn, { transport: sim.transport, input: { name: "John Doe" } })).rejects.toThrow(
+      /wrong root element|not an XML document/,
+    );
+  });
+
+  it("an unterminated sdnEntry fails the run, never silently returns fewer parties", async () => {
+    const broken = '<?xml version="1.0"?><sdnList><sdnEntry><uid>36</uid><lastName>X</lastName>';
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: broken } }]);
+    await expect(runTransform(ofacSdn, { transport: sim.transport, input: { name: "John Doe" } })).rejects.toThrow(/unterminated sdnEntry/);
+  });
+
+  it("an sdnEntry without a uid fails the run", async () => {
+    const broken = '<?xml version="1.0"?><sdnList><sdnEntry><lastName>X</lastName></sdnEntry></sdnList>';
+    const sim = createSimServer([{ match: MATCH, response: { status: 200, body: broken } }]);
+    await expect(runTransform(ofacSdn, { transport: sim.transport, input: { name: "John Doe" } })).rejects.toThrow(/without a uid/);
   });
 });
