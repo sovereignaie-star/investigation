@@ -96,7 +96,17 @@ function isBareLabel(type: string, value: string): boolean {
  * Known limit: an ordinary identifier the catalog can only recognise through context is not found here.
  */
 const MIN_SPECIFICITY = 0.5;
-function isStrongReading(c: { validated: boolean; specificity: number; sensitivity: string }): boolean {
+/**
+ * P2-011: a natural-person reading that is reportable ONLY through context is still a refusal candidate, but a
+ * free-text person NAME (person_name, context.required) is not an identifier reading: it is a screening subject
+ * the caller typed, not data found in the wire text. It is excluded from the inventory so `?name=Bob` (an ordinary
+ * API query key) never becomes a refusal, while `?passport=AB123456` (a validated natural-person identifier) still
+ * refuses. The egress gate for person_name subjects is the engine's E-02 gate (purpose confirmation), not the
+ * inventory.
+ */
+const CONTEXT_ONLY_PERSON_NAME = "person_name";
+function isStrongReading(c: { validated: boolean; specificity: number; sensitivity: string; type: string }): boolean {
+  if (c.type === CONTEXT_ONLY_PERSON_NAME) return c.validated; // never validated (no validator): excluded
   return c.sensitivity === "natural_person_gate" || c.validated || c.specificity >= MIN_SPECIFICITY;
 }
 
