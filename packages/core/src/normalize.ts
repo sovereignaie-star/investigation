@@ -191,6 +191,11 @@ const EXACT: Record<string, Normalizer> = {
   isin: upperCompact,
   vehicle_vin: upperCompact,
   stock_ticker: upperCompact,
+  cik_us: digitsOnly,
+  geo_point: (s) => {
+    const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(s.trim());
+    return m ? `${Number(m[1]).toFixed(6)},${Number(m[2]).toFixed(6)}` : s.trim();
+  },
   mrz_line: (s) => s.toUpperCase(),
   serial_number: upperCompact,
   engine_number: upperCompact,

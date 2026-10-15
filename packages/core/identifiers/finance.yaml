@@ -289,6 +289,24 @@
     negative:
       - 123456789#
   sensitivity: normal
+- id: cik_us
+  category: Finance
+  labels:
+    en: SEC CIK (Central Index Key)
+    ar: مفتاح فهرس SEC المركزي
+  description: US SEC Central Index Key (a company's EDGAR identifier)
+  icon: 🏛️
+  color: blue
+  patterns:
+    - ^\d{1,10}$
+  validator: null
+  examples:
+    positive:
+      - "320193"
+      - "789019"
+    negative:
+      - "320193A"
+  sensitivity: normal
 - id: stock_ticker
   category: Finance
   labels:
