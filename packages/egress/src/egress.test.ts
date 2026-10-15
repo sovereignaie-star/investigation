@@ -40,7 +40,9 @@ const BASE: TestBase = {
 };
 
 function gateway(resolver: DnsResolver, transport: EgressTransport, offline = false) {
-  return createEgressGateway({ resolver, transport, offline });
+  // These tests target pre-DNS denials and address policy — not the operational rate default
+  // (measured, ADR-08 item و): a generous injected rate keeps them independent of it.
+  return createEgressGateway({ resolver, transport, offline, limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 } });
 }
 
 describe("pre-DNS denials (transportCalls = 0)", () => {

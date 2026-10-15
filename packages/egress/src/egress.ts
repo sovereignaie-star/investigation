@@ -284,8 +284,13 @@ const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
   maxSizeBytes: 5 * 1024 * 1024,
   timeoutMs: 15_000,
   connectTimeoutMs: 5_000,
+  // P2-003 condition 14 (ADR-08 item و), measured 2026-10-15 (rate-measurement.test.ts, real clock):
+  // the burst follows the strictest source the platform actually talks to — Nominatim's usage policy
+  // is an ABSOLUTE 1 request/second (no burst allowance), so the operational burst is 1: at most one
+  // leave per host per second, further requests refused explicitly (rate_limit), the bucket refills
+  // at 1/s. Bulk one-shot sources (OFAC/UN/EU) are unaffected; engine concurrency (4) is orthogonal.
   rateLimitPerHostPerSecond: 1,
-  rateLimitBurst: 4,
+  rateLimitBurst: 1,
 };
 
 /** Data kinds that are allowed in `sends` for the public mode before P2-013. */

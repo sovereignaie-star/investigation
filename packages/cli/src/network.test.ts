@@ -73,13 +73,26 @@ function fake(
 async function run(argv: string[], opts: CliOptions) {
   const lines: string[] = [];
   const errs: string[] = [];
+  // These tests target the opt-in gate, address policy, robots, evidence and redirects — not the
+  // operational rate default (which follows the measured distribution, ADR-08 item و): a generous
+  // injected rate keeps them independent of it (the same pattern as investigate.test.ts LIMITS).
+  const merged: CliOptions =
+    opts.network === undefined
+      ? opts
+      : {
+          ...opts,
+          network: {
+            ...opts.network,
+            limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100, ...opts.network.limits },
+          },
+        };
   const code = await main(
     argv,
     (s) => lines.push(s),
     (s) => errs.push(s),
     {
       clock: manualClock("2026-10-14T09:00:00.000Z"),
-      ...opts,
+      ...merged,
     },
   );
   return { code, out: lines.join("\n"), err: errs.join("\n") };

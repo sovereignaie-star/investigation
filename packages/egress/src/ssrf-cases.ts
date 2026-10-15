@@ -85,6 +85,10 @@ export async function executeCase(factory: Factory, c: SsrfCase): Promise<Observ
   try {
     const g = factory({
       ...(c.options ?? {}),
+      // The case table tests address/content/redirect policies, not the operational rate default
+      // (which follows the measured distribution, ADR-08 item و): a generous injected rate keeps the
+      // cases independent of it. A case that tests rate limits injects its own `limits` and overrides.
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100, ...(c.options?.limits ?? {}) },
       resolver: {
         resolve: async (host: string) => {
           resolverCalls++;
