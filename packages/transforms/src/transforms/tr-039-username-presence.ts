@@ -3,10 +3,17 @@
  *
  * EXISTENCE ONLY: the transform checks whether a username resolves to a public
  * profile on a small curated list of sites and emits an account-existence finding
- * per hit — no profile content is extracted (ROADMAP: «وجود فقط»). Sites are
- * public pages with stable URL patterns and documented 200/404 semantics; a
- * response that is neither 200 nor 404 fails the run closed (a 403 from bot
- * protection must never be read as "no account").
+ * per hit — no profile content is extracted (ROADMAP: «وجود فقط»).
+ *
+ * Per-site semantics, MEASURED 2026-10-15 (see TL-tr039-username-sites.md):
+ * - GitHub: profile page GET — 200 = exists, 404 = not (clean).
+ * - GitLab: public API v4 users?username= — always 200; a non-empty JSON array
+ *   = exists (the profile page itself 302-redirects and is unusable for this).
+ * - Reddit: REMOVED — the profile page 301-redirects for both existing and
+ *   missing users, and the JSON endpoint answers 403 (bot protection) — a
+ *   reliable check requires OAuth credentials (declared limit, not in this batch).
+ * A response the semantics above do not cover fails the run closed (a 403 from
+ * bot protection must never be read as "no account").
  *
  * Sensitivity is `natural_person_gate` (E-02, per the ROADMAP): a username may
  * identify a person, so the engine requires a purpose confirmation before running.
@@ -21,16 +28,35 @@ const USERNAME = /^[a-zA-Z0-9_-]{3,20}$/;
 
 interface Site {
   readonly name: string;
-  readonly host: string;
-  readonly prefix: string;
+  /** Builds the check URL for the username (already encodeURIComponent-safe). */
+  readonly url: (username: string) => string;
+  /** Decides existence from the response; anything else fails closed. */
+  readonly exists: (res: { status: number; body: string }) => boolean;
   /** Catalog type of the emitted object value (D-018: typed, pattern-checked). */
   readonly objectType: string;
 }
 
 const SITES: readonly Site[] = [
-  { name: "GitHub", host: "github.com", prefix: "", objectType: "github_username" },
-  { name: "Reddit", host: "www.reddit.com", prefix: "user/", objectType: "reddit_username" },
-  { name: "GitLab", host: "gitlab.com", prefix: "", objectType: "gitlab_username" },
+  {
+    name: "GitHub",
+    url: (u) => `https://github.com/${u}`,
+    exists: (res) => {
+      if (res.status === 200) return true;
+      if (res.status === 404) return false;
+      throw new Error(`TR-039: GitHub returned ${res.status} — existence undetermined`);
+    },
+    objectType: "github_username",
+  },
+  {
+    name: "GitLab",
+    url: (u) => `https://gitlab.com/api/v4/users?username=${u}`,
+    exists: (res) => {
+      if (res.status !== 200) throw new Error(`TR-039: GitLab returned ${res.status} — existence undetermined`);
+      const parsed = JSON.parse(res.body) as unknown[];
+      return Array.isArray(parsed) && parsed.length > 0;
+    },
+    objectType: "gitlab_username",
+  },
 ];
 
 export const usernamePresence = defineTransform<{ username: string }>(
@@ -38,7 +64,7 @@ export const usernamePresence = defineTransform<{ username: string }>(
     id: "TR-039",
     version: "1.0.0",
     inputs: ["username"],
-    outputs: ["github_username", "reddit_username", "gitlab_username"],
+    outputs: ["github_username", "gitlab_username"],
     network: { mode: "public", allow: [] },
     secrets: [],
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 1_000_000 },
@@ -52,20 +78,16 @@ export const usernamePresence = defineTransform<{ username: string }>(
 
     const findings: TransformFinding[] = [];
     for (const site of SITES) {
-      const res = await ctx.http.get(`https://${site.host}/${site.prefix}${encodeURIComponent(username)}`);
-      if (res.status === 200) {
+      const res = await ctx.http.get(site.url(encodeURIComponent(username)));
+      if (site.exists(res)) {
         findings.push({
           predicate: "has_account",
           evidence: [res.requestId],
           objectType: site.objectType,
           objectValue: username,
           confidence: 0.9,
-          explanation: `${site.name}: "${username}" has a public profile at https://${site.host}/${site.prefix}${username} (existence only — no content collected)`,
+          explanation: `${site.name}: "${username}" has a public account (existence only — no content collected)`,
         });
-      } else if (res.status !== 404) {
-        // Fail closed: bot-protection (403), rate limiting (429) or an outage (5xx)
-        // must never be read as "no account".
-        throw new Error(`TR-039: ${site.name} returned ${res.status} for "${username}" — existence undetermined`);
       }
     }
     return { findings };

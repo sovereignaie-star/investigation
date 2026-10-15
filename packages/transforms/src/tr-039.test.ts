@@ -1,8 +1,10 @@
 /**
- * P2-012 — TR-039 contract test (T-RULE-06). Username presence across public
- * profile pages (Sherlock-style): EXISTENCE ONLY — no content is extracted,
- * no profiles are fetched beyond the status check. The transform is gated on
- * natural persons (E-02): a run requires a purpose confirmation.
+ * P2-012 — TR-039 contract test (T-RULE-06). Username presence (Sherlock-style):
+ * EXISTENCE ONLY — no content is extracted. Per-site semantics MEASURED
+ * 2026-10-15: GitHub profile page (200/404) and the public GitLab users API
+ * (200 + non-empty array); Reddit is out (301-redirects / 403 bot-blocks —
+ * requires OAuth; declared limit). The transform is gated on natural persons
+ * (E-02): a run requires a purpose confirmation.
  *
  * Red first: this test was written before the transform existed and failed on
  * the missing module (the failing test for the right reason).
@@ -14,27 +16,26 @@ import { runTransform } from "./runner.ts";
 
 const U = "someuser";
 
-/** The exact profile URL the transform must build for the username this test uses. */
-function siteUrl(host: string, prefix: string) {
-  return `https://${host}/${prefix}${U}`;
-}
+/** The exact GitHub profile URL the transform must build for the username this test uses. */
+const GH_URL = `https://github.com/${U}`;
+/** The exact GitLab users-API URL the transform must build for the username this test uses. */
+const GL_URL = `https://gitlab.com/api/v4/users?username=${U}`;
 
 describe("TR-039 username presence", () => {
   it("emits existence-only findings for the sites where the username exists", async () => {
     const sim = createSimServer([
-      { match: siteUrl("github.com", ""), response: { status: 200, body: "<html>profile</html>" } },
-      { match: siteUrl("www.reddit.com", "user/"), response: { status: 404, body: "" } },
-      { match: siteUrl("gitlab.com", ""), response: { status: 200, body: "<html>profile</html>" } },
+      { match: GH_URL, response: { status: 200, body: "<html>profile</html>" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify([{ id: 1, username: U }]) } },
     ]);
     const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
-    expect(result.requestCount).toBe(3);
+    expect(result.requestCount).toBe(2);
     const findings = result.output.findings;
     expect(findings).toHaveLength(2);
     expect(findings).toContainEqual(
       expect.objectContaining({ predicate: "has_account", objectType: "github_username", objectValue: U, evidence: [0] }),
     );
     expect(findings).toContainEqual(
-      expect.objectContaining({ predicate: "has_account", objectType: "gitlab_username", objectValue: U, evidence: [2] }),
+      expect.objectContaining({ predicate: "has_account", objectType: "gitlab_username", objectValue: U, evidence: [1] }),
     );
     // Existence only: no content-derived fields anywhere in the findings.
     for (const f of findings) expect(f.explanation).not.toContain("profile</html>");
@@ -42,12 +43,11 @@ describe("TR-039 username presence", () => {
 
   it("a username absent everywhere is a legitimate empty result, not an error", async () => {
     const sim = createSimServer([
-      { match: siteUrl("github.com", ""), response: { status: 404, body: "" } },
-      { match: siteUrl("www.reddit.com", "user/"), response: { status: 404, body: "" } },
-      { match: siteUrl("gitlab.com", ""), response: { status: 404, body: "" } },
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: "[]" } },
     ]);
     const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
-    expect(result.requestCount).toBe(3);
+    expect(result.requestCount).toBe(2);
     expect(result.output.findings).toHaveLength(0);
   });
 
@@ -63,10 +63,12 @@ describe("TR-039 username presence", () => {
 
   it("an unexpected status (not 200/404) fails the run closed with the site and status", async () => {
     const sim = createSimServer([
-      { match: siteUrl("github.com", ""), response: { status: 200, body: "" } },
-      { match: siteUrl("www.reddit.com", "user/"), response: { status: 403, body: "" } },
+      { match: GH_URL, response: { status: 200, body: "" } },
+      { match: GL_URL, response: { status: 403, body: "" } },
     ]);
-    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(/github|reddit/i);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(
+      /GitLab returned 403/,
+    );
   });
 
   it("requires a username (fail-closed)", async () => {
