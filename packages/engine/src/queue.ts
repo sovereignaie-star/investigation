@@ -36,6 +36,11 @@ export class PriorityQueue<T> {
     return this.heap[0];
   }
 
+  /** A copy of the heap entries (persistence/inspection). Not sorted by pop order. */
+  entries(): readonly QueueEntry<T>[] {
+    return [...this.heap];
+  }
+
   private bubbleUp(i: number): void {
     while (i > 0) {
       const parent = (i - 1) >> 1;
