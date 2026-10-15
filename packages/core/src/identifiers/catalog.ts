@@ -1019,6 +1019,18 @@ export const IDENTIFIER_SPECS: readonly IdentifierSpecData[] = [
     sensitivity: "normal",
   },
   {
+    id: "un_reference",
+    category: "Documents",
+    labels: { en: "UN SC Reference Number", ar: "رقم مرجعي مجلس الأمن" },
+    description: "The UN Security Council Consolidated List reference number (CTn.nnnnn format)",
+    icon: "🕊️",
+    color: "blue",
+    patterns: ["^CT[A-Za-z]?\\.\\d{3,6}$", "^QD[A-Za-z]?\\.\\d{3,6}$"],
+    validator: null,
+    examples: { positive: ["CTi.47018", "QDi.224"], negative: ["CTi.47"] },
+    sensitivity: "natural_person_gate",
+  },
+  {
     id: "sdn_uid",
     category: "Documents",
     labels: { en: "OFAC SDN UID", ar: "معرّف قائمة العقوبات SDN" },
