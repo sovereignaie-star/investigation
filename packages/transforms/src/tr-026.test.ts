@@ -26,6 +26,16 @@ function sdnFile(entries: Array<{ uid: string; lastName: string; firstName?: str
 
 const MATCH = /^https:\/\/www\.treasury\.gov\/ofac\/downloads\/sdn\.xml$/;
 
+/** D-018: every emitted object value must satisfy its catalog type's own pattern. */
+import { specById, matchesSpec } from "@ir/core/identifiers";
+
+function expectCatalogValid(type: string, value: string): void {
+  const spec = specById(type);
+  if (!spec) throw new Error(`catalog type ${type} exists`);
+  const m = matchesSpec(spec, value);
+  expect(m.pattern, `${type} pattern accepts "${value}"`).toBe(true);
+}
+
 describe("TR-026 ofac sdn", () => {
   it("an entity name in the file yields an sdn_uid finding with the party's uid", async () => {
     const file = sdnFile([{ uid: "36", lastName: "AEROCARIBBEAN AIRLINES", type: "Entity", akas: ["AERO-CARIBBEAN"] }]);
@@ -36,6 +46,7 @@ describe("TR-026 ofac sdn", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({ predicate: "is_on_sdn_list", objectType: "sdn_uid", objectValue: "36" });
     expect(findings[0].evidence).toHaveLength(1);
+    expectCatalogValid("sdn_uid", findings[0].objectValue);
   });
 
   it("an aka match yields the party's uid (the official file stores akas under akaList)", async () => {
@@ -44,6 +55,7 @@ describe("TR-026 ofac sdn", () => {
     const result = await runTransform(ofacSdn, { transport: sim.transport, input: { name: "AERO-CARIBBEAN" } });
     expect(result.output.findings).toHaveLength(1);
     expect(result.output.findings[0].objectValue).toBe("36");
+    expectCatalogValid("sdn_uid", result.output.findings[0].objectValue);
   });
 
   it("an individual with first+last name yields the party's uid", async () => {

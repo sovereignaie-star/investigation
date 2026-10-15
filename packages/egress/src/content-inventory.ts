@@ -106,7 +106,12 @@ const MIN_SPECIFICITY = 0.5;
  */
 const CONTEXT_ONLY_PERSON_NAME = "person_name";
 function isStrongReading(c: { validated: boolean; specificity: number; sensitivity: string; type: string }): boolean {
-  if (c.type === CONTEXT_ONLY_PERSON_NAME) return c.validated; // never validated (no validator): excluded
+  // P2-011 (revised): person_name (context.required, no validator, never validated) is never a strong
+  // identifier reading on its own. It IS reported when the run declared person_name as its kind (a
+  // screening subject the operator typed), so the wire-level check is: a person_name value on the wire
+  // is allowed only when sends declares person_name; undeclared, it refuses as undeclared_data (the
+  // same asymmetry as every other kind: `?name=Bob` with sends=[] or sends=[domain] is refused, with
+  // sends=[person_name] it is the declared screening subject itself).
   return c.sensitivity === "natural_person_gate" || c.validated || c.specificity >= MIN_SPECIFICITY;
 }
 
@@ -290,7 +295,10 @@ export function judgeInventory(
   sends: readonly string[],
 ): { reason: "natural_person" | "undeclared_data"; detail: string } | null {
   for (const f of findings) {
-    const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
+    // P2-011 (revised): person_name is the free-text name of the screening subject, not a validated
+    // identifier — it is judged as ordinary data (a kind that must be declared), never as a natural-
+    // person identifier refusal. A validated identifier (?passport=AB123456) still refuses here.
+    const np = f.readings.find((r) => r.sensitivity === "natural_person_gate" && r.type !== CONTEXT_ONLY_PERSON_NAME);
     if (np) return { reason: "natural_person", detail: `${f.surface} carries a natural-person identifier (${np.type})` };
   }
   return undeclaredIn(findings, sends);

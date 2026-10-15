@@ -13,7 +13,18 @@ import { defineTransform } from "../manifest.ts";
 import type { TransformFinding } from "../output.ts";
 import { parseEuSanctions } from "./eu-xml.ts";
 
-const FILE = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content";
+/**
+ * The official download URL as recorded in the EU open-data catalog record (data.europa.eu,
+ * distribution 5a1720a6): the parameter-free form returns 403; the catalog's record carries the token
+ * query parameter as fixed public catalog metadata (the same value in every record, not a per-user
+ * secret). The token is NOT stored in source: it is read from the environment (IR_EU_FSD_TOKEN) at
+ * run time, so a run without it fails closed with a clear error — the same rule as any keyed source.
+ */
+function fileUrl(): string {
+  const token = process.env.IR_EU_FSD_TOKEN ?? "";
+  if (token === "") throw new Error("TR-028: IR_EU_FSD_TOKEN is not set (the EU catalog's fixed public token)");
+  return `https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=${token}`;
+}
 
 export const euSanctions = defineTransform<{ name: string }>(
   {
@@ -30,7 +41,7 @@ export const euSanctions = defineTransform<{ name: string }>(
   async (input, ctx) => {
     const name = input.name.trim();
     if (name.length < 3 || name.length > 200) throw new Error(`TR-028: invalid name "${input.name}"`);
-    const res = await ctx.http.get(FILE);
+    const res = await ctx.http.get(fileUrl());
     const parties = parseEuSanctions(res.body);
     const findings: TransformFinding[] = [];
     for (const p of parties) {

@@ -3,14 +3,15 @@
  *
  * Source: the official OFAC SDN file (https://www.treasury.gov/ofac/downloads/sdn.xml),
  * public, no key (LC-B; evaluation docs/tools/evaluations/TL-05f49117.md and its implementation note).
- * The transform downloads the SDN file once per run (maxBytes 8MB — the file is 6-7MB), parses
+ * The transform downloads the SDN file once per run (maxBytes 40MB), parses
  * its XML with a bounded linear parser (no streaming XML library; the file is small enough to
  * hold in memory after the size cap), and matches the subject name against the party aliases.
  * The sensitivity is `natural_person_gate` (E-02): a run requires a purpose confirmation and
  * the result never becomes an expansion node (no name→name inference; D-018).
  *
  * All network I/O goes through `ctx.http` (egress gateway in production, ADR-08).
- * Limits: rps 1, timeoutMs 60s (the file is large), maxBytes 8MB.
+ * Limits: rps 1, timeoutMs 120s, maxBytes 40MB (the live file measured 29MB on 2026-10-15; the
+ * original 8MB cap would have refused the real file).
  */
 import { defineTransform } from "../manifest.ts";
 import type { TransformFinding } from "../output.ts";
@@ -26,7 +27,7 @@ export const ofacSdn = defineTransform<{ name: string }>(
     outputs: ["sdn_uid"],
     network: { mode: "public", allow: [] },
     secrets: [],
-    limits: { rps: 1, timeoutMs: 60_000, maxBytes: 8_000_000 },
+    limits: { rps: 1, timeoutMs: 120_000, maxBytes: 40_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
   },
