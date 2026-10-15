@@ -33,6 +33,7 @@ import {
   rdapIp,
   waybackCdx,
   ofacSdn,
+  unScConsolidated,
   gleifEntity,
   secEdgar,
   nominatimGeocode,
@@ -203,6 +204,15 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { person_name: personNameInput },
     sends: ["person_name"],
     hosts: ["www.treasury.gov"],
+    pageFetch: false,
+  },
+  {
+    transform: unScConsolidated,
+    module: mod("tr-027-un-sc.ts"),
+    // E-02: a person name is a natural-person subject; the engine's gate requires a purpose confirmation.
+    subjects: { person_name: personNameInput },
+    sends: ["person_name"],
+    hosts: ["main.un.org"],
     pageFetch: false,
   },
   {
