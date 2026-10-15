@@ -24,7 +24,7 @@
  * returned. There is no "run without isolation" path.
  */
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { accessSync, constants as fsConstants, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import * as net from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -41,6 +41,15 @@ export type Assurance = "full" | "network-only";
 export interface ResourceLimits {
   /** RLIMIT_AS: address space of the transform process (and each descendant). Allocations beyond it fail. */
   readonly addressSpaceBytes: number;
+  /**
+   * RLIMIT_DATA (Linux 4.7+): the per-process cap on COMMITTED anonymous memory — the usage bound
+   * userspace can enforce without cgroups (cgroup v2 delegation is unavailable to unprivileged
+   * users on the hosts measured; see the P2-003 acceptance gap). Measured 2026-10-15: V8's startup
+   * reservations consume ~570MB of the allowance, and the heaviest legitimate transform (TR-026,
+   * a 40MB OFAC XML through the real parser) peaks at 303MB RSS — 1280MB leaves ~2.3x headroom
+   * for legitimate work while capping a hostile single-process allocation well below the AS cap.
+   */
+  readonly dataBytes: number;
   /** V8 old-space cap (`--max-old-space-size`, MiB): JS heap exhaustion is a clean fatal error, not swap. */
   readonly heapMb: number;
   /** RLIMIT_FSIZE: largest file the transform may write (SIGXFSZ beyond). */
@@ -70,6 +79,7 @@ export const DEFAULT_RESOURCE_LIMITS: ResourceLimits = Object.freeze({
   // Node 24 reserves ~1.2 GiB of address space at start-up (code range, thread stacks); 2 GiB leaves the
   // transform roughly 700 MiB of real allocations. Measured on Linux 6.x / Node 24.
   addressSpaceBytes: 2 * 1024 * 1024 * 1024,
+  dataBytes: 1280 * 1024 * 1024,
   heapMb: 512,
   fileSizeBytes: 64 * 1024 * 1024,
   openFiles: 256,
@@ -156,6 +166,10 @@ export interface IsolationReport {
   readonly tmpfsSize: boolean;
   /** The "full" level applies RLIMIT_NPROC (processes+threads) inside its user namespace. */
   readonly processLimit: boolean;
+  /** A delegated cgroup v2 subtree (writable dir, memory controller) exists for this user. */
+  readonly cgroupMemory: boolean;
+  /** The probe saw the RLIMIT_DATA usage cap in /proc/self/limits. */
+  readonly dataLimit: boolean;
   readonly detail: readonly string[];
 }
 
@@ -182,6 +196,46 @@ function nodeBinary(): { path: string; prefix: string } {
 let bwrapSizeSupport: boolean | undefined;
 
 /** bubblewrap gained `--size` (tmpfs size) in 0.10.0; older versions reject the option. */
+/**
+ * A delegated cgroup v2 subtree: a cgroup directory this user can create children in, with the
+ * memory controller available. Without one, a GROUP-level memory cap (the sum across the sandbox's
+ * processes, with OOM-kill semantics) is not enforceable from userspace — measured on the dev
+ * sandbox (uid 2000): the cgroup root and our own cgroup dir are read-only and there is no user
+ * systemd session. Where a subtree IS delegated (some CI hosts and hardened desktops delegate the
+ * user slice), memory.max/pids.max can bound the whole group — the probe reports the capability.
+ */
+let cgroupProbeNote = "not probed yet";
+function delegatedCgroupDir(): string | null {
+  let found: string | null = null;
+  try {
+    const line = readFileSync("/proc/self/cgroup", "utf8")
+      .split("\n")
+      .find((l) => l.startsWith("0::"));
+    if (!line) {
+      cgroupProbeNote = "no unified (v2) cgroup hierarchy";
+    } else {
+      const parts = line.slice(3).trim().split("/").filter(Boolean);
+      let dir = "/sys/fs/cgroup";
+      for (const segment of ["", ...parts]) {
+        if (segment) dir = join(dir, segment);
+        try {
+          if (/\bmemory\b/.test(readFileSync(join(dir, "cgroup.controllers"), "utf8"))) {
+            accessSync(dir, fsConstants.W_OK);
+            found = dir;
+            break;
+          }
+        } catch {
+          cgroupProbeNote = `no delegated cgroup subtree at ${dir}`; // records the walk state (D-017)
+        }
+      }
+      cgroupProbeNote = found ? `delegated cgroup subtree at ${found}` : cgroupProbeNote;
+    }
+  } catch (e) {
+    cgroupProbeNote = `/proc/self/cgroup unreadable: ${String(e)}`; // recorded for the report detail
+  }
+  return found;
+}
+
 function bwrapSupportsSize(): boolean {
   if (bwrapSizeSupport !== undefined) return bwrapSizeSupport;
   const r = spawnSync("bwrap", ["--version"], { encoding: "utf8" });
@@ -193,6 +247,7 @@ function bwrapSupportsSize(): boolean {
 function launcherLimitArgs(limits: ResourceLimits): string[] {
   return [
     `--rlimit=as:${limits.addressSpaceBytes}`,
+    `--rlimit=data:${limits.dataBytes}`,
     `--rlimit=fsize:${limits.fileSizeBytes}`,
     `--rlimit=nofile:${limits.openFiles}`,
     `--rlimit=cpu:${limits.cpuSeconds}`,
@@ -293,6 +348,8 @@ const asLine = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l
 out.push("as-limit:" + (asLine.split(/\\s+/).includes(process.env.IR_PROBE_AS) ? "SET" : "MISSING"));
 const nprocLine = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max processes")) || "";
 out.push("nproc-limit:" + (nprocLine.split(/\\s+/).includes(process.env.IR_PROBE_NPROC) ? "SET" : "MISSING"));
+const dataLine = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max data size"));
+out.push("data-limit:" + (dataLine && dataLine.split(/\\s+/).includes(String(Number(process.env.IR_PROBE_DATA))) ? "SET" : "MISSING"));
 // Ask for the whole address-space budget at once: the kernel refuses the mapping, so nothing is committed.
 try { Buffer.alloc(Number(process.env.IR_PROBE_AS)); out.push("mem:ALLOCATED"); } catch (e) { out.push("mem:REFUSED"); }
 console.log(out.join(" "));
@@ -334,7 +391,17 @@ async function doProbe(): Promise<IsolationReport> {
   const build = buildSeccompLauncher();
   if (!build.supported || !build.launcherPath) {
     detail.push(build.detail ?? "launcher unavailable");
-    return { launcher: false, networkOnly: false, full: false, memoryLimit: false, tmpfsSize: false, processLimit: false, detail };
+    return {
+      launcher: false,
+      networkOnly: false,
+      full: false,
+      memoryLimit: false,
+      tmpfsSize: false,
+      processLimit: false,
+      cgroupMemory: false,
+      dataLimit: false,
+      detail,
+    };
   }
   const dir = mkdtempSync(join(realpathSync(tmpdir()), "ir-sbx-probe-"));
   const canary = join(dir, "canary.txt");
@@ -359,6 +426,7 @@ async function doProbe(): Promise<IsolationReport> {
       IR_PROBE_PARENT_PID: String(process.pid),
       IR_PROBE_AS: String(DEFAULT_RESOURCE_LIMITS.addressSpaceBytes),
       IR_PROBE_NPROC: String(DEFAULT_RESOURCE_LIMITS.processes),
+      IR_PROBE_DATA: String(DEFAULT_RESOURCE_LIMITS.dataBytes),
     };
     const netOnly = await runOnce("network-only", build.launcherPath, PROBE_SOURCE, childEnv(env, "network-only"), 10_000);
     const netOnlyOk = networkOnlyProbeOk(netOnly) && seen === 0;
@@ -385,7 +453,12 @@ async function doProbe(): Promise<IsolationReport> {
       memoryLimit,
       tmpfsSize: hasBwrap && bwrapSupportsSize(),
       processLimit,
-      detail,
+      cgroupMemory: delegatedCgroupDir() !== null,
+      detail: [...detail, `cgroup: ${cgroupProbeNote}`],
+      // The DATA cap applies at every level (a launcher rlimit, like AS): the network-only probe
+      // observes it; it does not gate a level (a platform without it keeps running — the P2-003
+      // acceptance doc governs untrusted-code expansion).
+      dataLimit: netOnly.code === 0 && /data-limit:SET/.test(netOnly.stdout),
     };
   } finally {
     tcp.close();
