@@ -210,6 +210,47 @@ catch (e) { console.log("ERR_" + e.code); }
         );
         expect(r.stdout.trim()).toMatch(/^ERR_EACCES$/);
       });
+      it(
+        "T-SBX-019: a fork bomb is capped by RLIMIT_NPROC inside the user namespace (P2-003 isolation gap 1)",
+        { timeout: 30_000 },
+        async (ctx) => {
+          if (skip()) return ctx.skip();
+          // A classic fork bomb: 80 tiny single-threaded `sleep` children, all kept alive together.
+          // Inside the "full" namespace the processes+threads cap (DEFAULT_RESOURCE_LIMITS.processes =
+          // 64: the parent's own threads count too) is hit mid-loop and the kernel refuses the rest.
+          // The same loop at "network-only" (no namespace, no cap by design) spawns them all — the
+          // negative control proving the refusal is OUR cap, not the host's.
+          const r = done(
+            await run(`
+import { spawn } from "node:child_process";
+import * as fs from "node:fs";
+let started = 0, refused = 0;
+for (let i = 0; i < 80; i++) {
+  try {
+    const c = spawn("sleep", ["3"]);
+    if (c.pid) started++; else refused++;
+    c.on("error", () => {}); // swallowed: the living count below is the measured bound
+  } catch { refused++; }
+}
+await new Promise((r) => setTimeout(r, 1000));
+const alive = fs.readdirSync("/proc").filter((x) => /^[0-9]+$/.test(x) && x !== String(process.pid)).length;
+console.log("FORKS started=" + started + " refused=" + refused + " alive=" + alive);
+`),
+          );
+          const m = /^FORKS started=(\d+) refused=(\d+) alive=(\d+)$/.exec(r.stdout.trim());
+          expect(m, r.stdout).not.toBeNull();
+          const alive = m === null ? 0 : Number(m[3]);
+          if (level === "full") {
+            // The bomb is BOUNDED: fewer children alive than attempted, and never above the cap.
+            expect(alive).toBeLessThan(80);
+            expect(alive).toBeLessThanOrEqual(DEFAULT_RESOURCE_LIMITS.processes);
+          } else {
+            // Negative control: with no namespace cap (by design at this level) the same bomb
+            // spawns them all — the bound above is OUR cap, not the host's.
+            expect(alive).toBeGreaterThan(DEFAULT_RESOURCE_LIMITS.processes);
+          }
+        },
+      );
 
       it("T-SBX-006: a grandchild started with a CLEAN environment (no LD_PRELOAD, no NODE_OPTIONS) is still filtered", async (ctx) => {
         if (skip()) return ctx.skip();
