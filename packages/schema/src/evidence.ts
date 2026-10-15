@@ -91,6 +91,10 @@ export const TransformManifest = z.object({
       message: "pinned mode requires a non-empty allow list; public mode requires an empty one",
     }),
   secrets: z.array(z.string().regex(/^[A-Z][A-Z0-9_]*$/)).default([]),
+  // Run-time environment the transform reads by name (fail-closed in isolation: the sandboxed child
+  // gets ONLY these names, and only when the parent has them — an undeclared name never reaches the
+  // sandbox. P2-011 review fix, 2026-10-15: TR-028's catalog token (IR_EU_FSD_TOKEN) arrives this way).
+  env: z.array(z.string().regex(/^IR_[A-Z0-9_]+$/)).default([]),
   limits: z.object({
     rps: z.number().positive(),
     timeoutMs: z.number().int().positive(),

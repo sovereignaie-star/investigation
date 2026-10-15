@@ -1071,25 +1071,26 @@ export const SSRF_CASES: readonly SsrfCase[] = [
   {
     id: "T-SEC-SSRF-043",
     title:
-      "content: a free-text person name in the query (?name=Bob) is allowed only when the run declares person_name as its kind; bares or wrong kinds are refused as undeclared data",
+      "content: a free-text person name in the query (?name=Bob Smith) refuses as natural_person — the subject's name never goes on the wire, undeclared or not",
     req: { url: "https://example.com/screen?name=Bob%20Smith", sends: [] },
     dns: { "example.com": [PUB] },
-    expect: denied("undeclared_data", 0, 0),
+    expect: denied("natural_person", 0, 0),
   },
   {
     id: "T-SEC-SSRF-043",
     title:
-      "content: a free-text person name in the query with a wrong kind declared (domain) is refused as undeclared_data, never silently sent",
+      "content: a free-text person name in the query with a wrong kind declared (domain) is refused as natural_person, never silently sent",
     req: { url: "https://example.com/screen?name=Bob%20Smith", sends: ["domain"] },
     dns: { "example.com": [PUB] },
-    expect: denied("undeclared_data", 0, 0),
+    expect: denied("natural_person", 0, 0),
   },
   {
     id: "T-SEC-SSRF-043",
-    title: "content: a free-text person name is sent only when the run declares person_name as its kind (the screening subject itself)",
+    title:
+      "content: a free-text person name is refused even when the run declares person_name as its kind — sends marks the run as being about a person, never permission to put the name on the wire (the person transforms download fixed files and match locally)",
     req: { url: "https://example.com/screen?name=Bob%20Smith", sends: ["person_name"] },
     dns: { "example.com": [PUB] },
-    expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
+    expect: denied("natural_person", 0, 0),
   },
   {
     id: "T-SEC-SSRF-043",

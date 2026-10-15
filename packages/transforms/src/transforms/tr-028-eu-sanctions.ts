@@ -34,6 +34,10 @@ export const euSanctions = defineTransform<{ name: string }>(
     outputs: ["eu_reference"],
     network: { mode: "public", allow: [] },
     secrets: [],
+    // The sandbox does not inherit the parent's environment: the token is declared here so the
+    // isolated runner forwards IR_EU_FSD_TOKEN (and only it) to the child over IPC. Without it the
+    // run fails closed before any transport call.
+    env: ["IR_EU_FSD_TOKEN"],
     limits: { rps: 1, timeoutMs: 120_000, maxBytes: 32_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",

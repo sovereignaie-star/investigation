@@ -59,14 +59,20 @@ describe("T-SEC-SSRF-043: content inventory", () => {
   // ---- detection limits (P2-003, 2026-10-13): what the check does NOT find, stated as tests ----
   const passes = (u: string, sends: string[] = []) => judgeInventory(inventoryRequest(new URL(u), undefined, undefined), sends);
 
-  it("a person's name in the query IS catalog data now (P2-011 person_name): undeclared it refuses, declared person_name it passes; a street address and free text are not found", () => {
-    // P2-011: person_name (two words, context word "name") is a catalog type since TR-026, so the old
-    // "not found" limit no longer holds for names; the refusal is the same asymmetry as any kind.
+  it("a person's name on the wire refuses ALWAYS (P2-011 review fix): the screening subject's name never goes on the wire, even when the run declares person_name; a single-word value and free text are not found", () => {
+    // P2-011 (review fix, 2026-10-15): person_name is a catalog type since TR-026, and a two-word name
+    // on the wire is the subject's own data — it refuses as natural_person whatever sends declares
+    // (ADR-08 reason precedence: the protected category is recorded first). The person transforms
+    // download fixed files and match locally, so a legitimate person run never trips this.
     expect(passes("https://h.example/?name=John%20Smith")).toEqual({
-      reason: "undeclared_data",
-      detail: "query carries undeclared data (person_name)",
+      reason: "natural_person",
+      detail: "query carries a natural-person identifier (person_name)",
     });
-    expect(passes("https://h.example/?name=John%20Smith", ["person_name"])).toBeNull();
+    expect(passes("https://h.example/?name=John%20Smith", ["person_name"])).toEqual({
+      reason: "natural_person",
+      detail: "query carries a natural-person identifier (person_name)",
+    });
+    expect(passes("https://h.example/?name=Bob", ["person_name"])).toBeNull();
     expect(passes("https://h.example/?addr=12%20Main%20Street")).toBeNull();
     expect(passes("https://h.example/?note=suspect%20lives%20in%20Riyadh")).toBeNull();
   });

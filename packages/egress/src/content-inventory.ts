@@ -97,21 +97,17 @@ function isBareLabel(type: string, value: string): boolean {
  */
 const MIN_SPECIFICITY = 0.5;
 /**
- * P2-011: a natural-person reading that is reportable ONLY through context is still a refusal candidate, but a
- * free-text person NAME (person_name, context.required) is not an identifier reading: it is a screening subject
- * the caller typed, not data found in the wire text. It is excluded from the inventory so `?name=Bob` (an ordinary
- * API query key) never becomes a refusal, while `?passport=AB123456` (a validated natural-person identifier) still
- * refuses. The egress gate for person_name subjects is the engine's E-02 gate (purpose confirmation), not the
- * inventory.
+ * P2-011 (review fix, 2026-10-15): person_name (context.required) readings are NOT excluded from the
+ * inventory — a two-word name on the wire is the subject's own data and refuses as natural_person
+ * (judgeInventory). A single-word value never matches the pattern, so `?name=Bob` is not a false
+ * refusal. The egress gate for person_name subjects is the engine's E-02 gate (purpose confirmation);
+ * the inventory is the wire-level backstop that the name never leaves.
  */
-const CONTEXT_ONLY_PERSON_NAME = "person_name";
 function isStrongReading(c: { validated: boolean; specificity: number; sensitivity: string; type: string }): boolean {
-  // P2-011 (revised): person_name (context.required, no validator, never validated) is never a strong
-  // identifier reading on its own. It IS reported when the run declared person_name as its kind (a
-  // screening subject the operator typed), so the wire-level check is: a person_name value on the wire
-  // is allowed only when sends declares person_name; undeclared, it refuses as undeclared_data (the
-  // same asymmetry as every other kind: `?name=Bob` with sends=[] or sends=[domain] is refused, with
-  // sends=[person_name] it is the declared screening subject itself).
+  // P2-011 (review fix, 2026-10-15): person_name (context.required, no validator, never validated) is
+  // reported as a natural-person reading — a two-word name on the wire is the screening subject's own
+  // data, and it refuses as natural_person whether or not sends declares person_name. A single-word
+  // value (?name=Bob) never matches the two-word pattern, so ordinary API keys are not false refusals.
   return c.sensitivity === "natural_person_gate" || c.validated || c.specificity >= MIN_SPECIFICITY;
 }
 
@@ -295,10 +291,12 @@ export function judgeInventory(
   sends: readonly string[],
 ): { reason: "natural_person" | "undeclared_data"; detail: string } | null {
   for (const f of findings) {
-    // P2-011 (revised): person_name is the free-text name of the screening subject, not a validated
-    // identifier — it is judged as ordinary data (a kind that must be declared), never as a natural-
-    // person identifier refusal. A validated identifier (?passport=AB123456) still refuses here.
-    const np = f.readings.find((r) => r.sensitivity === "natural_person_gate" && r.type !== CONTEXT_ONLY_PERSON_NAME);
+    // P2-011 (review fix, 2026-10-15): a person_name reading on the wire refuses ALWAYS, exactly like a
+    // validated natural-person identifier — the screening subject's name never goes on the wire, whatever
+    // sends declares. `sends: [person_name]` marks the run as being ABOUT a person (the engine's E-02
+    // purpose gate); it is never permission to put the name in a URL, header or redirect. The person
+    // transforms download fixed files and match locally, so a legitimate person run never trips this.
+    const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
     if (np) return { reason: "natural_person", detail: `${f.surface} carries a natural-person identifier (${np.type})` };
   }
   return undeclaredIn(findings, sends);
