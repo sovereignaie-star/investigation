@@ -252,6 +252,46 @@ console.log("FORKS started=" + started + " refused=" + refused + " alive=" + ali
         },
       );
 
+      it(
+        "T-SBX-020: a memory hog is bounded by RLIMIT_DATA (the committed-usage cap) at every level (P2-003 cgroup gap)",
+        { timeout: 60_000 },
+        async (ctx) => {
+          if (skip()) return ctx.skip();
+          const HOG = `
+let total = 0;
+const bufs = [];
+try {
+  for (let i = 0; i < 30; i++) {
+    const b = Buffer.alloc(50 * 1024 * 1024, 1); // touched => committed anonymous pages
+    bufs.push(b); total += 50;
+  }
+  console.log("HOG allocated " + total + "MB OK");
+} catch (e) {
+  console.log("HOG refused at " + total + "MB: " + String(e.message).slice(0, 40));
+}
+`;
+          // Default limits: the hog is refused mid-way — a CATCHABLE allocation failure (clean
+          // refusal), not a crash — well before the full 1500MB it asks for.
+          const r = done(await run(HOG));
+          const m = /^HOG refused at (\d+)MB/.exec(r.stdout.trim());
+          expect(m, r.stdout).not.toBeNull();
+          const refusedAt = m === null ? 1500 : Number(m[1]);
+          expect(refusedAt).toBeGreaterThan(100); // the hog got somewhere before the cap
+          expect(refusedAt).toBeLessThan(1500); // and was bounded before its full ask
+          // Negative control: the SAME hog with the data cap raised (and AS raised with it, so only
+          // the DATA cap could have stopped it) allocates the whole 1500MB — the refusal above is
+          // OUR cap, not the host's.
+          const nc = done(
+            await runAtLevel(level, HOG, {
+              env: env(),
+              timeoutMs: 30_000,
+              limits: { dataBytes: 8 * 1024 * 1024 * 1024, addressSpaceBytes: 4 * 1024 * 1024 * 1024 },
+            }),
+          );
+          expect(nc.stdout.trim()).toMatch(/^HOG allocated 1500MB OK$/);
+        },
+      );
+
       it("T-SBX-006: a grandchild started with a CLEAN environment (no LD_PRELOAD, no NODE_OPTIONS) is still filtered", async (ctx) => {
         if (skip()) return ctx.skip();
         const before = tcpSeen;
