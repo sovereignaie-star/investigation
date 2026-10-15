@@ -292,6 +292,58 @@ try {
         },
       );
 
+      it(
+        "T-SBX-021: without a delegated cgroup subtree the group memory SUM is unbounded (the recorded P2-003 gap, demonstrated reproducibly)",
+        { timeout: 90_000 },
+        async (ctx) => {
+          if (skip()) return ctx.skip();
+          // The gap only exists where no delegated cgroup subtree is available. Where one IS delegated,
+          // memory.max could bound the group (future work); this demonstration does not apply there.
+          if (report.cgroupMemory) return ctx.skip();
+          // The probe must RECORD the reason in every report — the gap stays visible outside this test.
+          const cgroupLine = report.detail.find((d) => d.startsWith("cgroup: "));
+          expect(cgroupLine, report.detail.join("; ")).toBeDefined();
+          expect(cgroupLine).not.toMatch(/^cgroup: delegated cgroup subtree/); // it records WHY it is unavailable
+          // Reproducible demonstration: six sandboxed children run CONCURRENTLY, each legitimately
+          // under its own per-process DATA cap (768MB: ~600MB of V8 startup reservations + 144MB
+          // allocated — measured: boots and allocates at 768MB, allocation refused at 640MB),
+          // while the SUM of their allocations alone (864MB) already exceeds that cap, and each
+          // child commits ~744MB so the group commits ~4.5GB — nothing bounds the sum. The only
+          // userspace ceiling is the documented product: processes (64) x dataBytes.
+          const CAP = 768 * 1024 * 1024;
+          const child = `
+const bufs = [];
+try {
+  for (let i = 0; i < 9; i++) bufs.push(Buffer.alloc(16 * 1024 * 1024, 1)); // touched => committed
+  console.log("CHILD OK 9x16MB");
+} catch (e) { console.log("CHILD refused: " + String(e.message).slice(0, 40)); }
+`;
+          const runs = await Promise.all(
+            Array.from({ length: 6 }, () =>
+              runAtLevel(level, child, {
+                env: env(),
+                timeoutMs: 30_000,
+                limits: { dataBytes: CAP, addressSpaceBytes: 2 * 1024 * 1024 * 1024 },
+              }),
+            ),
+          );
+          for (const r of runs) {
+            const res = done(r);
+            expect(res.stdout.trim()).toBe("CHILD OK 9x16MB");
+          }
+          // Control: the SAME child under a 640MB cap boots but its allocation is refused —
+          // per-process enforcement is intact; the gap is strictly the group SUM.
+          const control = done(
+            await runAtLevel(level, child, {
+              env: env(),
+              timeoutMs: 30_000,
+              limits: { dataBytes: 640 * 1024 * 1024, addressSpaceBytes: 2 * 1024 * 1024 * 1024 },
+            }),
+          );
+          expect(control.stdout.trim()).toMatch(/^CHILD refused/);
+        },
+      );
+
       it("T-SBX-006: a grandchild started with a CLEAN environment (no LD_PRELOAD, no NODE_OPTIONS) is still filtered", async (ctx) => {
         if (skip()) return ctx.skip();
         const before = tcpSeen;
