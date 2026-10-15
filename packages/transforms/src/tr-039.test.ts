@@ -14,17 +14,17 @@ import { runTransform } from "./runner.ts";
 
 const U = "someuser";
 
-/** Matches https://<host>/<prefix><username> for the username this test uses. */
-function siteMatch(host: string, prefix: string) {
-  return new RegExp(`^https://${host.replace(/\./g, "\\.")}/${prefix}${U}$`);
+/** The exact profile URL the transform must build for the username this test uses. */
+function siteUrl(host: string, prefix: string) {
+  return `https://${host}/${prefix}${U}`;
 }
 
 describe("TR-039 username presence", () => {
   it("emits existence-only findings for the sites where the username exists", async () => {
     const sim = createSimServer([
-      { match: siteMatch("github.com", ""), response: { status: 200, body: "<html>profile</html>" } },
-      { match: siteMatch("www.reddit.com", "user/"), response: { status: 404, body: "" } },
-      { match: siteMatch("gitlab.com", ""), response: { status: 200, body: "<html>profile</html>" } },
+      { match: siteUrl("github.com", ""), response: { status: 200, body: "<html>profile</html>" } },
+      { match: siteUrl("www.reddit.com", "user/"), response: { status: 404, body: "" } },
+      { match: siteUrl("gitlab.com", ""), response: { status: 200, body: "<html>profile</html>" } },
     ]);
     const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
     expect(result.requestCount).toBe(3);
@@ -42,9 +42,9 @@ describe("TR-039 username presence", () => {
 
   it("a username absent everywhere is a legitimate empty result, not an error", async () => {
     const sim = createSimServer([
-      { match: siteMatch("github.com", ""), response: { status: 404, body: "" } },
-      { match: siteMatch("www.reddit.com", "user/"), response: { status: 404, body: "" } },
-      { match: siteMatch("gitlab.com", ""), response: { status: 404, body: "" } },
+      { match: siteUrl("github.com", ""), response: { status: 404, body: "" } },
+      { match: siteUrl("www.reddit.com", "user/"), response: { status: 404, body: "" } },
+      { match: siteUrl("gitlab.com", ""), response: { status: 404, body: "" } },
     ]);
     const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
     expect(result.requestCount).toBe(3);
@@ -63,8 +63,8 @@ describe("TR-039 username presence", () => {
 
   it("an unexpected status (not 200/404) fails the run closed with the site and status", async () => {
     const sim = createSimServer([
-      { match: siteMatch("github.com", ""), response: { status: 200, body: "" } },
-      { match: siteMatch("www.reddit.com", "user/"), response: { status: 403, body: "" } },
+      { match: siteUrl("github.com", ""), response: { status: 200, body: "" } },
+      { match: siteUrl("www.reddit.com", "user/"), response: { status: 403, body: "" } },
     ]);
     await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(/github|reddit/i);
   });
