@@ -29,7 +29,7 @@ describe("TR-033 reverse image links", () => {
     for (const f of findings) {
       expect(f.objectType).toBe("url");
       expect(f.predicate).toBe("has_reverse_image_search");
-      expect(f.objectValue).toContain(encodeURIComponent(IMAGE_URL).replace(/%/g, "%"));
+      expect(f.objectValue).toContain(encodeURIComponent(IMAGE_URL));
       expect(f.derivedFrom).toBe("input");
       expect(f.evidence).toBeUndefined();
     }
