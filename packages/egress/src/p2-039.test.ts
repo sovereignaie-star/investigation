@@ -44,7 +44,9 @@ function harness(responses: Array<Resp | ((req: FetchReq) => Promise<Resp>)> = [
     transport,
     allowedHosts: Object.keys(DNS),
     auditSink: { record: (e) => void events.push(e) },
-    limits: { ...limits },
+    // These tests target fixed paths, budgets and redirects — not the operational rate default
+    // (measured, ADR-08 item و): a generous injected rate keeps them independent of it.
+    limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100, ...limits },
   });
   return { gw, calls, resolved, events };
 }

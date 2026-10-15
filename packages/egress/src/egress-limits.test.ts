@@ -171,7 +171,11 @@ describe("redirect handling (policy, not just hop count)", () => {
       { status: 302, headers: { location: "https://example.com/y" } },
       { status: 200, body: "ok" },
     ]);
-    const g = createEgressGateway({ resolver: fakeResolver({ "example.com": ["93.184.216.34"] }), transport: t });
+    const g = createEgressGateway({
+      resolver: fakeResolver({ "example.com": ["93.184.216.34"] }),
+      transport: t,
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
+    });
     const r = await g.request({ ...BASE, url: "https://example.com/x", pinnedHost: "example.com" });
     expect(r.ok).toBe(true);
     expect(t.calls).toHaveLength(2);
@@ -328,6 +332,7 @@ describe("audit sink + secret redaction", () => {
       transport: t,
       auditSink: c.sink,
       providerHosts: { prov1: ["example.com"] },
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
     await g.request({ ...BASE, url: "https://example.com/x", secret: "topsecret", pinnedHost: "example.com", secretProvider: "prov1" });
     await g.request({ ...BASE, url: "https://example.com/y", secret: "topsecret", pinnedHost: "other.com", secretProvider: "prov1" });

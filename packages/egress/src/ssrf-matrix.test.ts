@@ -126,6 +126,9 @@ describe("T-SEC-SSRF-042", () => {
             return { status: 302, headers: { location: "https://evil.example/" } };
           },
         },
+        // These tests target the vault capability's host/path/method binding — not the operational
+        // rate default (measured, ADR-08 item و): a generous injected rate keeps them independent.
+        { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
       ),
     );
     return { cap, g };
@@ -214,6 +217,9 @@ describe("T-SEC-SSRF-042: a provider secret only reaches that provider's registe
             : { status: 200, body: "{}" };
         },
       },
+      // These tests target the vault capability's path registry — not the operational rate default
+      // (measured, ADR-08 item و): a generous injected rate keeps them independent.
+      { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     );
     const opts = withPaths ? base : { ...base, providerPaths: undefined };
     return { calls, cap, g: createEgressGateway(opts) };
@@ -344,6 +350,9 @@ describe("T-SEC-SSRF-043 redirect content policy (P2-032, ADR-08 section 4; form
           return seen.length === 1 ? { status: 301, headers: { location: "/v2/" } } : { status: 200, body: "ok" };
         },
       },
+      // This control targets header handling on redirects — not the operational rate default
+      // (measured, ADR-08 item و): a generous injected rate keeps it independent.
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
     const headers = { "x-lookup": "8.8.8.8" };
     const r = await g.request({ ...BASE_REQUEST, url: "https://example.com/", sends: ["ip"], headers });
