@@ -2,7 +2,7 @@ import { canonicalize } from "../jcs.ts";
 import type { Entry } from "../ledger.ts";
 import { sha256Hex } from "../ledger.ts";
 import { type Issue, Projector } from "./state.ts";
-import { type Coverage, coverageView, type Graph, graphView, type TableRow, tableView } from "./views.ts";
+import { type Coverage, coverageView, type Graph, graphView, type NetworkLog, networkLogView, type TableRow, tableView } from "./views.ts";
 
 export { Projector, type Issue } from "./state.ts";
 export * from "./views.ts";
@@ -14,6 +14,8 @@ export interface Projection {
   graph: Graph;
   table: TableRow[];
   coverage: Coverage;
+  /** P2-014 (E-06/T-ETH-006): every external request the case made — gateway decisions and stored responses. */
+  networkLog: NetworkLog;
   issues: Issue[];
   counts: {
     entities: number;
@@ -34,6 +36,7 @@ export function view(p: Projector): Projection {
     graph,
     table: tableView(p, graph),
     coverage: coverageView(p, graph),
+    networkLog: networkLogView(p),
     issues: [...p.issues],
     counts: {
       entities: p.entities.size,

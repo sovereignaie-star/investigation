@@ -168,6 +168,21 @@ describe("ir project (P1-016)", () => {
   });
 });
 
+describe("ir project (P2-014: network log)", () => {
+  it("prints the network log line and includes the full log in --json", async () => {
+    const { dir } = makeCase();
+    const a = await run(["project", dir]);
+    expect(a.code).toBe(0);
+    // the case's one evidence entry is a DNS request outcome — a stored response, not a LOCAL run record
+    expect(a.text).toMatch(/network \(P2-014\): 0 requests \(0 not allowed\), 1 stored responses/);
+    const json = JSON.parse((await run(["project", dir, "--json"])).text) as {
+      networkLog: { requests: unknown[]; responses: Array<{ url: string; method: string }> };
+    };
+    expect(json.networkLog.requests).toEqual([]);
+    expect(json.networkLog.responses).toEqual([expect.objectContaining({ url: "dns:example.com/NS", method: "DNS" })]);
+  });
+});
+
 describe("ir project on an encrypted case", () => {
   it("needs the passphrase file, and gives the same hash on every run", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "ir-project-enc-"));

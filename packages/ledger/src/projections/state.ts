@@ -1,4 +1,4 @@
-import { Claim, Entity, Evidence, MergeDecision, Observation } from "@ir/schema";
+import { AuditEvent, Claim, Entity, Evidence, MergeDecision, Observation } from "@ir/schema";
 import { z } from "zod/v4";
 import type { Entry } from "../ledger.ts";
 
@@ -38,6 +38,8 @@ export class Projector {
   readonly claims = new Map<string, StoredClaim>();
   readonly observations: StoredObservation[] = [];
   readonly evidence = new Map<string, Evidence & { seq: number }>();
+  /** Audit events in ledger order (P2-014: the network log is derived from the `egress.*` ones). */
+  readonly audits: (AuditEvent & { seq: number })[] = [];
   /** Merge decisions in ledger order; `reverted` is set by merge.reverted. */
   readonly merges = new Map<string, MergeDecision & { seq: number }>();
   readonly issues: Issue[] = [];
@@ -163,6 +165,11 @@ const HANDLERS: Partial<Record<Entry["kind"], Handler>> = {
     if (!ev) return;
     if (p.evidence.has(ev.id)) return p.issue(e, "duplicate-id", `evidence ${ev.id} already stored`);
     p.evidence.set(ev.id, { ...ev, seq: e.seq });
+  },
+  "audit.event": (p, e) => {
+    const a = parsed(p, e, AuditEvent);
+    if (!a) return;
+    p.audits.push({ ...a, seq: e.seq });
   },
   "merge.decided": (p, e) => {
     const m = parsed(p, e, MergeDecision);
