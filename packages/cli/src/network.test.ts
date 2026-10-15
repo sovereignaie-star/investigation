@@ -341,7 +341,8 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     const dir = tempDir("netlog-redirect");
     // source.example answers 302 -> alt.example (both allowed); the transport sees the redirect target itself
     const x = fake({ "source.example": [PUBLIC_IP], "alt.example": [PUBLIC_IP] }, (_n, url): Resp => {
-      if (url.startsWith("https://alt.example")) return { status: 200, headers: { "content-type": "text/html" }, body: "<html>ok</html>" };
+      // exact host match (never a prefix match — CodeQL: incomplete URL substring sanitization)
+      if (new URL(url).host === "alt.example") return { status: 200, headers: { "content-type": "text/html" }, body: "<html>ok</html>" };
       return { status: 302, headers: { location: "https://alt.example/moved" } };
     });
     const r = await run(
