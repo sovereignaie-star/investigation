@@ -564,3 +564,38 @@ describe("P2-042 follow-up: a hop that never reaches the transport consumes no r
     expect(h.resolved.length).toBe(0); // refused before DNS
   });
 });
+
+describe("P2-011 review fix — budget/rate compliance never bypasses the content checks", () => {
+  // The mandate's budget-interaction check: a request that is WITHIN the rate limit and WITHIN both
+  // budgets is still content-inspected — the screening subject's name on the wire refuses natural_person
+  // with zero transport calls, and a within-budget request that declares nothing still refuses
+  // undeclared_data. Budgets meter traffic; they never grant permission.
+  it("a person name in the query refuses natural_person even with fresh byte and request budgets and no rate pressure", async () => {
+    const h = harness([{ status: 200, body: "" }]);
+    const r = await h.gw.request({
+      ...BOOT,
+      url: "https://data.iana.org/rdap/ipv4.json?name=Bob%20Smith",
+      sends: ["person_name"],
+      staticPaths: STATIC,
+      byteBudget: new ByteBudget(1000),
+      requestBudget: new RequestBudget(10),
+    });
+    expect(r.reason).toBe("natural_person");
+    expect(h.calls).toHaveLength(0); // nothing left, whatever the budgets allow
+    expect(h.events.filter((e) => e.kind === "denied")).toHaveLength(1);
+  });
+
+  it("a within-budget request that carries undeclared data still refuses undeclared_data; only the budget meter runs", async () => {
+    const h = harness([{ status: 200, body: "" }]);
+    const r = await h.gw.request({
+      ...BOOT,
+      url: "https://data.iana.org/rdap/ipv4.json?site=evil.example",
+      sends: ["ip", "asn"],
+      staticPaths: STATIC,
+      byteBudget: new ByteBudget(1000),
+      requestBudget: new RequestBudget(10),
+    });
+    expect(r.reason).toBe("undeclared_data");
+    expect(h.calls).toHaveLength(0);
+  });
+});

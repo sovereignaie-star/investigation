@@ -102,3 +102,61 @@ describe("TR-028 eu sanctions", () => {
     );
   });
 });
+
+/**
+ * P2-011 review fix (2026-10-15) — the isolated path is the production path (`ir run --network` requires
+ * isolation), and the sandbox does NOT inherit the parent's environment: without the manifest's `env`
+ * declaration the token could never reach the child. These tests prove the declared name arrives over
+ * IPC, and that without it the run fails closed BEFORE any transport call. Skipped where the sandbox
+ * cannot provide "full" isolation (same rule as T-ISO).
+ */
+import { fileURLToPath } from "node:url";
+import { probeIsolation } from "@ir/transform-sandbox";
+import { TransformRunError } from "./runner.ts";
+
+const MODULE = fileURLToPath(new URL("./transforms/tr-028-eu-sanctions.ts", import.meta.url));
+const isoHost = await probeIsolation();
+
+describe.skipIf(!isoHost.full)("TR-028 isolated (production path: the sandbox does not inherit the parent env)", () => {
+  const ORIGINAL = process.env.IR_EU_FSD_TOKEN;
+
+  it("the manifest-declared env name reaches the sandboxed child over IPC: the run succeeds and the URL carries the token", async () => {
+    const file = euFile([{ ref: "EU.27.28", type: "person", wholeNames: ["Saddam Hussein Al-Tikriti"] }]);
+    const sim = createSimServer([{ match: MATCH_RULE, response: { status: 200, body: file } }]);
+    process.env.IR_EU_FSD_TOKEN = TOKEN; // a synthetic value; the real catalog constant never appears in source
+    try {
+      const result = await runTransform(undefined, {
+        transport: sim.transport,
+        input: { name: "Saddam Hussein Al-Tikriti" },
+        requireIsolation: true,
+        isolatedModule: MODULE,
+        transformId: "TR-028",
+      });
+      expect(result.requestCount).toBe(1);
+      expect(sim.requestCount()).toBe(1);
+      expect(sim.requests[0].url).toContain(`token=${TOKEN}`);
+      expect(result.output.findings[0]?.objectValue).toBe("EU.27.28");
+    } finally {
+      process.env.IR_EU_FSD_TOKEN = ORIGINAL;
+    }
+  });
+
+  it("without the token the run fails closed BEFORE any transport call — nothing leaves", async () => {
+    const sim = createSimServer([{ match: MATCH_RULE, response: { status: 200, body: euFile([]) } }]);
+    delete process.env.IR_EU_FSD_TOKEN;
+    try {
+      const err = await runTransform(undefined, {
+        transport: sim.transport,
+        input: { name: "Saddam Hussein Al-Tikriti" },
+        requireIsolation: true,
+        isolatedModule: MODULE,
+        transformId: "TR-028",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(TransformRunError);
+      expect(err.message).toContain("IR_EU_FSD_TOKEN");
+      expect(sim.requestCount()).toBe(0); // the refusal happened before any request left
+    } finally {
+      process.env.IR_EU_FSD_TOKEN = ORIGINAL;
+    }
+  });
+});

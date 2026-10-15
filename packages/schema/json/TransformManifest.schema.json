@@ -53,6 +53,14 @@
         "pattern": "^[A-Z][A-Z0-9_]*$"
       }
     },
+    "env": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^IR_[A-Z0-9_]+$"
+      }
+    },
     "limits": {
       "type": "object",
       "properties": {

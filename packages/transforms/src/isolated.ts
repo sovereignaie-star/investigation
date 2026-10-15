@@ -164,6 +164,14 @@ try { input = JSON.parse(inputLine); } catch (err) {
   process.exit(1);
 }
 ipc({ op: "ready", manifest: def.manifest });
+// The parent answers ready with the run-time environment the manifest declared (fail-closed: only
+// declared names, only when the parent has them). The line always arrives — an empty values object
+// when the manifest declares nothing or the parent lacks a name — so the run never blocks here.
+const envLine = await nextLine();
+try {
+  const envMsg = JSON.parse(envLine);
+  for (const [k, v] of Object.entries(envMsg.values ?? {})) process.env[k] = String(v);
+} catch { /* a malformed env line leaves the environment untouched; the transform fails closed on its own */ }
 const pending = new Map();
 let nextId = 1;
 rl.on("line", (l) => {
@@ -222,24 +230,48 @@ interface IpcState {
 function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: NodeJS.WritableStream | undefined): void {
   switch (msg.op) {
     case "ready": {
+      // The declared environment reaches the sandboxed child over IPC (the sandbox does NOT inherit
+      // the parent's environment by design): only names the manifest declares, only when the parent
+      // has them. A parse failure still answers with an empty line so the child never blocks.
+      const answerEnv = (values: Record<string, string>) => {
+        try {
+          stdin?.write(JSON.stringify({ op: "env", values }) + "\n");
+        } catch (err) {
+          // The child may already be gone (cancellation/timeout); the write is best-effort and the
+          // child would hang to the sandbox timeout anyway. Record the failure as a typed state
+          // field (D-017: no silent catch) so the settled run reports the write failure, not a timeout.
+          state.writeError = err instanceof Error ? err.message : String(err);
+        }
+      };
+      let manifest;
       try {
-        const manifest = TransformManifestSchema.parse(msg.manifest);
-        const limiter = new RateLimiter(manifest.limits.rps, state.now, state.sleep);
-        state.http = createTransformHttp(
-          recordingTransport(
-            state.transport,
-            state.evidence,
-            limiter,
-            manifest.limits.timeoutMs,
-            manifest.limits.maxBytes,
-            state.signal,
-            state.fetchedAt,
-          ),
-          state.signal,
-        );
+        manifest = TransformManifestSchema.parse(msg.manifest);
       } catch (err) {
+        // The child is still answered (an empty env line) so it never blocks; the run then fails
+        // on the manifest error below, exactly as before.
+        answerEnv({});
         state.manifestError = err instanceof Error ? err.message : String(err);
+        return;
       }
+      const values: Record<string, string> = {};
+      for (const name of manifest.env) {
+        const v = process.env[name];
+        if (v !== undefined) values[name] = v;
+      }
+      answerEnv(values);
+      const limiter = new RateLimiter(manifest.limits.rps, state.now, state.sleep);
+      state.http = createTransformHttp(
+        recordingTransport(
+          state.transport,
+          state.evidence,
+          limiter,
+          manifest.limits.timeoutMs,
+          manifest.limits.maxBytes,
+          state.signal,
+          state.fetchedAt,
+        ),
+        state.signal,
+      );
       return;
     }
     case "fetch": {
