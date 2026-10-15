@@ -2750,3 +2750,7 @@
 - **ما تم:** (1) نوع كتالوج جديد `un_reference` (Documents؛ نمطا `CTn.nnnn` و`QDn.nnnn` مع `flags` وكمية خانات 3-6؛ gated=54) و`catalog.ts` أعيد توليده (377 نوعاً). (2) `tr-027-un-sc.ts`: تنزيل ملف consolidated.xml الرسمي مرة لكل تشغيل (maxBytes 8MB، timeoutMs 60 ث) وتحليله بمحلل XML خطي محدود (`un-sc-xml.ts` — فشل-مغلق على بنية مكسورة). المخرجات: الرقم المرجعي + نوع الكيان لكل اسم مطابق. `sensitivity: natural_person_gate` (E-02). (3) تسجيل في REGISTRY (subject: person_name، personNameInput معاد) وindex.ts، مع 4 اختبارات عقد عبر @ir/sim. (4) اختبارات العدد حُدثت (catalog وidentifierList).
 - **الأدلة:** `pnpm run test` => 102 ملفاً / **1491 ناجحاً / 5 متخطاة** (قبل: 101/1487/5)؛ lint/typecheck/build/governance ناجحة.
 - **المتبقي:** TR-022/023/025/028/029.
+
+### 2026-10-15 — [P2-011] دمج TR-027 وإثباتات ما بعد الدمج
+- **ما تم:** دُمج PR #123 في `main` (squash، إيداع الدمج `f59eec5`) بموافقة D-8 من `xuuux-voox` على الرأس `cfa7024` نفسه؛ فحص `security-review-advisory` ناجح على الرأس نفسه بعد إعادة التشغيل؛ الفحوص المطلوبة الستة ناجحة. أُعيد التحقق بعد الدمج على `main@f59eec5`: `pnpm run test` => 102 ملفاً / 1491 ناجحاً / 5 متخطاة؛ `check --consistency` متسقة؛ فحوص main (governance/ci/codeql/zap/secrets) ناجحة.
+- **حالة P2-011:** 6 من 10 محوّلات منفذة ومدمجة (TR-021/024/026/027/030 + TR-010 المرجعي). المتبقي: TR-022/023/025/028/029.
