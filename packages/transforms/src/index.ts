@@ -31,6 +31,7 @@ export * from "./transforms/tr-024-sec-edgar.ts";
 export * from "./transforms/tr-030-nominatim.ts";
 export * from "./transforms/tr-033-reverse-image.ts";
 export * from "./transforms/tr-037-iban-bic.ts";
+export * from "./transforms/tr-039-username-presence.ts";
 export * from "./transforms/tr-089-eml-msg.ts";
 // P2-037: the input checks the transforms themselves apply, exported so the CLI refuses an invalid subject before
 // opening a case or starting the sandbox (the transform checks again before its first request).

@@ -1,0 +1,81 @@
+/**
+ * P2-012 — TR-039 contract test (T-RULE-06). Username presence across public
+ * profile pages (Sherlock-style): EXISTENCE ONLY — no content is extracted,
+ * no profiles are fetched beyond the status check. The transform is gated on
+ * natural persons (E-02): a run requires a purpose confirmation.
+ *
+ * Red first: this test was written before the transform existed and failed on
+ * the missing module (the failing test for the right reason).
+ */
+import { describe, expect, it } from "vitest";
+import { createSimServer } from "@ir/sim/server";
+import { usernamePresence } from "./transforms/tr-039-username-presence.ts";
+import { runTransform } from "./runner.ts";
+
+const U = "someuser";
+
+/** Matches https://<host>/<prefix><username> for the username this test uses. */
+function siteMatch(host: string, prefix: string) {
+  return new RegExp(`^https://${host.replace(/\./g, "\\.")}/${prefix}${U}$`);
+}
+
+describe("TR-039 username presence", () => {
+  it("emits existence-only findings for the sites where the username exists", async () => {
+    const sim = createSimServer([
+      { match: siteMatch("github.com", ""), response: { status: 200, body: "<html>profile</html>" } },
+      { match: siteMatch("www.reddit.com", "user/"), response: { status: 404, body: "" } },
+      { match: siteMatch("gitlab.com", ""), response: { status: 200, body: "<html>profile</html>" } },
+    ]);
+    const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
+    expect(result.requestCount).toBe(3);
+    const findings = result.output.findings;
+    expect(findings).toHaveLength(2);
+    expect(findings).toContainEqual(
+      expect.objectContaining({ predicate: "has_account", objectType: "github_username", objectValue: U, evidence: [0] }),
+    );
+    expect(findings).toContainEqual(
+      expect.objectContaining({ predicate: "has_account", objectType: "gitlab_username", objectValue: U, evidence: [2] }),
+    );
+    // Existence only: no content-derived fields anywhere in the findings.
+    for (const f of findings) expect(f.explanation).not.toContain("profile</html>");
+  });
+
+  it("a username absent everywhere is a legitimate empty result, not an error", async () => {
+    const sim = createSimServer([
+      { match: siteMatch("github.com", ""), response: { status: 404, body: "" } },
+      { match: siteMatch("www.reddit.com", "user/"), response: { status: 404, body: "" } },
+      { match: siteMatch("gitlab.com", ""), response: { status: 404, body: "" } },
+    ]);
+    const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
+    expect(result.requestCount).toBe(3);
+    expect(result.output.findings).toHaveLength(0);
+  });
+
+  it("rejects an invalid username before any request (fail-closed)", async () => {
+    const sim = createSimServer([]);
+    for (const bad of ["ab", "has space", "ok_username#"]) {
+      await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: bad } })).rejects.toThrow(
+        /invalid username/,
+      );
+    }
+    expect(sim.requestCount()).toBe(0);
+  });
+
+  it("an unexpected status (not 200/404) fails the run closed with the site and status", async () => {
+    const sim = createSimServer([
+      { match: siteMatch("github.com", ""), response: { status: 200, body: "" } },
+      { match: siteMatch("www.reddit.com", "user/"), response: { status: 403, body: "" } },
+    ]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(/github|reddit/i);
+  });
+
+  it("requires a username (fail-closed)", async () => {
+    const sim = createSimServer([]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: {} })).rejects.toThrow(/username is required/);
+    expect(sim.requestCount()).toBe(0);
+  });
+
+  it("is gated on natural persons (E-02)", () => {
+    expect(usernamePresence.manifest.sensitivity).toBe("natural_person_gate");
+  });
+});
