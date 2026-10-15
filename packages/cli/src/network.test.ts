@@ -280,6 +280,63 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     expect(k.audit.find((a) => a.action === "robots.policy")?.detail).toEqual({ basis: "no_file" });
   });
 
+  it("T-ETH-006 (P2-014): the case's network log shows every request the transport actually observed — robots.txt and the page", async () => {
+    const dir = tempDir("netlog");
+    const x = fake({ "source.example": [PUBLIC_IP] }, () => ({
+      status: 200,
+      headers: { "content-type": "text/html" },
+      body: "<html>ok</html>",
+    }));
+    const r = await run(
+      ["run", dir, "TR-010", "url", "https://source.example/page", "--network", "--allow-host", "source.example", ...CASE_ARGS, "--json"],
+      { network: { env: ON, resolver: x.resolver, transport: x.transport } },
+    );
+    expect(r.code).toBe(0);
+    // what the transport actually saw: one robots.txt request and one page request
+    expect(x.robotsCalls).toEqual(["https://source.example/robots.txt"]);
+    expect(x.calls.map((c) => c.url)).toEqual(["https://source.example/page"]);
+
+    const k = readCase(dir);
+    // every observed request is a row in the network log (decisions), and the page outcome is a stored response
+    const log = k.p.networkLog;
+    expect(log.requests).toHaveLength(2);
+    expect(log.requests.map((q) => [q.decision, q.host])).toEqual([
+      ["allowed", "source.example"],
+      ["allowed", "source.example"],
+    ]);
+    expect(log.requests.every((q) => q.transportCalls === 1)).toBe(true);
+    expect(log.responses).toHaveLength(1);
+    expect(log.responses[0]).toMatchObject({
+      method: "GET",
+      url: "https://source.example/page",
+      status: 200,
+      transformId: "tr-010",
+    });
+    // the LOCAL run record is not an external request: it stays out of the log
+    expect(log.responses.every((q) => !q.url.startsWith("local://"))).toBe(true);
+  });
+
+  it("T-ETH-006 (P2-014): a request refused by the gateway before the transport is in the network log with its reason", async () => {
+    const dir = tempDir("netlog-denied");
+    const x = fake({ "source.example": [PUBLIC_IP] }, () => ({ status: 200, body: "ok" }));
+    const r = await run(
+      ["run", dir, "TR-010", "url", "https://other.example/", "--network", "--allow-host", "source.example", ...CASE_ARGS, "--json"],
+      { network: { env: ON, resolver: x.resolver, transport: x.transport } },
+    );
+    expect(r.code).not.toBe(0);
+    expect(x.calls).toHaveLength(0); // nothing was sent
+    const k = readCase(dir);
+    const log = k.p.networkLog;
+    expect(log.requests).toHaveLength(1);
+    expect(log.requests[0]).toMatchObject({ decision: "denied", host: "other.example" });
+    expect(log.requests[0].reason).toBeDefined();
+    expect(log.requests[0].transportCalls).toBe(0);
+    // the refused request's outcome is still stored as evidence (P2-036) — no status, its url
+    expect(log.responses).toHaveLength(1);
+    expect(log.responses[0]).toMatchObject({ url: "https://other.example/" });
+    expect(log.responses[0].status).toBeUndefined();
+  });
+
   it("an authorised host that resolves to a private address is refused before the transport, and the refusal is recorded", async () => {
     const dir = tempDir("private");
     const x = fake({ "source.example": [PUBLIC_IP, "10.0.0.5"] }, () => ({ status: 200, body: "never" }));

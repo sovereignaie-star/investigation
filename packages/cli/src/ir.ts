@@ -26,7 +26,7 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
               [--max-time-ms n] [--purpose text --legal-basis basis] [--json]
 
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
-  project: rebuilds the graph, table and coverage views from the chain, offline (optionally as of seq --at),
+  project: rebuilds the graph, table, coverage and network-log views from the chain, offline (optionally as of seq --at),
            and prints their counts and projection hash; --expect fails (exit 1) unless the hash matches.
   run:     runs a transform against a subject in the deterministic simulation world (@ir/sim), stores the
            response as evidence, and expands the findings into the ledger. --sim loads a JSON array of sim
@@ -178,6 +178,7 @@ function summary(p: Projection, hash: string): string {
     `projection at seq ${p.seq}`,
     `  nodes ${c.nodes} (entities ${c.entities}), edges ${c.edges} (claims ${c.claims}), observations ${c.observations}, evidence ${c.evidence}, active merges ${c.merges}`,
     `  coverage: ${p.coverage.cells.length} cells over ${p.coverage.transforms.length} transforms, ${p.coverage.untouched.length} untouched nodes`,
+    `  network (P2-014): ${p.networkLog.requests.length} requests (${p.networkLog.requests.filter((q) => q.decision !== "allowed").length} not allowed), ${p.networkLog.responses.length} stored responses`,
     `  issues: ${p.issues.length}${p.issues
       .slice(0, 5)
       .map((i) => `\n    #${i.seq} ${i.code}: ${i.message}`)

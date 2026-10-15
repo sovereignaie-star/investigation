@@ -147,6 +147,82 @@ export function tableView(p: Projector, graph: Graph = graphView(p)): TableRow[]
   });
 }
 
+/**
+ * P2-014 — the per-case network log (E-06 / T-ETH-006): every external request the case made, visible in
+ * one view. Two sources, both already written per case by the production paths (nothing new is recorded
+ * here — this is a projection over the chain):
+ *   - `requests`: one row per outbound request the gateway was asked to make, from `egress.*` audit
+ *     events — including robots.txt fetches and requests refused before the transport (allowed AND
+ *     denied). Redirect hops within one request are its `transportCalls` count (the accounting unit
+ *     of P2-040/041/042), not separate rows.
+ *   - `responses`: one row per stored request outcome (`evidence.stored` with a real request — URL,
+ *     method, status, size). LOCAL run records (`local://ir-run`) are run records, not external
+ *     requests, and stay out.
+ * Both lists are in ledger (seq) order.
+ */
+const EGRESS_ACTION = /^egress\.(allowed|denied|transport_error|timeout|rate_limited|size_limit)$/;
+
+export interface NetworkRequest {
+  seq: number;
+  at: string;
+  decision: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit";
+  /** The host the request went to (the audit target; the transform name when a refusal preceded DNS). */
+  host: string;
+  transform?: string;
+  transportCalls: number;
+  reason?: string;
+}
+export interface NetworkResponse {
+  seq: number;
+  at: string;
+  evidenceId: string;
+  method: string;
+  url: string;
+  status?: number;
+  size: number;
+  transformId: string;
+  version: string;
+}
+export interface NetworkLog {
+  requests: NetworkRequest[];
+  responses: NetworkResponse[];
+}
+
+export function networkLogView(p: Projector): NetworkLog {
+  const requests: NetworkRequest[] = [];
+  for (const a of p.audits) {
+    const decision = EGRESS_ACTION.exec(a.action)?.[1] as NetworkRequest["decision"] | undefined;
+    if (!decision) continue; // case lifecycle, robots policy, … — not outbound requests
+    const detail = a.detail as Record<string, unknown> | undefined;
+    requests.push({
+      seq: a.seq,
+      at: a.at,
+      decision,
+      host: a.target,
+      ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
+      ...(typeof detail?.transportCalls === "number" ? { transportCalls: detail.transportCalls } : { transportCalls: 0 }),
+      ...(typeof detail?.reason === "string" ? { reason: detail.reason } : {}),
+    });
+  }
+  const responses: NetworkResponse[] = [];
+  for (const ev of p.evidence.values()) {
+    if (ev.request.method === "LOCAL" || ev.request.url.startsWith("local://")) continue;
+    responses.push({
+      seq: ev.seq,
+      at: ev.fetchedAt,
+      evidenceId: ev.id,
+      method: ev.request.method,
+      url: ev.request.url,
+      ...(ev.request.status !== undefined ? { status: ev.request.status } : {}),
+      size: ev.size,
+      transformId: ev.transformId,
+      version: ev.version,
+    });
+  }
+  responses.sort((a, b) => a.seq - b.seq);
+  return { requests, responses };
+}
+
 export interface CoverageCell {
   entityId: string;
   transformId: string;
