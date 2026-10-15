@@ -22,9 +22,11 @@ function euFile(entries: Array<{ ref: string; type: "person" | "enterprise"; who
 </export>`;
 }
 
-// The token is a public catalog constant, but gitleaks flags any literal that looks like a key, so the
-// test derives it (base64 of the fixed string the EU open-data catalog publishes in every record).
-const TOKEN = Buffer.from("token-2017").toString("base64");
+// The token is a PUBLIC constant the EU open-data catalog publishes in every record (placeholder, not a
+// secret). The plain literal does NOT trigger gitleaks (verified 2026-10-15 with the CI-pinned
+// 8.30.1) — the earlier base64 derivation was unnecessary and violated the founding rule against
+// hiding a value by encoding it just to silence the secrets check. It stays visible in plain text.
+const TOKEN = "token-2017";
 // The sim rule must see the same URL the transform builds (the token comes from the env at run time).
 process.env.IR_EU_FSD_TOKEN = TOKEN;
 const MATCH = (token: string) =>
@@ -123,7 +125,7 @@ describe.skipIf(!isoHost.full)("TR-028 isolated (production path: the sandbox do
   it("the manifest-declared env name reaches the sandboxed child over IPC: the run succeeds and the URL carries the token", async () => {
     const file = euFile([{ ref: "EU.27.28", type: "person", wholeNames: ["Saddam Hussein Al-Tikriti"] }]);
     const sim = createSimServer([{ match: MATCH_RULE, response: { status: 200, body: file } }]);
-    process.env.IR_EU_FSD_TOKEN = TOKEN; // a synthetic value; the real catalog constant never appears in source
+    process.env.IR_EU_FSD_TOKEN = TOKEN; // the public catalog constant appears only in this test file, never in production source
     try {
       const result = await runTransform(undefined, {
         transport: sim.transport,

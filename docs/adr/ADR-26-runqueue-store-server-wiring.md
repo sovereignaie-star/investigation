@@ -2,7 +2,7 @@
 
 | البند | القيمة |
 |---|---|
-| الحالة | **مقترح — بانتظار قرار المالك** |
+| الحالة | **مستبدل (2026-10-15) — فُصل إلى [ADR-26a](ADR-26a-runqueue-storage-resume.md) (الحفظ والاستئناف) و[ADR-26b](ADR-26b-purpose-confirmation-resume.md) (مصدر purposeConfirmation)** |
 | التاريخ | 2026-10-15 |
 | المرجع | P2-001 (مغلقة على مستوى الحزمة)، NFR-07 (ROADMAP §9)، `packages/engine/src/run.ts` (`RunQueueStore`)، `docs/security/T-ENG-COVERAGE.md` (T-ENG-012)، `docs/DECLARED_LIMITS.md` (L-09) |
 
