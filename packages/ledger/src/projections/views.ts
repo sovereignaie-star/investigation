@@ -182,45 +182,88 @@ export interface NetworkResponse {
   size: number;
   transformId: string;
   version: string;
+  /** P2-014: how the request was executed; a "sim"/"replay" outcome is a recorded outcome, not a real connection. */
+  origin?: "network" | "sim" | "replay";
+}
+export interface NetworkHop {
+  seq: number;
+  at: string;
+  /** The full URL of the completed redirect-target call (its own external request). */
+  url: string;
+  status: number;
+  host: string;
+  transform?: string;
 }
 export interface NetworkLog {
   requests: NetworkRequest[];
+  /** Completed redirect-target calls (hopCount >= 2): every transport call is exactly one row somewhere. */
+  hops: NetworkHop[];
   responses: NetworkResponse[];
+}
+
+function requestRow(a: Projector["audits"][number]): NetworkRequest | null {
+  const decision = EGRESS_ACTION.exec(a.action)?.[1] as NetworkRequest["decision"] | undefined;
+  if (!decision) return null; // case lifecycle, robots policy, … — not outbound requests
+  const detail = a.detail as Record<string, unknown> | undefined;
+  return {
+    seq: a.seq,
+    at: a.at,
+    decision,
+    host: a.target,
+    ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
+    ...(typeof detail?.transportCalls === "number" ? { transportCalls: detail.transportCalls } : { transportCalls: 0 }),
+    ...(typeof detail?.reason === "string" ? { reason: detail.reason } : {}),
+  };
+}
+
+function hopRow(a: Projector["audits"][number]): NetworkHop | null {
+  if (a.action !== "egress.hop") return null;
+  const detail = a.detail as Record<string, unknown> | undefined;
+  if (typeof detail?.url !== "string" || typeof detail?.status !== "number") return null; // malformed: not a log row
+  return {
+    seq: a.seq,
+    at: a.at,
+    url: detail.url,
+    status: detail.status,
+    host: a.target,
+    ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
+  };
+}
+
+function responseRow(ev: Projector["evidence"] extends Map<string, infer V> ? V : never): NetworkResponse | null {
+  if (ev.request.method === "LOCAL" || ev.request.url.startsWith("local://")) return null;
+  return {
+    seq: ev.seq,
+    at: ev.fetchedAt,
+    evidenceId: ev.id,
+    method: ev.request.method,
+    url: ev.request.url,
+    ...(ev.request.status !== undefined ? { status: ev.request.status } : {}),
+    size: ev.size,
+    transformId: ev.transformId,
+    version: ev.version,
+    ...(ev.origin ? { origin: ev.origin } : {}),
+  };
 }
 
 export function networkLogView(p: Projector): NetworkLog {
   const requests: NetworkRequest[] = [];
+  const hops: NetworkHop[] = [];
   for (const a of p.audits) {
-    const decision = EGRESS_ACTION.exec(a.action)?.[1] as NetworkRequest["decision"] | undefined;
-    if (!decision) continue; // case lifecycle, robots policy, … — not outbound requests
-    const detail = a.detail as Record<string, unknown> | undefined;
-    requests.push({
-      seq: a.seq,
-      at: a.at,
-      decision,
-      host: a.target,
-      ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
-      ...(typeof detail?.transportCalls === "number" ? { transportCalls: detail.transportCalls } : { transportCalls: 0 }),
-      ...(typeof detail?.reason === "string" ? { reason: detail.reason } : {}),
-    });
+    const request = requestRow(a);
+    if (request) requests.push(request);
+    else {
+      const hop = hopRow(a);
+      if (hop) hops.push(hop);
+    }
   }
   const responses: NetworkResponse[] = [];
   for (const ev of p.evidence.values()) {
-    if (ev.request.method === "LOCAL" || ev.request.url.startsWith("local://")) continue;
-    responses.push({
-      seq: ev.seq,
-      at: ev.fetchedAt,
-      evidenceId: ev.id,
-      method: ev.request.method,
-      url: ev.request.url,
-      ...(ev.request.status !== undefined ? { status: ev.request.status } : {}),
-      size: ev.size,
-      transformId: ev.transformId,
-      version: ev.version,
-    });
+    const row = responseRow(ev);
+    if (row) responses.push(row);
   }
   responses.sort((a, b) => a.seq - b.seq);
-  return { requests, responses };
+  return { requests, hops, responses };
 }
 
 export interface CoverageCell {

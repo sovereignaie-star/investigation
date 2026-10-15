@@ -303,15 +303,27 @@ function runRoute(
   v: RunValues,
   opts: CliOptions,
 ):
-  | { transport: HttpTransport; isolatedModule?: string; allowedHosts?: readonly string[]; events?: readonly EgressAuditEvent[] }
+  | {
+      transport: HttpTransport;
+      origin: "network" | "sim";
+      isolatedModule?: string;
+      allowedHosts?: readonly string[];
+      events?: readonly EgressAuditEvent[];
+    }
   | { error: string } {
-  if (!v.network) return { transport: createSimServer(v.sim ? readSimRules(v.sim) : []).transport };
+  if (!v.network) return { transport: createSimServer(v.sim ? readSimRules(v.sim) : []).transport, origin: "sim" };
   if (c.info().legalBasis === "training_simulation") {
     return { error: "--network: this is a simulation case (legal basis training_simulation); use a case with a real basis" };
   }
   const plan = planNetworkRun(c, entry, subjectType, v["allow-host"] ?? [], opts.network ?? {});
   if ("error" in plan) return plan;
-  return { transport: plan.transport, isolatedModule: plan.isolatedModule, allowedHosts: plan.allowedHosts, events: plan.events };
+  return {
+    transport: plan.transport,
+    origin: "network",
+    isolatedModule: plan.isolatedModule,
+    allowedHosts: plan.allowedHosts,
+    events: plan.events,
+  };
 }
 
 /**
@@ -395,14 +407,14 @@ async function runTransformCommand(
         if (x instanceof TransformRunError) {
           // P2-036: the error observation cites the failed request's own evidence (or a run record naming the
           // stage, message and every response received) — never the last response, never an empty success.
-          recordRunFailure(c, subjectId, transform, input, x, clock);
+          recordRunFailure(c, subjectId, transform, input, x, clock, route.origin);
           err(`ir run: ${x.message}${hostRefusalHint(entry, route.events)}`);
           return 1;
         }
         throw x;
       }
       // P2-036: every finding is bound to the evidence of the request(s) it cites (TransformFinding.evidence).
-      const recorded = recordRunSuccess(c, subjectId, transform, input, result, clock);
+      const recorded = recordRunSuccess(c, subjectId, transform, input, result, clock, route.origin);
       const { expand, negative } = recorded;
       const p = project(c.entries());
       const hash = projectionHash(p);

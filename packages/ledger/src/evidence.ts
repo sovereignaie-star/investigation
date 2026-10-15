@@ -54,6 +54,8 @@ export interface StoreEvidenceInput {
   transformId: string;
   version: string;
   fetchedAt?: string;
+  /** P2-014: how the request was executed (network/sim/replay); absent on legacy entries. */
+  origin?: "network" | "sim" | "replay";
 }
 
 /**
@@ -78,6 +80,7 @@ export function storeEvidence(
     request: redactRequest(input.request),
     transformId: input.transformId,
     version: input.version,
+    ...(input.origin ? { origin: input.origin } : {}),
   });
   ledger.append("evidence.stored", evidence);
   return evidence;

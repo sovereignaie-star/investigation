@@ -97,6 +97,9 @@ export function openGateway(c: Case, allowHosts: readonly string[], deps: Networ
           reason: e.reason ?? null,
           transportCalls: e.transportCalls,
           ...(e.detail ? { detail: e.detail } : {}),
+          // P2-014: redirect-target hop events carry their own URL and status (every transport call is a log row).
+          ...(e.url ? { url: e.url } : {}),
+          ...(e.status !== undefined ? { status: e.status } : {}),
         });
       },
     },

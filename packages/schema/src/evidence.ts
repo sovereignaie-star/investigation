@@ -28,6 +28,12 @@ export const Evidence = z
     request: RecordedRequest,
     transformId: Slug,
     version: z.string().min(1),
+    /**
+     * P2-014: how this request outcome was executed. "network" = the real gateway path (a real external
+     * connection); "sim" = the deterministic simulation world; "replay" = served from stored evidence.
+     * Absent on entries recorded before this field existed (legacy: treat as unknown, not as a real connection).
+     */
+    origin: z.enum(["network", "sim", "replay"]).optional(),
   })
   .refine((e) => e.blobRef === `blobs/${e.sha256.slice(0, 2)}/${e.sha256}`, { message: "blobRef must match sha256", path: ["blobRef"] });
 export type Evidence = z.infer<typeof Evidence>;

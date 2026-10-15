@@ -197,7 +197,7 @@ export interface EgressAuditSink {
 }
 
 export interface EgressAuditEvent {
-  readonly kind: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit";
+  readonly kind: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit" | "hop";
   readonly reason?: EgressReason;
   readonly caseId?: string;
   readonly transform?: string;
@@ -205,6 +205,10 @@ export interface EgressAuditEvent {
   readonly method?: string;
   readonly transportCalls: number;
   readonly detail?: string;
+  /** Present on `hop` events (P2-014): the full URL of the completed redirect-target call. */
+  readonly url?: string;
+  /** Present on `hop` events (P2-014): the HTTP status the completed call returned. */
+  readonly status?: number;
   /** True when the request was a system-level request (no caseId). */
   readonly systemContext?: boolean;
   /** Placeholder for a redacted secret digest. Never the raw secret. */
@@ -939,6 +943,16 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     return deny("byte_budget", hops, `response would pass the byte budget (${b.used}/${b.limit} bytes used)`);
   }
 
+  /**
+   * P2-014 (T-ETH-006): a completed redirect-target hop is its own external request — one `hop` audit event
+   * per completed call. The entry request's first hop is covered by the request-level event and the stored
+   * evidence, so only hopCount >= 2 (a redirect target) gets its own row.
+   */
+  function auditRedirectHop(req: EgressRequest, url: URL, resp: TransportResp, hopCount: number, secretDigest?: string): void {
+    if (hopCount < 2) return;
+    audit({ kind: "hop", ...auditCtx(req, url.hostname, hopCount, secretDigest), url: url.href, status: resp.status });
+  }
+
   async function runHops(
     req: EgressRequest,
     initialUrl: URL,
@@ -1010,6 +1024,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       const over = chargeUnmetered(req, resp, metered.bytes, currentUrl.hostname, hopCount + 1, secretDigest);
       if (over) return over;
       hopCount++;
+      auditRedirectHop(req, currentUrl, resp, hopCount, secretDigest);
       const next = await redirectOrFinish(req, currentUrl, resp, hopCount, deadline, abort, { firstHost, sent }, secretDigest);
       if (next.done) return next.result;
       currentUrl = next.url;

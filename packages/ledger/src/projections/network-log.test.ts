@@ -105,7 +105,7 @@ describe("network log view (P2-014 / T-ETH-006)", () => {
 
   it("rows are in ledger (seq) order and the log is empty for a chain with no network activity", () => {
     const p = new Projector();
-    expect(networkLogView(p)).toEqual({ requests: [], responses: [] });
+    expect(networkLogView(p)).toEqual({ requests: [], hops: [], responses: [] });
     p.apply(auditEntry(0, "egress.timeout", "slow.example", { transform: "TR-010@1.0.0", transportCalls: 1 }));
     p.apply(auditEntry(1, "egress.rate_limited", "busy.example", { transform: "TR-010@1.0.0", transportCalls: 0 }));
     const log = networkLogView(p);
@@ -119,5 +119,35 @@ describe("network log view (P2-014 / T-ETH-006)", () => {
     p.apply(auditEntry(1, "robots.policy", "source.example", { basis: "no_file" }));
     const log = networkLogView(p);
     expect(log.requests).toHaveLength(0);
+    expect(log.hops).toHaveLength(0);
+  });
+
+  it("a completed redirect-target hop is its own row with its full URL and status", () => {
+    const p = new Projector();
+    p.apply(auditEntry(0, "egress.allowed", "a.example", { transform: "TR-010@1.0.0", transportCalls: 1 }));
+    p.apply(
+      auditEntry(1, "egress.hop", "b.example", { transform: "TR-010@1.0.0", url: "https://b.example/x", status: 200, transportCalls: 2 }),
+    );
+    const log = networkLogView(p);
+    expect(log.requests).toHaveLength(1); // the entry request (its first hop)
+    expect(log.hops).toHaveLength(1); // the redirect-target call
+    expect(log.hops[0]).toMatchObject({ url: "https://b.example/x", status: 200, host: "b.example" });
+  });
+
+  it('a simulated outcome is marked origin "sim" — a recorded outcome, not a real connection', () => {
+    const p = new Projector();
+    const ledger = { append: (k: Kind, payload: unknown) => p.apply(entry(p.seq + 1, k, payload)) };
+    storeEvidence(ledger, blobs, {
+      bytes: new TextEncoder().encode("<html>sim</html>"),
+      mime: "text/html",
+      request: { method: "GET", url: "https://sim.example/", headers: {}, status: 200 },
+      transformId: "tr-010",
+      version: "1.0.0",
+      origin: "sim",
+    });
+    const log = networkLogView(p);
+    expect(log.responses).toHaveLength(1);
+    expect(log.responses[0].origin).toBe("sim");
+    expect(log.requests).toHaveLength(0); // no gateway was involved
   });
 });
