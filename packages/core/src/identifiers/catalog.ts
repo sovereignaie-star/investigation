@@ -1019,6 +1019,18 @@ export const IDENTIFIER_SPECS: readonly IdentifierSpecData[] = [
     sensitivity: "normal",
   },
   {
+    id: "eu_reference",
+    category: "Documents",
+    labels: { en: "EU Sanctions Reference Number", ar: "رقم مرجعي عقوبات الاتحاد الأوروبي" },
+    description: "The EU consolidated financial sanctions list reference number (EU.n.n format)",
+    icon: "🇪🇺",
+    color: "blue",
+    patterns: ["^EU\\.\\d{1,4}\\.\\d{1,5}$"],
+    validator: null,
+    examples: { positive: ["EU.27.28", "EU.39.56"], negative: ["EU.27.28.99"] },
+    sensitivity: "natural_person_gate",
+  },
+  {
     id: "un_reference",
     category: "Documents",
     labels: { en: "UN SC Reference Number", ar: "رقم مرجعي مجلس الأمن" },
