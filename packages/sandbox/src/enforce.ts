@@ -69,7 +69,7 @@ export interface ResourceLimits {
    * host and a small value would break exec on any busy machine.
    */
   readonly processes: number;
-  /** Size of the private /tmp tmpfs at level "full" (applied only when bwrap supports `--size`). */
+  /** Size of the private /tmp tmpfs at level "full" (applied when bwrap >= 0.9 supports `--size`). */
   readonly tmpfsBytes: number;
   /** Parent-side cap on stdout + stderr bytes; the process tree is killed when exceeded. */
   readonly maxOutputBytes: number;
@@ -162,7 +162,7 @@ export interface IsolationReport {
   readonly full: boolean;
   /** The probe saw its address-space limit in /proc/self/limits AND an allocation above it was refused. */
   readonly memoryLimit: boolean;
-  /** The installed bubblewrap can size the /tmp tmpfs (`--size`, bubblewrap >= 0.10). */
+  /** The installed bubblewrap can size the /tmp tmpfs (`--size`, bubblewrap >= 0.9). */
   readonly tmpfsSize: boolean;
   /** The "full" level applies RLIMIT_NPROC (processes+threads) inside its user namespace. */
   readonly processLimit: boolean;
@@ -195,7 +195,11 @@ function nodeBinary(): { path: string; prefix: string } {
 /** argv for running `node --input-type=module --eval source` at the given assurance level. */
 let bwrapSizeSupport: boolean | undefined;
 
-/** bubblewrap gained `--size` (tmpfs size) in 0.10.0; older versions reject the option. */
+/**
+ * bubblewrap gained `--size` (tmpfs size) in 0.9.0 — verified 2026-10-15 by building 0.9.0 from the
+ * release tarball: it accepts `--size 1000000 --tmpfs /tmp` and the kernel refuses a larger write
+ * ("No space left on device"); versions before 0.9 reject the option.
+ */
 /**
  * A delegated cgroup v2 subtree: a cgroup directory this user can create children in, with the
  * memory controller available. Without one, a GROUP-level memory cap (the sum across the sandbox's
@@ -240,7 +244,7 @@ function bwrapSupportsSize(): boolean {
   if (bwrapSizeSupport !== undefined) return bwrapSizeSupport;
   const r = spawnSync("bwrap", ["--version"], { encoding: "utf8" });
   const m = /(\d+)\.(\d+)/.exec(r.stdout ?? "");
-  bwrapSizeSupport = r.status === 0 && !!m && (Number(m[1]) > 0 || Number(m[2]) >= 10);
+  bwrapSizeSupport = r.status === 0 && !!m && (Number(m[1]) > 0 || Number(m[2]) >= 9);
   return bwrapSizeSupport;
 }
 
