@@ -2,7 +2,7 @@
 
 > **الغرض:** حصر شروط قبول P2-001 (`@ir/engine`: طابور، ميزانيات، إلغاء لكل تشغيل) المذكورة في ROADMAP (القسم 6، صف P2-001: «T-ENG-001..015») وربط كل معرّف بدليل. معرّف واحد مربوط خارجياً بمرجع حاكم: **T-ENG-012 = NFR-07** (ROADMAP §9: «استئناف التشغيل بعد إعادة التشغيل — يستأنف من الطابور المحفوظ»). بقية المعرّفات بلا تعداد مادي في أي ملف، فاشتُق الترقيم من نطاق المهمة نفسه — دون تغيير أي معيار قبول، وبإبقاء غير المستوفى ظاهراً.
 >
-> **حالة الإغلاق: التنفيذ مكتمل على الفرع — T-ENG-012 (NFR-07) منفّذ باختبار أحمر أولاً وكل البوابات خضراء؛ الإغلاق بعد الدمج والتحقق بعده.**
+> **حالة الإغلاق: مكتمل — T-ENG-012 (NFR-07) دُمج في main (PR #147، إيداع الدمج `da6ddd7`) وتحقق بعده؛ المهمة مغلقة (2026-10-15).**
 >
 > **إعادة الإنتاج:** `pnpm exec vitest run packages/engine` => 9 ملفات / **83 ناجحاً / 0 فاشلاً** (2026-10-15 على main@`1e47f48`، Node 24.10.0). `pnpm run test` (كامل المستودع) => 1520 ناجحاً / 6 متخطاة.
 
@@ -25,7 +25,7 @@
 | T-ENG-009 | عدم إعادة المحاولة للأخطاء الدائمة (4xx، dns) | `does not retry non-retryable failures` + `does not retry permanent 4xx responses` + `does not retry a non-retryable TransportError (dns)` | `run.test.ts` |
 | T-ENG-010 | دورة حياة التشغيل (queued/running/succeeded/failed/cancelled) مع أحداث الطور | `returns results for multiple inputs` + `onPhaseChange observes the queued→running→succeeded transitions` + `onPhaseChange reports cancelled...` | `run.test.ts` |
 | T-ENG-011 | `drain()` غير تراكمي ورفض `drain()` المتداخلة (تزامن مقيد) | `drain() is not additive: a second call does not re-execute finished runs` + `rejects overlapping drain() calls instead of exceeding concurrency` | `run.test.ts` |
-| T-ENG-012 | **[NFR-07 — منفّذ على فرع `feat/p2-001-nfr07-queue-store`، بانتظار مراجعة D-8]** استئناف التشغيل بعد إعادة التشغيل: يستأنف من الطابور المحفوظ | `RunEngine` يقبل مخزن طابور قابل للحقن (`RunQueueStore`: save/load)؛ محرك جديد فوق المخزن نفسه يستأنف الطابور المحفوظ بمعرّفاته وأولوياته وترتيبه. الاختبارات السبعة في `persistence.test.ts`: استئناف كامل (نفس المعرّفات والترتيب)، حفظ قبل التغيير (فشل-مغلق)، فشل load يجهض البناء، رفض المدخلات الملفوفة (فجوات/تكرار معرّف)، إعادة تشغيل at-least-once، إعادة بوابة الأشخاص الطبيعيين عند الاستئناف، وإلغاء تشغيل مستأنف قبل بدئه (D-022). **فشل أحمر أولاً على main: 7/7 قبل التنفيذ** | `persistence.test.ts` |
+| T-ENG-012 | **[NFR-07 — مستوفى، مدمج]** استئناف التشغيل بعد إعادة التشغيل: يستأنف من الطابور المحفوظ | `RunEngine` يقبل مخزن طابور قابل للحقن (`RunQueueStore`: save/load)؛ محرك جديد فوق المخزن نفسه يستأنف الطابور المحفوظ بمعرّفاته وأولوياته وترتيبه. **دُمج في PR #147 (إيداع الدمج `da6ddd7`) بموافقتي D-8 على الرأس `ca76c81` نفسه**؛ فحص security-review-advisory أُعيد تشغيله بعد الموافقتين فنجح. الاختبارات السبعة في `persistence.test.ts`: استئناف كامل (نفس المعرّفات والترتيب)، حفظ قبل التغيير (فشل-مغلق)، فشل load يجهض البناء، رفض المدخلات الملفوفة، إعادة تشغيل at-least-once، إعادة بوابة الأشخاص الطبيعيين عند الاستئناف، وإلغاء تشغيل مستأنف قبل بدئه (D-022). **فشل أحمر أولاً على main: 7/7 قبل التنفيذ؛ تحقق بعد الدمج على main@da6ddd7: 90 ناجحاً في المحرك و1527 في السويت الكامل** | `persistence.test.ts` |
 | T-ENG-013 | المهلة الزمنية تقطع نقلاً يتجاهل إشارة الإلغاء (فرض بالسباق لا بالتعاون) | `a transport that IGNORES the abort signal is still cut off by the time budget` | `run.test.ts` |
 | T-ENG-014 | لا يُحتسب نجاحاً أي استجابة تصل بعد الإلغاء | `a transport that ignores the signal and resolves late is NOT reported as a success` + `a run cancelled during a pending transport is not reported as a success` | `run.test.ts` |
 | T-ENG-015 | الإلغاء أثناء انتظار التراجع ينهي التشغيل `cancelled` لا `budget:time` | `a backoff wait that IGNORES the abort signal is still cut off by cancellation` + `cancelling a run with a signal-ignoring transport ends drain() as cancelled, not budget:time` | `run.test.ts` |
@@ -38,6 +38,6 @@
 
 ## حدود معلنة (لا تُخفي)
 
-- **T-ENG-012/NFR-07 منفّذ على الفرع** — الاختبارات السبعة خضراء بعد فشل أحمر مثبت على main؛ يبقى ظاهراً هنا حتى يُدمج ويُتحقق بعد الدمج.
+- **T-ENG-012/NFR-07 مستوفى ومدمج** (PR #147، `da6ddd7`) — تحقق بعده على main: 90 ناجحاً في المحرك، 1527 في السويت الكامل، وكل فحوص main ناجحة. الحد المتبقي خارج قبول P2-001: توصيل المخزن في مسار الخادم الإنتاجي (أين يُحفظ) قرار تصميمي تالٍ يُوثق.
 - `RunEngine` نفسه يقود التوسع في مسار الخادم فقط؛ مسار CLI للتحقيق (`ir investigate`) يدير حلقته الخاصة بميزانيات `@ir/egress` مباشرة، ويستخدم من المحرك منفذ النقل (`createEgressHttpTransport`) لا RunEngine. هذا قرار تصميمي موثق في P2-038، لا نقص في P2-001.
 - إلغاء أثناء انتظار تراجع طويل فعلي (دقائق) مثبت بمؤقتات اختبار قصيرة (10–40ms) لا بانتظار دقائق — مقبول لدقة الاختبارات الحتمية، وموثق هنا للحد منه.
