@@ -1062,15 +1062,32 @@ export const SSRF_CASES: readonly SsrfCase[] = [
   },
   {
     id: "T-SEC-SSRF-043",
-    title: "content: a context keyword alone does not refuse an ordinary value (?name=Bob is not a netbios_name)",
+    title:
+      "content: a context keyword alone does not refuse an ordinary single-word value (?name=Bob is not a person name; a single word never matches the two-word person_name pattern)",
     req: { url: "https://example.com/users?name=Bob", sends: [] },
     dns: { "example.com": [PUB] },
     expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
   },
   {
     id: "T-SEC-SSRF-043",
-    title: "content: a free-text person name in the query (?name=Bob) is not a natural-person identifier refusal",
+    title:
+      "content: a free-text person name in the query (?name=Bob) is allowed only when the run declares person_name as its kind; bares or wrong kinds are refused as undeclared data",
     req: { url: "https://example.com/screen?name=Bob%20Smith", sends: [] },
+    dns: { "example.com": [PUB] },
+    expect: denied("undeclared_data", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title:
+      "content: a free-text person name in the query with a wrong kind declared (domain) is refused as undeclared_data, never silently sent",
+    req: { url: "https://example.com/screen?name=Bob%20Smith", sends: ["domain"] },
+    dns: { "example.com": [PUB] },
+    expect: denied("undeclared_data", 0, 0),
+  },
+  {
+    id: "T-SEC-SSRF-043",
+    title: "content: a free-text person name is sent only when the run declares person_name as its kind (the screening subject itself)",
+    req: { url: "https://example.com/screen?name=Bob%20Smith", sends: ["person_name"] },
     dns: { "example.com": [PUB] },
     expect: { ok: true, transportCalls: 1, resolverCalls: 1, destinations: [{ host: "example.com", pinnedIp: PUB }] },
   },

@@ -246,7 +246,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "undeclared data allowed",
     file: "egress.ts",
-    from: 'if (!PUBLIC_ALLOWED_SENDS.has(kind)) return deny("undeclared_data");',
+    from: 'if (!PUBLIC_ALLOWED_SENDS.has(kind) && !PERSON_SUBJECT_SENDS.has(kind)) return deny("undeclared_data");',
     to: "",
     detectedBy: ["T-SEC-SSRF-043"],
   },

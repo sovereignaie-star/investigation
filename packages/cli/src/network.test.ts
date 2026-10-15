@@ -174,7 +174,7 @@ describe("ir run --network: refusals before anything is sent (P2-003)", () => {
     expect(x.calls).toEqual([]);
   });
 
-  it("a natural-person subject type is refused (public data only until P2-013)", async () => {
+  it("a natural-person subject type that is NOT the person_name screening subject is refused (P2-013)", async () => {
     const x = f();
     const r = await run(
       ["run", tempDir("np"), "TR-010", "passport_sa", "A1234567", "--network", "--allow-host", "source.example", ...CASE_ARGS],
@@ -183,6 +183,20 @@ describe("ir run --network: refusals before anything is sent (P2-003)", () => {
       },
     );
     expect(r.code).toBe(2);
+    expect(x.calls).toEqual([]);
+  });
+
+  it("a natural-person subject with no case at all is refused by E-01 (a case with a stated purpose is required), before any request", async () => {
+    const x = f();
+    // No --purpose/--legal-basis: openCase refuses to create a case (E-01), so no person run starts.
+    const r = await run(
+      ["run", tempDir("nopurpose"), "TR-026", "person_name", "John Smith", "--network", "--allow-host", "www.treasury.gov"],
+      {
+        network: { env: ON, resolver: x.resolver, transport: x.transport },
+      },
+    );
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("E-01");
     expect(x.calls).toEqual([]);
   });
 

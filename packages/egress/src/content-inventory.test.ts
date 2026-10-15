@@ -59,8 +59,14 @@ describe("T-SEC-SSRF-043: content inventory", () => {
   // ---- detection limits (P2-003, 2026-10-13): what the check does NOT find, stated as tests ----
   const passes = (u: string, sends: string[] = []) => judgeInventory(inventoryRequest(new URL(u), undefined, undefined), sends);
 
-  it("known limit: data outside the catalog is not found (a person's name, a street address, free text)", () => {
-    expect(passes("https://h.example/?name=John%20Smith")).toBeNull();
+  it("a person's name in the query IS catalog data now (P2-011 person_name): undeclared it refuses, declared person_name it passes; a street address and free text are not found", () => {
+    // P2-011: person_name (two words, context word "name") is a catalog type since TR-026, so the old
+    // "not found" limit no longer holds for names; the refusal is the same asymmetry as any kind.
+    expect(passes("https://h.example/?name=John%20Smith")).toEqual({
+      reason: "undeclared_data",
+      detail: "query carries undeclared data (person_name)",
+    });
+    expect(passes("https://h.example/?name=John%20Smith", ["person_name"])).toBeNull();
     expect(passes("https://h.example/?addr=12%20Main%20Street")).toBeNull();
     expect(passes("https://h.example/?note=suspect%20lives%20in%20Riyadh")).toBeNull();
   });
