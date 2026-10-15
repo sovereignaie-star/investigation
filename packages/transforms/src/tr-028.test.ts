@@ -22,7 +22,17 @@ function euFile(entries: Array<{ ref: string; type: "person" | "enterprise"; who
 </export>`;
 }
 
-const MATCH = /^https:\/\/webgate\.ec\.europa\.eu\/fsd\/fsf\/public\/files\/xmlFullSanctionsList_1_1\/content$/;
+const MATCH = /^https:\/\/webgate\.ec\.europa\.eu\/fsd\/fsf\/public\/files\/xmlFullSanctionsList_1_1\/content\?token=dG9rZW4tMjAxNw$/;
+
+/** D-018: every emitted object value must satisfy its catalog type's own pattern. */
+import { specById, matchesSpec } from "@ir/core/identifiers";
+
+function expectCatalogValid(type: string, value: string): void {
+  const spec = specById(type);
+  if (!spec) throw new Error(`catalog type ${type} exists`);
+  const m = matchesSpec(spec, value);
+  expect(m.pattern, `${type} pattern accepts "${value}"`).toBe(true);
+}
 
 describe("TR-028 eu sanctions", () => {
   it("a person wholeName in the file yields an eu_reference finding with the party's reference number", async () => {
@@ -34,6 +44,7 @@ describe("TR-028 eu sanctions", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({ predicate: "is_on_eu_sanctions_list", objectType: "eu_reference", objectValue: "EU.27.28" });
     expect(findings[0].evidence).toHaveLength(1);
+    expectCatalogValid("eu_reference", findings[0].objectValue);
   });
 
   it("an enterprise (a group's wholeName) yields the party's reference number", async () => {
@@ -42,6 +53,7 @@ describe("TR-028 eu sanctions", () => {
     const result = await runTransform(euSanctions, { transport: sim.transport, input: { name: "Arab Revolutionary Brigades" } });
     expect(result.output.findings).toHaveLength(1);
     expect(result.output.findings[0].objectValue).toBe("EU.16.62");
+    expectCatalogValid("eu_reference", result.output.findings[0].objectValue);
   });
 
   it("a name not in the file yields an empty finding, not an error", async () => {

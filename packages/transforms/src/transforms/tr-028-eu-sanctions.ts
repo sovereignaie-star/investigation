@@ -13,7 +13,12 @@ import { defineTransform } from "../manifest.ts";
 import type { TransformFinding } from "../output.ts";
 import { parseEuSanctions } from "./eu-xml.ts";
 
-const FILE = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content";
+/**
+ * The official download URL as recorded in the EU open-data catalog record (data.europa.eu,
+ * distribution 5a1720a6): the parameter-free form returns 403, the catalog's exact URL (with the
+ * public token query parameter published in the catalog metadata) is the only working form.
+ */
+const FILE = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw";
 
 export const euSanctions = defineTransform<{ name: string }>(
   {
