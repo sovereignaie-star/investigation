@@ -49,6 +49,17 @@ export interface ResourceLimits {
   readonly openFiles: number;
   /** RLIMIT_CPU: CPU seconds (SIGXCPU/SIGKILL beyond); independent of the wall-clock timeout. */
   readonly cpuSeconds: number;
+  /**
+   * RLIMIT_NPROC: the cap on processes AND threads of the sandboxed run (Linux counts a thread via
+   * clone(2) against the same limit). Measured 2026-10-15: a plain Node 24 transform process needs
+   * ~7 threads on 2 cores and scales with cores (V8 workers + libuv), so the default (64) never
+   * limits a legitimate transform while capping a fork bomb to a handful of processes — each forked
+   * Node would itself need threads, so the effective process count stays far below unbounded.
+   * Applied ONLY at the "full" level (inside bubblewrap's user namespace, where the counter is
+   * namespaced): outside a user namespace RLIMIT_NPROC counts the REAL uid's every process on the
+   * host and a small value would break exec on any busy machine.
+   */
+  readonly processes: number;
   /** Size of the private /tmp tmpfs at level "full" (applied only when bwrap supports `--size`). */
   readonly tmpfsBytes: number;
   /** Parent-side cap on stdout + stderr bytes; the process tree is killed when exceeded. */
@@ -63,6 +74,7 @@ export const DEFAULT_RESOURCE_LIMITS: ResourceLimits = Object.freeze({
   fileSizeBytes: 64 * 1024 * 1024,
   openFiles: 256,
   cpuSeconds: 60,
+  processes: 64,
   tmpfsBytes: 64 * 1024 * 1024,
   maxOutputBytes: 16 * 1024 * 1024,
 });
@@ -142,6 +154,8 @@ export interface IsolationReport {
   readonly memoryLimit: boolean;
   /** The installed bubblewrap can size the /tmp tmpfs (`--size`, bubblewrap >= 0.10). */
   readonly tmpfsSize: boolean;
+  /** The "full" level applies RLIMIT_NPROC (processes+threads) inside its user namespace. */
+  readonly processLimit: boolean;
   readonly detail: readonly string[];
 }
 
@@ -190,7 +204,10 @@ function command(assurance: Assurance, launcherPath: string, source: string, lim
   const node = nodeBinary();
   const nodeArgs = [node.path, `--max-old-space-size=${limits.heapMb}`, "--input-type=module", "--eval", source];
   const launched = [...launcherLimitArgs(limits), ...nodeArgs];
+  // RLIMIT_NPROC only inside bubblewrap's user namespace (see ResourceLimits.processes): outside it
+  // the limit counts the real uid's every process on the host and would break exec on busy machines.
   if (assurance === "network-only") return { file: launcherPath, args: launched };
+  const launchedFull = [`--rlimit=nproc:${limits.processes}`, ...launched];
   const binds: string[] = [];
   for (const d of ["/usr", "/lib", "/lib64", "/bin"]) binds.push("--ro-bind-try", d, d);
   // The node prefix is bound AFTER the tmpfs: a node installed under /tmp (or any
@@ -221,7 +238,7 @@ function command(assurance: Assurance, launcherPath: string, source: string, lim
       "--chdir",
       "/tmp",
       LAUNCHER_IN_SANDBOX,
-      ...launched,
+      ...launchedFull,
     ],
   };
 }
@@ -274,6 +291,8 @@ const pids = fs.readdirSync("/proc").filter((x) => /^[0-9]+$/.test(x));
 out.push("ppid-visible:" + pids.includes(String(process.env.IR_PROBE_PARENT_PID)));
 const asLine = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max address space")) || "";
 out.push("as-limit:" + (asLine.split(/\\s+/).includes(process.env.IR_PROBE_AS) ? "SET" : "MISSING"));
+const nprocLine = fs.readFileSync("/proc/self/limits", "utf8").split("\\n").find((l) => l.startsWith("Max processes")) || "";
+out.push("nproc-limit:" + (nprocLine.split(/\\s+/).includes(process.env.IR_PROBE_NPROC) ? "SET" : "MISSING"));
 // Ask for the whole address-space budget at once: the kernel refuses the mapping, so nothing is committed.
 try { Buffer.alloc(Number(process.env.IR_PROBE_AS)); out.push("mem:ALLOCATED"); } catch (e) { out.push("mem:REFUSED"); }
 console.log(out.join(" "));
@@ -315,7 +334,7 @@ async function doProbe(): Promise<IsolationReport> {
   const build = buildSeccompLauncher();
   if (!build.supported || !build.launcherPath) {
     detail.push(build.detail ?? "launcher unavailable");
-    return { launcher: false, networkOnly: false, full: false, memoryLimit: false, tmpfsSize: false, detail };
+    return { launcher: false, networkOnly: false, full: false, memoryLimit: false, tmpfsSize: false, processLimit: false, detail };
   }
   const dir = mkdtempSync(join(realpathSync(tmpdir()), "ir-sbx-probe-"));
   const canary = join(dir, "canary.txt");
@@ -339,6 +358,7 @@ async function doProbe(): Promise<IsolationReport> {
       IR_PROBE_FILE: canary,
       IR_PROBE_PARENT_PID: String(process.pid),
       IR_PROBE_AS: String(DEFAULT_RESOURCE_LIMITS.addressSpaceBytes),
+      IR_PROBE_NPROC: String(DEFAULT_RESOURCE_LIMITS.processes),
     };
     const netOnly = await runOnce("network-only", build.launcherPath, PROBE_SOURCE, childEnv(env, "network-only"), 10_000);
     const netOnlyOk = networkOnlyProbeOk(netOnly) && seen === 0;
@@ -346,14 +366,27 @@ async function doProbe(): Promise<IsolationReport> {
     if (!netOnlyOk)
       detail.push(`network-only probe failed: code=${netOnly.code} out=${netOnly.stdout.trim()} err=${netOnly.stderr.trim()} seen=${seen}`);
     let fullOk = false;
+    let processLimit = false;
     const hasBwrap = spawnSync("bwrap", ["--version"], { encoding: "utf8" }).status === 0;
     if (!hasBwrap) detail.push("bubblewrap not installed");
     else if (netOnlyOk) {
       const full = await runOnce("full", build.launcherPath, PROBE_SOURCE, childEnv(env, "full"), 10_000);
       fullOk = fullProbeOk(full) && seen === 0;
+      // The full level's process/thread cap is reported (not gating): the platform keeps running
+      // where it cannot be applied; the P2-003 acceptance doc governs untrusted-code expansion.
+      processLimit = full.code === 0 && /nproc-limit:SET/.test(full.stdout);
       if (!fullOk) detail.push(`full probe failed: code=${full.code} out=${full.stdout.trim()} err=${full.stderr.trim()} seen=${seen}`);
+      if (!processLimit) detail.push(`nproc limit not observed in the full probe: code=${full.code} out=${full.stdout.trim()}`);
     }
-    return { launcher: true, networkOnly: netOnlyOk, full: fullOk, memoryLimit, tmpfsSize: hasBwrap && bwrapSupportsSize(), detail };
+    return {
+      launcher: true,
+      networkOnly: netOnlyOk,
+      full: fullOk,
+      memoryLimit,
+      tmpfsSize: hasBwrap && bwrapSupportsSize(),
+      processLimit,
+      detail,
+    };
   } finally {
     tcp.close();
     unix.close();
