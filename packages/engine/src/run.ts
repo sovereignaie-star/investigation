@@ -54,11 +54,46 @@ export interface EngineOptions {
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   /** Purpose confirmation for natural-person expansions (E-02, P2-013). */
   readonly purposeConfirmation?: PurposeConfirmation;
+  /** Injectable queue persistence (T-ENG-012 / NFR-07): resume from the saved queue. */
+  readonly queueStore?: RunQueueStore;
 }
 
 export interface RunHandle {
   readonly runId: string;
   cancel(reason?: string): boolean;
+}
+
+/** A pending (queued) run as persisted by a RunQueueStore (T-ENG-012 / NFR-07). */
+export interface PersistedRun {
+  readonly runId: string;
+  readonly input: RunInput;
+}
+
+/**
+ * Injectable persistence for the engine's pending queue (T-ENG-012 / NFR-07: "resume
+ * after a process restart resumes from the saved queue"). A NEW engine constructed over
+ * the same store resumes the persisted pending runs with their original runIds.
+ *
+ * Contract (fail-closed, no silent durability loss):
+ * - `save` is called BEFORE the engine mutates its in-memory state (on submit: grow;
+ *   on pop: shrink). A `save` failure therefore propagates with nothing mutated — a
+ *   submit that cannot be persisted is refused, and a pop whose shrink cannot be
+ *   persisted leaves the run queued.
+ * - `load` is called once at construction; a failure aborts construction.
+ * - Resume is at-least-once: a crash between pop and the shrink-persist can only cause
+ *   a replay of a persisted run, never a loss.
+ * - Persisted runs are re-admitted through the natural-person gate (E-02/P2-013): a
+ *   natural-person run does not resume without a purpose confirmation on the new
+ *   instance (it is recorded as a failed run, never queued).
+ *
+ * Synchronous by design: the engine's queue mutations are synchronous and stay atomic
+ * (no interleaving between peek/save/pop), and the project's storage layer (node:sqlite)
+ * is synchronous. */
+export interface RunQueueStore {
+  /** Persist the pending queue in pop order (priority asc, then FIFO). */
+  save(pending: readonly PersistedRun[]): void;
+  /** Load the persisted pending queue (pop order). */
+  load(): readonly PersistedRun[];
 }
 
 /** A phase transition observed on a run (P2-019: SSE events). */
@@ -79,6 +114,64 @@ interface RunRecord {
   result?: RunResult;
 }
 
+/**
+ * Validates a persisted queue BEFORE any of it is admitted (T-ENG-012): a malformed
+ * store loads nothing. Exported for reuse; throws RangeError on the first defect.
+ */
+function validatePersistedRuns(persisted: readonly PersistedRun[]): void {
+  if (!Array.isArray(persisted)) {
+    throw new RangeError("queue store: load() must return an array of persisted runs");
+  }
+  const seen = new Set<string>();
+  for (const entry of persisted) {
+    validatePersistedEntry(entry, seen);
+  }
+}
+
+/** Validates one persisted entry; records its runId in `seen` for duplicate detection. */
+function validatePersistedEntry(entry: unknown, seen: Set<string>): void {
+  if (entry === null || typeof entry !== "object") {
+    throw new RangeError("queue store: persisted run must be an object");
+  }
+  const { runId, input } = entry as { runId: unknown; input: unknown };
+  if (typeof runId !== "string" || runId === "") {
+    throw new RangeError("queue store: persisted runId must be a non-empty string");
+  }
+  if (seen.has(runId)) {
+    throw new RangeError(`queue store: duplicate persisted runId ${runId}`);
+  }
+  seen.add(runId);
+  validatePersistedInput(runId, input);
+}
+
+/** Validates the input of a persisted entry (shape of RunInput, fail-closed). */
+function validatePersistedInput(runId: string, input: unknown): void {
+  if (input === null || typeof input !== "object") {
+    throw new RangeError(`queue store: persisted run ${runId} is missing its input`);
+  }
+  const inp = input as Partial<RunInput>;
+  if (typeof inp.kind !== "string" || inp.kind === "") {
+    throw new RangeError(`queue store: persisted run ${runId} input.kind must be a non-empty string`);
+  }
+  if (typeof inp.canonicalInput !== "string" || inp.canonicalInput === "") {
+    throw new RangeError(`queue store: persisted run ${runId} input.canonicalInput must be a non-empty string`);
+  }
+  for (const k of ["priority", "depth", "costEstimate"] as const) {
+    const v = inp[k];
+    if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v))) {
+      throw new RangeError(`queue store: persisted run ${runId} input.${k} must be a finite number when present`);
+    }
+  }
+  if (
+    inp.sensitivity !== undefined &&
+    inp.sensitivity !== "normal" &&
+    inp.sensitivity !== "natural_person_gate" &&
+    inp.sensitivity !== "minor"
+  ) {
+    throw new RangeError(`queue store: persisted run ${runId} input.sensitivity is not a known value`);
+  }
+}
+
 export class RunEngine {
   private readonly queue = new PriorityQueue<string>();
   private readonly records = new Map<string, RunRecord>();
@@ -94,6 +187,7 @@ export class RunEngine {
     purposeConfirmation?: PurposeConfirmation;
   };
   private readonly transport: HttpTransport;
+  private readonly queueStore?: RunQueueStore;
   private draining = false;
   private readonly phaseListeners = new Set<(e: RunPhaseEvent) => void>();
 
@@ -161,6 +255,72 @@ export class RunEngine {
           })),
       purposeConfirmation: opts.purposeConfirmation,
     };
+    this.queueStore = opts.queueStore;
+    if (this.queueStore) {
+      // Fail-closed: a store that cannot be loaded aborts construction — the engine
+      // never starts with an unknown queue state.
+      this.loadPersisted(this.queueStore.load());
+    }
+  }
+
+  /**
+   * Resumes the persisted pending queue (T-ENG-012 / NFR-07). Validates every entry
+   * BEFORE admitting any of them (a malformed store loads nothing), then re-admits each
+   * run through the natural-person gate (E-02): a natural-person run without a purpose
+   * confirmation on this instance is recorded as failed — visible, never silently resumed.
+   */
+  private loadPersisted(persisted: readonly PersistedRun[]): void {
+    validatePersistedRuns(persisted);
+    for (const entry of persisted) {
+      const gate = naturalPersonGate(entry.input, this.opts.purposeConfirmation);
+      if (!gate.allowed) {
+        this.recordRefusal(entry.runId, entry.input, gate.message);
+        continue;
+      }
+      const record: RunRecord = {
+        runId: entry.runId,
+        input: entry.input,
+        token: createCancellationToken(),
+        phase: "queued",
+        transportAttempts: 0,
+        processed: 0,
+      };
+      this.records.set(entry.runId, record);
+      this.queue.push(entry.runId, entry.input.priority ?? 0);
+    }
+  }
+
+  /** Records a refused run (submit gate or resume gate) as failed with zero attempts. */
+  private recordRefusal(runId: string, input: RunInput, message: string): void {
+    const record: RunRecord = {
+      runId,
+      input,
+      token: createCancellationToken(),
+      phase: "failed",
+      transportAttempts: 0,
+      processed: 0,
+      failure: { kind: "transform", message },
+    };
+    this.records.set(runId, record);
+    this.results.set(runId, {
+      runId,
+      phase: "failed",
+      budget: { nodes: 0, depth: 0, requests: 0, costEstimate: 0, elapsedMs: 0 },
+      processed: 0,
+      transportAttempts: 0,
+      failure: { kind: "transform", message },
+    });
+  }
+
+  /** The pending queue in pop order (priority asc, then FIFO) as it should be persisted. */
+  private pendingRuns(): PersistedRun[] {
+    const entries = [...this.queue.entries()]
+      .filter((e) => this.records.has(e.item))
+      .sort((a, b) => a.priority - b.priority || a.seq - b.seq);
+    return entries.map((e) => {
+      const rec = this.records.get(e.item);
+      return { runId: e.item, input: rec?.input as RunInput };
+    });
   }
 
   /** Registers a run and returns a handle whose runId is stable across drain() calls. */
@@ -171,25 +331,7 @@ export class RunEngine {
     const gate = naturalPersonGate(input, this.opts.purposeConfirmation);
     if (!gate.allowed) {
       const runId = `run-${(this.records.size + 1).toString(36).padStart(4, "0")}-${this.opts.random(6)}`;
-      const token = createCancellationToken();
-      const record: RunRecord = {
-        runId,
-        input,
-        token,
-        phase: "failed",
-        transportAttempts: 0,
-        processed: 0,
-        failure: { kind: "transform", message: gate.message },
-      };
-      this.records.set(runId, record);
-      this.results.set(runId, {
-        runId,
-        phase: "failed",
-        budget: { nodes: 0, depth: 0, requests: 0, costEstimate: 0, elapsedMs: 0 },
-        processed: 0,
-        transportAttempts: 0,
-        failure: { kind: "transform", message: gate.message },
-      });
+      this.recordRefusal(runId, input, gate.message);
       return {
         runId,
         cancel: () => false,
@@ -205,6 +347,11 @@ export class RunEngine {
       transportAttempts: 0,
       processed: 0,
     };
+    // Fail-closed (T-ENG-012): persist BEFORE mutating engine state. A submit that
+    // cannot be persisted is refused — nothing is queued in memory.
+    if (this.queueStore) {
+      this.queueStore.save([...this.pendingRuns(), { runId, input }]);
+    }
     this.records.set(runId, record);
     this.queue.push(runId, input.priority ?? 0);
     return {
@@ -269,6 +416,13 @@ export class RunEngine {
 
   private async worker(out: RunResult[]): Promise<void> {
     for (;;) {
+      // Fail-closed (T-ENG-012): persist the shrink BEFORE popping. A failure here is
+      // loud (drain() rejects) and leaves the run queued — never a silent loss.
+      const next = this.queue.peek();
+      if (!next) return;
+      if (this.queueStore) {
+        this.queueStore.save(this.pendingRuns().filter((p) => p.runId !== next.item));
+      }
       const runId = this.queue.pop();
       if (!runId) return;
       const rec = this.records.get(runId);
