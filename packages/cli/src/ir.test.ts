@@ -174,7 +174,9 @@ describe("ir project (P2-014: network log)", () => {
     const a = await run(["project", dir]);
     expect(a.code).toBe(0);
     // the case's one evidence entry is a DNS request outcome — a stored response, not a LOCAL run record
-    expect(a.text).toMatch(/network \(P2-014\): 0 requests \(0 not allowed\), 1 stored responses/);
+    expect(a.text).toMatch(
+      /network \(P2-014\): 0 requests \(0 not allowed\), 0 transport calls, 1 stored outcomes \(network: 0, sim: 0, replay: 0, unknown: 1\)/,
+    );
     const json = JSON.parse((await run(["project", dir, "--json"])).text) as {
       networkLog: { requests: unknown[]; responses: Array<{ url: string; method: string }> };
     };

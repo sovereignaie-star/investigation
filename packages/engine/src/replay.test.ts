@@ -82,6 +82,40 @@ describe("replayCase (P2-018, T-LED-020)", () => {
     expect(res.phase).toBe("succeeded");
   });
 
+  it("P2-014: every replay attempt is served from stored evidence or a hard miss — never an external connection", async () => {
+    const records: ReplayEvidence[] = [
+      { request: { method: "GET", url: "https://example.com/a" }, sha256: "blob-a", mime: "application/json" },
+      { request: { method: "GET", url: "https://example.com/b" }, sha256: "blob-b", mime: "application/json" },
+    ];
+    const blobs = memBlobs({
+      "blob-a": new TextEncoder().encode('{"a":1}'),
+      "blob-b": new TextEncoder().encode('{"b":1}'),
+    });
+    // one run issues one request (the engine builds url: canonicalInput), so the accounting property
+    // is checked on both sides: a served outcome and a hard miss.
+    const served = await replayCase({
+      records,
+      blobs,
+      input: { kind: "lookup", canonicalInput: "https://example.com/a" },
+      caps,
+    });
+    const missed = await replayCase({
+      records,
+      blobs,
+      input: { kind: "lookup", canonicalInput: "https://example.com/c" }, // no stored evidence for c
+      caps,
+    });
+    // every attempt is accounted for: served from the blob store, or a hard miss (fail-closed).
+    // A replayed attempt can never be an unaccounted external connection — the transport has no
+    // network path by construction, and this equality is the check that no third kind exists.
+    expect(served.transportAttempts).toBe(served.served + served.missed);
+    expect(served.served).toBe(1);
+    expect(served.missed).toBe(0);
+    expect(missed.transportAttempts).toBe(missed.served + missed.missed);
+    expect(missed.served).toBe(0);
+    expect(missed.missed).toBe(1); // a hard miss, never a network call
+  });
+
   it("reports a miss when the replayed run needs a request with no stored evidence", async () => {
     const res = await replayCase({
       records: [],

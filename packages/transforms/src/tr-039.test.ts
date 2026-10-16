@@ -77,6 +77,52 @@ describe("TR-039 username presence", () => {
     expect(sim.requestCount()).toBe(0);
   });
 
+  it("a 200 whose body is outside the documented semantics (valid JSON, not an array) fails the run closed", async () => {
+    const sim = createSimServer([
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify({ message: "403 Forbidden" }) } },
+    ]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(
+      /GitLab returned 200 with a non-array body/,
+    );
+  });
+
+  it("fails closed when GitLab answers 200 with an array of non-user elements ([{}]) — never read as an account", async () => {
+    const sim = createSimServer([
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify([{}]) } },
+    ]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(/non-user elements/);
+  });
+
+  it("fails closed when GitLab answers 200 with [null] — never read as an account", async () => {
+    const sim = createSimServer([
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify([null]) } },
+    ]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(/non-user elements/);
+  });
+
+  it("fails closed when GitLab returns a user object whose username differs from the requested one (exact-match semantics)", async () => {
+    const sim = createSimServer([
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify([{ id: 7, username: "someoneelse" }]) } },
+    ]);
+    await expect(runTransform(usernamePresence, { transport: sim.transport, input: { username: U } })).rejects.toThrow(
+      /username does not match/,
+    );
+  });
+
+  it("matches the requested username case-insensitively (GitLab username search is case-insensitive)", async () => {
+    const sim = createSimServer([
+      { match: GH_URL, response: { status: 404, body: "" } },
+      { match: GL_URL, response: { status: 200, body: JSON.stringify([{ id: 1, username: "SomeUser" }]) } },
+    ]);
+    const result = await runTransform(usernamePresence, { transport: sim.transport, input: { username: U } });
+    expect(result.output.findings).toHaveLength(1);
+    expect(result.output.findings[0]).toMatchObject({ predicate: "has_account", objectType: "gitlab_username", objectValue: U });
+  });
+
   it("is gated on natural persons (E-02)", () => {
     expect(usernamePresence.manifest.sensitivity).toBe("natural_person_gate");
   });
