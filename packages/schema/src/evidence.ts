@@ -29,8 +29,10 @@ export const Evidence = z
     transformId: Slug,
     version: z.string().min(1),
     /**
-     * P2-014: how this request outcome was executed. "network" = the real gateway path (a real external
-     * connection); "sim" = the deterministic simulation world; "replay" = served from stored evidence.
+     * P2-014: how this request was EXECUTED (an execution mode, not proof a connection happened):
+     * "network" = the real gateway path — which may still end in a denial BEFORE any transport call
+     * (a request row with zero transport calls is the honest record of that);
+     * "sim" = the deterministic simulation world; "replay" = served from stored evidence.
      * Absent on entries recorded before this field existed (legacy: treat as unknown, not as a real connection).
      */
     origin: z.enum(["network", "sim", "replay"]).optional(),

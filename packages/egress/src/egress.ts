@@ -997,7 +997,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         return resolved;
       }
       const metered = { bytes: 0 };
-      const hop = await transportHop(
+      const hop = await transportHopRecorded(
         req,
         currentUrl,
         (resolved as ResolvedAddress).pinnedIp,
@@ -1035,6 +1035,29 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
    * secret-redacted (defense in depth: a hostile origin can echo request material back in a redirect's
    * query — the raw secret must never reach the case chain).
    */
+  /**
+   * P2-014: wraps transportHop so the SUCCESS row is emitted outside the transport catch — an audit-sink
+   * failure in the success path must fail the request closed (the audit trail is security-relevant) without
+   * being misread as a transport failure or double-emitting a row.
+   */
+  async function transportHopRecorded(
+    req: EgressRequest,
+    currentUrl: URL,
+    pinnedIp: string,
+    headers: Readonly<Record<string, string>> | undefined,
+    hopCount: number,
+    deadline: number,
+    abort: AbortCtl,
+    metered: { bytes: number },
+  ): Promise<TransportResp | EgressResult> {
+    const outcome = await transportHop(req, currentUrl, pinnedIp, headers, hopCount, deadline, abort, metered);
+    if (!("code" in outcome && outcome.code !== undefined)) {
+      // P2-014: the call was actually made — record it at the fetch boundary (success carries its status).
+      auditTransportCall(req, currentUrl, hopCount + 1, (outcome as TransportResp).status);
+    }
+    return outcome;
+  }
+
   function auditTransportCall(req: EgressRequest, url: URL, attempt: number, status?: number, error?: string): void {
     const href = req.secret !== undefined ? redactInText(url.href, req.secret) : url.href;
     const secretDigest = req.secret !== undefined ? redactSecret(req.secret) : undefined;
@@ -1084,6 +1107,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         if (hopController.signal.aborted) fire();
         else hopController.signal.addEventListener("abort", fire, { once: true });
       });
+      // P2-014: marked BEFORE the call — a transport whose fetch() throws synchronously was still
+      // invoked, and that attempt is a row (a synchronous throw is a failed attempt, not a non-attempt).
+      fetchInitiated = true;
       const fetching = opts.transport.fetch({
         url: currentUrl.href,
         host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
@@ -1105,13 +1131,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
             }
           : {}),
       });
-      fetchInitiated = true; // the transport was actually invoked — any failure from here is an attempt
       fetching.catch(() => {}); // a late rejection after the race is settled must not become unhandled
       aborted.catch(() => {});
-      const outcome = await Promise.race([fetching, aborted]);
-      // P2-014: the call was actually made — record it at the fetch boundary (success carries its status).
-      auditTransportCall(req, currentUrl, hopCount + 1, outcome.status);
-      return outcome;
+      return await Promise.race([fetching, aborted]);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       const safeDetail = req.secret ? redactInText(detail, req.secret) : detail;

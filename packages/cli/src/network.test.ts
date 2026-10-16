@@ -33,6 +33,8 @@ interface Fake {
   /** robots.txt requests (answered by `robots`, default 404 = no file), kept apart from the page requests. */
   readonly robotsCalls: string[];
   readonly lookups: string[];
+  /** P2-014: every transport fetch in actual arrival order (robots included) — one sequence for row-for-row comparison. */
+  readonly observed: string[];
 }
 
 type Resp = Awaited<ReturnType<EgressTransport["fetch"]>>;
@@ -45,10 +47,14 @@ function fake(
   const calls: Fake["calls"] = [];
   const robotsCalls: string[] = [];
   const lookups: string[] = [];
+  // P2-014: ONE list of every transport fetch in actual arrival order (robots included) — the acceptance
+  // test compares this single sequence with the log rows row for row, never a reassembled order.
+  const observed: string[] = [];
   return {
     calls,
     robotsCalls,
     lookups,
+    observed,
     resolver: {
       async resolve(host) {
         lookups.push(host);
@@ -59,6 +65,7 @@ function fake(
     },
     transport: {
       async fetch(r) {
+        observed.push(r.url);
         if (new URL(r.url).pathname === "/robots.txt") {
           robotsCalls.push(r.url);
           return robots;
@@ -371,8 +378,7 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     const log = k.p.networkLog;
     // T-ETH-006: the FULL list of transport calls the transport actually observed, robots included,
     // is compared with the log ROW FOR ROW (order and multiplicity) — not by separate counts:
-    const observed = [...x.robotsCalls, ...x.calls.map((c) => c.url)];
-    expect(log.transportCalls.map((t) => t.url)).toEqual(observed);
+    expect(log.transportCalls.map((t) => t.url)).toEqual(x.observed);
     // each row carries its hop index and outcome
     expect(log.transportCalls[0]).toMatchObject({ url: "https://source.example/robots.txt", attempt: 1 });
     expect(log.transportCalls[1]).toMatchObject({ url: "https://source.example/", attempt: 1, status: 302 });
@@ -412,8 +418,7 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     const k = readCase(dir);
     const log = k.p.networkLog;
     // …but every attempt is visible, row for row (robots + entry + the failed redirect target)
-    const observed = [...x.robotsCalls, ...x.calls.map((c) => c.url)];
-    expect(log.transportCalls.map((t) => t.url)).toEqual(observed);
+    expect(log.transportCalls.map((t) => t.url)).toEqual(x.observed);
     expect(log.transportCalls[2]).toMatchObject({
       url: "https://alt.example/moved",
       attempt: 2,
@@ -477,6 +482,17 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     expect(r.err).toContain("host_not_allowed");
     expect(x.lookups).toEqual([]);
     expect(x.calls).toEqual([]);
+    // P2-014: a network-mode run that reached no transport is recorded as exactly that — the denial
+    // is a request row, ZERO transport calls, zero stored outcomes (the mode never fabricates a connection).
+    const k = readCase(dir);
+    // P2-014: a network-mode run that reached no transport is recorded as exactly that — the denial is a
+    // request row, ZERO transport calls (the mode is an execution mode, never proof of a connection);
+    // the error observation's evidence is a stored outcome with origin "network" and size 0.
+    expect(k.p.networkLog.requests).toHaveLength(1);
+    expect(k.p.networkLog.requests[0]).toMatchObject({ decision: "denied", host: "other.example", transportCalls: 0 });
+    expect(k.p.networkLog.transportCalls).toHaveLength(0);
+    expect(k.p.networkLog.responses).toHaveLength(1);
+    expect(k.p.networkLog.responses[0]).toMatchObject({ url: "https://other.example/", origin: "network", size: 0 });
   });
 
   it("a redirect to a host outside the list is refused after the first hop; nothing is sent to it", async () => {

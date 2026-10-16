@@ -100,6 +100,31 @@ describe("P2-014: every actual transport call is one transport audit event", () 
     expect(rows[0].error).toContain("connection reset");
   });
 
+  it("a transport whose fetch() throws SYNCHRONOUSLY was still invoked — one row with the error", async () => {
+    const { events, sink } = collect();
+    // not async: throws synchronously inside fetch (the call was made; the attempt is real)
+    const t = {
+      calls: [] as string[],
+      fetch(req: { url: string }) {
+        t.calls.push(req.url);
+        throw new Error("sync transport blowup");
+      },
+    } as unknown as EgressTransport & { calls: string[] };
+    const g = createEgressGateway({
+      resolver: fakeResolver({ "source.example": [PUBLIC_IP] }),
+      transport: t,
+      auditSink: sink,
+      allowedHosts: ["source.example"],
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
+    });
+    const r = await g.request({ ...BASE });
+    expect(r.ok).toBe(false);
+    expect(t.calls).toEqual(["https://source.example/page"]);
+    const rows = events.filter((e) => e.kind === "transport");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ url: "https://source.example/page", error: "sync transport blowup" });
+  });
+
   it("no raw secret ever appears in any audit event, including transport rows (redirect echoing the secret)", async () => {
     const SECRET = "hunter2-token-value";
     const { events, sink } = collect();
