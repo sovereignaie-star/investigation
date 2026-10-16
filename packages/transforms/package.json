@@ -22,6 +22,7 @@
     "esbuild": "catalog:",
     "exifreader": "^4.50.0",
     "libphonenumber-js": "^1.13.15",
+    "pdfjs-dist": "^6.4.299",
     "zod": "catalog:"
   },
   "devDependencies": {
