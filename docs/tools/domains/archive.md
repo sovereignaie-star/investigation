@@ -1,8 +1,8 @@
 # أرشفة الويب واللقطات (Web archiving & snapshots)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **434**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **430**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -101,7 +101,6 @@
 | TL-ecac1c02 | [CompressedCrack](https://github.com/mnismt/CompressedCrack) | أساسية | oss | — | restricted | — | Simple tool for brute passwords for ZIP and RAR archives |
 | TL-21366327 | [ConnectedPapers](https://www.connectedpapers.com/) | أساسية | web | — | reachable | — | A tool for gathering information about academic papers. It shows a large graph of references to other articles that are present in the text and clearly see the  |
 | TL-8a11caf5 | [Continuing Education to Advance Web Archiving (CEDWARC)](https://cedwarc.github.io/) | أساسية | web | — | reachable | — | — |
-| TL-e3419859 | [Convert Online](https://convert.online/api-docs) | داعمة | api | — | unchecked | apiKey | Online file converter for image, video, audio, document, ebook, font, archive and CAD formats |
 | TL-5ba6bd6b | [CrackStation.net](https://crackstation.net/) | أساسية | web | — | reachable | — | password hash cracker |
 | TL-88a21d1e | [crau](https://github.com/turicas/crau) | أساسية | oss | — | restricted | — | A lightweight command-line tool for archiving the Web and playing archives: you just need a list of URLs. The name "crau" stems from the Brazilian pronounciatio |
 | TL-c1301e67 | [crocoite](https://github.com/PromyLOPh/crocoite) | أساسية | oss | — | restricted | — | Crawl websites using headless Google Chrome/Chromium and save resources, static DOM snapshot and page screenshots to WARC files. *(In Development)* |
@@ -130,7 +129,6 @@
 | TL-beb57955 | [Email Finder](https://www.experte.com/email-finder) | أساسية | web | بوابة الأشخاص | reachable | — | Enter a person's first and last name, domain name of a company or email service, and then get a list of possible email addresses with their status (free). |
 | TL-86e7c4fd | [Email Permutator](https://docs.google.com/spreadsheets/d/17URMtNmXfEZEW9oUL_taLpGaqTDcMkA79J8TRw4xnz8/edit#gid=0) | أساسية | web | بوابة الأشخاص | reachable | — | Google Sheet table that generate 46 variants of user email by first name, last name and domain |
 | TL-7d8c5676 | [EmailHippo](https://tools.emailhippo.com/email/) | أساسية | web | بوابة الأشخاص | unreachable | — | Simple free online tool for check the existence of a particular email address and evaluate its reliability on a 10-point scale. |
-| TL-ad1e27c0 | [ENA](https://www.ebi.ac.uk/ena/browser/api/swagger-ui/index.html) | داعمة | api | — | unchecked | No | Nucleotide sequences, genomes and raw reads archive |
 | TL-ce8a6950 | [Encrytped ZIP file creator](https://www.protectedzip.com/) | أساسية | web | — | reachable | — | Create ZIP archive online |
 | TL-5cf5d77f | [End of Term Archive](https://eotarchive.org/) | أساسية | web | — | reachable | — | WARCs, CDX files, parquet url index. |
 | TL-907efba1 | [ExplainPaper](https://www.explainpaper.com/) | أساسية | web | — | reachable | — | AI is a tool to make reading scientific articles easier. Highlight a phrase, sentence or whole paragraph to get its simple and detailed explanation with #AI. |
@@ -237,7 +235,6 @@
 | TL-1042ef28 | [OpenWayback](https://github.com/iipc/openwayback/) | أساسية | oss | — | restricted | — | The open source project aimed to develop Wayback Machine, the key software used by web archives worldwide to play back archived websites in the user's browser.  |
 | TL-c2b2344e | [OpenWayback](https://groups.google.com/g/openwayback-dev) | أساسية | web | — | reachable | — | — |
 | TL-9b569f19 | [OSINT Industries](https://osint.industries/email) | أساسية | web | بوابة الأشخاص | reachable | — | Enter emai/phonel and get a list of accounts that may be associated with it (accounts for which this email was used to register or those where the email in the  |
-| TL-f1383083 | [OSINTCon archive](https://osintverse.com/osintcon) | أساسية | web | — | unchecked | — | recorded talks from a past virtual OSINT conference. |
 | TL-ec26bc29 | [OutbackCDX](https://github.com/nla/outbackcdx) | أساسية | oss | — | restricted | — | RocksDB-based capture index (CDX) server supporting incremental updates and compression. Can be used as backend for OpenWayback, PyWb and Heritrix. *(Stable)* |
 | TL-aa3252db | [ownzyou](https://ownzyou.com/) | أساسية | web | — | reachable | — | — |
 | TL-cc99b7a3 | [PANDORÆ](https://github.com/Guillaume-Levrier/PANDORAE) | أساسية | oss | — | restricted | — | A desktop research software to be plugged on a Solr endpoint to query, retrieve, normalize and visually explore web archives. *(Stable)* |
@@ -400,7 +397,6 @@
 | TL-5eea2380 | [Wayback Machine](https://portswigger.net/bappstore/5c7c516c690345c19fbf55b2b2ebeb76) | أساسية | web | — | reachable | — | — |
 | TL-d11bb863 | [Wayback Machine Chrome Extension](https://chrome.google.com/webstore/detail/wayback-machine/fpnmgdkabkmnadcjpehmlllkndpkmiak) | أساسية | web | — | reachable | — | — |
 | TL-64ad36f9 | [Wayback Tweets](https://waybacktweets.streamlit.app/) | أساسية | web | — | reachable | — | A tool to quickly view tweets saved on http://archive.org No need to open a link to each tweet in a separate window It's possible to filter only deleted tweets |
-| TL-1c9b84ab | [Wayback-Archive](https://github.com/GeiserX/Wayback-Archive) | أساسية | oss | — | unchecked | — | Download a whole archived website from the Wayback Machine and rebuild it as a folder you can open offline, with links rewritten and the Wayback toolbar removed |
 | TL-f96fe447 | [Wayback.archive-it.org](http://wayback.archive-it.org/) | أساسية | web | — | reachable | — | — |
 | TL-5e875852 | [Waybackpack (T)](https://github.com/jsvine/waybackpack) | أساسية | oss | — | reachable | — | download the entire #WaybackMachine archive for a given URL. You can only download versions for a certain date range (date format YYYYMMDDhhss) |
 | TL-766b417e | [WaybackPDF](https://github.com/Haax9/WaybackPDF) | أساسية | oss | — | restricted | — | Collects a list of saved PDFs for the given domain from http://archive.org and downloads them into a folder. |

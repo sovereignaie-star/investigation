@@ -1,8 +1,8 @@
 # النقل: طيران وسفن ومركبات (Transport: aviation, maritime, vehicles)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **413**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **406**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -119,6 +119,7 @@
 | TL-e46d6afd | [eships.net](http://eships.net) | أساسية | web | — | unreachable | — | — |
 | TL-e6c30919 | [etimspayments](https://prodpci.etimspayments.com/pbw/include/dc_parking/input.jsp?ticketType=P) | أساسية | web | — | reachable | — | — |
 | TL-bdabec95 | [Europe station maps floor plan](https://www.nsinternational.com/en/stations/station-maps-floor-plan) | أساسية | web | — | reachable | — | — |
+| TL-43be018c | [FAA N-Number Registry](https://n-number.starfile.org/api) | داعمة | api | — | unreachable | No | Every FAA-registered civil aircraft in the United States, lookup by N-number or Mode S hex code |
 | TL-a25c2dfa | [FAA Registry](http://registry.faa.gov/aircraftinquiry/NNum_Inquiry.aspx) | أساسية | web | — | unreachable | — | — |
 | TL-6d2b123d | [Fax VIN](https://www.faxvin.com/company/privacy) | أساسية | web | — | reachable | — | Request for remove your data from this site |
 | TL-54381c55 | [faxvin](https://www.faxvin.com/license-plate-lookup) | أساسية | web | — | reachable | — | — |
@@ -213,14 +214,12 @@
 | TL-33c6cee1 | [Network Flight Simulator](https://github.com/alphasoc/flightsim) | داعمة | oss | — | restricted | — | Lightweight utility used to generate malicious network traffic and help security teams to evaluate security controls and network visibility. |
 | TL-e8acb3e8 | [nhtsa](https://www.nhtsa.gov/vin-decoder) | أساسية | web | — | restricted | — | — |
 | TL-e549c48f | [NHTSA Vehicle API](https://vpic.nhtsa.dot.gov/api/) | أساسية | api | — | reachable | — | NHTSA Product Information Catalog and Vehicle Listing |
-| TL-dc653a50 | [NHTSA Vehicle Recalls](https://rapidapi.com/crisp-point-studio-crisp-point-studio-default/api/live-nhtsa-vehicle-recalls) | داعمة | api | — | unchecked | apiKey | NHTSA safety recalls by model year, make and model with component, consequence and remedy |
 | TL-81cdeed4 | [nissanusa](https://www.nissanusa.com/recalls-vin.html) | أساسية | web | — | reachable | — | — |
 | TL-d5e309a7 | [NLP MasterCLASS](https://open.spotify.com/show/7lXkPjdUAudqVOYGmlPyNW) | داعمة | web | بوابة الأشخاص | reachable | — | Hosted by NLP Master Trainers Tina Taylor and Steve Crabb, this podcast explores the amazing ways to use NLP for personal and professional changes. |
 | TL-c81d6cf0 | [NLP Talks with Laura Evans](https://open.spotify.com/show/2f6GoVWkwCtivpHW0wusSQ) | داعمة | web | بوابة الأشخاص | reachable | — | Hosted by Laura Evans, an International Trainer of NLP, this podcast features insightful interviews with people who know how NLP changes lives and offers tips a |
 | TL-592f67d4 | [NMEA Checksum Calculator](https://beomanro.com/tools/net/nmea-checksum/) | داعمة | web | — | reachable | — | Browser-based NMEA 0183 and AIS sentence checksum validator and calculator with batch processing and XOR step visualization. |
 | TL-73ab6fa4 | [NOAA Contracts with Planet to Gain Situational Awareness of Oil Spills, Marine Debris, and Marine Life](https://www.planet.com/pulse/noaa-contracts-with-planet-to-gain-situational-awareness-of-oil-spills-marine-debris-and-marine-life/) | أساسية | web | — | reachable | — | — |
 | TL-31b67ea8 | [nomerogram](https://www.nomerogram.ru/) | أساسية | web | — | restricted | — | (RU) |
-| TL-3f1639e3 | [OBIS](https://manual.obis.org/access) | داعمة | api | — | unchecked | No | Global marine species occurrence and distribution data |
 | TL-176dab98 | [Open Charge Map](https://openchargemap.org/site/develop/api) | داعمة | api | — | reachable | apiKey | Global public registry of electric vehicle charging locations |
 | TL-654f3afb | [Open Ephemeris](https://openephemeris.com/docs) | داعمة | api | — | reachable | apiKey | Sub-arcsecond planetary positions, natal charts, transits, and Human Design from NASA JPL DE440 |
 | TL-d38244f1 | [Open Flights](https://openflights.org/) | أساسية | web | — | reachable | — | — |
@@ -233,7 +232,7 @@
 | TL-2bdd9701 | [OpenGlobus](https://www.openglobus.org/) | داعمة | web | — | reachable | — | A javascript library designed to display interactive 3d maps and planets with map tiles, imagery and vector data, markers and 3d objects. It uses the WebGL tech |
 | TL-966f36c4 | [OpenRailwayMap](https://www.openrailwaymap.org/) | أساسية | web | — | reachable | — | Map of the world with information about the railroad tracks. It's possible to visualize maximum speed, electrification, track gauge, and other parameters. |
 | TL-136b82dd | [OpenSeaMap - The free nautical chart](https://www.openseamap.org) | أساسية | web | — | reachable | — | — |
-| TL-9cbf72f1 | [OpenSky Network](https://openskynetwork.github.io/opensky-api/) | داعمة | api | — | unchecked | No | Free real-time ADS-B aviation data |
+| TL-2b7cde30 | [OpenSky Network](https://opensky-network.org/apidoc/index.html) | داعمة | api | — | unreachable | No | Free real-time ADS-B aviation data |
 | TL-4881a59d | [OpenStreetMap Public Transport](https://wadouk.github.io/osm-public-transports/#3/27.29/5.45) | أساسية | web | — | reachable | — | Select an area on the map (if the square around it is green, then data for that location is available) and download data (buttons on the right) for tram, bus, m |
 | TL-6e04c403 | [OpenVan](https://openvan.camp/docs) | داعمة | api | — | reachable | No | Fuel prices for 121 countries, food cost index & vanlife weather scores for RV travel |
 | TL-c7a57139 | [OpenWaterAtlas](https://openwateratlas.com/en/datasets/) | داعمة | dataset | — | reachable | — | Integrated open dataset joining 2,928 dive/kite/surf/freedive sites with per-spot climate aggregates (Open-Meteo + ERA5), 112,548 OBIS + GBIF marine species obs |
@@ -274,7 +273,6 @@
 | TL-16d9e188 | [Presto](https://github.com/nasaharvest/presto) | داعمة | oss | — | restricted | — | Lightweight, Pre-trained Transformers for Remote Sensing Timeseries. |
 | TL-4dae7966 | [ProblemsByVin](https://problemsbyvin.com/data/) | داعمة | api | — | reachable | No | Owner complaints, recalls and failure-mileage statistics by vehicle make, model and year |
 | TL-8b99fdd6 | [protectedplanet](https://www.protectedplanet.net/) | أساسية | web | — | reachable | — | — |
-| TL-f95237ed | [Pumperly](https://geiserx.github.io/Pumperly/reference/api/) | داعمة | api | — | unchecked | No | Fuel prices and EV chargers near a point, in a map area or along a route, as GeoJSON |
 | TL-06774a1b | [r5r](https://github.com/ipeaGIT/r5r) | داعمة | oss | — | restricted | — | Package for rapid realistic routing on multimodal transport networks (walk, bike, public transport and car). |
 | TL-48c6ac5f | [Radar Box](https://www.radarbox24.com) | أساسية | web | — | reachable | — | — |
 | TL-81872608 | [radarbox](https://www.radarbox.com/) | أساسية | web | — | reachable | — | — |
@@ -292,7 +290,7 @@
 | TL-99e75a70 | [Roboflow Universe](https://universe.roboflow.com) | داعمة | api | — | restricted | apiKey | Pre-trained computer vision models |
 | TL-2d2bc672 | [RouteE Compass](https://github.com/NREL/routee-compass) | داعمة | oss | — | restricted | — | An energy-aware vehicle routing engine. |
 | TL-69ad75c5 | [Rzjets.net](http://rzjets.net/aircraft/) | أساسية | web | — | restricted | — | user updated online database (census) of civilian jet and turbojet aircraft |
-| TL-03a95c69 | [Sabre for Developers](https://developer.sabre.com/) | داعمة | api | — | unchecked | apiKey | Travel Search - Limited usage |
+| TL-9410ba5b | [Sabre for Developers](https://developer.sabre.com/guides/travel-agency/quickstart/getting-started-in-travel) | داعمة | api | — | unreachable | apiKey | Travel Search - Limited usage |
 | TL-e943123f | [Satellite Tracking](https://www.n2yo.com/) | أساسية | web | — | reachable | — | — |
 | TL-e9863c83 | [SchemaShield](https://rapidapi.com/kaiasistentedavid/api/schema-change-risk) | داعمة | api | — | reachable | apiKey | Read-only preflight for breaking schema changes and downstream query impact |
 | TL-4ece010b | [Schiphol Airport](https://developer.schiphol.nl/) | داعمة | api | — | reachable | apiKey | Schiphol |
@@ -310,7 +308,6 @@
 | TL-4fe47747 | [shipnext](https://shipnext.com/vessel/9417440/Ohio) | أساسية | web | — | reachable | — | — |
 | TL-193d615b | [shipspotting](https://www.shipspotting.com/) | أساسية | web | — | restricted | — | — |
 | TL-52db221e | [shiptracker](https://shiptracker.live/) | أساسية | web | — | reachable | — | — |
-| TL-fd098946 | [SkyAccess](https://github.com/sky-access/skyaccess-mcp) | داعمة | oss | — | unchecked | No | Search 5,000+ live empty leg flights, get charter price estimates and booking links |
 | TL-e1ff91c7 | [skytrack](https://github.com/ANG13T/skytrack) | أساسية | oss | — | reachable | — | — |
 | TL-2a7427c8 | [Skyvector](https://skyvector.com/) | أساسية | web | — | reachable | — | tool is designed for planning private flights. And you can find an incredible amount of data about the current situation in the sky on it |
 | TL-470badd1 | [Smappen](https://www.smappen.com/app/) | أساسية | web | بوابة الأشخاص | reachable | — | Online tool to calculate the distance a person can travel from a given point in a given time (on foot, by car, by bicycle, by train, by truck). |
@@ -321,7 +318,6 @@
 | TL-71f1791f | [Spaceflight News](https://spaceflightnewsapi.net) | داعمة | api | — | reachable | No | Spaceflight related news 🚀 |
 | TL-09a55c24 | [SpaceX](https://github.com/r-spacex/SpaceX-API) | داعمة | oss | — | reachable | No | Company, vehicle, launchpad and launch data |
 | TL-bb1d6ee2 | [SpaceX](https://api.spacex.land/graphql/) | داعمة | api | — | restricted | No | GraphQL, Company, Ships, launchpad and launch data |
-| TL-9ccd1118 | [Stadiq](https://stadiq.app/developers) | داعمة | api | — | unchecked | apiKey | Road works, transit disruptions and air quality for Antwerp and Flanders |
 | TL-2edd526c | [Storm Glass](https://stormglass.io/) | داعمة | api | — | reachable | apiKey | Global marine weather from multiple sources |
 | TL-63cfd1d6 | [stplanr](https://github.com/ropensci/stplanr) | داعمة | oss | — | restricted | — | Sustainable transport planning with R. |
 | TL-bce58a9e | [Strait of Hormuz Ship Monitor](https://hormuz.data-tracking.net/llms.txt) | داعمة | api | — | reachable | No | Live AIS vessel traffic, crossings and oil flow through the Strait of Hormuz |
@@ -340,7 +336,6 @@
 | TL-0aba2cda | [Track Trace (Lading)](http://www.track-trace.com/bol) | أساسية | web | — | reachable | — | — |
 | TL-79e48139 | [Track-Trace](https://www.track-trace.com/) | أساسية | web | — | reachable | — | — |
 | TL-50c3644f | [Train Tracker](https://mobility.portal.geops.io/world.geops.transit?lang=en&layers=strassennamen,haltekanten,haltestellen,pois,world.geops.traviclive&x=810000&y=5900000&z=5.5) | أساسية | web | — | reachable | — | — |
-| TL-43bef033 | [TransCAPI](https://www.transcapi.com/docs) | داعمة | api | — | unchecked | apiKey | Live bus and rail departures, vehicles, disruptions and journey planning for Great Britain |
 | TL-2cde98de | [Transit Visualisation Client](https://tracker.geops.ch) | أساسية | web | — | reachable | — | real time info about public transport in 739 cities and towns in the dozens of countries |
 | TL-a2a1c7a2 | [TransitLand](https://www.transit.land/documentation/datastore/api-endpoints.html) | داعمة | api | — | reachable | No | Transit Aggregation |
 | TL-53f849ce | [transjakarta ID ROUTE](https://transjakarta.co.id/rute) | أساسية | web | — | reachable | — | — |
@@ -380,7 +375,6 @@
 | TL-69468114 | [Transport for Washington, US](https://developer.wmata.com/) | داعمة | api | — | reachable | OAuth | Washington Metro transport API |
 | TL-fc3ea4dc | [transport.rest](https://transport.rest) | داعمة | api | — | reachable | No | Community maintained, developer-friendly public transport API |
 | TL-7bc2de62 | [Transtats.bts.gov](https://transtats.bts.gov/ONTIME/) | أساسية | web | — | reachable | — | flight schedules and data on the actual departure/arrival times of flights in the U.S. for more than 30 years (!)) |
-| TL-e11652ee | [Travel Risk Aviation](https://api.travelriskapi.com/ext/reference/) | داعمة | api | — | unchecked | apiKey | Flight status, airports, airlines, airline safety and in-flight Wi-Fi data |
 | TL-ec852ca1 | [tripack](https://cran.r-project.org/web/packages/tripack/index.html) | داعمة | web | — | reachable | — | A constrained two-dimensional Delaunay triangulation package providing both triangulation and generation of voronoi mosaics of irregular spaced data. |
 | TL-4296c33f | [Tripadvisor](https://developer-tripadvisor.com/home/) | داعمة | api | — | restricted | apiKey | Rating content for a hotel, restaurant, attraction or destination |
 | TL-ff42313d | [Uber](https://developer.uber.com/products) | داعمة | api | — | unreachable | OAuth | Uber ride requests and price estimation |
@@ -417,5 +411,4 @@
 | TL-f386ae53 | [World Monitor](https://www.worldmonitor.app/) | أساسية | web | — | reachable | — | Real-time global intelligence platform aggregating live military flight tracking (ADS-B), AIS vessel monitoring, GPS jamming heatmaps, conflict event overlays,  |
 | TL-57a2874a | [World Railway Train](https://mobility.portal.geops.io/world.geops.transit?layers=paerke,strassennamen,haltekanten,haltestellen,pois,world.geops.traviclive&x=12003263.13&y=-842145.41&z=7.98) | أساسية | web | — | reachable | — | — |
 | TL-091c1df8 | [WorldLicensePlates](http://www.worldlicenseplates.com/) | أساسية | web | بوابة الأشخاص | reachable | — | graphic index of license plates of different countries of the world |
-| TL-dcc86fa3 | [WoRMS](https://www.marinespecies.org/rest/) | داعمة | api | — | unchecked | No | Marine species taxonomy, synonyms and distributions |
 | TL-dc49f559 | [ZugFinder](https://www.zugfinder.net/en/start) | أساسية | web | — | reachable | — | Detailed information on trains, stations and real-time train traffic for European countries |

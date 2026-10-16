@@ -1,8 +1,8 @@
 # النطاقات وIP وDNS والشهادات (Domains, IP, DNS & certificates)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **608**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **600**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -40,7 +40,7 @@
 | TL-06c7234b | [BGP Malicious Content Ranking](https://bgpranking.circl.lu/) | أساسية | web | — | reachable | — | — |
 | TL-461280e6 | [BGP Tools](https://www.bgp4.as/tools) | أساسية | web | — | unreachable | — | — |
 | TL-f2cd614b | [BGPView](https://bgpview.io/) | أساسية | api | بوابة الأشخاص | unreachable | — | web-browsing tool and an API that lets you gather information about the current state and structure of the internet, including ASNs, IP addresses, IXs, BGP Down |
-| TL-98c488a5 | [BigDataCloud](https://www.bigdatacloud.com/docs) | داعمة | api | — | unchecked | apiKey | Provides fast and accurate IP geolocation APIs along with security checks and confidence area |
+| TL-c7c61e1f | [BigDataCloud](https://www.bigdatacloud.com/ip-geolocation-apis) | داعمة | api | — | unreachable | apiKey | Provides fast and accurate IP geolocation APIs along with security checks and confidence area |
 | TL-b3821c8f | [bigdomaindata](https://www.bigdomaindata.com/) | أساسية | web | — | reachable | — | — |
 | TL-79799c72 | [BinaryEdge (R)](https://www.binaryedge.io/) | أساسية | web | — | restricted | — | — |
 | TL-43c8e75a | [Bing IP Search (D)](https://www.bing.com/search?q=ip%3A8.8.8.8) | أساسية | web | — | reachable | — | — |
@@ -105,7 +105,6 @@
 | TL-47bbe93a | [Columbus Project](https://columbus.elmasy.com/) | أساسية | api | — | unreachable | — | A fast, API-first subdomain discovery service with advanced queries. |
 | TL-b3faa5df | [Common Crawl CDX API](https://index.commoncrawl.org/) | أساسية | api | — | unreachable | — | Search Common Crawl's CDX URL index. |
 | TL-001e6f87 | [Common Crawl Web Graph](https://commoncrawl.org/category/web-graph/) | أساسية | web | — | reachable | — | A host or domain-level graph of the web, with ranking information. *(Stable)* |
-| TL-d0599899 | [CompressGIF](https://compressgif.net/docs) | داعمة | api | — | unchecked | apiKey | Compress GIF files or HTTPS URLs with asynchronous jobs and target-size controls |
 | TL-97c82e89 | [Copernicus Open Access Hub](https://scihub.copernicus.eu/) | أساسية | web | — | unreachable | — | ESA's open access portal to Sentinel data |
 | TL-bcceef06 | [Country](http://country.is/) | داعمة | api | — | reachable | No | Get your visitor's country from their IP |
 | TL-f9d2c31c | [Crab](https://github.com/N0tA1dan/Crab) | أساسية | oss | — | restricted | — | Well done and well designed port scanner, host info gatherer (include whois). |
@@ -124,7 +123,6 @@
 | TL-ee7479dc | [DeHashed (R)](https://dehashed.com/) | أساسية | web | بوابة الأشخاص | reachable | — | Tool for searching for data leaks (search by email, password, phone, username, domain etc) |
 | TL-8c206009 | [Deteque (R)](https://www.deteque.com/) | أساسية | web | — | reachable | — | — |
 | TL-f88a2f90 | [DigMyName](https://digmyname.com/api) | داعمة | api | — | reachable | No | Domain availability and registrar pricing across 52 TLDs |
-| TL-c2e3ae2a | [Disban](https://disban.io/docs) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Classify email domains as disposable, free, alias, testing or parked to block fake signups |
 | TL-7faa9839 | [Disposable Email Domains (T)](https://github.com/disposable-email-domains/disposable-email-domains) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-49dd86a8 | [Ditto](https://github.com/evilsocket/ditto) | أساسية | oss | — | restricted | — | Dsmall tool that accepts a domain name as input and generates all its variants for an homograph attack as output, checking which ones are available and which ar |
 | TL-00849f87 | [DNS Checker](https://dnschecker.org) | أساسية | web | — | reachable | — | — |
@@ -146,7 +144,6 @@
 | TL-2702e886 | [dnstwister](https://dnstwister.report/) | أساسية | web | — | reachable | — | — |
 | TL-ac6c1836 | [DNSViz](https://dnsviz.net/) | أساسية | web | — | reachable | — | — |
 | TL-6f4c184f | [Domain Dossier](https://centralops.net/co/DomainDossier.aspx) | أساسية | web | — | reachable | — | — |
-| TL-adfb3ec9 | [Domain Info by LifeStep](https://dns.lifestep.io) | داعمة | api | — | unchecked | No | DNS records, SPF/DMARC detection and TLS certificate expiry |
 | TL-da3840a5 | [Domain Intelligence](https://oti-labs.com/domain-intelligence-api) | داعمة | api | بوابة الأشخاص | reachable | apiKey | DNS, WHOIS/RDAP, SSL, subdomain enumeration, and email security in one parallel call |
 | TL-25a5cfa3 | [Domain Investigation Toolbox](http://cipher387.github.io/domain_investigation_toolbox/) | أساسية | web | — | reachable | — | gather information about domain with 41 online tools from one page. |
 | TL-605230e5 | [domaincodex](https://www.domaincodex.com/) | أساسية | web | — | reachable | — | — |
@@ -214,7 +211,6 @@
 | TL-0a387328 | [geometry-rs](https://github.com/ringsaturn/geometry-rs) | داعمة | oss | — | restricted | — | Partial port of tidwall/geometry (efficient 2D geometry library for Go). |
 | TL-c5254004 | [geoPlugin](https://www.geoplugin.com) | داعمة | api | — | reachable | No | IP geolocation and currency conversion |
 | TL-4546542a | [GEOS](https://trac.osgeo.org/geos/) | داعمة | web | — | reachable | — | Geometry Engine - Open Source, a C++ port of the Java Topology Suite (JTS) that provides spatial predicates and functions, serving as the core engine for librar |
-| TL-41a46999 | [GeraCode](https://www.geracodigo.com.br/api-codigo-de-barras) | داعمة | api | — | unchecked | No | Barcode (EAN-13, UPC-A, Code 128, ITF-14) and QR code images, PNG or SVG. Docs in Portuguese |
 | TL-a7958531 | [Get Link Info](https://www.getlinkinfo.com/) | أساسية | web | — | restricted | — | — |
 | TL-a98b0a07 | [Ghoulbond](https://github.com/hitesh22rana/ghoulbond) | أساسية | oss | بوابة الأشخاص | restricted | — | Just another all-in-one command line toolkit for gathering information about system (technical characteristics, internet speed, IP/Mac address, port scanner)+so |
 | TL-8aaad439 | [Git.io](https://github.blog/2011-11-10-git-io-github-url-shortener/) | داعمة | api | — | reachable | No | Git.io URL shortener |
@@ -342,7 +338,6 @@
 | TL-b3b6604a | [lpse lkpp ID](https://lpse.lkpp.go.id/eproc4) | أساسية | web | — | unreachable | — | Tips you can search by province, institution or regency (subdomain) |
 | TL-8586721e | [Lynis](https://cisofy.com/lynis/) | داعمة | web | — | reachable | — | an open source security auditing tool for Linux/Unix. |
 | TL-e29cd36e | [Magnifier](https://github.com/TheEyeOfCyber/Magnifier) | أساسية | oss | بوابة الأشخاص | restricted | — | #osint #python toolkit. 15 scripts in one: - subdomain finder; - website emails collector; - zone transfer; - reverse IP lookup; and much more. |
-| TL-19aad3f4 | [MailSenpai DNS Check](https://en.mailsenpai.com/dns-check-api/) | داعمة | api | — | unchecked | No | Check a domain's SPF, DKIM, DMARC and MX records and get what to fix, with the values to publish |
 | TL-cf5a5c70 | [mapshaper-proj](https://github.com/mbloch/mapshaper-proj) | داعمة | oss | — | restricted | — | A JavaScript port of the Proj.4 map projection library. |
 | TL-4fff21b9 | [MapTiler Server](https://www.maptiler.com/server/) | داعمة | web | — | reachable | — | Map server for self-hosting. Publish interactive maps to get map services from your own server or laptop. |
 | TL-97c535d0 | [MarkMonitor Whois Search](https://domains.markmonitor.com/whois/) | أساسية | web | — | reachable | — | — |
@@ -351,7 +346,6 @@
 | TL-a83c923a | [MaxMind Demo](https://www.maxmind.com/en/home) | أساسية | web | — | reachable | — | — |
 | TL-d6ae308f | [MayorSecDNSScan](https://github.com/dievus/msdnsscan) | أساسية | oss | — | restricted | — | Identify DNS records for target domains, check for zone transfers and conduct subdomain enumeration. |
 | TL-7d0b84de | [Metadata Parser](https://github.com/jvanasco/metadata_parser) | أساسية | oss | — | restricted | — | A simple #Python library to help retrieve website metadata by URL (description, location, keywords, keywords, images, content author names, and more). |
-| TL-6b821fd1 | [Mgnet.me](http://mgnet.me/api.html) | داعمة | api | — | unchecked | No | Torrent URL shorten API |
 | TL-bd1a8a70 | [MMHDAN](https://mmhdan.herokuapp.com) | أساسية | web | — | unreachable | — | Calculate a fingerprint of a website (HTML, Favicon, Certificate in SHA1, SHA256, MD5, MMH3) and create the quick links to search it in IOT search engines |
 | TL-fddba9de | [Mnemonic](https://passivedns.mnemonic.no/) | أساسية | web | — | reachable | — | DNS history search by IP-adress or by domain name |
 | TL-621216f2 | [Moonsearch](https://moonsearch.com/) | أساسية | web | — | reachable | — | — |
@@ -375,7 +369,6 @@
 | TL-a8a3e971 | [NetLoc8 MCP](https://github.com/netloc8/netloc8-mcp) | داعمة | oss | — | restricted | — | Model Context Protocol server giving AI assistants geolocation tools to lookup country, city, region, timezone, coordinates, and ASN. |
 | TL-2eb24d59 | [NetworkCalc](https://networkcalc.com/api/docs) | داعمة | api | — | reachable | No | Network calculators, including subnets, DNS, binary, and security tools |
 | TL-aba90497 | [NetworkCube](https://github.com/networkcube/networkcube) | داعمة | oss | — | restricted | — | "Dynamic Network Visualizations [for] Domain Scientists." For demo examples, see The Vistorian. |
-| TL-a940505e | [NexWall](https://nexwall.kodnextech.com/wallpaper-api/docs) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Curated 4K portrait phone wallpapers across 50+ categories |
 | TL-6578b10d | [nmap](https://nmap.org/) | أساسية | web | — | reachable | — | Port scanner |
 | TL-f9c1145c | [Nmap (T)](https://nmap.org/download.html) | أساسية | web | — | reachable | — | — |
 | TL-6a9c4725 | [o365chk](https://github.com/nixintel/o365chk) | أساسية | oss | — | restricted | — | simple #Python script to check if there is an #Office365 instance linked to a particular domain and gathering information about this instance. |
@@ -398,7 +391,7 @@
 | TL-74e3d74f | [Osint tool](https://osint-tool.com/) | أساسية | web | بوابة الأشخاص | reachable | — | A universal online tool for searching various services and APIs with more than a dozen different inputs (phone number, email, website address, domain, etc.). |
 | TL-a618fc6d | [osmx](https://github.com/jake-low/osmx-rs) | داعمة | oss | — | restricted | — | Rust port of OSMExpress, a fast database file format for OpenStreetMap. |
 | TL-8e6c3e80 | [OWASP Maryam (T)](https://github.com/saeeddhqan/Maryam) | أساسية | oss | — | reachable | — | modular open-source framework based on OSINT and data gathering |
-| TL-467af0e9 | [owo](https://owo.vc/) | داعمة | api | — | unchecked | No | A simple link obfuscator/shortener |
+| TL-80c32df9 | [owo](https://owo.vc/api) | داعمة | api | — | unreachable | No | A simple link obfuscator/shortener |
 | TL-34206504 | [Packet Total](https://www.packettotal.com/) | أساسية | web | — | unreachable | — | — |
 | TL-e36cd1da | [Pastebin](https://pastebin.com/) | أساسية | web | — | reachable | — | Check other domain extension like .ca, .fr you can search domain simillarity |
 | TL-227260d2 | [PDFFleet](https://pdffleet.com) | داعمة | api | — | unreachable | apiKey | HTML and URL to PDF API with templates and a free tier |
@@ -472,7 +465,7 @@
 | TL-810f0326 | [ShodanSpider](https://github.com/shubhamrooter/ShodanSpider) | أساسية | oss | — | reachable | — | — |
 | TL-3c8d371a | [Short Link](https://github.com/FayasNoushad/Short-Link-API) | داعمة | oss | — | unreachable | No | Short URLs support so many domains |
 | TL-547ea88e | [Shrtcode](https://shrtco.de/docs) | داعمة | api | — | reachable | No | URl Shortener with multiple Domains |
-| TL-9ae30543 | [Shrtlnk](https://shrtlnk.dev/) | داعمة | api | — | unchecked | apiKey | Simple and efficient short link creation |
+| TL-c89b1188 | [Shrtlnk](https://shrtlnk.dev/developer) | داعمة | api | — | restricted | apiKey | Simple and efficient short link creation |
 | TL-4357aabd | [SimilarWeb](https://www.similarweb.com/) | أساسية | web | — | reachable | — | Detailed website traffic analyze |
 | TL-52b7b8c3 | [Sirv](https://apidocs.sirv.com/) | داعمة | api | — | reachable | apiKey | Image management solutions like optimization, manipulation, hosting |
 | TL-51068969 | [SiteBroker](https://github.com/Anon-Exploiter/SiteBroker) | أساسية | oss | — | restricted | — | Domain investigation #python tool |
@@ -524,7 +517,6 @@
 | TL-fd07ff08 | [The Favicon Finder](http://besticon.herokuapp.com/) | أساسية | web | — | unreachable | — | Instantly finds the favicon and all .ico files on the site, and then generates links to download them quickly. |
 | TL-938b2773 | [TheLordEye](https://github.com/rlyonheart/thelordseye) | أساسية | oss | — | restricted | — | Tool that searches for devices directly connected to the internet with a user specified query. It returns results for webcams, traffic lights, routers, smart TV |
 | TL-c6b19b8d | [TheOldNet.com](https://theoldnet.com/) | أساسية | web | — | reachable | — | — |
-| TL-ef8cc4ef | [TheQRCode](https://theqrcode.io/qr-code-api) | داعمة | api | بوابة الأشخاص | unchecked | No | Generate QR codes for URLs, WiFi, contact cards, email and text, with custom colors and styling |
 | TL-0d1c5ce9 | [Thingful.net](https://www.thingful.net/) | أساسية | web | — | reachable | — | — |
 | TL-f2b1f509 | [TileJSON.io](http://tilejson.io/) | داعمة | web | — | reachable | — | tilejson.io is a simple viewer for raster tile sets (Enter tile URL, layer properties, share). |
 | TL-7080c544 | [TileMantle](https://github.com/naturalatlas/tilemantle) | داعمة | oss | — | restricted | — | A tool to warm up your tile server cache. Give it a URL template, geometry, and list of zoom levels and it will request tiles incrementally to warm it up. |

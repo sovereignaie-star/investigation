@@ -1,8 +1,8 @@
 # الكود والمطورون والبنية التقنية (Code, developers & tech stack)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **374**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **368**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -41,7 +41,6 @@
 | TL-f3117500 | [awesomeopensource](https://awesomeopensource.com/) | أساسية | web | — | restricted | — | — |
 | TL-5c1cf027 | [Bayesian Network Repository](http://www.bnlearn.com/bnrepository/) | داعمة | dataset | — | reachable | — | . |
 | TL-45d25199 | [BeautifulSoup](https://BeautifulSoup.org/) | أساسية | web | — | reachable | — | Open source and collaborative framework for extracting the data you need from websites. |
-| TL-de444963 | [Bellingcat Online Investigation Toolkit](https://bellingcat.gitbook.io/toolkit) | أساسية | web | — | unchecked | — | tool write-ups with usage notes and limits. |
 | TL-3272cef7 | [Benchmark Graphs to Test Community Detection Algorithms](https://sites.google.com/site/santofortunato/inthepress2) | داعمة | web | — | reachable | — | C++ code to generate weighted and unweighted graphs. |
 | TL-a7340626 | [Best Linux Penetration Testing Distributions @ CyberPunk](https://www.cyberpunk.rs/category/pentest-linux-distros) | داعمة | web | — | unreachable | — | Description of main penetration testing distributions |
 | TL-388ff54d | [bevigil](https://bevigil.com/osint-api) | أساسية | web | — | reachable | — | — |
@@ -73,7 +72,7 @@
 | TL-bf3fccba | [codebeautify](https://codebeautify.org/recentLinksPage) | أساسية | web | — | restricted | — | — |
 | TL-29e37295 | [codeberg](https://codeberg.org/) | أساسية | web | — | restricted | — | — |
 | TL-bc11c1f9 | [codeql](https://github.com/github/codeql) | أساسية | oss | — | reachable | — | — |
-| TL-cd41661c | [commit-stream](https://github.com/x1sec/commit-stream) | أساسية | oss | — | unreachable | — | — |
+| TL-cd41661c | [Commit-stream](https://github.com/x1sec/commit-stream) | أساسية | oss | — | unreachable | — | — |
 | TL-85fe1ea6 | [Commits.top](https://commits.top/) | أساسية | web | — | unreachable | — | Current list of the most active @Github users by country |
 | TL-a3963f54 | [Conifer](https://conifer.rhizome.org/) | أساسية | web | — | reachable | — | From Rhizome, source available at <https://github.com/Rhizome-Conifer>. The hosted service was discontinued in June 2026; existing collections remain accessible |
 | TL-552b0499 | [Copernicus Open Access Hub](https://scihub.copernicus.eu/dhus/#/home) | داعمة | web | — | unreachable | — | Sentinel data from scihub. |
@@ -134,9 +133,9 @@
 | TL-9d778efa | [Github Release Stats](https://tooomm.github.io/github-release-stats/) | أساسية | web | — | reachable | — | Estimate popularity of Github repo. Tool displays the number of downloads for each project release + some additional information. |
 | TL-2d5426eb | [GitHub Repository Size](https://chrome.google.com/webstore/detail/github-repository-size/apnjnioapinblneaedefcnopcjepgkci) | أساسية | web | — | reachable | — | simple google chrome extension to view Github repo size |
 | TL-f999e483 | [Github Search](https://github.com/gwen001/github-search) | أساسية | oss | — | restricted | — | collection of Github investigation command line tools. Explore users, employes, endpoints,surveys and grab the repos |
-| TL-ad6fd3c6 | [GitHub Stars](http://githubstars.com) | أساسية | web | — | reachable | — | — |
+| TL-ad6fd3c6 | [Github Stars](http://githubstars.com) | أساسية | web | — | reachable | — | — |
 | TL-c19aa3d4 | [Github Trending Repo](https://trendingrepos.com/) | أساسية | web | — | reachable | — | — |
-| TL-abf75207 | [GitHub Trending RSS](https://mshibanami.github.io/GitHubTrendingRSS) | أساسية | web | — | reachable | — | — |
+| TL-abf75207 | [Github Trending RSS](https://mshibanami.github.io/GitHubTrendingRSS) | أساسية | web | — | reachable | — | — |
 | TL-997f3a3c | [Github-Dorks (T)](https://github.com/techgaun/github-dorks) | أساسية | oss | — | reachable | — | — |
 | TL-f7d85680 | [github-tools-collection](https://glc.st/posts/github-tools-collection//) | أساسية | web | — | reachable | — | — |
 | TL-a439c3a9 | [GithubTrends](https://githubtrends.app/api/) | داعمة | api | — | reachable | No | GitHub Trending repositories with star history and open-source alternatives to paid tools |
@@ -254,9 +253,6 @@
 | TL-613552f6 | [OpenVisionAPI](https://openvisionapi.com) | داعمة | api | — | unreachable | No | Open source computer vision API based on open source models |
 | TL-d1c5c721 | [OpenVPN](https://openvpn.net/) | داعمة | web | — | reachable | — | OpenVPN is an open source software application that implements virtual private network (VPN) techniques for creating secure point-to-point or site-to-site conne |
 | TL-e00ed60a | [OPNsense](https://opnsense.org/) | داعمة | web | — | reachable | — | is an open source, easy-to-use and easy-to-build FreeBSD based firewall and routing platform. OPNsense includes most of the features available in expensive comm |
-| TL-5132cc49 | [OSINT Collective](https://osintverse.com/collective) | أساسية | web | — | unchecked | — | a monthly virtual meetup for investigators. |
-| TL-bfdda182 | [OSINT learning path](https://osintverse.com/resources/course) | أساسية | web | — | unchecked | — | a step-by-step course from first search to a full case. |
-| TL-fb3aaae1 | [OSINTOne API](https://osintverse.com/developers) | أساسية | api | — | unchecked | — | one key and one schema for many OSINT data providers, if you want to script lookups. |
 | TL-bf87624d | [osintrack](https://osintrack.com/) | أساسية | web | — | reachable | — | The list of OSINT sources and data sources is similar to Jieyab89 |
 | TL-91748266 | [Osman Arabic Text Readability](https://sourceforge.net/projects/osmanreadability/) | داعمة | web | — | restricted | — | An open-source tool for measuring Arabic text readability, allowing users to calculate readability for Arabic text with or without diacritics. |
 | TL-6bcc2410 | [OSX Security Awesome](https://github.com/kai5263499/osx-security-awesome) | داعمة | oss | — | restricted | — | A collection of OSX and iOS security resources |
@@ -273,7 +269,6 @@
 | TL-c730fbed | [Qafiyah](https://github.com/alwalxed/qafiyah) | داعمة | oss | — | restricted | — | An open-source Arabic poetry DB and website with 944K+ verses by 932 poets from 10 eras. Built with Nextjs, Hono, and Supabase. |
 | TL-443e69ef | [QR & Barcode](https://solsigs.com/qrapi/) | داعمة | api | — | unreachable | No | QR codes and barcodes (Code 128, EAN-13, Data Matrix, PDF417 + more). SVG or PNG output |
 | TL-40d6456e | [QR code](http://goqr.me/api/) | داعمة | api | — | reachable | No | Generate and decode / read QR code graphics |
-| TL-9f87bfa6 | [QR Code by LifeStep](https://qr.lifestep.io) | داعمة | api | — | unchecked | No | Generate QR codes as PNG or SVG with size, border and color options |
 | TL-ded012b5 | [QR Code Crafter](https://qrcodecrafter.com/qr-code-api) | داعمة | api | — | reachable | No | Generate static QR codes in SVG, PNG, JPG, WebP, PDF, or EPS |
 | TL-0b3ad9f4 | [Qubes OS](https://www.qubes-os.org/) | داعمة | web | — | reachable | — | Qubes OS is a free and open-source security-oriented operating system meant for single-user desktop computing. |
 | TL-8f9f4527 | [Recreation Information Database](https://ridb.recreation.gov/) | داعمة | api | — | reachable | apiKey | Recreational areas, federal lands, historic sites, museums, and other attractions/resources(US) |
@@ -341,7 +336,6 @@
 | TL-0802a4a7 | [TerminusDB](https://github.com/terminusdb/terminusdb) | داعمة | oss | — | restricted | — | is an open source graph database and document store. It is designed for collaboratively building data-intensive applications and knowledge graphs. |
 | TL-6349a728 | [Textise.net](https://www.textise.net/) | أساسية | web | — | reachable | — | convert the HTML code of a page to TXT |
 | TL-f925b385 | [TFSec](https://github.com/tfsec/tfsec/) | داعمة | oss | — | restricted | — | A static analysis tool for infrastucture as code (Terraform). |
-| TL-99c7c690 | [The Hub](https://hub.osintverse.com) | أساسية | web | — | unchecked | — | field notes and webinars on OSINT techniques. |
 | TL-b8ab8f62 | [The Many Hats Club - Privacy Resources](https://themanyhats.club/centralised-place-for-privacy-resources/) | أساسية | web | — | unreachable | — | — |
 | TL-394d11cb | [The Small World of Psychopathology](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0027407) | داعمة | web | — | reachable | — | Paper on how psychiatric symptoms connec to each other (code, data and graphs). |
 | TL-b10056da | [TIO RUN](https://tio.run) | أساسية | web | — | reachable | — | Run and test code written in one of 680 programming languages (260 practical and 420 recreational) directly in your browser |
