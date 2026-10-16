@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { manualClock } from "@ir/core";
 import { EgressTransportError, type DnsResolver, type EgressLimits, type EgressTransport } from "@ir/egress";
 import { project, projectionHash } from "@ir/ledger/projections";
-import { openCase, verifyCase } from "@ir/store";
+import { openCase, type Vault, verifyCase } from "@ir/store";
 import { probeIsolation } from "@ir/transform-sandbox";
 import * as F from "../../transforms/src/fixtures/public-sources.ts";
 import { corroboration, type CoverageRecord, type InvestigationResult } from "./investigate.ts";
@@ -32,6 +32,8 @@ const DNS: Readonly<Record<string, string[]>> = {
   "crt.sh": ["91.199.212.73"],
   // P2-040: TR-010 fetches a page by URL; the page host must be resolvable for the robots.txt fetch to happen.
   "www.example.com": ["93.184.216.34"],
+  // P2-016 continuation: TR-009 (registered) targets urlscan.io.
+  "urlscan.io": ["93.184.216.34"],
 };
 
 type Resp = Awaited<ReturnType<EgressTransport["fetch"]>>;
@@ -74,6 +76,17 @@ const tempDir = () => {
   dirs.push(d);
   return d;
 };
+
+/** P2-016: a vault with fixed entries (the CLI reads the key from it per request). */
+const fakeVault = (entries: Record<string, string>): Vault => ({
+  list: () => Object.keys(entries).map((name) => ({ name, updatedAt: "2026-10-16T00:00:00.000Z" })),
+  has: (name) => name in entries,
+  set: () => {
+    throw new Error("not used in tests");
+  },
+  delete: () => false,
+  reveal: (name) => entries[name],
+});
 
 type EdgeReq = Parameters<EgressTransport["fetch"]>[0];
 function edge(world: Readonly<Record<string, Resp>> = WORLD, serve?: (url: string, signal?: AbortSignal, req?: EdgeReq) => Promise<Resp>) {
@@ -739,5 +752,39 @@ describe.skipIf(!host.full)("P2-040: the request budget counts robots.txt fetche
     // Nothing more can start: no further transport call, no further claim added.
     expect(x.calls).toHaveLength(1);
     expect(readCase(dir).entries.some((e) => e.kind === "claim.added")).toBe(false);
+  });
+});
+
+describe.skipIf(!host.full)("P2-016 continuation: the investigate path aggregates the per-provider query allowlist", () => {
+  it("the REGISTERED TR-009 runs through ir investigate and its real search query passes (the advisor-caught gap: the aggregation dropped the allowlist)", async () => {
+    // TR-009 is now registered (registry.ts) and declares URLSCAN_KEY; the vault carries the entry.
+    // Without the allowlist aggregated into the investigate gateway, the search request would be
+    // refused by the query policy BEFORE the transport — the exact gap this test pins.
+    const WORLD_009: Readonly<Record<string, Resp>> = {
+      "https://urlscan.io/api/v1/search/?q=domain:example.com": json(JSON.stringify({ results: [] })),
+    };
+    const dir = tempDir();
+    const x = edge(WORLD_009);
+    const r = await investigate(dir, ["--transform", "TR-009", "--max-depth", "0"], {
+      hosts: ["urlscan.io"],
+      seed: ["url", "https://example.com/"],
+      network: {
+        env: ON,
+        resolver: x.resolver,
+        transport: x.transport,
+        limits: LIMITS,
+        vault: () => fakeVault({ urlscan: "n_urlscan_investigate_key" }),
+      },
+    });
+    // the investigation succeeds and the REAL request — with its query — reached the wire
+    expect(r.code).toBe(0);
+    expect(x.calls.map((c) => c.url)).toEqual(["https://urlscan.io/api/v1/search/?q=domain:example.com"]);
+    // the run is a successful empty search (the CLI's coverage state "none" = searched, found
+    // nothing — the ledger records it as a negative observation, D3; not a failure)
+    const k = cell(covOf(r), "TR-009", "url:https://example.com/")[0];
+    expect(k.state).toBe("none");
+    expect(k.requests).toBeGreaterThanOrEqual(1);
+    // the secret never appears anywhere the case persisted
+    expect(JSON.stringify(readCase(dir).entries)).not.toContain("n_urlscan_investigate_key");
   });
 });
