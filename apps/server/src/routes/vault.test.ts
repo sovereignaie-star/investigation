@@ -23,7 +23,7 @@ vi.mock("../lib/logger", async (importOriginal) => {
 
 import { openVault } from "@ir/store";
 import { createApp } from "../app";
-import { LOOKUPS_DISABLED, lookupsEnabled, vaultRouter } from "./vault";
+import { LOOKUPS_DISABLED, lookupsEnabled, keyTestsEnabled, vaultRouter } from "./vault";
 
 const SECRET = "ipinfo_token_9c1e_never_returned";
 const ADMIN_TOKEN = "admin-token-123";
@@ -516,5 +516,55 @@ describe("P2-015 (D-032): a key test — or a documented reason not to — for e
     expect(header("urlscan.io", "api-key")).toBe(SECRET);
     const urls = calls.map((c) => c.url);
     expect(urls.every((u) => !u.includes(SECRET) && !u.includes("?"))).toBe(true);
+  });
+});
+
+describe("L-05 (owner decision 2026-10-16): production key testing goes through the REAL transport — no parallel path", () => {
+  it("keyTestsEnabled is an exact opt-in (fail closed on anything else, including IR_OFFLINE unset)", () => {
+    expect(keyTestsEnabled({})).toBe(false);
+    for (const v of ["", "0", "true", "yes", "1 ", " 1", "on", "TRUE"]) expect(keyTestsEnabled({ IR_ENABLE_KEY_TESTS: v })).toBe(false);
+    expect(keyTestsEnabled({ IR_ENABLE_KEY_TESTS: "1" })).toBe(true);
+  });
+
+  it("with IR_ENABLE_KEY_TESTS=1 the key test is wired to the REAL transport — and IR_OFFLINE=1 still wins at the gateway itself (the refusal reason proves the wiring; no socket is ever opened)", async () => {
+    // The gateway reads process.env.IR_OFFLINE per request (the master switch, one layer down);
+    // setting it makes the gateway refuse offline BEFORE any transport call — hermetic proof that
+    // the route passed the transport_not_configured check, i.e. the REAL transport is wired.
+    const prev = process.env["IR_OFFLINE"];
+    process.env["IR_OFFLINE"] = "1";
+    try {
+      const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-l05-"));
+      dirs.push(dir);
+      const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
+      vault.set("ipinfo", SECRET);
+      const app = createApp(vaultRouter(() => vault, { env: { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_ENABLE_KEY_TESTS: "1" } }));
+      const server = app.listen(0, "127.0.0.1");
+      servers.push(server);
+      await new Promise((r) => server.once("listening", r));
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+      const res = await fetch(base + "/vault/ipinfo/test", withAdmin({ method: "POST" }));
+      const body = (await res.json()) as { ok: boolean; tested: boolean; reason?: string };
+      // the refusal is the GATEWAY's offline denial — not "transport_not_configured" — which proves
+      // the real transport is wired and the gateway (not a parallel path) governs the request
+      expect(body).toMatchObject({ ok: false, tested: false });
+      expect(body.reason).toBe("offline");
+    } finally {
+      if (prev === undefined) delete process.env["IR_OFFLINE"];
+      else process.env["IR_OFFLINE"] = prev;
+    }
+  });
+
+  it("without the opt-in the key test stays honestly unwired (transport_not_configured, tested:false — never fabricated)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-l05b-"));
+    dirs.push(dir);
+    const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
+    vault.set("ipinfo", SECRET);
+    const app = createApp(vaultRouter(() => vault, { env: { IR_ADMIN_TOKEN: ADMIN_TOKEN } }));
+    const server = app.listen(0, "127.0.0.1");
+    servers.push(server);
+    await new Promise((r) => server.once("listening", r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    const res = await fetch(base + "/vault/ipinfo/test", withAdmin({ method: "POST" }));
+    expect(await res.json()).toMatchObject({ ok: false, tested: false, reason: "transport_not_configured" });
   });
 });

@@ -2,6 +2,7 @@ export { createEgressGateway, EGRESS_DENY_CODE, EgressTransportError, normalizeH
 export type { EgressGateway } from "./egress";
 export type {
   EgressRequest,
+  ProviderQueryAllow,
   EgressResult,
   EgressSuccessResponse,
   EgressOptions,

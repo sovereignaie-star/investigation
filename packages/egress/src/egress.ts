@@ -238,6 +238,20 @@ export interface EgressLimits {
   readonly rateLimitBurst?: number; // default 4
 }
 
+/**
+ * P2-016 continuation (owner decision 2026-10-16): one permitted query parameter on a
+ * secret-bearing request to a provider. The registry data (packages/egress/providers/) states each
+ * item explicitly; the docs/security/KEY_TESTS.md matrix carries each parameter's source.
+ */
+export interface ProviderQueryAllow {
+  /** The exact parameter name (URL query parameters are case-sensitive). */
+  readonly param: string;
+  /** The declared value type: "string" (any text) or "number" (non-negative digits only). */
+  readonly type: "string" | "number";
+  /** The declared maximum length of the DECODED value (our bound, stated in the registry data). */
+  readonly maxLength: number;
+}
+
 export interface EgressOptions {
   /** Must be provided. Tests set it explicitly; no env var can enable the network. */
   readonly resolver: DnsResolver;
@@ -269,6 +283,16 @@ export interface EgressOptions {
    * missing from the map is refused too. Unset means no path restriction (hosts are still checked).
    */
   readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * P2-016 continuation (owner decision 2026-10-16): provider name -> the CLOSED list of query
+   * parameters a secret-bearing request to that provider may carry (name + value type + declared
+   * max length). A provider absent from the map, or with an empty list, refuses EVERY query (the
+   * unchanged fail-closed default). A parameter outside the list, a repeated parameter, a value over
+   * the declared max length, or a value that does not match the declared type is refused before any
+   * transport call. The allowlist data lives in the provider registry (packages/egress/providers/)
+   * next to the provider definition, with each parameter's source documented.
+   */
+  readonly providerQueries?: Readonly<Record<string, readonly ProviderQueryAllow[]>>;
   /**
    * ADR-27: the ONLY hosts an OAuth2 client-credentials token POST may target (exact match after
    * normalisation). Unset or empty = no token POST is ever allowed (fail-closed). Currently
@@ -891,8 +915,43 @@ function checkProviderPath(req: EgressRequest, url: URL, opts: EgressOptions, ho
   if (!allowed || allowed.length === 0) {
     return deny("secret_host_mismatch", hop, "secretProvider has no registered paths");
   }
-  if (url.search !== "" || url.hash !== "" || !allowed.includes(url.pathname)) {
+  if (url.hash !== "" || !allowed.includes(url.pathname)) {
     return deny("secret_host_mismatch", hop, "path is not a registered path of secretProvider");
+  }
+  if (url.search !== "") return checkProviderQuery(req, url, opts, hop);
+  return null;
+}
+
+/**
+ * P2-016 continuation (owner decision 2026-10-16): the per-provider query allowlist. A secret-bearing
+ * request may carry ONLY parameters the provider's registry entry lists (name + type + declared max
+ * length); anything else — a parameter outside the list, a repeated parameter, an over-long value or
+ * a value that does not match the declared type — is refused before any transport call. A provider
+ * with no allowlist entry refuses every query: the unchanged fail-closed default.
+ */
+function checkProviderQuery(req: EgressRequest, url: URL, opts: EgressOptions, hop: number): EgressResult | null {
+  const allow = opts.providerQueries;
+  const items =
+    allow && Object.prototype.hasOwnProperty.call(allow, req.secretProvider ?? "") ? allow[req.secretProvider ?? ""] : undefined;
+  if (!items || items.length === 0) {
+    return deny("secret_host_mismatch", hop, "path is not a registered path of secretProvider");
+  }
+  const seen = new Set<string>();
+  for (const [name, value] of url.searchParams.entries()) {
+    const item = items.find((a) => a.param === name);
+    if (!item) {
+      return deny("secret_host_mismatch", hop, `query parameter "${name}" is not in secretProvider's query allowlist`);
+    }
+    if (seen.has(name)) {
+      return deny("secret_host_mismatch", hop, `query parameter "${name}" is repeated`);
+    }
+    seen.add(name);
+    if (value.length > item.maxLength) {
+      return deny("secret_host_mismatch", hop, `query parameter "${name}" exceeds the declared max length ${item.maxLength}`);
+    }
+    if (item.type === "number" && !/^\d+$/.test(value)) {
+      return deny("secret_host_mismatch", hop, `query parameter "${name}" is not a number`);
+    }
   }
   return null;
 }

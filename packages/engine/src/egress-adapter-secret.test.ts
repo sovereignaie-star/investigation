@@ -56,6 +56,9 @@ function gateway(w: Wire) {
     limits: { rateLimitPerHostPerSecond: 100, rateLimitBurst: 100 },
     providerHosts: { urlscan: BINDING.hosts },
     providerPaths: { urlscan: PATHS },
+    // P2-016 continuation (owner decision 2026-10-16): the registry's per-provider query allowlist —
+    // the SAME data the CLI passes from packages/egress/providers/urlscan.ts.
+    providerQueries: { urlscan: [{ param: "q", type: "string", maxLength: 512 }] },
   });
 }
 
@@ -199,12 +202,17 @@ describe("P2-016: secret injection at the adapter (key in the registry header, n
     expect(calls.map((c) => c.url)).toEqual(["https://urlscan.io/api/v1/search/"]);
   });
 
-  it("DOCUMENTED CONFLICT (P2-016): TR-009's real search request carries a query, and the query policy refuses secret-bearing requests — the injection is refused by T-SEC-SSRF-042 until the owner decides on a registry-driven query allowlist", async () => {
+  it("RESOLVED (P2-016 continuation, owner decision 2026-10-16): TR-009's real search query passes the per-provider allowlist — the key in the header, the query intact, the URL clean", async () => {
     const w = wire();
     const transport = createEgressHttpTransport({ gateway: gateway(w), baseRequest: BASE, secretBinding: BINDING });
-    await expect(
-      transport.fetch({ method: "GET", url: "https://urlscan.io/api/v1/search/?q=domain:example.com" }, new AbortController().signal),
-    ).rejects.toThrowError(/secret_host_mismatch/);
-    expect(w.calls).toHaveLength(0);
+    const res = await transport.fetch(
+      { method: "GET", url: "https://urlscan.io/api/v1/search/?q=domain:example.com" },
+      new AbortController().signal,
+    );
+    expect(res.status).toBe(200);
+    expect(w.calls).toHaveLength(1);
+    expect(w.calls[0]?.url).toBe("https://urlscan.io/api/v1/search/?q=domain:example.com");
+    expect(w.calls[0]?.headers?.["api-key"]).toBe("n_urlscan_test_key");
+    expect(w.calls[0]?.url).not.toContain("n_urlscan_test_key");
   });
 });

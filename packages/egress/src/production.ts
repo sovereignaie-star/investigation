@@ -15,6 +15,7 @@
 import { isIP } from "node:net";
 import {
   createEgressGateway,
+  type ProviderQueryAllow,
   type DnsResolver,
   type EgressAuditSink,
   type EgressGateway,
@@ -61,6 +62,13 @@ export interface ProductionEgressConfig {
    * binding exists, never one without the other.
    */
   readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * P2-016 continuation (owner decision 2026-10-16): provider name -> the closed query-parameter
+   * allowlist for secret-bearing requests (the gateway's `providerQueries`). Passed only together
+   * with `providerHosts` + `providerPaths` (the registry config is all-or-nothing); a provider
+   * absent from the map keeps the fail-closed default (every query refused).
+   */
+  readonly providerQueries?: Readonly<Record<string, readonly ProviderQueryAllow[]>>;
 }
 
 export type ProductionEgressDecision =
@@ -78,9 +86,14 @@ const HOST_LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
 function providerRegistryConfig(cfg: ProductionEgressConfig): {
   providerHosts?: ProductionEgressConfig["providerHosts"];
   providerPaths?: ProductionEgressConfig["providerPaths"];
+  providerQueries?: ProductionEgressConfig["providerQueries"];
 } {
   if (!cfg.providerHosts || !cfg.providerPaths) return {};
-  return { providerHosts: cfg.providerHosts, providerPaths: cfg.providerPaths };
+  return {
+    providerHosts: cfg.providerHosts,
+    providerPaths: cfg.providerPaths,
+    ...(cfg.providerQueries ? { providerQueries: cfg.providerQueries } : {}),
+  };
 }
 
 /**

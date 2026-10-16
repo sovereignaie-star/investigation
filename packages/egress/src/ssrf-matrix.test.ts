@@ -284,6 +284,104 @@ describe("T-SEC-SSRF-042: a provider secret only reaches that provider's registe
   });
 });
 
+describe("T-SEC-SSRF-042 (P2-016 continuation, owner decision 2026-10-16): a per-provider query allowlist", () => {
+  const sink = { record: () => {} };
+  const SECRET = "urlscan-key-value-0123456789";
+  const PATH = "/api/v1/search/";
+  /** The registry data shape (packages/egress/providers/urlscan.ts): q is a string, declared max 512. */
+  const ALLOW_Q = [{ param: "q", type: "string" as const, maxLength: 512 }];
+  const ALLOW_SIZE = [{ param: "size", type: "number" as const, maxLength: 5 }];
+  function setup(providerQueries?: Readonly<Record<string, readonly { param: string; type: "string" | "number"; maxLength: number }[]>>) {
+    const calls: string[] = [];
+    const cap = createVaultKeyValidationCapability({ urlscan: { hosts: "urlscan.io", paths: [PATH] } }, sink);
+    const base = vaultGatewayOptions(
+      cap,
+      { resolve: async () => [PUB] },
+      {
+        fetch: async (r) => {
+          calls.push(r.url);
+          return { status: 200, body: "{}" };
+        },
+      },
+      { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
+    );
+    return { calls, cap, g: createEgressGateway({ ...base, ...(providerQueries ? { providerQueries } : {}) }) };
+  }
+  const req = (cap: unknown, url: string) => ({
+    systemContext: true as const,
+    purposeRef: "vault-key-validation",
+    transform: "vault.test@1",
+    url,
+    sends: ["domain"],
+    sensitivity: "normal" as const,
+    pinnedHost: "urlscan.io",
+    headers: { "api-key": SECRET },
+    secret: SECRET,
+    secretProvider: "urlscan",
+    capability: cap,
+  });
+
+  it("control: an allowlisted parameter within the declared bound reaches the transport (the key in the header, the query intact)", async () => {
+    const { calls, cap, g } = setup({ urlscan: ALLOW_Q });
+    expect(await g.request(req(cap, `https://urlscan.io${PATH}?q=domain:example.com`))).toMatchObject({ ok: true });
+    expect(calls).toEqual([`https://urlscan.io${PATH}?q=domain:example.com`]);
+  });
+
+  it("a parameter outside the allowlist is refused before any transport call (fail-closed)", async () => {
+    const { calls, cap, g } = setup({ urlscan: ALLOW_Q });
+    expect(await g.request(req(cap, `https://urlscan.io${PATH}?x=1`))).toMatchObject({
+      ok: false,
+      reason: "secret_host_mismatch",
+      transportCalls: 0,
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it("a value over the declared maxLength is refused", async () => {
+    const { calls, cap, g } = setup({ urlscan: ALLOW_Q });
+    const long = "a".repeat(513);
+    expect(await g.request(req(cap, `https://urlscan.io${PATH}?q=${long}`))).toMatchObject({
+      ok: false,
+      reason: "secret_host_mismatch",
+      transportCalls: 0,
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it("a number-typed parameter accepts digits and refuses anything else", async () => {
+    const a = setup({ urlscan: ALLOW_SIZE });
+    expect(await a.g.request(req(a.cap, `https://urlscan.io${PATH}?size=100`))).toMatchObject({ ok: true });
+    expect(a.calls).toEqual([`https://urlscan.io${PATH}?size=100`]);
+    const b = setup({ urlscan: ALLOW_SIZE });
+    expect(await b.g.request(req(b.cap, `https://urlscan.io${PATH}?size=abc`))).toMatchObject({
+      ok: false,
+      reason: "secret_host_mismatch",
+      transportCalls: 0,
+    });
+    expect(b.calls).toEqual([]);
+  });
+
+  it("a repeated parameter is refused (no ambiguity, no bypass by repetition)", async () => {
+    const { calls, cap, g } = setup({ urlscan: ALLOW_Q });
+    expect(await g.request(req(cap, `https://urlscan.io${PATH}?q=a&q=b`))).toMatchObject({
+      ok: false,
+      reason: "secret_host_mismatch",
+      transportCalls: 0,
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it("control: a provider with NO allowlist refuses any query (the unchanged fail-closed default)", async () => {
+    const { calls, cap, g } = setup();
+    expect(await g.request(req(cap, `https://urlscan.io${PATH}?q=domain:example.com`))).toMatchObject({
+      ok: false,
+      reason: "secret_host_mismatch",
+      transportCalls: 0,
+    });
+    expect(calls).toEqual([]);
+  });
+});
+
 describe("coverage bookkeeping", () => {
   it("every canonical id 001..044 except the socket/reference ones has at least one gateway-level case here", () => {
     const elsewhere = new Set(["025", "026", "031", "032", "033", "045"]);
