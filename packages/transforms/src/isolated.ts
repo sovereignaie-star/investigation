@@ -187,14 +187,18 @@ rl.on("line", (l) => {
     p.reject(err);
   }
 });
-const ipcFetch = (method, url, headers) => new Promise((resolve, reject) => {
+const ipcFetch = (method, url, headers, body) => new Promise((resolve, reject) => {
   const id = nextId++;
   pending.set(id, { resolve, reject });
-  ipc({ op: "fetch", id, method, url, headers });
+  // ADR-27: the OAuth2 token POST body crosses IPC to the trusted parent (which forwards it
+  // through the egress gateway); the recording transport never records it in evidence.
+  ipc({ op: "fetch", id, method, url, headers, ...(method === "POST" ? { body } : {}) });
 });
 const http = {
   get: (url, headers) => ipcFetch("GET", url, headers),
   head: (url, headers) => ipcFetch("HEAD", url, headers),
+  // ADR-27: the only POST — the OAuth2 client-credentials token request.
+  post: (url, headers, body) => ipcFetch("POST", url, headers, body),
 };
 const ctx = { http, manifest: def.manifest, input, signal: new AbortController().signal };
 try {
@@ -284,8 +288,9 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
     }
     case "fetch": {
       if (!state.http) return;
-      const method = msg.method === "HEAD" ? "head" : "get";
-      const headers = messageHeaders(msg.headers);
+      // ADR-27: the POST body (the OAuth2 token request) is a plain string from the sandboxed
+      // child, forwarded to the recording transport (which records NO body for token requests)
+      // and the gateway. GET/HEAD carry no body.
       const answer = (payload: string) => {
         try {
           stdin?.write(payload);
@@ -295,27 +300,7 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
           state.writeError = err instanceof Error ? err.message : String(err);
         }
       };
-      state.http[method](String(msg.url), headers).then(
-        (res) =>
-          answer(
-            JSON.stringify({
-              id: msg.id,
-              ok: true,
-              requestId: res.requestId,
-              status: res.status,
-              headers: res.headers ?? {},
-              body: res.body,
-            }) + "\n",
-          ),
-        (err) =>
-          answer(
-            JSON.stringify({
-              id: msg.id,
-              ok: false,
-              error: { kind: classifyKind(err), message: err instanceof Error ? err.message : String(err) },
-            }) + "\n",
-          ),
-      );
+      runIpcFetch(state.http, msg, answer);
       return;
     }
     case "result": {
@@ -330,6 +315,41 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
       return;
     }
   }
+}
+
+/**
+ * Run one child fetch over the recording transport and answer over IPC. GET/HEAD carry no body;
+ * the only POST is the ADR-27 OAuth2 token request (its body is a plain string; the recording
+ * transport records no body for token requests).
+ */
+function runIpcFetch(http: NonNullable<IpcState["http"]>, msg: Record<string, unknown>, answer: (payload: string) => void): void {
+  const method = msg.method === "HEAD" ? "head" : msg.method === "POST" ? "post" : "get";
+  const headers = messageHeaders(msg.headers);
+  const run =
+    method === "post"
+      ? http[method](String(msg.url), headers ?? {}, typeof msg.body === "string" ? msg.body : "")
+      : http[method](String(msg.url), headers);
+  run.then(
+    (res) =>
+      answer(
+        JSON.stringify({
+          id: msg.id,
+          ok: true,
+          requestId: res.requestId,
+          status: res.status,
+          headers: res.headers ?? {},
+          body: res.body,
+        }) + "\n",
+      ),
+    (err) =>
+      answer(
+        JSON.stringify({
+          id: msg.id,
+          ok: false,
+          error: { kind: classifyKind(err), message: err instanceof Error ? err.message : String(err) },
+        }) + "\n",
+      ),
+  );
 }
 
 /** Map a child-reported error kind to a run stage (mirrors the in-process runner). */

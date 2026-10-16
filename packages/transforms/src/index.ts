@@ -34,6 +34,7 @@ export * from "./transforms/tr-033-reverse-image.ts";
 export * from "./transforms/tr-037-iban-bic.ts";
 export * from "./transforms/tr-031-exif-metadata.ts";
 export * from "./transforms/tr-032-perceptual-hash.ts";
+export * from "./transforms/tr-040-opensky.ts";
 export * from "./transforms/tr-034-pdf-metadata.ts";
 export * from "./transforms/tr-036-phone-analysis.ts";
 export * from "./transforms/tr-039-username-presence.ts";

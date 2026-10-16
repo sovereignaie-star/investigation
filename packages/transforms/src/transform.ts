@@ -17,10 +17,16 @@ import type { HttpTransport, TransportResponse } from "@ir/engine/transport";
 import type { TransformManifest } from "@ir/schema";
 import type { TransformOutput } from "./output.ts";
 
-/** The HTTP client a transform may use. Only GET/HEAD, matching the engine port. */
+/**
+ * The HTTP client a transform may use. GET/HEAD for data; POST exists ONLY as the ADR-27
+ * OAuth2 client-credentials token request (pinned auth host, form body from project secrets —
+ * the body and the token response are never recorded in evidence or audit).
+ */
 export interface TransformHttp {
   get(url: string, headers?: Readonly<Record<string, string>>): Promise<TransformHttpResponse>;
   head(url: string, headers?: Readonly<Record<string, string>>): Promise<TransformHttpResponse>;
+  /** ADR-27: the only legal POST — an OAuth2 client-credentials token request. */
+  post(url: string, headers: Readonly<Record<string, string>>, body: string): Promise<TransformHttpResponse>;
 }
 
 /** A response as seen by a transform: status, headers, body text, and the id of the request that produced it. */
@@ -66,8 +72,11 @@ export interface Transform<TInput = unknown> {
  */
 export function createTransformHttp(transport: HttpTransport, signal?: AbortSignal): TransformHttp {
   const runSignal = signal ?? new AbortController().signal;
-  const request = async (method: "GET" | "HEAD", url: string, headers?: Readonly<Record<string, string>>) => {
-    const res: TransportResponse = await transport.fetch({ method, url, headers }, runSignal);
+  const request = async (method: "GET" | "HEAD" | "POST", url: string, headers?: Readonly<Record<string, string>>, reqBody?: string) => {
+    const res: TransportResponse = await transport.fetch(
+      { method, url, headers, body: reqBody, oauth2Token: method === "POST" ? true : undefined },
+      runSignal,
+    );
     // A response that arrives after cancellation is never a success, even if the
     // transport completed it (the engine enforces the same rule on its own path).
     if (runSignal.aborted) {
@@ -88,5 +97,8 @@ export function createTransformHttp(transport: HttpTransport, signal?: AbortSign
   return {
     get: (url, headers) => request("GET", url, headers),
     head: (url, headers) => request("HEAD", url, headers),
+    // ADR-27: the ONLY POST a transform can issue — the OAuth2 token request. The marker is
+    // always set (there is no other POST), and the gateway enforces host + body shape.
+    post: (url, headers, body) => request("POST", url, headers, body),
   };
 }

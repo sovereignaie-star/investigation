@@ -6,9 +6,16 @@
  * integration point is `EngineOptions.transport`.
  */
 export interface TransportRequest {
-  readonly method: "GET" | "HEAD";
+  readonly method: "GET" | "HEAD" | "POST";
   readonly url: string;
   readonly headers?: Readonly<Record<string, string>>;
+  /**
+   * Request body — allowed ONLY on the ADR-27 OAuth2 token POST (client-credentials, pinned auth
+   * host, form-urlencoded body built from project secrets). Never recorded in evidence or audit.
+   */
+  readonly body?: string;
+  /** Marks the request as the ADR-27 OAuth2 token request — the only legal POST. */
+  readonly oauth2Token?: true;
 }
 
 export interface TransportResponse {

@@ -55,7 +55,15 @@ export interface SimRedirect {
   readonly delayMs?: number;
 }
 
-export type SimRule = { readonly match: string | RegExp; readonly response: SimResponse | SimFailure | SimRedirect };
+export type SimRule = {
+  readonly match: string | RegExp;
+  readonly response: SimResponse | SimFailure | SimRedirect;
+  /**
+   * Serve this rule at most N times; a consumed rule no longer matches (later rules take over).
+   * Default: unlimited. For sequences like "first call 401, then 200" on one URL.
+   */
+  readonly times?: number;
+};
 
 export interface SimServerOptions {
   /** Injectable sleep. Defaults to a real timer. */
@@ -65,7 +73,13 @@ export interface SimServerOptions {
 export interface SimServer {
   readonly transport: HttpTransport;
   /** Record of every request the sim received (for assertions). */
-  readonly requests: ReadonlyArray<{ readonly method: string; readonly url: string; readonly headers?: Readonly<Record<string, string>> }>;
+  readonly requests: ReadonlyArray<{
+    readonly method: string;
+    readonly url: string;
+    readonly headers?: Readonly<Record<string, string>>;
+    readonly body?: string;
+  }>;
+
   /** Number of requests served. */
   readonly requestCount: () => number;
   /** Reset the request log (rules are kept). */
@@ -104,11 +118,16 @@ export function createSimServer(rules: SimRule[], opts: SimServerOptions = {}): 
           { once: true },
         );
       }));
-  const requests: Array<{ method: string; url: string; headers?: Readonly<Record<string, string>> }> = [];
+  const requests: Array<{ method: string; url: string; headers?: Readonly<Record<string, string>>; body?: string }> = [];
+  // How many times each rule has been served (for `times` — consumed rules stop matching).
+  const served = new Map<SimRule, number>();
   const transport: HttpTransport = {
     async fetch(req: TransportRequest, signal: AbortSignal): Promise<TransportResponse> {
-      requests.push({ method: req.method, url: req.url, headers: req.headers });
-      const rule = rules.find((r) => matchUrl(r, req.url));
+      // The sim records the request body for TEST assertions only — this array is test-side and is
+      // never evidence (the recording transport records no body for ADR-27 token requests).
+      requests.push({ method: req.method, url: req.url, headers: req.headers, body: req.body });
+      const rule = rules.find((r) => matchUrl(r, req.url) && (served.get(r) ?? 0) < (r.times ?? Number.POSITIVE_INFINITY));
+      if (rule) served.set(rule, (served.get(rule) ?? 0) + 1);
       if (!rule) {
         throw new TransportError("transport:network", `sim: no rule matches ${req.url}`);
       }
@@ -134,6 +153,9 @@ export function createSimServer(rules: SimRule[], opts: SimServerOptions = {}): 
     transport,
     requests,
     requestCount: () => requests.length,
-    reset: () => requests.splice(0),
+    reset: () => {
+      requests.splice(0);
+      served.clear();
+    },
   };
 }

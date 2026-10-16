@@ -1,4 +1,4 @@
-# Identifier catalog: Device (25 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Identifier catalog: Device (27 types). Schema: IdentifierSpec in @ir/schema (5.6).
 # Edit here, then run: pnpm --filter @ir/core run gen:data
 - id: imei
   category: Device
@@ -424,4 +424,44 @@
       - device:sensor:001:abc123
     negative:
       - device:sensor:001:abc123#
+  sensitivity: normal
+- id: icao24
+  category: Device
+  labels:
+    en: ICAO 24-bit Aircraft Address
+    ar: عنوان طائرة ICAO24
+  description: ADS-B transponder hex address (lower case, 6 hex digits — OpenSky's icao24)
+  icon: ✈️
+  color: blue
+  patterns:
+    - ^[0-9a-f]{6}$
+  validator: null
+  examples:
+    positive:
+      - 3c6444
+      - a1b2c3
+    negative:
+      - 3C6444
+      - 3c644
+      - 3c64445
+  sensitivity: normal
+- id: flight_callsign
+  category: Device
+  labels:
+    en: Flight Callsign
+    ar: نداء رحلة
+  description: ADS-B callsign / flight designator (upper-case alphanumeric, trimmed)
+  icon: ✈️
+  color: blue
+  patterns:
+    - ^[A-Z0-9]{2,8}$
+  validator: null
+  examples:
+    positive:
+      - UAL123
+      - KLM60A
+    negative:
+      - ual123
+      - X
+      - TOOMANYCHARS9
   sensitivity: normal

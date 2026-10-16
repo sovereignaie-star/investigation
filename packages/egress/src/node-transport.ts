@@ -253,6 +253,9 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
             { once: true },
           );
 
+          // ADR-27: the OAuth2 token POST body — the only request body the gateway ever sends
+          // (form-urlencoded, project secrets only). Written once, then the request ends.
+          if (req.body !== undefined && req.method === "POST") request.write(req.body);
           request.end();
         },
       ).finally(() => {
