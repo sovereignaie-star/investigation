@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { Sensitivity, Sha256, Slug, Timestamp, Ulid, LicenseClass } from "./primitives.ts";
 
 /** Header names that must never be persisted (5.5 privacy). */
-export const REDACTED_HEADERS = ["authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"] as const;
+export const REDACTED_HEADERS = ["authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key", "api-key"] as const;
 
 export const RecordedRequest = z
   .object({

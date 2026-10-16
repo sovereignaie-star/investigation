@@ -49,6 +49,18 @@ export interface ProductionEgressConfig {
    */
   readonly resolver?: DnsResolver;
   readonly transport?: EgressTransport;
+  /**
+   * P2-016: the provider registry (name -> exact hosts) for secret-bearing requests — passed through
+   * to the gateway's `providerHosts`. Unset = no secret request can pass (fail-closed, unchanged
+   * behavior for existing callers). The CLI derives this from the run's registry entry.
+   */
+  readonly providerHosts?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * P2-016: provider name -> exact paths a secret may be sent to (the gateway's `providerPaths`,
+   * T-SEC-SSRF-042). Unset disables the path restriction — the CLI always sets both when a secret
+   * binding exists, never one without the other.
+   */
+  readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
 }
 
 export type ProductionEgressDecision =
@@ -56,6 +68,20 @@ export type ProductionEgressDecision =
   | { readonly enabled: false; readonly reason: string };
 
 const HOST_LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+
+/**
+ * P2-016: hosts + paths together or neither. If only one is configured the other is dropped too —
+ * dropping the hosts (or both) is always fail-closed (the gateway refuses every secret request
+ * when the provider is missing from `providerHosts`), so a half-configured registry can never
+ * weaken the pinning.
+ */
+function providerRegistryConfig(cfg: ProductionEgressConfig): {
+  providerHosts?: ProductionEgressConfig["providerHosts"];
+  providerPaths?: ProductionEgressConfig["providerPaths"];
+} {
+  if (!cfg.providerHosts || !cfg.providerPaths) return {};
+  return { providerHosts: cfg.providerHosts, providerPaths: cfg.providerPaths };
+}
 
 /**
  * ADR-27: the default pinned OAuth2 token host(s). Currently the OpenSky Network auth realm (TR-040).
@@ -102,6 +128,9 @@ export function createProductionEgress(cfg: ProductionEgressConfig): ProductionE
     screeningPostHosts: cfg.screeningPostHosts ?? DEFAULT_SCREENING_POST_HOSTS,
     ...(cfg.limits ? { limits: cfg.limits } : {}),
     ...(cfg.auditSink ? { auditSink: cfg.auditSink } : {}),
+    // P2-016: the provider registry for secret-bearing runs — hosts + paths together or neither
+    // (dropping one alone is always the fail-closed direction: no secret request passes).
+    ...providerRegistryConfig(cfg),
   });
   return { enabled: true, gateway, allowedHosts: hosts };
 }

@@ -25,3 +25,8 @@ export { sendKindOf, isStaticPath } from "./content-inventory";
 export { ByteBudget, RequestBudget, isByteBudget, isRequestBudget } from "./byte-budget";
 export { parseRobots, robotsFromStatus, ROBOTS_PRODUCT_TOKEN } from "./robots";
 export type { RobotsPolicy } from "./robots";
+// P2-016 (ADR-08 §7): the provider registry — pure data, no network capability. Re-exported from
+// the main index so trusted callers (the CLI network plan) can read it without a restricted
+// subpath import; the subpath export stays for direct references.
+export { PROVIDER_REGISTRY, registryEntryForSecret } from "./providers";
+export type { ProviderRegistryEntry } from "./providers";
