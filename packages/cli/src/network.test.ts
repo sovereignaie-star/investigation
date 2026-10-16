@@ -6,13 +6,14 @@
  * written to a real case: evidence (URL, status, fetchedAt, sha256), audit chain (every gateway decision), and
  * ledger findings linked to the evidence. The live variant (real DNS, real TLS) is live-network.test.ts.
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { manualClock } from "@ir/core";
 import type { DnsResolver, EgressTransport } from "@ir/egress";
-import { project } from "@ir/ledger/projections";
+import { project, projectionHash } from "@ir/ledger/projections";
+import { replayCase } from "@ir/engine";
 import { openCase } from "@ir/store";
 import { probeIsolation } from "@ir/transform-sandbox";
 import { main, type CliOptions } from "./ir.ts";
@@ -33,6 +34,8 @@ interface Fake {
   /** robots.txt requests (answered by `robots`, default 404 = no file), kept apart from the page requests. */
   readonly robotsCalls: string[];
   readonly lookups: string[];
+  /** P2-014: every transport fetch in actual arrival order (robots included) — one sequence for row-for-row comparison. */
+  readonly observed: string[];
 }
 
 type Resp = Awaited<ReturnType<EgressTransport["fetch"]>>;
@@ -45,10 +48,14 @@ function fake(
   const calls: Fake["calls"] = [];
   const robotsCalls: string[] = [];
   const lookups: string[] = [];
+  // P2-014: ONE list of every transport fetch in actual arrival order (robots included) — the acceptance
+  // test compares this single sequence with the log rows row for row, never a reassembled order.
+  const observed: string[] = [];
   return {
     calls,
     robotsCalls,
     lookups,
+    observed,
     resolver: {
       async resolve(host) {
         lookups.push(host);
@@ -59,6 +66,7 @@ function fake(
     },
     transport: {
       async fetch(r) {
+        observed.push(r.url);
         if (new URL(r.url).pathname === "/robots.txt") {
           robotsCalls.push(r.url);
           return robots;
@@ -337,6 +345,165 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     expect(log.responses[0].status).toBeUndefined();
   });
 
+  it("T-ETH-006 (P2-014): a redirect chain — every transport call the transport actually observed is exactly one log row (robots, entry hop, redirect hop)", async () => {
+    const dir = tempDir("netlog-redirect");
+    // source.example answers 302 -> alt.example (both allowed); the transport sees the redirect target itself
+    const x = fake({ "source.example": [PUBLIC_IP], "alt.example": [PUBLIC_IP] }, (_n, url): Resp => {
+      // exact host match (never a prefix match — CodeQL: incomplete URL substring sanitization)
+      if (new URL(url).host === "alt.example") return { status: 200, headers: { "content-type": "text/html" }, body: "<html>ok</html>" };
+      return { status: 302, headers: { location: "https://alt.example/moved" } };
+    });
+    const r = await run(
+      [
+        "run",
+        dir,
+        "TR-010",
+        "url",
+        "https://source.example/",
+        "--network",
+        "--allow-host",
+        "source.example",
+        "--allow-host",
+        "alt.example",
+        ...CASE_ARGS,
+        "--json",
+      ],
+      { network: { env: ON, resolver: x.resolver, transport: x.transport } },
+    );
+    expect(r.code).toBe(0);
+    // what the transport actually observed: robots.txt, the entry hop, and the redirect-target hop
+    expect(x.robotsCalls).toEqual(["https://source.example/robots.txt"]);
+    expect(x.calls.map((c) => c.url)).toEqual(["https://source.example/", "https://alt.example/moved"]);
+
+    const k = readCase(dir);
+    const log = k.p.networkLog;
+    // T-ETH-006: the FULL list of transport calls the transport actually observed, robots included,
+    // is compared with the log ROW FOR ROW (order and multiplicity) — not by separate counts:
+    expect(log.transportCalls.map((t) => t.url)).toEqual(x.observed);
+    // each row carries its hop index and outcome
+    expect(log.transportCalls[0]).toMatchObject({ url: "https://source.example/robots.txt", attempt: 1 });
+    expect(log.transportCalls[1]).toMatchObject({ url: "https://source.example/", attempt: 1, status: 302 });
+    expect(log.transportCalls[2]).toMatchObject({ url: "https://alt.example/moved", attempt: 2, status: 200 });
+    // gateway decisions stay separate from transport calls (robots + entry; the redirect hop adds no decision)
+    expect(log.requests).toHaveLength(2);
+    // the entry request's own outcome is a stored response marked network (its URL is the requested one;
+    // the final status/bytes are the last hop's — the hop URLs live in the transport rows)
+    expect(log.responses).toHaveLength(1);
+    expect(log.responses[0]).toMatchObject({ url: "https://source.example/", origin: "network" });
+  });
+
+  it("T-ETH-006 (P2-014): a redirect chain whose next call FAILS — the failed attempt is a row with its error, never absent", async () => {
+    const dir = tempDir("netlog-redirect-fail");
+    const x = fake({ "source.example": [PUBLIC_IP], "alt.example": [PUBLIC_IP] }, (_n, url): Resp => {
+      if (new URL(url).host === "alt.example") throw new Error("connection reset by peer");
+      return { status: 302, headers: { location: "https://alt.example/moved" } };
+    });
+    const r = await run(
+      [
+        "run",
+        dir,
+        "TR-010",
+        "url",
+        "https://source.example/",
+        "--network",
+        "--allow-host",
+        "source.example",
+        "--allow-host",
+        "alt.example",
+        ...CASE_ARGS,
+        "--json",
+      ],
+      { network: { env: ON, resolver: x.resolver, transport: x.transport } },
+    );
+    expect(r.code).toBe(1); // the run fails closed…
+    const k = readCase(dir);
+    const log = k.p.networkLog;
+    // …but every attempt is visible, row for row (robots + entry + the failed redirect target)
+    expect(log.transportCalls.map((t) => t.url)).toEqual(x.observed);
+    expect(log.transportCalls[2]).toMatchObject({
+      url: "https://alt.example/moved",
+      attempt: 2,
+      error: expect.stringContaining("connection reset"),
+    });
+    expect(log.transportCalls[2].status).toBeUndefined();
+  });
+
+  it("T-ETH-006 (P2-014): replay preserves the case's history — no new transport rows, origins not reclassified, projection unchanged", async () => {
+    const dir = tempDir("netlog-replay");
+    const c = openCase(dir, { actor: "test", create: { title: "t", purpose: "مراجعة بنية تحتية", legalBasis: "security_incident" } });
+    const bytes = new TextEncoder().encode("<html>ok</html>");
+    // a historical network run: one stored outcome (origin network) and one transport row
+    c.addEvidence({
+      bytes,
+      mime: "text/html",
+      request: { method: "GET", url: "https://source.example/", headers: {}, status: 200 },
+      transformId: "tr-010",
+      version: "1.0.0",
+      origin: "network",
+    });
+    c.audit("egress.allowed", "source.example", { transform: "TR-010@1.0.0", transportCalls: 1, reason: null });
+    c.audit("egress.transport", "source.example", {
+      transform: "TR-010@1.0.0",
+      url: "https://source.example/",
+      status: 200,
+      attempt: 1,
+      transportCalls: 1,
+    });
+    const before = readCase(dir);
+    const hashBefore = projectionHash(before.p);
+
+    // replay the run offline against the case's own evidence and blob store
+    const records = before.evidence.map((e) => ({
+      request: { method: (e as { request: { method: string } }).request.method, url: (e as { request: { url: string } }).request.url },
+      sha256: (e as { sha256: string }).sha256,
+      mime: (e as { mime: string }).mime,
+    }));
+    const res = await replayCase({
+      records,
+      blobs: { get: () => bytes }, // the case's stored blob
+      input: { kind: "lookup", canonicalInput: "https://source.example/" },
+      caps: { maxNodes: 5, maxDepth: 3, maxRequests: 5, maxCostEstimate: 100, maxElapsedMs: 5_000 },
+    });
+    expect(res.served).toBe(1);
+    expect(res.missed).toBe(0);
+
+    // the case's history is untouched: same evidence count, same transport rows, origins NOT
+    // reclassified by the replay (a replayed outcome is served from storage, not a new connection),
+    // and the projection is byte-identical.
+    const after = readCase(dir);
+    expect(after.evidence).toHaveLength(before.evidence.length);
+    expect(after.p.networkLog.transportCalls).toHaveLength(1);
+    expect(after.p.networkLog.transportCalls[0]).toMatchObject({ url: "https://source.example/", status: 200 });
+    expect(after.p.networkLog.responses).toHaveLength(1);
+    expect(after.p.networkLog.responses[0].origin).toBe("network");
+    expect(projectionHash(after.p)).toBe(hashBefore);
+  });
+
+  it("T-ETH-006 (P2-014): a simulated run's stored outcome is marked origin sim and never presented as a real connection", async () => {
+    const dir = tempDir("netlog-sim");
+    const rules = path.join(dir, "rules.json");
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        { match: "https://sim.example/", response: { status: 200, headers: { "content-type": "text/html" }, body: "<html>ok</html>" } },
+      ]),
+    );
+    const r = await run(["run", dir, "TR-010", "url", "https://sim.example/", ...CASE_ARGS, "--sim", rules, "--json"], {});
+    expect(r.code).toBe(0);
+    const k = readCase(dir);
+    const log = k.p.networkLog;
+    expect(log.requests).toHaveLength(0); // no gateway decision exists: nothing left the machine
+    expect(log.responses).toHaveLength(1);
+    expect(log.responses[0]).toMatchObject({ url: "https://sim.example/" });
+    expect(log.responses[0].origin).toBe("sim");
+    // the user-facing text never presents the sim outcome as a real connection either:
+    const proj = await run(["project", dir, ...CASE_ARGS], {});
+    expect(proj.code).toBe(0);
+    expect(proj.out).toMatch(
+      /network \(P2-014\): 0 requests \(0 not allowed\), 0 transport calls, 1 stored outcomes \(network: 0, sim: 1, replay: 0, unknown: 0\)/,
+    );
+  });
+
   it("an authorised host that resolves to a private address is refused before the transport, and the refusal is recorded", async () => {
     const dir = tempDir("private");
     const x = fake({ "source.example": [PUBLIC_IP, "10.0.0.5"] }, () => ({ status: 200, body: "never" }));
@@ -367,6 +534,17 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     expect(r.err).toContain("host_not_allowed");
     expect(x.lookups).toEqual([]);
     expect(x.calls).toEqual([]);
+    // P2-014: a network-mode run that reached no transport is recorded as exactly that — the denial
+    // is a request row, ZERO transport calls, zero stored outcomes (the mode never fabricates a connection).
+    const k = readCase(dir);
+    // P2-014: a network-mode run that reached no transport is recorded as exactly that — the denial is a
+    // request row, ZERO transport calls (the mode is an execution mode, never proof of a connection);
+    // the error observation's evidence is a stored outcome with origin "network" and size 0.
+    expect(k.p.networkLog.requests).toHaveLength(1);
+    expect(k.p.networkLog.requests[0]).toMatchObject({ decision: "denied", host: "other.example", transportCalls: 0 });
+    expect(k.p.networkLog.transportCalls).toHaveLength(0);
+    expect(k.p.networkLog.responses).toHaveLength(1);
+    expect(k.p.networkLog.responses[0]).toMatchObject({ url: "https://other.example/", origin: "network", size: 0 });
   });
 
   it("a redirect to a host outside the list is refused after the first hop; nothing is sent to it", async () => {

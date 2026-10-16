@@ -44,8 +44,17 @@ export interface StoredRequest {
   readonly error?: string;
 }
 
-/** Stores every recorded request outcome as evidence (D1: raw response, content-addressed), in request-id order. */
-export function storeRunEvidence(c: Case, evidence: readonly TransformEvidence[], transform: Transform): StoredRequest[] {
+/**
+ * Stores every recorded request outcome as evidence (D1: raw response, content-addressed), in request-id order.
+ * P2-014: `origin` records how the request was executed ("network" = the real gateway; "sim" = the simulation
+ * world) so the network log never presents a simulated outcome as a real external connection.
+ */
+export function storeRunEvidence(
+  c: Case,
+  evidence: readonly TransformEvidence[],
+  transform: Transform,
+  origin?: "network" | "sim" | "replay",
+): StoredRequest[] {
   const stored: StoredRequest[] = [];
   for (const ev of [...evidence].sort((a, b) => a.requestId - b.requestId)) {
     const rec = c.addEvidence({
@@ -60,6 +69,7 @@ export function storeRunEvidence(c: Case, evidence: readonly TransformEvidence[]
       transformId: ledgerTransformId(transform),
       version: transform.manifest.version,
       fetchedAt: ev.fetchedAt,
+      ...(origin ? { origin } : {}),
     });
     stored.push({
       requestId: ev.requestId,
@@ -124,8 +134,9 @@ export function recordRunSuccess(
   input: Record<string, unknown>,
   result: RunTransformResult,
   clock: Clock,
+  origin?: "network" | "sim" | "replay",
 ): RecordedRun {
-  const requests = storeRunEvidence(c, result.evidence, transform);
+  const requests = storeRunEvidence(c, result.evidence, transform, origin);
   const byRequest = new Map(requests.map((r) => [r.requestId, r.evidenceId]));
   let runRecordId: string | undefined;
   const runRecord = () => (runRecordId ??= storeRunRecord(c, transform, clock, { cited: "finding derived from the input", input }));
@@ -162,8 +173,9 @@ export function recordRunFailure(
   input: Record<string, unknown>,
   x: TransformRunError,
   clock: Clock,
+  origin?: "network" | "sim" | "replay",
 ): StoredRequest[] {
-  const requests = storeRunEvidence(c, x.evidence, transform);
+  const requests = storeRunEvidence(c, x.evidence, transform, origin);
   const failed = requests.find((r) => r.error !== undefined);
   const evidenceId =
     failed?.evidenceId ??

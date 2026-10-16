@@ -336,12 +336,17 @@ describe("audit sink + secret redaction", () => {
     });
     await g.request({ ...BASE, url: "https://example.com/x", secret: "topsecret", pinnedHost: "example.com", secretProvider: "prov1" });
     await g.request({ ...BASE, url: "https://example.com/y", secret: "topsecret", pinnedHost: "other.com", secretProvider: "prov1" });
-    expect(c.events).toHaveLength(2);
-    const allowedEv = c.events[0];
-    const deniedEv = c.events[1];
+    // P2-014: the successful request now also records its actual transport call (allowed, transport, denied)
+    expect(c.events).toHaveLength(3);
+    const transportEv = c.events[0];
+    const allowedEv = c.events[1];
+    const deniedEv = c.events[2];
     expect(allowedEv.kind).toBe("allowed");
     expect(allowedEv.secretDigest).toMatch(/^redacted-hmac-sha256-[0-9a-f]{16}$/);
     expect(allowedEv.secretDigest).not.toContain("topsecret");
+    expect(transportEv.kind).toBe("transport");
+    expect(transportEv.secretDigest).toMatch(/^redacted-hmac-sha256-[0-9a-f]{16}$/);
+    expect(JSON.stringify(transportEv)).not.toContain("topsecret");
     expect(deniedEv.kind).toBe("denied");
     expect(deniedEv.reason).toBe("host_not_allowed");
   });
@@ -355,9 +360,13 @@ describe("audit sink + secret redaction", () => {
     });
     const r = await g.request({ ...BASE, url: "https://example.com/x" });
     expect(r.ok).toBe(false);
-    expect(c.events).toHaveLength(1);
-    expect(c.events[0].kind).toBe("transport_error");
-    expect(c.events[0].detail).toBe("network unreachable");
+    // P2-014: the failed attempt is ALSO a transport row (with its error) — then the request-level failure
+    expect(c.events).toHaveLength(2);
+    const attempt = c.events.find((e) => e.kind === "transport");
+    expect(attempt?.url).toBe("https://example.com/x");
+    expect(attempt?.error).toBe("network unreachable");
+    const failure = c.events.find((e) => e.kind === "transport_error");
+    expect(failure?.detail).toBe("network unreachable");
   });
   it("records a rate_limited event", async () => {
     const nowMs = 0;
