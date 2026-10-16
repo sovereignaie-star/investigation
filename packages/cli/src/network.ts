@@ -20,9 +20,11 @@
  *   reason and transport-call count; the response is stored as evidence by the caller (URL, status, fetchedAt).
  */
 import { existsSync } from "node:fs";
+import path from "node:path";
 import { specById } from "@ir/core/identifiers";
 import {
   createProductionEgress,
+  registryEntryForSecret,
   parseRobots,
   robotsFromStatus,
   sendKindOf,
@@ -35,8 +37,8 @@ import {
   type ByteBudget,
   type RequestBudget,
 } from "@ir/egress";
-import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse } from "@ir/engine";
-import type { Case } from "@ir/store";
+import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse, type SecretBinding } from "@ir/engine";
+import { vaultFromEnv, type Case, type Vault } from "@ir/store";
 import type { RegisteredTransform } from "./registry.ts";
 
 const PUBLIC_SEND_KINDS = new Set(["domain", "ip", "asn", "hash", "url", "certificate"]);
@@ -59,6 +61,12 @@ export interface NetworkDeps {
   readonly limits?: EgressLimits;
   /** Overrides the module path table (tests of the "unknown module" refusal). */
   readonly isolatedModules?: Readonly<Record<string, string>>;
+  /**
+   * P2-016: opens the vault lazily, only when the transform's manifest declares a secret. The
+   * default opens the same vault the server uses (IR_VAULT_KEY / IR_VAULT_PASSPHRASE / vault.key
+   * beside IR_DATA_DIR or ./data). A run without declared secrets never touches the vault.
+   */
+  readonly vault?: () => Vault;
 }
 
 export interface NetworkPlan {
@@ -80,11 +88,29 @@ export interface NetworkGateway {
   readonly events: EgressAuditEvent[];
 }
 
-export function openGateway(c: Case, allowHosts: readonly string[], deps: NetworkDeps): NetworkGateway | { error: string } {
+/** P2-016: the run's transport — the gateway adapter, plus the secret binding when one exists. */
+function runTransport(
+  gw: NetworkGateway,
+  baseRequest: Parameters<typeof createEgressHttpTransport>[0]["baseRequest"],
+  secretBinding?: SecretBinding,
+): HttpTransport {
+  return createEgressHttpTransport(
+    secretBinding ? { gateway: gw.gateway, baseRequest, secretBinding } : { gateway: gw.gateway, baseRequest },
+  );
+}
+
+export function openGateway(
+  c: Case,
+  allowHosts: readonly string[],
+  deps: NetworkDeps,
+  /** P2-016: the run's provider registry config (hosts + paths, both or neither). */
+  providers?: { providerHosts: Record<string, readonly string[]>; providerPaths: Record<string, readonly string[]> },
+): NetworkGateway | { error: string } {
   const events: EgressAuditEvent[] = [];
   const decision = createProductionEgress({
     allowedHosts: allowHosts,
     env: deps.env ?? process.env,
+    ...(providers ? { providerHosts: providers.providerHosts, providerPaths: providers.providerPaths } : {}),
     ...(deps.resolver ? { resolver: deps.resolver } : {}),
     ...(deps.transport ? { transport: deps.transport } : {}),
     ...(deps.limits ? { limits: deps.limits } : {}),
@@ -127,6 +153,12 @@ export function networkRunFor(
    * the redirect hops inside the gateway's hop loop).
    */
   requestBudget?: RequestBudget,
+  /**
+   * P2-016 (D-031): the run's secret binding (registry entry + vault reader). When present, the
+   * adapter injects the key into the provider's header on requests to the provider's hosts — never
+   * the URL — and refuses fail-closed when the credential is unavailable.
+   */
+  secretBinding?: SecretBinding,
 ): NetworkPlan | { error: string } {
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
@@ -160,7 +192,7 @@ export function networkRunFor(
     // P2-041: the investigation's shared request budget, counted per hop inside the gateway.
     ...(requestBudget ? { requestBudget } : {}),
   };
-  const transport = createEgressHttpTransport({ gateway: gw.gateway, baseRequest });
+  const transport = runTransport(gw, baseRequest, secretBinding);
   // The fixed path "/robots.txt" reads as a domain to the content inventory; it is declared a fixed path of this
   // code on any allowed host (P2-039) instead of declaring `domain` for the robots request.
   const robotsTransport = createEgressHttpTransport({
@@ -204,9 +236,74 @@ export function planNetworkRun(
   if (!isolatedModule || !existsSync(isolatedModule)) {
     return { error: `--network: ${entry.transform.manifest.id} has no sandbox module here; network runs are isolated only` };
   }
-  const gw = openGateway(c, allowHosts, deps);
+  // P2-016 (D-031): the manifest's declared secret resolved to a registry binding — the key
+  // travels in the provider's header only (never the URL), read from the vault fresh per request.
+  // Refusals come before the gateway is opened (no audit noise for a refused plan); the run is
+  // never sent without the key.
+  const secret = resolveSecretBinding(entry.transform.manifest, deps);
+  if (secret.error) return { error: secret.error };
+  const gw = openGateway(c, allowHosts, deps, secret.providers);
   if ("error" in gw) return gw;
-  return networkRunFor(c, gw, entry, subjectType, deps);
+  return networkRunFor(c, gw, entry, subjectType, deps, undefined, undefined, secret.binding);
+}
+
+/**
+ * P2-016: manifest secrets (UPPER_SNAKE) -> the provider registry entry -> the vault. One binding
+ * per run (multi-secret manifests are refused explicitly, never silently picked); a secret with no
+ * registry entry (key-in-URL-only providers: shodan, etherscan) is refused by policy D-031/P2-016;
+ * a locked vault or a missing entry refuses the run rather than sending it keyless.
+ */
+export function resolveSecretBinding(
+  manifest: { id: string; secrets?: readonly string[] },
+  deps: NetworkDeps,
+): {
+  binding?: SecretBinding;
+  providers?: { providerHosts: Record<string, readonly string[]>; providerPaths: Record<string, readonly string[]> };
+  error?: string;
+} {
+  const secretNames = manifest.secrets ?? [];
+  if (secretNames.length === 0) return {};
+  if (secretNames.length > 1) {
+    return {
+      error: `--network: ${manifest.id} declares multiple secrets (${secretNames.join(", ")}); one credential binding per run is supported (P2-016)`,
+    };
+  }
+  const secretName = secretNames[0];
+  if (!secretName) return {};
+  const registryEntry = registryEntryForSecret(secretName);
+  if (!registryEntry) {
+    return {
+      error: `--network: ${manifest.id} requires ${secretName}, which has no header-compatible provider registry entry (providers that accept the key only in the URL — shodan, etherscan — are refused by policy D-031/P2-016)`,
+    };
+  }
+  const openVault = deps.vault ?? (() => vaultFromEnv(process.env, process.env["IR_DATA_DIR"] ?? path.resolve("data")));
+  let vault: Vault;
+  try {
+    vault = openVault();
+  } catch {
+    // The opener's own error text is not propagated (it could carry anything); a fixed message.
+    return {
+      error: `--network: ${manifest.id} requires ${secretName} but the vault could not be opened (locked or unreadable); the run is refused rather than sent without the key`,
+    };
+  }
+  if (!vault.has(registryEntry.vaultEntry)) {
+    return {
+      error: `--network: ${manifest.id} requires ${secretName} but the vault has no entry "${registryEntry.vaultEntry}"; set it before running — the run is refused rather than sent without the key`,
+    };
+  }
+  return {
+    binding: {
+      secretProvider: registryEntry.name,
+      hosts: registryEntry.hosts,
+      secretHeader: registryEntry.secretHeader,
+      requestPaths: registryEntry.requestPaths,
+      readSecret: () => vault.reveal(registryEntry.vaultEntry),
+    },
+    providers: {
+      providerHosts: { [registryEntry.name]: registryEntry.hosts },
+      providerPaths: { [registryEntry.name]: registryEntry.requestPaths },
+    },
+  };
 }
 
 async function bodyText(r: TransportResponse): Promise<string> {

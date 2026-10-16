@@ -31,7 +31,7 @@ import { specById } from "@ir/core/identifiers";
 import { ByteBudget, RequestBudget } from "@ir/egress";
 import type { Case } from "@ir/store";
 import { runTransform, TransformRunError, type RunTransformResult } from "@ir/transforms";
-import { networkRunFor, openGateway, type NetworkDeps, type NetworkGateway, type NetworkPlan } from "./network.ts";
+import { networkRunFor, openGateway, resolveSecretBinding, type NetworkDeps, type NetworkGateway, type NetworkPlan } from "./network.ts";
 import { REGISTRY, subjectInput, type RegisteredTransform } from "./registry.ts";
 import { ensureSubject, ledgerTransformId, recordRunFailure, recordRunSuccess } from "./run-record.ts";
 
@@ -270,6 +270,10 @@ class Investigation {
     if (blocked) return this.notRun(node, entry, blocked);
     const prepared = subjectInput(entry, node.type, node.value);
     if ("error" in prepared) return this.notRun(node, entry, `input refused: ${prepared.error}`);
+    // P2-016: the entry's secret binding (or its documented refusal) — resolved here too, not
+    // only in planNetworkRun: an investigation must not run a keyed transform keyless.
+    const secret = resolveSecretBinding(entry.transform.manifest, this.opts.network ?? {});
+    if (secret.error) return this.notRun(node, entry, `setup refused: ${secret.error}`);
     const plan = networkRunFor(
       this.c,
       this.gw,
@@ -279,6 +283,7 @@ class Investigation {
       this.bytes,
       // P2-041: one RequestBudget shared by every run of this investigation; the gateway takes one per hop.
       this.requests,
+      secret.binding,
     );
     if ("error" in plan) return this.notRun(node, entry, `setup refused: ${plan.error}`);
     if (this.runs > 0) await this.sleep(this.pacingMs, this.opts.signal ?? new AbortController().signal);
@@ -378,7 +383,25 @@ export async function investigate(
   const ready = prepare(seed, opts);
   if ("error" in ready) return ready;
   const { budget, selected, seedKey } = ready;
-  const gw = openGateway(c, opts.allowHosts, opts.network ?? {});
+  // P2-016: the provider registry config for secret-bearing runs, aggregated from every selected
+  // transform's binding (hosts + paths together). A selected transform whose secret cannot be
+  // resolved (no registry entry / vault unavailable) does not break the whole investigation — its
+  // runs are refused per entry below with the documented reason.
+  const providers = selected
+    .map((e) => resolveSecretBinding(e.transform.manifest, opts.network ?? {}))
+    .reduce<{ providerHosts: Record<string, readonly string[]>; providerPaths: Record<string, readonly string[]> }>(
+      (acc, r) => {
+        if (!r.providers) return acc;
+        for (const [name, hosts] of Object.entries(r.providers.providerHosts) as [string, readonly string[]][])
+          acc.providerHosts[name] = hosts;
+        for (const [name, paths] of Object.entries(r.providers.providerPaths) as [string, readonly string[]][])
+          acc.providerPaths[name] = paths;
+        return acc;
+      },
+      { providerHosts: {}, providerPaths: {} },
+    );
+  const hasProviders = Object.keys(providers.providerHosts).length > 0;
+  const gw = openGateway(c, opts.allowHosts, opts.network ?? {}, hasProviders ? providers : undefined);
   if ("error" in gw) return gw;
   c.audit("investigate.started", seedKey, {
     transforms: selected.map((e) => e.transform.manifest.id),
