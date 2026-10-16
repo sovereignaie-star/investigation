@@ -56,13 +56,14 @@ const OFFICERS_URL = `${API}/company/03194697/officers?items_per_page=50`;
 const PSC_URL = `${API}/company/03194697/persons-with-significant-control?items_per_page=50`;
 const SEARCH_URL = `${API}/search/companies?q=ACME%20LIMITED&items_per_page=10`;
 
-/** Anchored, escaped patterns (the tr-005 pattern) — CodeQL flags plain URL strings on the
- * RegExp|string match union, and a URL regex that is not anchored/escaped may over-match hosts. */
-const HOST = "https://api\\.company-information\\.service\\.gov\\.uk";
-const PROFILE_RE = new RegExp(`^${HOST}/company/03194697$`);
-const OFFICERS_RE = new RegExp(`^${HOST}/company/03194697/officers\\?items_per_page=50$`);
-const PSC_RE = new RegExp(`^${HOST}/company/03194697/persons-with-significant-control\\?items_per_page=50$`);
-const SEARCH_RE = new RegExp(`^${HOST}/search/companies\\?q=ACME%20LIMITED&items_per_page=10$`);
+/** Anchored, escaped regex literals (the exact tr-005 pattern). CodeQL's js/regex rules flag
+ * URL strings that flow into RegExp construction, and an unanchored/unescaped URL regex may
+ * over-match hosts — literals with \. and ^...$ are both precise and rule-clean. */
+const PROFILE_RE = /^https:\/\/api\.company-information\.service\.gov\.uk\/company\/03194697$/;
+const OFFICERS_RE = /^https:\/\/api\.company-information\.service\.gov\.uk\/company\/03194697\/officers\?items_per_page=50$/;
+const PSC_RE =
+  /^https:\/\/api\.company-information\.service\.gov\.uk\/company\/03194697\/persons-with-significant-control\?items_per_page=50$/;
+const SEARCH_RE = /^https:\/\/api\.company-information\.service\.gov\.uk\/search\/companies\?q=ACME%20LIMITED&items_per_page=10$/;
 
 function numberRoutes(): Array<{ match: RegExp | string; response: { status: number; body: string } }> {
   return [
