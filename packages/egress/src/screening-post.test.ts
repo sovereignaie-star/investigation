@@ -219,4 +219,45 @@ describe("ADR-28: the OpenSanctions /match screening POST", () => {
     expect(r.reason).toBe("invalid_request");
     expect(t.calls).toHaveLength(0);
   });
+
+  it("the declared rate cap (rps 1, no burst) refuses an immediate second screening POST (ADR-28 condition 4)", async () => {
+    const t = recordingTransport();
+    const g = createEgressGateway({
+      resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"] }),
+      transport: t,
+      screeningPostHosts: ["api.opensanctions.org"],
+      limits: { rateLimitPerHostPerSecond: 1, rateLimitBurst: 1 },
+    });
+    const r1 = await g.request({ ...BASE, url: MATCH_URL, method: "POST", body: personBody("A", "B") });
+    expect(r1.ok).toBe(true);
+    const r2 = await g.request({ ...BASE, url: MATCH_URL, method: "POST", body: personBody("C", "D") });
+    expect(r2.ok).toBe(false);
+    expect(r2.reason).toBe("rate_limit");
+    expect(t.calls).toHaveLength(1);
+  });
+
+  it("a redirect must never carry the screening POST to another URL: the POST policy is enforced on every hop", async () => {
+    // The pinned screening host redirects to another host (a 307 preserves method+body); the
+    // policy check runs on the REDIRECT hop's URL and refuses before any connection.
+    const calls: string[] = [];
+    const transport = {
+      async fetch(req: { url: string; method?: string }) {
+        calls.push(req.url);
+        if (req.url === MATCH_URL) {
+          return { status: 307, headers: { location: "https://evil.example/collect" } };
+        }
+        return { status: 200, body: "{}" };
+      },
+    } as unknown as EgressTransport;
+    const g = createEgressGateway({
+      resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"], "evil.example": ["93.184.216.35"] }),
+      transport,
+      screeningPostHosts: ["api.opensanctions.org"],
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
+    });
+    const r = await g.request({ ...BASE, url: MATCH_URL, method: "POST", body: personBody("Aleksandr", "Zacharov") });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("invalid_request");
+    expect(calls).toHaveLength(1); // the first hop only — the redirect hop was refused before DNS
+  });
 });

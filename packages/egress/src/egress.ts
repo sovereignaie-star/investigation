@@ -721,8 +721,12 @@ function checkOauth2Post(req: EgressRequest, url: URL, allowed: ReadonlySet<stri
   return null;
 }
 
-/** ADR-28: the pinned OpenSanctions /match screening POST path — `/match/{dataset}` (e.g. `default`). */
-const SCREENING_POST_PATH = /^\/match\/[a-z0-9][a-z0-9_-]*$/;
+/**
+ * ADR-28: the pinned OpenSanctions /match screening POST path — the exact path TR-025 uses
+ * (`/match/default`, the whole-database dataset). Any other path (another dataset, another
+ * endpoint) is a new ADR, not a config tweak.
+ */
+const SCREENING_POST_PATH = /^\/match\/default$/;
 /** ADR-28 condition 4: the screening body is capped at 4096 bytes. */
 const SCREENING_POST_MAX_BODY_BYTES = 4096;
 /** ADR-28 condition 1: the fixed schema — only these entity schemas, only these name properties. */
@@ -790,10 +794,10 @@ function screeningBodyShape(body: string): EgressResult | null {
     return deny("invalid_request", 0, "the screening body must be exactly {queries} (ADR-28)");
   }
   const queries = asRecord(top.queries);
-  if (queries === null || Object.keys(queries).length !== 1) {
-    return deny("invalid_request", 0, "the screening body must carry exactly one query (ADR-28)");
+  if (queries === null || Object.keys(queries).join(",") !== "q") {
+    return deny("invalid_request", 0, "the screening body must carry exactly one query, keyed q (ADR-28)");
   }
-  const query = asRecord(Object.values(queries)[0]);
+  const query = asRecord(queries.q);
   if (query === null) {
     return deny("invalid_request", 0, "each screening query must be exactly {schema, properties} (ADR-28)");
   }
@@ -1220,6 +1224,52 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     return deny("byte_budget", hops, `response would pass the byte budget (${b.used}/${b.limit} bytes used)`);
   }
 
+  /**
+   * Per-hop pre-DNS checks. The ADR-27/ADR-28 POST policy runs on EVERY hop's URL — a redirect
+   * must never carry a POST body (case data / secrets) to an unpinned host+path, whatever the
+   * redirect status implies about method preservation. Then cancellation, deadline and the
+   * P2-041/P2-042 budgets (the byte budget first: a hop it would refuse consumes no request slot).
+   */
+  function hopPreFlight(
+    req: EgressRequest,
+    currentUrl: URL,
+    hopCount: number,
+    deadline: number,
+    abort: AbortCtl,
+    secretDigest?: string,
+  ): EgressResult | null {
+    const hopPostErr = checkPostPolicy(req, currentUrl, oauth2HostSet, screeningHostSet);
+    if (hopPostErr) {
+      audit({ kind: "denied", reason: hopPostErr.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return hopPostErr;
+    }
+    // Cancellation before DNS: no resolver call, no transport call.
+    if (isCancelled(req, abort)) {
+      audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return deny("cancelled", hopCount, "request cancelled by caller before DNS");
+    }
+    if (now() >= deadline) {
+      audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
+      return deny("timeout_total", hopCount);
+    }
+    // P2-041/P2-042: the shared request budget sees EVERY hop (the first hop and every redirect) — take one
+    // BEFORE DNS, so `state.requests` reflects every DNS+connect+bytes+rate-consuming transport call, and
+    // no redirect hop can start once the investigation's request budget is exhausted (the outer requestMeter
+    // wraps gateway.request() once per entry request and cannot see hops inside runHops).
+    const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
+    if (spent) return spent;
+    const reqBudget = req.requestBudget;
+    if (reqBudget !== undefined && !reqBudget.take()) {
+      audit({ kind: "denied", reason: "request_budget", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return deny(
+        "request_budget",
+        hopCount,
+        `investigation request budget exhausted (${reqBudget.usedCount}/${reqBudget.limit} requests)`,
+      );
+    }
+    return null;
+  }
+
   async function runHops(
     req: EgressRequest,
     initialUrl: URL,
@@ -1234,36 +1284,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     const sent = sentValues(initialUrl, req.headers, req.secret, req.staticPaths, req.body);
     let hopHeaders = req.headers;
     while (true) {
-      // Cancellation before DNS: no resolver call, no transport call.
-      if (isCancelled(req, abort)) {
-        audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
-        return deny("cancelled", hopCount, "request cancelled by caller before DNS");
-      }
-      if (now() >= deadline) {
-        audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
-        return deny("timeout_total", hopCount);
-      }
-      // P2-041/P2-042: the shared request budget sees EVERY hop (the first hop and every redirect) — take one
-      // BEFORE DNS (after the byte budget's pre-DNS check), so `state.requests` reflects every
-      // DNS+connect+bytes+rate-consuming transport call, and no redirect hop can start once the investigation's
-      // request budget is exhausted (the outer requestMeter wraps gateway.request() once per entry request and
-      // cannot see hops inside runHops).
-      // P2-042: the byte budget is checked FIRST: a hop the byte budget would refuse before DNS consumes no
-      // request slot. (Order before P2-042: the request budget took one, THEN the byte budget refused the hop
-      // — a hop that never reached DNS or the transport had still consumed a request of the investigation.)
-      const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
-      if (spent) return spent;
-      const reqBudget = req.requestBudget;
-      if (reqBudget !== undefined) {
-        if (!reqBudget.take()) {
-          audit({ kind: "denied", reason: "request_budget", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
-          return deny(
-            "request_budget",
-            hopCount,
-            `investigation request budget exhausted (${reqBudget.usedCount}/${reqBudget.limit} requests)`,
-          );
-        }
-      }
+      // Per-hop pre-DNS checks: the POST policy (every hop — a redirect must never carry a
+      // POST body to an unpinned host+path), cancellation, deadline and budgets.
+      const pre = hopPreFlight(req, currentUrl, hopCount, deadline, abort, secretDigest);
+      if (pre) return pre;
       const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
       if ("code" in resolved && resolved.code !== undefined) {
         audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });

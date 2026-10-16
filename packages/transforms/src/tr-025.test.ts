@@ -95,6 +95,9 @@ describe("TR-025 opensanctions", () => {
     });
     expect(findings[1]).toMatchObject({ objectType: "person_name", objectValue: "ЗАХАРОВ Александр Вячеславович", confidence: 0.72 });
     for (const f of findings) expectCatalogValid(f.objectType, f.objectValue);
+    // ADR-28 condition 3: the candidate COUNT and the scores enter the records (data.total +
+    // confidence) — the response body itself (the candidates) does not.
+    expect(result.output.data).toEqual({ total: 5 });
     // ADR-28 condition 2/3: the evidence record for the POST carries url/method/status ONLY —
     // no request body (the subject's name), no response body (the candidates), no key.
     expectNoCaseDataLeak(result);
@@ -118,6 +121,7 @@ describe("TR-025 opensanctions", () => {
       confidence: 0.88,
     });
     expectCatalogValid("company_name", findings[0].objectValue);
+    expect(result.output.data).toEqual({ total: 1 });
     expectNoCaseDataLeak(result);
   });
 
@@ -132,6 +136,7 @@ describe("TR-025 opensanctions", () => {
     expect(findings).toHaveLength(1);
     expect(findings[0]).toMatchObject({ predicate: "search_hit_sanctions_db", objectType: "company_name", objectValue: "Rosbank AO" });
     expectCatalogValid("company_name", findings[0].objectValue);
+    expect(result.output.data).toEqual({ total: 2 });
   });
 
   it("person discovery via /search is refused: the name would travel in a recorded URL (match-only for persons)", async () => {
@@ -185,6 +190,7 @@ describe("TR-025 opensanctions", () => {
     const result = await runTransform(opensanctions, { transport: sim.transport, input: { person_name: SUBJECT } });
     expect(result.requestCount).toBe(1);
     expect(result.output.findings).toHaveLength(0);
+    expect(result.output.data).toEqual({ total: 0 });
     expectNoCaseDataLeak(result);
   });
 });

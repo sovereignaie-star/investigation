@@ -84,7 +84,11 @@ function screeningBody(kind: "person" | "company", name: string): string {
 }
 
 /** The /search GET discovery findings — entity names only (see the person refusal in the run). */
-async function searchFindings(ctx: TransformContext, headers: Record<string, string>, name: string): Promise<TransformFinding[]> {
+async function searchFindings(
+  ctx: TransformContext,
+  headers: Record<string, string>,
+  name: string,
+): Promise<{ findings: TransformFinding[]; data: { total: number } }> {
   const url = `${BASE_URL}/search/default?fuzzy=true&limit=10&q=${encodeURIComponent(name)}`;
   const res = await ctx.http.get(url, headers);
   expectStatus(res, [200], "OpenSanctions /search");
@@ -103,7 +107,10 @@ async function searchFindings(ctx: TransformContext, headers: Record<string, str
       evidence: [res.requestId],
     });
   }
-  return findings;
+  // ADR-28 condition 3: the candidate COUNT enters the records (the response body itself does not)
+  // — the raw count the source returned, not the post-D-018 findings count.
+  const total = (body.results ?? []).length;
+  return { findings, data: { total } };
 }
 
 /** The ADR-28 /match POST screening findings — the scored candidates (names + scores). */
@@ -112,7 +119,7 @@ async function matchFindings(
   headers: Record<string, string>,
   kind: "person" | "company",
   name: string,
-): Promise<TransformFinding[]> {
+): Promise<{ findings: TransformFinding[]; data: { total: number } }> {
   const body = screeningBody(kind, name);
   const res = await ctx.http.post(`${BASE_URL}/match/default`, headers, body);
   if (res.status === 401) throw new Error("TR-025: OpenSanctions rejected the API key");
@@ -120,9 +127,9 @@ async function matchFindings(
   const parsed = parseJson(res.body, "OpenSanctions /match") as {
     responses?: Record<string, { results?: readonly MatchResult[] }>;
   };
-  const query = parsed.responses?.["q"];
+  const results = parsed.responses?.["q"]?.results ?? [];
   const findings: TransformFinding[] = [];
-  for (const r of query?.results ?? []) {
+  for (const r of results) {
     const objectType = candidateType(r.schema);
     if (objectType === null || r.caption === undefined) continue;
     if (!catalogValid(objectType, r.caption)) continue;
@@ -137,7 +144,8 @@ async function matchFindings(
       evidence: [res.requestId],
     });
   }
-  return findings;
+  // ADR-28 condition 3: the candidate COUNT enters the records (the response body itself does not).
+  return { findings, data: { total: results.length } };
 }
 
 export const opensanctions = defineTransform<Tr025Input>(
@@ -185,11 +193,11 @@ export const opensanctions = defineTransform<Tr025Input>(
           'TR-025: person discovery via /search is refused — the name would travel in a recorded URL; use the /match screening (mode "match")',
         );
       }
-      return { findings: await searchFindings(ctx, headers, name) };
+      return await searchFindings(ctx, headers, name);
     }
 
     // mode === "match" (default) — the ADR-28 screening POST: the subject's name in the
     // fixed-schema body (the ONE wire surface allowed to carry it).
-    return { findings: await matchFindings(ctx, headers, isPerson ? "person" : "company", name) };
+    return await matchFindings(ctx, headers, isPerson ? "person" : "company", name);
   },
 );
