@@ -1,8 +1,8 @@
 # تحليل الشبكات والرسوم البيانية (Network & graph analysis)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **212**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **214**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -49,6 +49,7 @@
 | TL-c62696f6 | [Duke Network Analysis Center](https://dnac.ssri.duke.edu/) | داعمة | web | — | reachable | — | . |
 | TL-c48bc8a3 | [E-Net](https://sites.google.com/site/enetsoftware1/) | داعمة | web | — | reachable | — | Windows program for ego network analysis. |
 | TL-0d77d2d6 | [edgebundle](https://github.com/schochastics/edgebundle) | داعمة | oss | — | restricted | — | R package implementing edge bundling algorithms. |
+| TL-f2dd4cf6 | [Edgepedia](https://github.com/EdgePlat/edgepedia-mcp) | داعمة | oss | — | unchecked | No | Search and read Edgepedia, a free and growing encyclopedia with citations |
 | TL-a279f203 | [Edgepedia](https://www.edgechat.ai/developers) | داعمة | api | — | reachable | No | Search and read Edgepedia, a free and growing encyclopedia with citations |
 | TL-b620c126 | [Egocentric Network Analysis with R](https://raffaelevacca.github.io/egocentric-r-book/) | داعمة | web | — | reachable | — | _ - An online book/tutorial that covers a lot of similar ground. |
 | TL-6f4e9834 | [EgoNet](https://sourceforge.net/projects/egonet/) | داعمة | web | — | restricted | — | Cross-platform Java program for ego network analysis. |
@@ -80,6 +81,7 @@
 | TL-f912a7c5 | [GraphCentrality.jl](https://github.com/JuliaGraphs/GraphCentrality.jl) | داعمة | oss | — | restricted | — | Adds network measures to the Graphs.jl package. |
 | TL-ba2946e2 | [GraphDB](http://graphdb.ontotext.com/graphdb/) | داعمة | web | — | reachable | — | enterprise ready Semantic Graph Database, compliant with W3C Standards |
 | TL-1e88b993 | [graphicsatlas](http://www.graphicsatlas.org/) | أساسية | web | — | reachable | — | — |
+| TL-93d19731 | [GraphIn](https://osintverse.com/graphin) | أساسية | web | — | unchecked | — | — |
 | TL-ae9818a2 | [graphlayouts](https://CRAN.R-project.org/package=graphlayouts) | داعمة | web | — | reachable | — | Layout algorithms based on the concept of stress majorization. |
 | TL-02b28805 | [Graphology](https://graphology.github.io/) | داعمة | web | — | reachable | — | Specification and reference implementation for a robust and multipurpose JavaScript `Graph` object. |
 | TL-812c7178 | [Graphs & Digraphs](https://www.crcpress.com/Graphs--Digraphs-Sixth-Edition/Chartrand-Lesniak-Zhang/p/book/9781498735766) | داعمة | web | — | unreachable | — | _, by Gary Chartrand, Linda Lesniak and Ping Zhang (2016). |

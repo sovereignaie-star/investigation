@@ -1,8 +1,8 @@
 # واجهات برمجية عامة (اتصالات) (Public APIs (connections))
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **145**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **153**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -23,6 +23,7 @@
 | TL-fd7bca37 | [Brainshop.ai](https://brainshop.ai/) | داعمة | api | — | restricted | apiKey | Make A Free A.I Brain |
 | TL-19f1dc6f | [Browshot](https://browshot.com/api/documentation) | داعمة | api | — | reachable | apiKey | Easily make screenshots of web pages in any screen size, as any device |
 | TL-b89865a9 | [Bugcrowd](https://docs.bugcrowd.com/api/getting-started/) | داعمة | api | — | reachable | apiKey | Bugcrowd API for interacting and tracking the reported issues programmatically |
+| TL-e15bfe37 | [Catastro GPS](https://github.com/TheHiddenPandaDev/catastro_gps_mcp) | داعمة | oss | بوابة الأشخاص | unchecked | apiKey | Cadastral parcels in 29 European countries by reference, point or address |
 | TL-353d12ae | [Ciprand](https://github.com/polarspetroll/ciprand) | داعمة | oss | — | reachable | No | Secure random string generator |
 | TL-1f90e009 | [Clarifai](https://docs.clarifai.com/api-guide/api-overview) | داعمة | api | — | unreachable | OAuth | Computer Vision |
 | TL-bdaf4f9a | [Climatiq](https://docs.climatiq.io) | داعمة | api | — | reachable | apiKey | Calculate the environmental footprint created by a broad range of emission-generating activities |
@@ -36,6 +37,7 @@
 | TL-1ab20cd2 | [Dehash.lt](https://github.com/Dehash-lt/api) | داعمة | oss | — | unreachable | No | Hash decryption MD5, SHA1, SHA3, SHA256, SHA384, SHA512 |
 | TL-9c222e5e | [DigitalOcean Status](https://status.digitalocean.com/api) | داعمة | api | — | reachable | No | Status of all DigitalOcean services |
 | TL-995e321f | [Docker Hub](https://docs.docker.com/docker-hub/api/latest/) | داعمة | api | — | reachable | apiKey | Interact with Docker Hub |
+| TL-6825a16d | [EndOfLife.date](https://endoflife.date/docs/api) | داعمة | api | — | unchecked | No | Software end-of-life dates and support lifecycles |
 | TL-1526164d | [Escape](https://github.com/polarspetroll/EscapeAPI) | داعمة | oss | — | reachable | No | An API for escaping different kind of queries |
 | TL-b1576da9 | [ExtendsClass JSON Storage](https://extendsclass.com/json-storage.html) | داعمة | api | — | reachable | No | A simple JSON store API |
 | TL-9c6b3911 | [Fair Draw](https://bettip.co.za/fair-draw/api/) | داعمة | api | — | reachable | No | Verifiable random draws bound to the drand public randomness beacon |
@@ -59,7 +61,6 @@
 | TL-a7702b36 | [Homebrew Formulae](https://formulae.brew.sh/api/) | داعمة | api | — | reachable | No | Package and cask data for the Homebrew package manager |
 | TL-2214fbc1 | [HTTP2.Pro](https://http2.pro/doc/api) | داعمة | api | — | reachable | No | Test endpoints for client and server HTTP/2 protocol support |
 | TL-69cb66da | [Httpbin](https://httpbin.org/) | داعمة | api | — | reachable | No | A Simple HTTP Request & Response Service |
-| TL-d30497a9 | [Httpbin Cloudflare](https://cloudflare-quic.com/b/) | داعمة | api | — | unreachable | No | A Simple HTTP Request & Response Service with HTTP/3 Support by Cloudflare |
 | TL-b20c84c9 | [Icanhazepoch](https://icanhazepoch.com) | داعمة | api | — | reachable | No | Get Epoch time |
 | TL-88bb254b | [iDigBio](https://github.com/idigbio/idigbio-search-api/wiki) | داعمة | oss | — | reachable | No | Access millions of museum specimens from organizations around the world |
 | TL-f168d925 | [IFTTT](https://platform.ifttt.com/docs/connect_api) | داعمة | api | — | reachable | No | IFTTT Connect API |
@@ -71,8 +72,11 @@
 | TL-e65654f3 | [JSONbin.io](https://jsonbin.io) | داعمة | api | — | reachable | apiKey | Free JSON storage service. Ideal for small scale Web apps, Websites and Mobile apps |
 | TL-665b6044 | [JSONPlaceholder](https://jsonplaceholder.typicode.com) | داعمة | api | — | reachable | No | Fake REST API for testing and prototyping |
 | TL-d6661f5f | [Keen IO](https://keen.io/) | داعمة | api | — | reachable | apiKey | Data Analytics |
+| TL-a6ee5eb9 | [KEGG](https://www.kegg.jp/kegg/rest/keggapi.html) | داعمة | api | — | unchecked | No | Genes, pathways, compounds and reactions |
 | TL-28a9b377 | [Keyvalue](https://keyvalue.immanuel.co/) | داعمة | api | — | reachable | No | Simple key-value storage REST API for quick prototyping |
+| TL-ae5051c5 | [Lacuna](https://lacuna.mergeinc.workers.dev/agents.md) | داعمة | api | — | unchecked | No | Public board where AI agents post problems as seeks and agents who solved them offer help |
 | TL-d1e9336a | [License-API](https://github.com/cmccandless/license-api/blob/master/README.md) | داعمة | oss | — | reachable | No | Unofficial REST API for choosealicense.com |
+| TL-4edd293f | [LiveOrDown](https://liveordown.com/developers) | داعمة | api | — | unchecked | No | Live up/down status of 240+ online services, checked every minute from 3 regions |
 | TL-2879e557 | [Lob.com](https://lob.com/) | داعمة | api | بوابة الأشخاص | reachable | apiKey | US Address Verification |
 | TL-b27a8b03 | [LoginRadius](https://www.loginradius.com/docs/) | داعمة | api | — | reachable | apiKey | Managed User Authentication Service |
 | TL-605c8c55 | [Logs.to](https://logs.to/) | داعمة | api | — | reachable | apiKey | Generate logs |
@@ -80,12 +84,14 @@
 | TL-2b748114 | [Luchtmeetnet](https://api-docs.luchtmeetnet.nl/) | داعمة | api | — | reachable | No | Predicted and actual air quality components for The Netherlands (RIVM) |
 | TL-12991a0c | [Materials Platform for Data Science](https://mpds.io) | داعمة | api | — | reachable | apiKey | Curated experimental data for materials science |
 | TL-2a8809bb | [Micro DB](https://m3o.com/db) | داعمة | api | — | unreachable | apiKey | Simple database service |
+| TL-86c6465b | [Mistral AI](https://docs.mistral.ai/api/) | داعمة | api | — | unchecked | apiKey | High-performance LLM API by Mistral AI including Mistral and Mixtral models, with a free tier |
 | TL-ebef2fc7 | [Mozilla http scanner](https://github.com/mozilla/http-observatory/blob/master/httpobs/docs/api.md) | داعمة | oss | — | restricted | No | Mozilla observatory http scanner |
 | TL-4c0af6fb | [NASA ADS](https://ui.adsabs.harvard.edu/help/api/api-docs.html) | داعمة | api | — | reachable | OAuth | NASA Astrophysics Data System |
+| TL-f920adda | [NCBI E-utilities](https://www.ncbi.nlm.nih.gov/books/NBK25501/) | داعمة | api | — | unchecked | No | Biomedical literature, sequences and gene databases |
 | TL-61bc8725 | [Newton](https://newton.vercel.app) | داعمة | api | — | reachable | No | Symbolic and Arithmetic Math Calculator |
 | TL-f92fd19d | [Noctua](https://api.noctuasky.com/api/v1/swaggerdoc/) | داعمة | api | — | reachable | No | REST API used to access NoctuaSky features |
 | TL-0970aa29 | [Numbers](https://math.tools/api/numbers/) | داعمة | api | — | reachable | apiKey | Number of the day, random number, number facts and anything else you want to do with numbers |
-| TL-e6c3026c | [onomeo](https://onomeo.com/docs) | داعمة | api | — | reachable | apiKey | OpenAI-compatible, 47 LLMs, small check-in credits, strict limits, optional paid top-up, public beta |
+| TL-e6c3026c | [onomeo](https://onomeo.com/docs) | داعمة | api | — | reachable | apiKey | OpenAI-compatible, about 30 free LLMs, 30 calls per 5 hours, optional pay-as-you-go, public beta |
 | TL-c2c1190f | [Open Page Rank](https://www.domcop.com/openpagerank/) | داعمة | api | — | reachable | apiKey | API for calculating and comparing metrics of different websites using Page Rank algorithm |
 | TL-453742f5 | [OpenAPIHub](https://hub.openapihub.com/) | داعمة | api | — | reachable | X-Mashape-Key | The All-in-one API Platform |
 | TL-ddceb3db | [OpenAQ](https://docs.openaq.org/) | داعمة | api | — | reachable | apiKey | Open air quality data |
@@ -118,6 +124,7 @@
 | TL-fa9bcfff | [Screenshot](https://www.abstractapi.com/website-screenshot-api) | داعمة | api | — | reachable | apiKey | Take programmatic screenshots of web pages from any website |
 | TL-934d5847 | [ScreenshotAPI.net](https://screenshotapi.net/) | داعمة | api | — | reachable | apiKey | Create pixel-perfect website screenshots |
 | TL-a515b629 | [SegmentLite](https://segmentlite-api-dfru.fly.dev) | داعمة | api | — | reachable | apiKey | Lightweight event routing and webhook fan-out API alternative to Segment |
+| TL-e1462d6e | [sensor.community](https://github.com/opendata-stuttgart/meta/wiki/EN-APIs) | داعمة | oss | — | unchecked | User-Agent | Community air quality sensor network data worldwide |
 | TL-dc86db93 | [Sheetsu](https://sheetsu.com/) | داعمة | api | — | reachable | apiKey | Easy google sheets integration |
 | TL-cdba6cf9 | [SHOUTCLOUD](http://shoutcloud.io/) | داعمة | api | — | reachable | No | ALL-CAPS AS A SERVICE |
 | TL-ef7267f0 | [Srp Energy](https://srpenergy-api-client-python.readthedocs.io/en/latest/api.html) | داعمة | api | — | reachable | apiKey | Hourly usage energy report for Srp customers |
@@ -126,6 +133,7 @@
 | TL-5fb18f1c | [sthan.io Address Verification](https://sthan.io/products/address-verification-usa) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Validate and standardize US addresses, with ZIP+4 and deliverability status |
 | TL-811b3190 | [Sunrise and Sunset](https://sunrise-sunset.org/api) | داعمة | api | — | reachable | No | Sunset and sunrise times for a given latitude and longitude |
 | TL-1aa81ab5 | [SustainMetrics](https://www.sustainmetrics.net/api) | داعمة | api | — | reachable | apiKey | 18,000+ GHG emission factors from DEFRA, EPA, ADEME, Ember |
+| TL-6f68846d | [Sähkön hinta nyt](https://xn--shknhintanyt-gcb8w.org/integraatiot/) | داعمة | api | — | unchecked | No | Finnish and Nordic day-ahead electricity spot prices (15-minute), cheapest hours |
 | TL-a289adf6 | [Thunder Client](https://www.thunderclient.com/) | داعمة | api | — | reachable | No | API testing tool |
 | TL-a7c9a7c7 | [Thunderbit](https://thunderbit.com/docs/introduction) | داعمة | api | — | reachable | apiKey | Extract web pages as Markdown or structured data for AI apps |
 | TL-4f8f24d9 | [Time Door](https://timedoor.io) | داعمة | api | — | reachable | apiKey | A time series analysis API |
@@ -133,7 +141,7 @@
 | TL-54e9cbd7 | [TokenRoute](https://tokenroute.app/docs/quickstart) | داعمة | api | — | reachable | apiKey | One OpenAI-compatible endpoint for hundreds of LLMs, with a free tier and per-token pricing |
 | TL-fe9dbb58 | [ToolForte](https://toolforte.com/developers) | داعمة | api | — | reachable | apiKey | Deterministic utilities: IBAN/VAT validation, cron parsing, regex, diffs, Dutch holidays, test data |
 | TL-fe55a68c | [Twinbay](https://docs.twinbay.ai/mcp-server) | داعمة | api | — | reachable | OAuth | Spin up stateful API twins, read request logs and grade agent runs |
-| TL-41ba026c | [Tyk](https://tyk.io/open-source/) | داعمة | api | — | unreachable | apiKey | Api and service management platform |
+| TL-810ffab9 | [Tyk](https://tyk.io/open-source-api-gateway/) | داعمة | api | — | unchecked | apiKey | Api and service management platform |
 | TL-1323da9e | [UK Carbon Intensity](https://carbon-intensity.github.io/api-definitions/#carbon-intensity-api-v1-0-0) | داعمة | api | — | reachable | No | The Official Carbon Intensity API for Great Britain developed by National Grid |
 | TL-2ff38079 | [UK Police](https://data.police.uk/docs/) | داعمة | api | — | reachable | No | UK Police data |
 | TL-9120699d | [Unplugg](https://unplu.gg/test_api.html) | داعمة | api | — | reachable | apiKey | Forecasting API for timeseries data |

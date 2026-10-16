@@ -1,12 +1,13 @@
 # الشركات والسجلات والعقود والعقوبات (Companies, registries, contracts & sanctions)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **511**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **527**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
 | TL-825d3721 | [10th World Machine Learning and Deep learning Conference](https://machinelearning.conferenceseries.com/) | داعمة | web | — | unreachable | — | November 09-10, 2023 Stockholm, Sweden : Renowned Speakers : Dr. Ebrahim Al Alkeem Al Zaabi. |
+| TL-0beed0ea | [221](https://221.orvlabs.com/documentation) | داعمة | api | — | unchecked | No | Senegal reference data: public holidays, mobile operators, banks, communes, legal forms |
 | TL-f32f13b1 | [712](https://www.118712.fr/) | أساسية | web | — | restricted | — | (FR) |
 | TL-18d18534 | [Adsense Identiicator Finder](https://osint.sh/adsense/) | أساسية | web | — | reachable | — | this service finds other sites belonging to the same owner or company by Google Adsense ID |
 | TL-0a506634 | [Agent Nexus](https://agentnexus.app/llms.txt) | داعمة | api | — | reachable | No | Continuously probed registry of APIs, MCP servers and CLIs callable by agents |
@@ -47,6 +48,7 @@
 | TL-59a5e334 | [Black Book Online - Criminal Search](https://www.blackbookonline.info/) | أساسية | web | — | reachable | — | — |
 | TL-aa1fe21d | [Bloomberg](http://www.bloomberg.com/research/company/overview/overview.asp) | أساسية | web | — | restricted | — | — |
 | TL-d0be597c | [Boleto.Cloud](https://boleto.cloud/) | داعمة | api | — | reachable | apiKey | A api to generate boletos in Brazil |
+| TL-aad0c397 | [Boletín Oficial del Estado (BOE)](https://www.boe.es/datosabiertos/) | داعمة | api | — | unchecked | No | Official Spanish State Gazette open data: laws, summaries and XML/JSON APIs |
 | TL-3991b9f8 | [BooleanStringBank](https://www.scoperac.com/booleanstringbank/) | أساسية | web | — | reachable | — | over 430+ strings and 3553+ keywords |
 | TL-d834d3d4 | [BOTW](https://botw.org/) | أساسية | web | — | restricted | — | — |
 | TL-c105e71e | [Brand Checker](https://brandchecker.com/) | أساسية | web | — | reachable | — | — |
@@ -63,6 +65,7 @@
 | TL-46393739 | [Canadian Business Research](https://www.canada.ca/en/services/business/research.html) | أساسية | web | — | unreachable | — | — |
 | TL-1ead86b3 | [Canadian Business Resource](http://www.cbr.ca/) | أساسية | web | — | unreachable | — | — |
 | TL-c4b47b3e | [candid](https://app.candid.org/) | أساسية | web | — | reachable | — | — |
+| TL-193f2750 | [CardBinCheck](https://cardbincheck.com/bin-lookup-api) | داعمة | api | — | unchecked | No | Card BIN/IIN lookup: network, issuer, country and card type for the first 6-8 digits |
 | TL-313f15aa | [Caselaw Access Project](https://case.law/) | أساسية | web | — | reachable | — | Free. 1.7 million+ federal cases. 4.9 million+ state cases. |
 | TL-2bc1e5e8 | [CC Checker](https://dnschecker.org/credit-card-validator.php) | أساسية | web | — | reachable | — | — |
 | TL-a5f77a08 | [Census.gov](https://www.census.gov/data/developers/data-sets.html) | داعمة | api | — | reachable | No | The US Census Bureau provides various APIs and data sets on demographics and businesses |
@@ -132,6 +135,7 @@
 | TL-1ec83a2f | [Edge Computing Technology and Applications](https://www.manning.com/books/edge-computing-technology-and-applications) | داعمة | web | — | unreachable | — | A book about the business and technical foundation you need to create your edge computing strategy. |
 | TL-8372eb14 | [Edgrapi](https://edgrapi.com/docs) | داعمة | api | — | reachable | apiKey | US government data as JSON: SAM.gov contract opportunities, USAspending awards, Grants.gov grants |
 | TL-7b090ffd | [EditalMD](https://editalmd.com/api/) | داعمة | api | — | reachable | No | Brazilian public procurement (PNCP) notices as Markdown with deadlines and requirements |
+| TL-39edc7f4 | [Election](https://election.org/data/api) | داعمة | api | — | unchecked | No | Source-linked U.S. election and civic records with coverage limits |
 | TL-b9f9ecf5 | [emmeline.carto.com](https://emmeline.carto.com/me) | أساسية | web | — | unreachable | — | — |
 | TL-b900bea9 | [EOD Historical Data](https://eodhd.com/) | داعمة | api | — | reachable | apiKey | Real-time and historical stock market data with 150+ exchanges |
 | TL-06626639 | [EPA](https://www.epa.gov/developers/data-data-products#apis) | داعمة | api | — | reachable | No | Web services and data sets from the US Environmental Protection Agency |
@@ -189,6 +193,7 @@
 | TL-ca7eb7cd | [Google Scholar](https://scholar.google.com/) | أساسية | web | — | reachable | — | Free. 4-5 million federal and state court opinions. |
 | TL-b0bad8e5 | [Google Scholar Case Law](https://scholar.google.com/scholar_courts) | أساسية | web | — | reachable | — | — |
 | TL-70b0f1af | [Gov Data Canada](https://open.canada.ca/data/en/dataset) | أساسية | web | — | reachable | — | — |
+| TL-a3ee21c6 | [GovContractScout](https://scout.govbidportals.com) | داعمة | api | — | unchecked | apiKey | US state & local government contracts: search, details, NAICS lookup and AI match scoring |
 | TL-a2b12805 | [Graph Book](https://github.com/krlawrence/graph) | داعمة | oss | — | restricted | — | TinkerPop3 centric book written by Kelvin R. Lawrence |
 | TL-e1240e9e | [GraphML](http://graphml.graphdrawing.org/) | داعمة | web | — | reachable | — | Comprehensive and easy-to-use file format for graphs (handbook chapter). |
 | TL-c951ad08 | [GuideStar](http://www.guidestar.org/) | أساسية | web | — | reachable | — | — |
@@ -231,7 +236,10 @@
 | TL-8edf11e9 | [IG](https://labs.ig.com/gettingstarted) | داعمة | api | — | reachable | apiKey | Spreadbetting and CFD Market Data |
 | TL-5a05e9e0 | [Inc. 5000](http://www.inc.com/inc5000) | أساسية | web | — | restricted | — | — |
 | TL-2a48ac93 | [Indeed](https://www.indeed.com/companies?from=gnav-title-webapp) | أساسية | web | — | restricted | — | — |
+| TL-56ebce8a | [India GST HSN & SAC](https://gst-hsn-sac-api.vercel.app/docs) | داعمة | api | — | unchecked | No | Indian GST HSN and SAC classification code lookup and search |
+| TL-42787f92 | [India LGD Index](https://india-lgd-index-api.vercel.app/docs) | داعمة | api | — | unchecked | No | Free, keyless Indian states, districts, sub-districts and development blocks with LGD codes |
 | TL-9172e803 | [Indian Mandi Prices](https://mandi-api.vercel.app/docs) | داعمة | api | — | reachable | No | Free, keyless daily wholesale mandi prices for 5 Indian states, sourced from data.gov.in |
+| TL-fb7ec5e4 | [Indian MSP Benchmarks](https://msp-benchmarks-api.vercel.app/docs) | داعمة | api | — | unchecked | No | Statutory Minimum Support Prices and CACP production cost benchmarks across 28 Indian crops |
 | TL-b1e84118 | [Indian Mutual Fund](https://www.mfapi.in/) | داعمة | api | — | reachable | No | Get complete history of India Mutual Funds Data |
 | TL-0905b8fb | [indokontraktor ID](https://indokontraktor.com/) | أساسية | web | — | reachable | — | — |
 | TL-f56fd281 | [IndoTender ID](https://indotender.com/) | أساسية | web | — | reachable | — | — |
@@ -255,8 +263,9 @@
 | TL-bca8e31d | [Jobstreet](https://www.jobstreet.com.ph/) | أساسية | web | — | restricted | — | — |
 | TL-fdbf6efc | [judyrecords](https://www.judyrecords.com/) | أساسية | web | — | reachable | — | Free. Nationwide search of 440 million+ United States court cases. |
 | TL-fc46dd0b | [JUNG - Java Universal Network/Graph Framework](https://jung.sourceforge.net/) | داعمة | web | — | restricted | — | Extensible library to represent network objects. |
+| TL-6b6b45cc | [Katalis](https://meetkatalis.com/apis) | داعمة | api | — | reachable | apiKey | UK company checks: payment practices, contracts won, registers, filed accounts, change feed |
 | TL-86fff59e | [Kemenperin ID](https://kemenperin.go.id/direktori-perusahaan) | أساسية | web | — | unreachable | — | — |
-| TL-74ef5b88 | [Klarna](https://docs.klarna.com/klarna-payments/api/payments-api/) | داعمة | api | — | unreachable | apiKey | Klarna payment and shopping service |
+| TL-59ab1d17 | [Klarna](https://docs.klarna.com/klarna-payments/) | داعمة | api | — | unchecked | apiKey | Klarna payment and shopping service |
 | TL-5bf8dd1a | [KmalServico Gold Price Dataset](https://www.kmalservico.com/data) | داعمة | api | — | unreachable | No | Current gold price per gram at 6 purities for 188 countries, JSON, no auth |
 | TL-8ea0084d | [Kompass](https://us.kompass.com/) | أساسية | web | — | unreachable | — | — |
 | TL-83f8780c | [KONECT - The Koblenz Network Collection](http://konect.uni-koblenz.de/) | داعمة | dataset | — | unreachable | — | Includes, among other things, networks of collaboration in DBpedia and Wikipedia, GitHub (companion handbook). |
@@ -265,6 +274,7 @@
 | TL-43f283cb | [Lead Ferret](https://leadferret.com/search) | أساسية | web | — | reachable | — | — |
 | TL-12d264fd | [Lei.bloomberg.com](https://lei.bloomberg.com/search?.=1&.=-lastUpdateDate&.=&.=&.=%5B%5D&ts=2447821118) | أساسية | web | — | reachable | — | search information about company by Legal Identify Number |
 | TL-e000c06e | [lexisnexis](https://www.lexisnexis.com/en-us) | أساسية | web | — | unreachable | — | — |
+| TL-41f26ad9 | [Live SEC Form 4 Insider Trades](https://rapidapi.com/crisp-point-studio-crisp-point-studio-default/api/live-sec-form-4-insider-trades) | داعمة | api | — | unchecked | apiKey | Latest SEC Form 4 insider trading filings from EDGAR, by ticker or market-wide |
 | TL-52c747e7 | [LocalGov.jp](https://localgov.jp/) | داعمة | api | — | reachable | No | Japan grants and subsidies (central J-Grants + 1,916 municipalities) |
 | TL-ee8ad02d | [Lusha](https://www.lusha.com/) | أساسية | web | — | unreachable | — | — |
 | TL-983431cd | [Mailchimp](https://mailchimp.com/developer/) | داعمة | api | — | reachable | apiKey | Send marketing campaigns and transactional mails |
@@ -277,16 +287,19 @@
 | TL-5c0bbb01 | [Metabase](https://www.metabase.com/) | داعمة | api | — | reachable | No | An open source Business Intelligence server to share data and analytics inside your company |
 | TL-8450fb0a | [Minerba ESDM ID](https://momi.minerba.esdm.go.id/gisportal/home/) | أساسية | web | — | reachable | — | — |
 | TL-fe936666 | [MODI ID](https://modi.esdm.go.id/portal/dataPerusahaan) | أساسية | web | — | reachable | — | — |
+| TL-df26a4fc | [Monitly](https://monit.ly/api-docs) | داعمة | api | — | unchecked | apiKey | Official statistics from Eurostat, World Bank, OECD, IMF and WHO for 150+ countries |
 | TL-c284ebdd | [Mono](https://mono.co/) | داعمة | api | — | reachable | apiKey | Connect with users’ bank accounts and access transaction data in Africa |
 | TL-65d20c44 | [Moov](https://docs.moov.io/api/) | داعمة | api | — | reachable | apiKey | The Moov API makes it simple for platforms to send, receive, and store money |
 | TL-529cfe7b | [Morningstar Research](http://library.morningstar.com/) | أساسية | web | — | unreachable | — | — |
+| TL-a297bd83 | [MORVS](https://morvs.ai/api/) | داعمة | api | — | unchecked | No | Source-linked US regulatory and public records: SEC filings, enforcement actions, recalls |
 | TL-7eb0cb9c | [Most Wanted Criminal Pages](https://www.fbi.gov/wanted/fugitives) | أساسية | web | — | reachable | — | — |
 | TL-c221e2ee | [movebank-api](https://github.com/movebank/movebank-api-doc) | داعمة | oss | — | reachable | — | Platform for animal tracking data. |
 | TL-ee50c1f0 | [Mugshots](http://mugshots.com/search.html?t=g&q=) | أساسية | web | — | reachable | — | — |
 | TL-850fab41 | [Mugshots.com](https://mugshots.com) | أساسية | web | — | reachable | — | — |
 | TL-f1e9bc27 | [Multimodal Political Networks](https://www.cambridge.org/core/books/multimodal-political-networks/43EE8C192A1B0DCD65B4D9B9A7842128) | داعمة | web | — | reachable | — | _, by David Knoke, Mario Diani, James Hollway and Dimitri Christopulos (2021). |
 | TL-256f1ab9 | [mycareersfuture SG](https://www.mycareersfuture.gov.sg/) | أساسية | web | — | reachable | — | — |
-| TL-ac6035a4 | [Nasdaq Data Link](https://docs.data.nasdaq.com/) | داعمة | api | — | unreachable | apiKey | Stock market data |
+| TL-db429580 | [Mycelium](https://api.mycelium.global/docs/v1) | داعمة | api | — | unchecked | apiKey | Corporate carbon emissions disclosures (scope 1, 2 and 3), company-reported and estimated |
+| TL-d43c9583 | [Nasdaq Data Link](https://data.nasdaq.com/) | داعمة | api | — | unchecked | apiKey | Stock market data |
 | TL-d4f08439 | [National Park Service, US](https://www.nps.gov/subjects/developer/) | داعمة | api | — | reachable | apiKey | Data from the US National Park Service |
 | TL-7757d3a1 | [National Sex Offender Search](https://www.nsopw.gov/) | أساسية | web | — | reachable | — | — |
 | TL-5fbbb075 | [Nationwide County Court Records](https://www.publicrecordcenter.com/onlinecourtrecords.htm) | أساسية | web | — | reachable | — | — |
@@ -302,6 +315,7 @@
 | TL-f756ad5f | [Networks of Political Actors](http://bactra.org/notebooks/networks-of-political-actors.html) | داعمة | web | — | reachable | — | . |
 | TL-d586174a | [Neuronto ARD Registry](https://neuronto.com/api-docs) | داعمة | api | — | reachable | No | Search index of MCP servers, agents and APIs, with the tools each server actually exposes |
 | TL-9e5ffc44 | [NewsBrief](https://emm.newsbrief.eu/NewsBrief/clusteredition/ru/latest.html) | أساسية | web | — | reachable | — | Looking for recent mentions of the company in online media around the world |
+| TL-b0e767b2 | [Nigeria PAYE](https://www.orionsoftlimited.com/developers) | داعمة | api | — | unchecked | No | Nigerian income tax (PAYE) and take-home pay under the Nigeria Tax Act 2025 |
 | TL-9a72a45f | [Nordigen](https://nordigen.com/en/account_information_documenation/integration/quickstart_guide/) | داعمة | api | — | unreachable | apiKey | Connect to bank accounts using official bank APIs and get raw transaction data |
 | TL-6a54fc1b | [npm Registry](https://github.com/npm/registry/blob/master/docs/REGISTRY-API.md) | داعمة | oss | — | restricted | No | Query information about your favorite Node.js libraries programatically |
 | TL-79b869bd | [OCCRP Aleph (R)](https://aleph.occrp.org/) | أساسية | web | — | reachable | — | — |
@@ -344,7 +358,7 @@
 | TL-dd23f673 | [Open Government, Queensland Government](https://www.data.qld.gov.au/) | داعمة | api | — | reachable | No | Queensland Government Open Data |
 | TL-69e43456 | [Open Government, Romania](http://data.gov.ro/) | داعمة | api | — | unreachable | No | Romania Government Open Data |
 | TL-be3e6ab1 | [Open Government, Saudi Arabia](https://data.gov.sa) | داعمة | api | — | unreachable | No | Saudi Arabia Government Open Data |
-| TL-e195e850 | [Open Government, Singapore](https://data.gov.sg/developer) | داعمة | api | — | unreachable | No | Singapore Government Open Data |
+| TL-d36373eb | [Open Government, Singapore](https://data.gov.sg/) | داعمة | api | — | unchecked | No | Singapore Government Open Data |
 | TL-343454ce | [Open Government, Slovakia](https://data.gov.sk/en/) | داعمة | api | — | reachable | No | Slovakia Government Open Data |
 | TL-9d3c9f8f | [Open Government, Slovenia](https://podatki.gov.si/) | داعمة | api | — | reachable | No | Slovenia Government Open Data |
 | TL-391311b4 | [Open Government, South Australian Government](https://data.sa.gov.au/) | داعمة | api | — | reachable | No | South Australian Government Open Data |
@@ -362,7 +376,7 @@
 | TL-be2e02bb | [OpenFIGI](https://www.openfigi.com/api) | داعمة | api | — | reachable | apiKey | Equity, index, futures, options symbology from Bloomberg LP |
 | TL-ec129a31 | [OpenOwnership](https://www.openownership.org/en/) | أساسية | web | — | reachable | — | — |
 | TL-54fb8ee6 | [openownership.org](http://openownership.org) | أساسية | web | — | reachable | — | Wordwide beneficial ownership data. |
-| TL-52e2dbd5 | [OpenRegistry](https://openregistry.sophymarine.com) | داعمة | api | — | reachable | OAuth | Real-time queries to 27 national company registries (UK, FR, DE, IT, ES, KR + 21 more) |
+| TL-52e2dbd5 | [OpenRegistry](https://openregistry.sophymarine.com) | داعمة | api | — | reachable | OAuth | Real-time queries to 80+ national company registries (UK, FR, DE, IT, ES, KR and more) |
 | TL-3de9fbe1 | [OpenSwissData](https://github.com/cammac-creator/openswissdata/tree/main/sdks/mcp-server) | داعمة | oss | — | reachable | No | Swiss customs tariff (TARES), FINMA register and warnings, NOGA/NACE/ISIC code crosswalks |
 | TL-8abb3483 | [opentender ID](https://opentender.net/) | أساسية | web | — | reachable | — | — |
 | TL-7a844d9d | [OPSEC](https://github.com/WesleyWong420/OPSEC-Tradecraft) | أساسية | oss | — | reachable | — | Collection of OPSEC Tradecraft and TTPs for Red Team Operations |
@@ -391,6 +405,7 @@
 | TL-ba39d801 | [PPP Directory](https://ppp.directory/search) | أساسية | web | — | reachable | — | — |
 | TL-faaff269 | [PRC Exam Schedule](https://api.whenisthenextboardexam.com/docs/) | داعمة | api | — | unreachable | No | Unofficial Philippine Professional Regulation Commission's examination schedule |
 | TL-1b3f3d3f | [Privacy.com](https://privacy.com/developer/docs) | داعمة | api | — | reachable | apiKey | Generate merchant-specific and one-time use credit card numbers that link back to your bank |
+| TL-146553c5 | [ProductGuru](https://myproduct.guru/lookup/) | داعمة | api | — | unchecked | No | Consumer product-safety recall notices from 11 government registers, looked up by barcode (EAN/GTIN) |
 | TL-19fa890b | [protocol](https://protocol.ooo/) | أساسية | web | — | restricted | — | — |
 | TL-4ff464d5 | [Provenexpert](https://www.provenexpert.com/) | أساسية | web | — | restricted | — | — |
 | TL-d2bd40ee | [Public Register Online](https://www.annualreportservice.com/) | أساسية | web | — | unreachable | — | — |
@@ -402,6 +417,7 @@
 | TL-23cc0d90 | [Real Time Finance](https://github.com/Real-time-finance/finance-websocket-API/) | داعمة | oss | — | reachable | apiKey | Websocket API to access realtime stock data |
 | TL-01c98f9c | [Red Team Automation (RTA)](https://github.com/endgameinc/RTA) | داعمة | oss | — | restricted | — | RTA provides a framework of scripts designed to allow blue teams to test their detection capabilities against malicious tradecraft, modeled after MITRE ATT&CK. |
 | TL-41077766 | [Redash](https://redash.io/help/user-guide/integrations-and-api/api) | داعمة | api | — | reachable | apiKey | Access your queries and dashboards on Redash |
+| TL-9cebde9a | [RegisterWire](https://www.registerwire.uk/docs/index.html) | داعمة | api | — | unchecked | apiKey | Real-time alerts on UK company register changes |
 | TL-78c61886 | [Represent by Open North](https://represent.opennorth.ca/) | داعمة | api | — | reachable | No | Find Canadian Government Representatives |
 | TL-3a2acc49 | [resourcecontracts](https://www.resourcecontracts.org/) | أساسية | web | — | reachable | — | — |
 | TL-08879867 | [Right to Disconnect](https://righttodisconnect.jdries.nl/api/) | داعمة | api | — | reachable | No | Right-to-disconnect employment law by EU country: binding status, statute, and sanctions |
@@ -457,6 +473,7 @@
 | TL-abd87172 | [The World Bank Open Data Catalog](https://datacatalog.worldbank.org/) | أساسية | dataset | — | unreachable | — | — |
 | TL-9bcf0517 | [Theories of Communication Networks](https://global.oup.com/academic/product/theories-of-communication-networks-9780195160376) | داعمة | web | — | reachable | — | _, by Peter Monge and Nosh Contractor (2003). |
 | TL-8ec1b658 | [Thomson Reuters/Westlaw/CLEAR](https://privacyportal-cdn.onetrust.com/dsarwebform/dbf5ae8a-0a6a-4f4b-b527-7f94d0de6bbc/5dc91c0f-f1b7-4b6e-9d42-76043adaf72d.html) | أساسية | web | — | reachable | — | Request for remove your data from this site |
+| TL-3204c678 | [TickerInside](https://tickerinside.com/api/) | داعمة | api | — | unchecked | No | Holdings of every US ETF, which ETFs hold a stock, and overlap between funds, each dated |
 | TL-0454ccf3 | [TikZ Graph Examples](http://www.texample.net/tikz/examples/tag/graphs/) | داعمة | web | — | unreachable | — | . |
 | TL-6bbed486 | [TIPO](https://tiponet.tipo.gov.tw/Gazette/OpenData/OD/OD05.aspx?QryDS=API00) | داعمة | api | — | reachable | apiKey | Taiwan patent search system api |
 | TL-5acbc676 | [Tisane](https://tisane.ai/) | داعمة | api | — | reachable | OAuth | Text Analytics with focus on detection of abusive content and law enforcement applications |
@@ -468,6 +485,7 @@
 | TL-c938bd51 | [Tradezone Europages](http://www.tradezone.com/europages.php) | أساسية | web | — | unreachable | — | — |
 | TL-bbff8eb2 | [Tradier](https://developer.tradier.com) | داعمة | api | — | reachable | OAuth | US equity/option market data (delayed, intraday, historical) |
 | TL-a7501b95 | [tradingeconomics](https://id.tradingeconomics.com/) | أساسية | web | — | reachable | — | — |
+| TL-5b0a3192 | [Travel Risk](https://travelriskapi.com/docs) | داعمة | api | — | unchecked | apiKey | Government travel advisories, disaster and conflict alerts and country risk scores |
 | TL-a30426cb | [Trello](https://developers.trello.com/) | داعمة | api | — | reachable | OAuth | Boards, lists and cards to help you organize and prioritize your projects |
 | TL-b140173d | [Tripadvisor](https://www.tripadvisor.com/) | أساسية | web | — | restricted | — | You must to dork |
 | TL-91fb2ca2 | [Trustindex](https://www.trustindex.io/) | أساسية | web | — | reachable | — | — |
@@ -478,14 +496,12 @@
 | TL-4aea1727 | [UK Legislation Changes](https://uk-legal-changes.pages.dev/docs) | داعمة | api | — | reachable | No | Point-in-time amendment history for UK law |
 | TL-d79364d3 | [Ukraine PEP Register (D)](https://pep.org.ua/en/) | أساسية | web | — | reachable | — | — |
 | TL-b4f349a7 | [UN Text](https://www.ohchr.org/en/instruments-mechanisms/instruments/international-covenant-civil-and-political-rights) | أساسية | web | — | restricted | — | Recognizes the right to privacy and protection from arbitrary interference. Applies to digital environments. \| OSINT activities should respect fundamental priv |
+| TL-891d9d8a | [Undertow](https://liquilens-undertow.com/developers/) | داعمة | api | — | unchecked | No | Public market-depth and sized exit estimates, not executable quotes |
 | TL-f0dd48e1 | [UniCourt](https://unicourt.com/) | أساسية | web | — | reachable | — | Several free searches granted. Premium access upsell. 10 million+ federal cases. 82 million+ state cases. |
 | TL-f31457e7 | [Unpaywall](https://unpaywall.org/products/api) | داعمة | api | — | reachable | No | Open-access status and legal full-text links for scholarly articles |
-| TL-9a6a2d2d | [US Federal Contracts & Grants](https://government-data-api.onrender.com/docs) | داعمة | api | — | unreachable | No | US federal contracts, grants, and agency spending data updated daily |
 | TL-446bcedc | [US Federal Election Commission](https://fec.gov/data) | أساسية | web | — | reachable | — | — |
 | TL-4a527eb1 | [US Mortgage Calculator](https://www.usmortgagecalc.com/developers/api) | داعمة | api | — | reachable | No | Mortgage payment, amortization, affordability and 50-state property tax data |
 | TL-d536f26e | [US Patent Office Search](https://www.uspto.gov/patents/search) | أساسية | web | — | reachable | — | — |
-| TL-17aa23d5 | [US Presidential Election Data by TogaTech](https://uselection.togatech.org/api/) | داعمة | api | — | unreachable | No | Basic candidate data and live electoral vote counts for top two parties in US presidential election |
-| TL-2b16718c | [USA.gov](https://www.usa.gov/developer) | داعمة | api | — | unreachable | apiKey | Authoritative information on U.S. programs, events, services and more |
 | TL-7a696565 | [USAspending.gov](https://api.usaspending.gov/) | داعمة | api | — | reachable | No | US federal spending data |
 | TL-82274b15 | [usersearch](https://usersearch.com/) | أساسية | web | — | reachable | — | — |
 | TL-0970cce6 | [USPTO](https://www.uspto.gov/learning-and-resources/open-data-and-mobility) | داعمة | api | — | reachable | No | USA patent api services |
@@ -502,7 +518,7 @@
 | TL-86251199 | [Webclaw](https://webclaw.io/docs/api) | داعمة | api | — | reachable | apiKey | Web content extraction for LLMs with scrape, crawl, search, and summarize |
 | TL-f236f45f | [Webmeup](https://webmeup.com/) | أساسية | web | — | reachable | — | Service for collecting information about backlinks to the site. Without registering an account it shows not everything, but a lot. To see more data (full text o |
 | TL-a4579214 | [Windows Registry Knowledge Base](https://github.com/libyal/winreg-kb) | داعمة | oss | — | restricted | — | Windows Registry Knowledge Base |
-| TL-b4a4af2f | [WIPO INT](https://branddb.wipo.int/) | أساسية | web | — | reachable | — | — |
+| TL-b4a4af2f | [WIPO INT](https://branddb.wipo.int/) | أساسية | web | — | reachable | — | Search of trademarks across national and international registers. |
 | TL-870080ba | [wise](https://wise.com/id/) | أساسية | web | — | reachable | — | — |
 | TL-2919f20f | [World Bank](https://datahelpdesk.worldbank.org/knowledgebase/topics/125589) | داعمة | api | — | reachable | No | World Data |
 | TL-9a42b1a8 | [World Bank](https://www.unccd.int/resources/knowledge-sharing-system/world-banks-open-data) | داعمة | web | — | reachable | — | Free access to global development data. |

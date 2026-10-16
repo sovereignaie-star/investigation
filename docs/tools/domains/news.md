@@ -1,8 +1,8 @@
 # الأخبار والإعلام والتحقق من المعلومات (News, media & fact-checking)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **258**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **260**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -98,6 +98,7 @@
 | TL-198be0e6 | [Google News](https://news.google.com/) | أساسية | web | — | reachable | — | — |
 | TL-c5de5eea | [Google News Search](https://news.google.com/news/advanced_news_search?) | أساسية | web | — | reachable | — | — |
 | TL-c5c96466 | [Grey Pages](https://www.grey-pages.com/removal) | أساسية | web | — | reachable | — | Request for remove your data from this site |
+| TL-002999cf | [GridVigil](https://gridvigil.com/developers) | داعمة | api | — | unchecked | No | Pressure scores, demand, generation mix and alerts for the 10 major U.S. power grids |
 | TL-46d1618b | [haaretz](https://www.haaretz.com/) | أساسية | web | — | reachable | — | — |
 | TL-0fd736bc | [Hoaxy](https://hoaxy.osome.iu.edu/) | أساسية | web | — | reachable | — | — |
 | TL-23afed03 | [Hoaxy](https://hoaxy.iuni.iu.edu/) | أساسية | web | — | unreachable | — | — |
@@ -142,6 +143,7 @@
 | TL-c48f48fa | [MashPanel](https://www.mashpanel.com/remove.php) | أساسية | web | — | reachable | — | Request for remove your data from this site |
 | TL-ba1d603a | [Mastercard](https://www.mastercard.us/en-us/vision/corp-responsibility/commitment-to-privacy/privacy/data-analytics-opt-out.html) | أساسية | web | — | restricted | — | Request for remove your data from this site |
 | TL-364ddd33 | [Mastercard](https://www.mastercard.us/en-us/vision/corp-responsibility/commitment-to-privacy/privacy/email-opt-out.html) | أساسية | web | — | restricted | — | Request for remove your data from this site |
+| TL-9770eb5a | [MathJS](https://api.mathjs.org/) | داعمة | api | — | unchecked | No | Evaluate math expressions via GET or POST as JSON |
 | TL-2c7f2267 | [MediaBugs](http://mediabugs.org/) | أساسية | web | — | unreachable | — | — |
 | TL-b5de5e4d | [mediasova](https://search.mediasova.com/en/index) | أساسية | web | — | reachable | — | — |
 | TL-4b8faffe | [middleeasteye](https://www.middleeasteye.net/) | أساسية | web | — | reachable | — | — |

@@ -1,6 +1,6 @@
 # عام ومتنوع (General & miscellaneous)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
 عدد الأدوات: **1400**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
@@ -24,7 +24,7 @@
 | TL-f4b974b6 | [8ksec Battlegrounds](https://8ksec.io/battle/) | أساسية | web | — | reachable | — | — |
 | TL-b496cce9 | [9gag](https://9gag.com/) | أساسية | web | — | reachable | — | — |
 | TL-3ce03f1e | [@dheerajydv19](https://github.com/dheerajydv19) | أساسية | web | — | reachable | — | — |
-| TL-4973ce3c | [@osintambition](https://github.com/osintambition) | أساسية | web | — | reachable | — | — |
+| TL-c9b4718d | [@OSINTVerseHQ](https://github.com/OSINTVerseHQ) | أساسية | web | — | unchecked | — | — |
 | TL-268519ae | [A guide AV Evasion](https://evasions.checkpoint.com/) | أساسية | web | — | reachable | — | A guide for bypass AV or evading AV technique |
 | TL-035c7e86 | [A href Backlink Checker](https://ahrefs.com/backlink-checker) | أساسية | web | — | reachable | — | — |
 | TL-13c6e8e6 | [A Sociology Citation Network](http://nealcaren.web.unc.edu/a-sociology-citation-network/) | داعمة | web | — | reachable | — | and A Co-citation Network for Philosophy - Examples of scientific co-citation networks. |
@@ -407,7 +407,7 @@
 | TL-333d4a9c | [Frida script 2](https://codeshare.frida.re/@dzervas/android-location-spoofing/) | أساسية | web | — | reachable | — | — |
 | TL-0e4a7fd4 | [Frida-Script-Runner](https://github.com/z3n70/Frida-Script-Runner) | أساسية | oss | — | reachable | — | Frida Script Runner is a versatile web-based tool designed for Android and iOS penetration testing purposes. |
 | TL-910e0c45 | [frp](https://github.com/fatedier/frp) | أساسية | oss | — | reachable | — | — |
-| TL-1a8f3869 | [Fulldp](https://fulldp.co/onlyfans-full-size-profile-picture/) | أساسية | web | — | unreachable | — | — |
+| TL-1a8f3869 | [FullDP](https://fulldp.co/onlyfans-full-size-profile-picture/) | أساسية | web | — | unreachable | — | — |
 | TL-25429f5f | [Functions Online](https://www.functions-online.com/) | أساسية | web | — | reachable | — | — |
 | TL-d86f5a30 | [Funda](https://www.funda.nl/) | أساسية | web | — | reachable | — | (NL) |
 | TL-7b63a697 | [fuzz.txt](https://github.com/Bo0oM/fuzz.txt) | أساسية | oss | — | reachable | — | — |
@@ -795,13 +795,14 @@
 | TL-82949852 | [officeholidays](https://www.officeholidays.com/) | أساسية | web | — | reachable | — | — |
 | TL-0c2c7cc6 | [Official Nuclei Templates](https://github.com/projectdiscovery/nuclei-templates) | أساسية | oss | — | reachable | — | List official nuclei templates available for pentesting |
 | TL-e46878dd | [offset-polygon](https://github.com/anlumo/offset_polygon) | داعمة | oss | — | restricted | — | A Rust crate for offsetting (shrinking/expanding) polygons. |
-| TL-f18ec6d3 | [oftoolbox](https://oftoolbox.net) | أساسية | web | — | reachable | — | — |
+| TL-f18ec6d3 | [OFToolbox](https://oftoolbox.net) | أساسية | web | — | reachable | — | — |
 | TL-8ad179fc | [OGC API](https://github.com/georust/ogcapi) | داعمة | oss | — | restricted | — | OGC API building blocks. |
 | TL-23ec2c6a | [Ollama](https://ollama.com/) | أساسية | web | — | reachable | — | — |
 | TL-c2f72e0a | [ollama uncensored](https://ollama.com/library/llama2-uncensored) | أساسية | web | — | reachable | — | — |
 | TL-52623fab | [OMG cable](https://shop.hak5.org/products/omg-cable) | أساسية | web | — | restricted | — | — |
 | TL-1bf1c296 | [One Plus OSINT Toolkit](https://one-plus.github.io/Instagram) | أساسية | web | — | reachable | — | — |
 | TL-1b567c21 | [OnlyBritish](https://onlybritish.uk/) | أساسية | web | — | reachable | — | — |
+| TL-d4e69195 | [OnlyFam](https://onlyfam.com) | أساسية | web | — | unchecked | — | — |
 | TL-9b314aef | [onlyfans](https://onlyfans.com/onlyfans) | أساسية | web | — | reachable | — | — |
 | TL-135ada5a | [OnlySuomi](https://onlysuomi.fi/) | أساسية | web | — | reachable | — | — |
 | TL-adc4b164 | [onyphe](https://search.onyphe.io/) | أساسية | web | — | reachable | — | — |
@@ -1238,7 +1239,6 @@
 | TL-3b8a2241 | [top25-parameter](https://github.com/lutfumertceylan/top25-parameter) | أساسية | oss | — | reachable | — | — |
 | TL-8500edb0 | [topojson](https://github.com/georust/rust-topojson) | داعمة | oss | — | restricted | — | TopoJSON bindings and utilities for Rust. |
 | TL-d5f6ecb0 | [topsimilarsites](https://www.topsimilarsites.com/) | أساسية | web | — | reachable | — | — |
-| TL-0c048063 | [torproject](https://www.torproject.org/) | أساسية | web | — | reachable | — | — |
 | TL-7f5c409b | [torrentinim](https://github.com/sergiotapia/torrentinim) | أساسية | oss | — | reachable | — | — |
 | TL-752d070d | [Towards Relational Sociology](https://www.routledge.com/products/9780415480147) | داعمة | web | — | reachable | — | _, by Nick Crossley (2011). |
 | TL-be79b1ce | [Townscript](https://www.townscript.com) | أساسية | web | — | reachable | — | — |

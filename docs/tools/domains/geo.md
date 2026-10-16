@@ -1,8 +1,8 @@
 # الجغرافيا والخرائط والأقمار الصناعية (Geospatial, maps & satellite)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **1689**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **1700**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -188,6 +188,7 @@
 | TL-87de5a04 | [CityEngine](http://www.esri.com/software/cityengine/) | داعمة | web | — | unreachable | — | Transform 2D GIS Data into Smart 3D City Models |
 | TL-d21ac73d | [CitySDK](http://www.citysdk.eu/citysdk-toolkit/) | داعمة | api | — | reachable | No | Open APIs for select European cities |
 | TL-a4eeef30 | [citywalki](https://www.citywalki.com/) | أساسية | web | — | reachable | — | — |
+| TL-9d297e6a | [Clair](https://clair.im) | داعمة | api | — | unchecked | apiKey | Live public web data as JSON: Google Search, Maps, News, Amazon, jobs, reviews & more, one API key |
 | TL-a787957d | [classInt](https://cran.r-project.org/web/packages/classInt/index.html) | داعمة | web | — | reachable | — | Selected commonly used methods for choosing univariate class intervals for mapping or other graphics purposes. |
 | TL-0731c70c | [Climata](https://github.com/heigeo/climata) | داعمة | oss | — | restricted | — | Python library for loading and iterating over climate and flow time series data (from ACIS/NOAA RCCs, CoCoRaHS, Hydromet/USBR, CNRFC ESP/NWS, SNOTEL/AWDB/NRCS,  |
 | TL-50258fff | [climatecentral map](https://coastal.climatecentral.org/) | أساسية | web | — | reachable | — | — |
@@ -362,6 +363,7 @@
 | TL-79b25646 | [Flickr Common Map](http://www.whatsthatpicture.com/flickr/commons-map.php) | أساسية | web | — | reachable | — | displays only Flickr photos distributed under a Creative Commons license (250 of the latest for each location) |
 | TL-63478c2c | [Flickr Map](https://www.flickr.com/map/) | أساسية | web | — | reachable | — | — |
 | TL-d8cbcf65 | [FME Desktop](https://www.safe.com/fme/fme-desktop/) | داعمة | web | — | reachable | — | FME is an integrated collection of Spatial ETL tools for data transformation and data translation. |
+| TL-fe2435de | [FMI Open Data](https://en.ilmatieteenlaitos.fi/open-data) | داعمة | api | — | unchecked | No | Finnish weather, sea, climate and radar observations via open WFS |
 | TL-7fadf252 | [foia](https://www.foia.gov/) | أساسية | web | — | reachable | — | — |
 | TL-c83732bb | [Folium](https://github.com/python-visualization/folium) | داعمة | oss | — | restricted | — | Python Data. Leaflet.js Maps. |
 | TL-9a9d7955 | [FollowerAudit](https://www.followeraudit.com) | أساسية | web | — | reachable | — | In-depth analysis of Twitter followers. Identifies inactive and fake accounts, assesses followers by the number of tweets, profile information (biography, geolo |
@@ -721,6 +723,7 @@
 | TL-2c286bfc | [ILWIS](http://52north.org/communities/ilwis/ilwis-open) | داعمة | web | — | reachable | — | Integrated Land and Water Information System (ILWIS) is a remote sensing and GIS software. |
 | TL-b1453406 | [ImageTransformations.jl](https://github.com/JuliaImages/ImageTransformations.jl/tree/master/src) | داعمة | oss | — | restricted | — | This package provides support for image resizing, image rotation, and other spatial transformations of arrays. |
 | TL-fe7a3c82 | [In the sky](https://in-the-sky.org/satmap_worldmap.php) | أساسية | web | — | reachable | — | — |
+| TL-3917cf63 | [iNaturalist](https://api.inaturalist.org/v1/docs/) | داعمة | api | — | unchecked | No | Citizen-science wildlife observations with species identification and mapping |
 | TL-148388b8 | [IndexDatabase](http://www.indexdatabase.de/) | داعمة | web | — | reachable | — | A database for remote sensing indices. |
 | TL-edb629a7 | [Indian Pincode](https://indianpincode.com/) | داعمة | api | — | unreachable | No | Free India PIN code lookup with GPS coordinates, 165k+ post offices, state & district data |
 | TL-6dd48373 | [Infection Monkey](https://github.com/guardicore/monkey) | داعمة | oss | — | restricted | — | A semi automatic pen testing tool for mapping/pen-testing networks. Simulates a human attacker. |
@@ -775,6 +778,7 @@
 | TL-c7d42040 | [Koop](https://koopjs.github.io/) | داعمة | web | — | reachable | — | An open source geospatial data server. Transform geospatial data on the fly and serve as GeoJSON, Vector Tiles, Feature Services and more. |
 | TL-6150c45e | [Kosmtik](https://github.com/kosmtik/kosmtik) | داعمة | oss | — | restricted | — | Very lite but extendable mapping framework to create Mapnik ready maps with OpenStreetMap data (and more). |
 | TL-0d5dd8e1 | [Kpler](https://www.kpler.com/) | أساسية | web | — | reachable | — | — |
+| TL-1bc4a958 | [Kvartiry-Phuket](https://kvartiry-phuket.com/otkrytye-dannye/#english) | داعمة | api | — | unchecked | No | Russian-language Phuket real estate guides, asking prices, condo assessment rates, weather, beaches |
 | TL-31b990f9 | [L7](https://github.com/antvis/L7) | داعمة | oss | — | restricted | — | Large-scale WebGL-powered Geospatial Data Visualization By Ant Financial |
 | TL-3b53e230 | [Label Maker](https://github.com/developmentseed/label-maker) | داعمة | oss | — | restricted | — | Data Preparation for Satellite Machine Learning. |
 | TL-2abd3836 | [Land Information (NZ)](https://data.linz.govt.nz/data/) | أساسية | web | — | reachable | — | — |
@@ -849,6 +853,7 @@
 | TL-bd77dcc2 | [LuciadLightspeed](http://www.luciad.com/solutions/luciadlightspeed) | داعمة | web | — | restricted | — | A Java library that provides the foundations for advanced geospatial analytics applications |
 | TL-b26485bf | [LuciadRIA](http://www.luciad.com/solutions/luciadria) | داعمة | web | — | restricted | — | A JavaScript library for 3D globes and maps, with support for military symbology and desktop-like performance |
 | TL-a5f76351 | [LYRASENSE](https://lyrasense.com) | داعمة | web | — | reachable | — | Agentic AI platform for satellite data analysis with a notebook environment and Google Earth Engine integration. |
+| TL-093c1c17 | [Macrostrat](https://macrostrat.org/api) | داعمة | api | — | unchecked | No | Geologic maps, rock columns and stratigraphy data |
 | TL-3118563b | [magclass](https://cran.r-project.org/web/packages/magclass/index.html) | داعمة | web | — | reachable | — | Data class for increased interoperability working with spatial- temporal data together with corresponding functions and methods (conversions, basic calculations |
 | TL-5f8a389f | [Magrit](https://github.com/riatelab/magrit) | داعمة | oss | — | restricted | — | Magrit is an online application for thematic mapping. |
 | TL-6cd4a941 | [Manifold System](http://www.manifold.net/) | داعمة | web | — | reachable | — | Commercial GIS. |
@@ -968,6 +973,7 @@
 | TL-7d08ede4 | [Meltema](https://meltema.com/docs) | داعمة | api | — | unreachable | No | Multi-model weather: GFS, ECMWF AIFS/IFS and a 31-member GEFS ensemble, keyless point forecasts |
 | TL-abf5ea1b | [Mercator](https://mercator.blue/) | داعمة | web | — | reachable | — | Gridded earth data (weather, ocean, air quality, elevation) as value-encoded Web Mercator tiles, with an open-source MapLibre SDK for colormapped rasters, wind  |
 | TL-69ead0ff | [Mergin Maps](https://merginmaps.com/) | داعمة | web | — | reachable | — | A mobile data collection open-source platform for field data surveys based on QGIS. Available as service or self-hosted. |
+| TL-e07158eb | [Met Office DataHub](https://datahub.metoffice.gov.uk/docs/) | داعمة | api | — | unchecked | apiKey | UK weather forecasts and climate data |
 | TL-00bbb14d | [MeteoBlue](https://www.meteoblue.com/) | أساسية | web | — | reachable | — | Weather stats data |
 | TL-68e20219 | [Meteorological Satellite Center Himawari Sat](https://www.data.jma.go.jp/mscweb/data/himawari/) | أساسية | web | — | reachable | — | — |
 | TL-b6518b35 | [Meteorologisk Institutt](https://api.met.no/weatherapi/documentation) | داعمة | api | — | reachable | User-Agent | Weather and climate data |
@@ -1037,6 +1043,7 @@
 | TL-ba5a66f7 | [ngspatial](https://cran.r-project.org/web/packages/ngspatial/index.html) | داعمة | web | — | reachable | — | Provides tools for analyzing spatial data, especially non- Gaussian areal data. |
 | TL-31bf1850 | [nngeo](https://github.com/michaeldorman/nngeo) | داعمة | oss | — | restricted | — | k-Nearest Neighbor Join for Spatial Data. |
 | TL-5396bad2 | [nngt](https://nngt.readthedocs.io) | داعمة | web | بوابة الأشخاص | reachable | — | Library-agnostic graph generation and analysis that wraps around `networkx`, `igraph` and `graph-tool`). Includes normalized graph measures, advanced visualizat |
+| TL-4e9e2bd8 | [NOAA CO-OPS](https://api.tidesandcurrents.noaa.gov/api/prod/) | داعمة | api | — | unchecked | No | US coastal tides, water levels, currents and meteorological observations |
 | TL-6dd7dac4 | [NOAA Data Access Viewer](https://coast.noaa.gov/dataviewer/#/) | أساسية | web | — | reachable | — | satellite images of the coastal U.S.(discover, customize, and download authoritative land cover, imagery, and lidar data.) |
 | TL-d1851538 | [Nominatim](https://nominatim.org/release-docs/latest/api/Overview/) | داعمة | api | — | reachable | No | Provides worldwide forward / reverse geocoding |
 | TL-82f1b0d7 | [nominatim OSM](https://nominatim.openstreetmap.org/) | أساسية | web | — | reachable | — | — |
@@ -1163,6 +1170,7 @@
 | TL-21266cd2 | [overpass-turbo](https://github.com/tyrasd/overpass-turbo) | داعمة | oss | — | restricted | — | A web based data mining tool for OpenStreetMap using Overpass API. |
 | TL-890f18dd | [Overture Maps open data](https://overturemaps.org/download/) | داعمة | dataset | — | reachable | — | Free and open (CDLA Permissive 2.0) global GeoParquet datasets, updated monthly on AWS S3 and Azure. |
 | TL-66dfed2e | [Palladio](http://hdlab.stanford.edu/palladio/) | داعمة | web | — | reachable | — | Web-based spatial network visualization tool by the Humanities + Design research lab at Stanford University. |
+| TL-cda229df | [ParcelGPS](https://www.parcelgps.com/en/developers) | داعمة | api | — | unchecked | apiKey | European cadastral parcels by reference or point: coordinates, area, land use and geometry |
 | TL-7784df56 | [Parler Vidio Map](https://kylemcdonald.net/parler/map/) | أساسية | web | — | reachable | — | — |
 | TL-87f8b2ac | [Pastvu.com](https://pastvu.com/) | أساسية | web | — | reachable | — | View historical photos taken at a particular location on a map. |
 | TL-efe2694b | [Pbfextractor](https://github.com/Lesstat/pbfextractor) | داعمة | oss | — | restricted | — | Create graph files out of OSM and SRTM data |
@@ -1355,7 +1363,9 @@
 | TL-49143d09 | [satellitetracker](https://satellitetracker.net/) | أساسية | web | — | unreachable | — | — |
 | TL-9214866d | [satellitevu - high thermal](https://www.satellitevu.com/) | أساسية | web | — | reachable | — | — |
 | TL-f51e3aee | [SatIntel - sat osint cli](https://github.com/ANG13T/SatIntel) | أساسية | oss | — | reachable | — | — |
+| TL-12562b5f | [SatNOGS](https://docs.satnogs.org/projects/satnogs-network/en/stable/api.html) | داعمة | api | — | unchecked | No | Satellite observations from open ground stations |
 | TL-1f1579c0 | [satpy](https://satpy.readthedocs.io/en/latest/) | داعمة | web | — | reachable | — | Satpy is a python library for reading, manipulating, and writing data from remote-sensing earth-observing meteorological satellite instruments. |
+| TL-dcb9c276 | [SauceMatch](https://saucematch.com/) | أساسية | web | — | unchecked | — | Reverse search for adult video: a screenshot, GIF or clip finds the full source video in its own index (3.5M+ videos). Unlike general image search, every match  |
 | TL-5bb4f3f9 | [SBSR](https://2023.sbsr.com.br/) | داعمة | web | — | reachable | — | Bi-annual Brazilian National Symposium on Remote Sensing. |
 | TL-ad8b5573 | [Scan QR Code](https://4qrcode.com/scan-qr-code.php) | أساسية | web | — | unreachable | — | While determining the location of the photo, sometimes the research of QR codes on the road poles, showcases and billboards helps a lot. This service will help  |
 | TL-42bc6883 | [Scene From Above](https://scenefromabove.podbean.com/) | داعمة | web | — | reachable | — | Earth observation, remote sensing, geospatial and geeky chat |
@@ -1404,7 +1414,7 @@
 | TL-c4e9672e | [SM Datum](https://smdatum.com/) | داعمة | web | — | reachable | — | Free browser-based GIS toolkit: format conversion (shapefile/KML/GeoJSON/GeoPackage/DXF), vector analysis, CRS reprojection, raster and hydrology tools, survey  |
 | TL-a369bd65 | [Smallworld](https://www.gegridsolutions.com/geospatial/catalog/smallworld_core.htm) | داعمة | web | — | reachable | — | Commercial GIS. |
 | TL-a706a6c3 | [Snapchat map](https://map.snapchat.com/) | أساسية | web | — | reachable | — | — |
-| TL-d82a0e41 | [Snapchat-mapscraper](https://github.com/nemec/snapchat-map-scraper) | أساسية | oss | — | reachable | — | — |
+| TL-d82a0e41 | [snapchat-map-scraper](https://github.com/nemec/snapchat-map-scraper) | أساسية | oss | — | reachable | — | — |
 | TL-1adce256 | [SnoopScan](https://snoopscan.com/docs) | داعمة | api | — | reachable | apiKey | Scrape, crawl, map and search the web as clean markdown or JSON, with a free monthly tier |
 | TL-62f20f21 | [SOAR Earth](https://soar.earth/maps?) | أساسية | web | — | reachable | — | — |
 | TL-7c2b35eb | [Soar.earth](https://soar.earth/) | أساسية | web | — | reachable | — | big collection satellite, drone and ecological maps |
@@ -1693,5 +1703,6 @@
 | TL-82b71e9a | [Zonation](http://conservationcorridor.org/corridor-toolbox/programs-and-tools/zonation/) | داعمة | web | — | reachable | — | Zonation produces a hierarchical prioritization of the landscape based on the occurrence levels of biodiversity features in sites (cells) by iteratively removin |
 | TL-f480bdbc | [zonebuilder](https://github.com/zonebuilders/zonebuilder-rust) | داعمة | oss | — | restricted | — | Build zones for large geographic regions. |
 | TL-c73fc0fa | [Zoo Project WPS](http://www.zoo-project.org/) | داعمة | web | — | reachable | — | A WPS (Web Processing Service) implementation written in C, Python and JavaScript. It is an open source platform which implements the WPS 1.0.0 and WPS 2.0.0 st |
+| TL-c11f8daf | [Zornade](https://app.zornade.com/api/) | داعمة | api | — | unchecked | apiKey | Cadastral parcels, geocoding, OMI valuations, risk and demographics for Italy (85M parcels) |
 | TL-bc88ec5c | [Zornade](https://app.zornade.com) | داعمة | web | — | reachable | — | Italian cadastral parcel intelligence platform aggregating 15+ public data sources (ISPRA hydrogeological risk, OMI real estate prices, ISTAT demographics) into |
 | TL-c8a8edcd | [Zornade](https://zornade.com) | داعمة | api | — | reachable | — | Italian cadastral, geospatial and real-estate data as a service: geocoding, parcel profiles, risk and solar layers, valuations and administrative lists. Free AP |

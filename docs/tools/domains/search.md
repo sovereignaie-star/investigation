@@ -1,8 +1,8 @@
 # محركات البحث والاستعلام (Search engines & dorking)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **366**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **370**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -13,6 +13,7 @@
 | TL-f81ae8b6 | [AdultFriendFinder](https://www.adultfriendfinder.com) | أساسية | web | — | reachable | — | — |
 | TL-06321a11 | [Advanced Search Operators List](https://github.com/cipher387/Advanced-search-operators-list) | أساسية | oss | — | reachable | — | List of the links to the docs for different services, which explain using of advanced search operators |
 | TL-7874babf | [Advangle](https://advangle.com/) | أساسية | web | — | reachable | — | — |
+| TL-15e99097 | [Agent Nexus](https://agentnexus.app) | داعمة | api | — | unchecked | No | Find agent-callable APIs, MCP servers and CLIs by capability, with live health and uptime data |
 | TL-79c9fc9f | [AI Search Whisper](https://google.digitaldigging.org/index2.html) | أساسية | web | — | reachable | — | Enter your problem and get a list of links to Google and Bing queries (using advanced search operators) that will help you solve it. |
 | TL-45a92d18 | [All-in-One](http://all-io.net/) | أساسية | web | — | reachable | — | — |
 | TL-ec96855a | [Alleba](http://www.alleba.com/) | أساسية | web | — | reachable | — | (PH) |
@@ -58,6 +59,7 @@
 | TL-21622c60 | [Cell-id Query](https://www.cell-id.info/?lang=en) | أساسية | web | — | reachable | — | — |
 | TL-fb0541b0 | [centos paste](https://paste.centos.org/) | أساسية | web | — | reachable | — | Use google dork for search |
 | TL-5b88c30f | [CFinder](http://www.cfinder.org/) | داعمة | web | — | reachable | — | Cross-platform Java program to identify clusters and communities through the Clique Percolation Method (CPM). |
+| TL-fef2013b | [Chempirical](https://chempirical.com/api/) | داعمة | api | — | unchecked | No | Chemical compounds with physical data, reactions and substructure search |
 | TL-5568af28 | [CiteSeerX](http://citeseer.ist.psu.edu/) | أساسية | web | — | reachable | — | — |
 | TL-677976d3 | [clubsearch.io](https://clubsearch.io/) | أساسية | web | — | reachable | — | search open and scheduled rooms |
 | TL-244f9adc | [codeforces](https://codeforces.com/ratings) | أساسية | web | — | reachable | — | — |
@@ -72,6 +74,7 @@
 | TL-db8101df | [CoworkingView MCP](https://coworkingview.com/en/mcp) | داعمة | web | بوابة الأشخاص | reachable | — | Remote MCP server (no authentication) for finding coworking spaces and private offices in Germany, Spain, the UK, the Netherlands and the UAE by radius or bound |
 | TL-6435f4f7 | [CSE SOCMINT search data like vidio](https://cse.google.com/cse?cx=004121198361051842949:uqqcf2re4ts) | أساسية | web | — | reachable | — | — |
 | TL-87d94a5a | [CSE SOCMINT tools search](https://cse.google.com/cse?cx=029ffbc44aa3946cb#gsc.tab=0&gsc.sort=&gsc.ref=more%3Afb) | أساسية | web | — | reachable | — | — |
+| TL-41d09d17 | [CSE-UTOPIA LISTS](https://start.me/p/EL84Km/cse-utopia) | أساسية | web | — | unchecked | — | — |
 | TL-c223966a | [ctftime](https://ctftime.org/) | أساسية | web | — | reachable | — | — |
 | TL-a1273e13 | [CyberLeninka](https://cyberleninka.org/) | أساسية | web | — | unreachable | — | — |
 | TL-bd724009 | [DAPK APK SEARCH](https://github.com/m4ll0k/BBTz/blob/master/dapk.py) | أساسية | oss | — | reachable | — | — |
@@ -204,6 +207,7 @@
 | TL-51a8b94e | [Lycos](http://www.lycos.com/) | أساسية | web | — | unreachable | — | — |
 | TL-e21f32ee | [MAC address vendor lookup](https://macaddress.io/api) | داعمة | api | بوابة الأشخاص | unreachable | apiKey | Retrieve vendor details and other information regarding a given MAC address or an OUI |
 | TL-3f90a91e | [macaddresslookup](https://www.macaddresslookup.org/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-50b65c6f | [macadress](https://macadress.com/mac-address-api) | داعمة | api | بوابة الأشخاص | unchecked | No | MAC address and OUI vendor lookup synced from IEEE, with randomized-MAC detection |
 | TL-0946995b | [macvendorlookup](https://www.macvendorlookup.com/) | أساسية | web | — | reachable | — | — |
 | TL-54bb31f5 | [mega](https://mega.io/id/) | أساسية | web | — | reachable | — | You must to dork |
 | TL-08554366 | [mendeley](https://www.mendeley.com/) | أساسية | web | — | restricted | — | — |
@@ -240,6 +244,7 @@
 | TL-7408e97f | [Onesearch](https://www.onesearch.com/) | أساسية | web | — | reachable | — | — |
 | TL-28fbf00f | [Onesearch ID](https://onesearch.id/) | أساسية | web | — | unreachable | — | — |
 | TL-6f753c34 | [Onet.pl](http://www.onet.pl/) | أساسية | web | — | reachable | — | (PL) |
+| TL-6cce64fa | [OnlyFans Finder](https://onlyfansfinder.co/) | أساسية | web | — | reachable | — | — |
 | TL-23bea23c | [onlyfans search](https://hubite.com/en/onlyfans-search/) | أساسية | web | — | restricted | — | — |
 | TL-c167d1de | [Onlysearch.com](https://onlysearch.co/) | أساسية | web | — | restricted | — | Onlyfans users search engines |
 | TL-f2a67308 | [openrouteservice-r](https://github.com/GIScience/openrouteservice-r) | داعمة | oss | — | restricted | — | R package to query openrouteservice.org. |
@@ -326,7 +331,6 @@
 | TL-5a805d75 | [Teoma](http://www.teoma.com/) | أساسية | web | — | unreachable | — | — |
 | TL-5e44f82f | [terabox](https://www.terabox.com/) | أساسية | web | — | reachable | — | You must to dork |
 | TL-e1291940 | [Terms of Service Didn't Read](https://tosdr.org/) | أساسية | web | — | reachable | — | find out what interesting privacy and confidentiality clauses are in the license agreements of popular websites and apps |
-| TL-6cce64fa | [The Favourite OnlyFans search](https://onlyfansfinder.co/) | أساسية | web | — | reachable | — | — |
 | TL-cc707092 | [Tiger.ch](http://www.tiger.ch/) | أساسية | web | — | reachable | — | (CH) |
 | TL-9c4c803c | [TileDB](https://github.com/TileDB-Inc/TileDB) | داعمة | oss | — | restricted | — | TileDB is a powerful engine for storing and accessing dense and sparse multi-dimensional arrays, which can help you model any complex data efficiently. |
 | TL-12cc3029 | [TinyMind Agent Tools](https://tinymind.eu/api/) | داعمة | api | — | reachable | No | Free APIs by an AI agent on a VPS: actor lookup, word-of-the-day, poems, jokes, ping |

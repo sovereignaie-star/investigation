@@ -1,8 +1,8 @@
 # الصور والفيديو والتحقق البصري (Image, video & visual verification)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **920**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **925**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -34,6 +34,7 @@
 | TL-ff703087 | [Apache Tika (T)](https://tika.apache.org/) | أساسية | web | — | reachable | — | — |
 | TL-df5ad8ac | [Aperislove](https://www.aperisolve.com/) | أساسية | web | — | reachable | — | Online steganography tool: PngCheck,Strings,Foremost,Binwalk,ExifTool,Outguess,Steghide,Zsteg,Blue/Green/Red/Superimposed |
 | TL-4d9e48d6 | [aperisolve.fr](https://aperisolve.fr) | أساسية | web | — | reachable | — | Deep image layers (Supperimposed, Red, Green, Blue) and properties (Zsteg, Steghide, Outguess, Exif, Binwalk, Foremost) analyze tool. |
+| TL-09b22e62 | [API Direct](https://apidirect.io/docs) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Real-time social media data from X, LinkedIn, Reddit, YouTube, Instagram, TikTok, Facebook and news |
 | TL-0e4d360b | [APITemplate.io](https://apitemplate.io) | داعمة | api | — | reachable | apiKey | Dynamically generate images and PDFs from templates with a simple API |
 | TL-5811e78c | [App Store Scraper](https://github.com/facundoolano/app-store-scraper) | أساسية | oss | — | restricted | — | get the most detailed metadata about the app from AppStore |
 | TL-e1956f95 | [Apple Ruler](https://support.apple.com/id-id/102468) | أساسية | web | — | reachable | — | — |
@@ -199,6 +200,7 @@
 | TL-900dc7ae | [ExifCleaner](https://github.com/szTheory/exifcleaner) | داعمة | oss | — | reachable | — | Removes metadata from images and documents. |
 | TL-d74b8594 | [ExifEditor](https://exifeditor.io) | أساسية | web | — | reachable | — | — |
 | TL-08972ab1 | [exifLooter](https://github.com/aydinnyunus/exifLooter) | أساسية | oss | — | restricted | — | Quick #go tool to automate work with EXIF data |
+| TL-f6a3c4db | [ExifReader](https://github.com/mattiaswandel/ExifReader) | داعمة | oss | — | unchecked | — | JavaScript EXIF/XMP/GPS metadata parser for images (MPL-2.0; adopted by owner decision 2026-10-16 for TR-031). |
 | TL-645c328d | [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | أساسية | web | — | reachable | — | — |
 | TL-d91b674b | [ExifTool (T)](https://exiftool.org/) | أساسية | web | — | reachable | — | Extract metadata (EXIF, GPS, timestamps) from photos and videos. |
 | TL-96a6a81c | [ExifViewer](https://www.exifviewer.org/) | أساسية | web | — | reachable | — | — |
@@ -470,6 +472,7 @@
 | TL-5c420631 | [LiveLeak (D)](https://www.liveleak.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-88a94a65 | [liveportrait animate your photo](https://liveportrait.org/) | أساسية | web | — | reachable | — | — |
 | TL-4095254a | [loc.alize](https://loc.alize.us) | أساسية | web | — | reachable | — | — |
+| TL-c1c57b1f | [localscreenshot](https://localscreenshot.com) | داعمة | api | — | unchecked | apiKey | Screenshot or PDF rendering of any public page, from 227 countries |
 | TL-99eb53fd | [Lorem Picsum](https://picsum.photos/) | داعمة | api | — | reachable | No | Images from Unsplash |
 | TL-849cc2fb | [Lossless Cut](https://github.com/mifi/lossless-cut) | أساسية | oss | — | restricted | — | #javascript #opensource swiss army knife for audio/video editing. |
 | TL-1a107b1a | [Lucifer Quotes](https://github.com/shadowoff09/lucifer-quotes) | داعمة | oss | — | reachable | No | Returns Lucifer quotes |
@@ -477,7 +480,7 @@
 | TL-6813a040 | [Lycos Image Search](http://search.lycos.com/images) | أساسية | web | — | unreachable | — | — |
 | TL-8deebbba | [lykdat.com](https://lykdat.com/) | أساسية | web | — | reachable | — | clothing reverse image search services |
 | TL-e0f159f6 | [Lynks](https://lynksoft.com/) | داعمة | web | — | reachable | — | Web-based tool for simple network analysis and visualization. |
-| TL-006a27bb | [Machinetutors](https://www.machinetutors.com/portfolio/MT_api.html) | داعمة | api | — | unreachable | apiKey | AI Solutions: Video/Image Classification & Tagging, NSFW, Icon/Image/Audio Search, NLP |
+| TL-164671f9 | [Machinetutors](https://machinetutors.com/api) | داعمة | api | — | unchecked | apiKey | AI Solutions: Video/Image Classification & Tagging, NSFW, Icon/Image/Audio Search, NLP |
 | TL-69f4ce30 | [Mahotas-imread](https://github.com/luispedro/imread) | داعمة | oss | — | restricted | — | Read images to numpy arrays. |
 | TL-af7d57a1 | [Maltego Casefile](https://docs.maltego.com/support/solutions/articles/15000018948-what-is-maltego-casefile-) | أساسية | web | — | reachable | — | — |
 | TL-b9607bfc | [MangolinkWorld](https://www.mangolinkworld.com/) | أساسية | web | — | reachable | — | — |
@@ -642,6 +645,7 @@
 | TL-e7495f2c | [QuickChart](https://quickchart.io/) | داعمة | api | — | reachable | No | Generate chart and graph images |
 | TL-64dde411 | [R lib](https://r-graph-gallery.com/network) | أساسية | web | — | reachable | — | — |
 | TL-f5423928 | [Radio Reference](http://www.radioreference.com/apps/db/) | أساسية | web | — | reachable | — | — |
+| TL-168d446f | [RankFabrik Captions](https://rankfabrik.com/produits/transcription) | داعمة | api | — | unchecked | apiKey | Extract transcripts and captions from YouTube videos |
 | TL-277c3b27 | [RCy3](https://bioconductor.org/packages/3.3/bioc/html/RCy3.html) | داعمة | web | بوابة الأشخاص | reachable | — | Interface between R and recent versions of Cytoscape. |
 | TL-f95233ae | [RCyjs](https://bioconductor.org/packages/release/bioc/html/RCyjs.html) | داعمة | web | بوابة الأشخاص | reachable | — | Interface between R and Cytoscape.js. |
 | TL-c214e0a2 | [Readme typing SVG](https://github.com/DenverCoder1/readme-typing-svg) | داعمة | oss | — | reachable | No | Customizable typing and deleting text SVG |
@@ -685,6 +689,7 @@
 | TL-1fe76b9b | [SauceNAO](https://saucenao.com/) | أساسية | web | — | reachable | — | — |
 | TL-260251c2 | [SaveFrom.net](https://en.savefrom.net/70/) | أساسية | web | — | reachable | — | download video from YouTube, Vimeo, VK, Odnoklassniki and dozen of others services |
 | TL-f5839575 | [SayItVid](https://sayitvid.com) | داعمة | api | بوابة الأشخاص | reachable | apiKey | English video pronunciation search with timestamps, IPA phonetics and subtitle context |
+| TL-b2357318 | [ScaleReach](https://docs.scalereach.ai) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Turn long videos into short vertical clips with AI captions and face-tracking crop |
 | TL-5fed048e | [Scene detection](https://t.co/jHWseS1PUP) | أساسية | web | — | reachable | — | Determine the timecodes on which there is a change of scenery in the video and significantly save time watching it |
 | TL-b1174bff | [Scene Edit Detection](https://huggingface.co/spaces/fffiloni/scene-edit-detection) | أساسية | web | — | reachable | — | A tool to help speed up and automate your video viewing. It highlights the frames where a new scene begins and allows you to quickly analyze the key semantic pa |
 | TL-4ca038f9 | [Scikit-image](http://scikit-image.org/) | داعمة | web | — | reachable | — | Scikit-image is a collection of algorithms for image processing. |
@@ -771,6 +776,7 @@
 | TL-5b605de4 | [SWAPI GraphQL](https://graphql.org/swapi-graphql) | داعمة | api | — | reachable | No | Star Wars GraphQL API |
 | TL-931cccec | [SwiftKanban](https://www.digite.com/knowledge-base/swiftkanban/article/api-for-swift-kanban-web-services/#restapi) | داعمة | api | — | reachable | apiKey | Kanban software, Visualize Work, Increase Organizations Lead Time, Throughput & Productivity |
 | TL-2bdfccaa | [Tagrum](https://targum.video/) | أساسية | web | — | reachable | — | Upload a video file to the site or leave a link to the video. Wait a few minutes. Get a subtitled version of the video in English (other languages will probably |
+| TL-26699c5a | [Tanvo](https://tanvo.ai/developers/api) | داعمة | api | — | unchecked | apiKey | Image, video and song generation on 30 AI models (Nano Banana, Kling, Veo, Suno), with a free tier |
 | TL-dfe588f7 | [TextGrab](https://chrome.google.com/webstore/detail/textgrab/kbdckoabalhppclkadhabohnoihdbnja/related) | أساسية | web | — | reachable | — | Simple #Chrome extension for copying and recognizing text from videos (#YouTube, #GoogleMeetup etc.) |
 | TL-7a9f4ae2 | [Textures.js](https://github.com/riccardoscalco/textures) | داعمة | oss | — | restricted | — | JavaScript library for creating SVG patterns, designed for data visualization. |
 | TL-56888f4f | [The Book of Trees. Visualizing Branches of Knowledge](https://papress.com/products/the-book-of-trees-visualizing-branches-of-knowledge) | داعمة | web | — | restricted | — | _, by Manuel Lima - Hundreds of beautiful tree diagrams, from all periods of history (2014). |
@@ -795,7 +801,6 @@
 | TL-8d106d96 | [TikTok Scraper](https://github.com/drawrowfly/tiktok-scraper) | أساسية | oss | — | restricted | — | scrapping video from user, trend or hashtag feed, extracting video's or user's metadata, downloading video or music, processing a list of clips or users from a  |
 | TL-9cfeb4da | [Tiktok Scraper](https://github.com/sauermar/Tiktok-Scraper) | أساسية | oss | — | restricted | — | Extract data about videos, users, and channels based on hashtags, profiles and individual posts. |
 | TL-39325003 | [Tiktok Timestamp](https://bellingcat.github.io/tiktok-timestamp/) | أساسية | web | — | reachable | — | determines the time of publication of the video to the nearest second. Just copy the link. |
-| TL-c956d3af | [TikTok Video Downloader](https://ssstik.io/en-1) | أساسية | web | — | reachable | — | — |
 | TL-e1711d7b | [TikTokD](https://tiktokd.com/) | أساسية | web | — | unreachable | — | TikTok Video Downloader |
 | TL-5abbeafc | [TinEye Reverse Image Search](https://tineye.com/) | أساسية | web | — | restricted | — | Reverse image search engine. |
 | TL-448b4ca0 | [Tinify.dev](https://tinify.dev/developers) | داعمة | api | — | reachable | apiKey | Image compression, resize and crop API with usage metadata |

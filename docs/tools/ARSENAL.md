@@ -10,12 +10,12 @@
 | الحالة | المعنى | عدد الأدوات الفريدة |
 |---|---|---|
 | في الخارطة | لها محوّل أو مهمة في الخارطة | 105 |
-| مكدس المشروع | جزء من مكدس بناء المشروع نفسه | 26 |
+| مكدس المشروع | جزء من مكدس بناء المشروع نفسه | 27 |
 | في الكتالوج | في الكتالوج، تنتظر محوّلاً | 219 |
 | مرشح | مذكورة في الترسانة فقط (بلا رابط موثق بعد) | 151 |
 | متوقف | متوقفة أو أُعيدت تسميتها | 8 |
 | مستبعد | مستبعدة بقواعد المنتج E-01..E-10 | 8 |
-| **المجموع** | | **517** |
+| **المجموع** | | **518** |
 
 ## الفهرس
 
@@ -103,7 +103,7 @@
 | [WhoisFreaks](https://whoisfreaks.com/) | WHOIS وبيانات تاريخية | مدفوع | TL-d7d47152 | في الخارطة | TR-050 |
 | [ViewDNS.info](https://viewdns.info/) | أدوات DNS وWHOIS متعددة | مجاني | TL-c7d9f3cc | في الكتالوج | — |
 | [DNSdumpster](https://dnsdumpster.com/) | اكتشاف نطاقات فرعية | مجاني | TL-9e6bda87 | في الكتالوج | — |
-| [crt.sh](https://crt.sh/?) | سجل شهادات TLS (Certificate Transparency) | مجاني | TL-18a2d7b5 | في الخارطة | TR-004 |
+| [crt.sh](https://crt.sh/?) | سجل شهادات TLS (Certificate Transparency) | مجاني | TL-18a2d7b5 | في الخارطة | P2-037، TR-004 |
 | [CIRCL Passive DNS](https://www.circl.lu/services/passive-dns/) | DNS السلبي | مجاني | TL-458dc021 | في الخارطة | TR-072 |
 | [Robtex](https://robtex.com/) | تحليل DNS وIP | مجاني | TL-64ba0f7c | في الخارطة | TR-073 |
 | [Amass](https://github.com/owasp-amass/amass) | اكتشاف سطح الهجوم، نطاقات فرعية | مفتوح | TL-37c02af1 | في الخارطة | P8-024، TR-079 |
@@ -220,7 +220,8 @@
 | Deepware Scanner | كشف Deepfake | مجاني | — | مرشح | — |
 | [Sensity](https://sensity.ai/) | كشف Deepfake | مدفوع | TL-d0c8a805 | في الكتالوج | — |
 | Reality Defender | كشف Deepfake | مدفوع | — | مرشح | — |
-| [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | استخراج بيانات الصور | مفتوح | TL-645c328d | في الخارطة | TR-031 |
+| [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | استخراج بيانات الصور | مفتوح | TL-645c328d | مكدس المشروع | TR-031 |
+| [ExifReader](https://github.com/mattiaswandel/ExifReader) | تحليل بيانات EXIF/XMP/GPS للصور محليًا (TR-031) | مفتوح | TL-f6a3c4db | في الخارطة | TR-031 |
 
 ### 11 محركات البحث عن الأصول التاريخية
 
@@ -307,7 +308,7 @@
 |---|---|---|---|---|---|
 | [Metagoofil](https://github.com/laramies/metagoofil) | استخراج بيانات وصفية من الوثائق العامة | مفتوح | TL-6b063c72 | في الكتالوج | — |
 | [FOCA](https://github.com/ElevenPaths/FOCA) | تحليل البيانات الوصفية | مفتوح | TL-5f8e1904 | في الكتالوج | — |
-| [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | استخراج البيانات الوصفية | مفتوح | TL-645c328d | في الخارطة | TR-031 |
+| [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | استخراج البيانات الوصفية | مفتوح | TL-645c328d | مكدس المشروع | TR-031 |
 | pdfid | تحليل PDF | مفتوح | — | في الخارطة | TR-086 |
 | [peepdf](https://github.com/jesparza/peepdf) | تحليل PDF | مفتوح | TL-9a597988 | في الخارطة | TR-086 |
 | pdf-parser | تحليل PDF | مفتوح | — | في الخارطة | TR-086 |
@@ -323,7 +324,7 @@
 
 | الأداة | الوظيفة | الترخيص | الكتالوج | الحالة | في الخارطة / ملاحظة |
 |---|---|---|---|---|---|
-| [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | المعيار الذهبي لاستخراج البيانات الوصفية | مفتوح | TL-645c328d | في الخارطة | TR-031 |
+| [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | المعيار الذهبي لاستخراج البيانات الوصفية | مفتوح | TL-645c328d | مكدس المشروع | TR-031 |
 | [FOCA](https://github.com/ElevenPaths/FOCA) | تحليل جماعي للبيانات الوصفية | مفتوح | TL-5f8e1904 | في الكتالوج | — |
 | [Metagoofil](https://github.com/laramies/metagoofil) | استخراج بيانات من الوثائق | مفتوح | TL-6b063c72 | في الكتالوج | — |
 | [Metadata2Go](https://www.metadata2go.com/) | عرض البيانات الوصفية عبر الإنترنت | مجاني | TL-3760c5f3 | في الكتالوج | — |
@@ -613,7 +614,7 @@
 
 | الأداة | الوظيفة | الترخيص | الكتالوج | الحالة | في الخارطة / ملاحظة |
 |---|---|---|---|---|---|
-| [Docker](https://www.docker.com/) | حاويات | مفتوح | TL-9f5c8138 | في الخارطة | P7-002 |
+| [Docker](https://www.docker.com/) | حاويات | مفتوح | TL-9f5c8138 | في الخارطة | P1-024، P2-033، P7-002 |
 | Docker Compose | تنسيق حاويات | مفتوح | — | مكدس المشروع | P0-023 (اختياري) |
 | Kubernetes | تنسيق حاويات | مفتوح | — | في الخارطة | P8-009 |
 | Helm | إدارة Kubernetes | مفتوح | — | في الخارطة | P8-009 |

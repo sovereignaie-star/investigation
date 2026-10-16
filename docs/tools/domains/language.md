@@ -1,8 +1,8 @@
 # العربية واللغويات والترجمة (Arabic, linguistics & translation)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **266**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **268**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -52,7 +52,6 @@
 | TL-4f461e8f | [Bablic](https://www.bablic.com/) | أساسية | web | — | reachable | — | — |
 | TL-fe1b1e76 | [Babylon](http://translation.babylon.com/) | أساسية | web | — | unreachable | — | — |
 | TL-9ce756a4 | [Best Natural Language Understanding (NLU) Software in 2023 \| G2](https://www.g2.com/categories/natural-language-understanding-nlu) | داعمة | web | — | restricted | — | Natural language understanding (NLU), a form of natural language processing (NLP), allows users to better understand text through machine learning. This website |
-| TL-219beefa | [Bhagavad Gita](https://bhagavadgita.io/api) | داعمة | api | — | unreachable | OAuth | Bhagavad Gita text |
 | TL-27b2208a | [Bhagavad Gita telugu](https://gita-api.vercel.app) | داعمة | api | — | reachable | No | Bhagavad Gita API in telugu and odia languages |
 | TL-8586b0f5 | [Bible-api](https://bible-api.com/) | داعمة | api | — | reachable | No | Free Bible API with multiple languages |
 | TL-a461b936 | [Bing Translate](https://translator.bing.com/) | أساسية | web | — | reachable | — | — |
@@ -95,6 +94,7 @@
 | TL-3e4c93d0 | [DuckDuckGo !bangs](https://chrome.google.com/webstore/detail/duckduckgo-bangs/hdjfebkndhmegijlghjcdghdbealibeb/related) | أساسية | web | — | reachable | — | extension that add DuckDuckGo bang buttons to search results and search links in the context menu |
 | TL-d56ea6e6 | [EasyOCR](https://github.com/JaidedAI/EasyOCR) | داعمة | oss | — | reachable | — | OCR with 80+ languages including Arabic. |
 | TL-0770add1 | [educalingo](https://educalingo.com/) | أساسية | web | — | reachable | — | — |
+| TL-09afbd46 | [eidosSpeech](https://eidosspeech.xyz) | داعمة | api | — | unchecked | apiKey | Free text-to-speech API with 1,200+ neural voices in 75+ languages |
 | TL-4a5e1f09 | [ELI](https://nlp.insightera.co.th/docs/v1.0) | داعمة | api | — | reachable | apiKey | Natural Language Processing Tools for Thai Language |
 | TL-2ad78240 | [enardict](https://github.com/devjustly/en_ar_dict) | داعمة | oss | — | restricted | — | English Arabic dictionary written in python and Qt4 (pyside). |
 | TL-f340c382 | [enjarify](https://github.com/Storyyeller/enjarify) | داعمة | oss | — | restricted | — | A tool for translating Dalvik bytecode to equivalent Java bytecode. |
@@ -209,6 +209,7 @@
 | TL-fe3f78a0 | [Pleco](https://www.pleco.com/) | أساسية | web | — | reachable | — | — |
 | TL-aacaa5ab | [PrintSocket](https://www.printsocket.com/docs) | داعمة | api | — | reachable | apiKey | Send PDFs, ZPL labels and ESC/POS receipts to your own printers from any language; free tier |
 | TL-8f706da8 | [python-arabic-reshaper](https://github.com/mpcabd/python-arabic-reshaper) | داعمة | oss | — | restricted | — | Reconstruct Arabic sentences to be used in applications that don't support Arabic. |
+| TL-cd749820 | [QRX](https://qrx.codes/developers) | داعمة | api | — | unchecked | apiKey | Artistic, branded QR codes from a text prompt and a link, checked to scan |
 | TL-6d23fc5b | [quillbot](https://quillbot.com/translate) | أساسية | web | — | restricted | — | — |
 | TL-6e6b7f73 | [Quran](https://quran.api-docs.io/) | داعمة | api | — | reachable | No | RESTful Quran API with multiple languages |
 | TL-2d4d7a0d | [Quran-api](https://github.com/fawazahmed0/quran-api#readme) | داعمة | oss | — | reachable | No | Free Quran API Service with 90+ different languages and 400+ translations |
@@ -241,6 +242,7 @@
 | TL-06f57b64 | [Systran](http://www.systransoft.com/) | أساسية | web | — | reachable | — | — |
 | TL-d1544e52 | [TafgeetJS](https://github.com/mmahgoub/tafgeetjs) | داعمة | oss | — | restricted | — | An NPM module to convert currency digits into written Arabic words. |
 | TL-ad4ac4f5 | [Tarmeez](https://sourceforge.net/projects/tarmeez) | داعمة | web | — | restricted | — | binary data format for etymological Arabic system. |
+| TL-f521ea64 | [TeamSort](https://teamsort.world/developers) | داعمة | api | — | unchecked | No | Create a ranked-choice poll from a text prompt and get a shareable link |
 | TL-91ef65f0 | [text compare](https://text-compare.com/) | أساسية | web | — | reachable | — | — |
 | TL-64269f88 | [Thawab](https://github.com/ojuba-org/thawab) | داعمة | oss | — | restricted | — | Thawab Arabic/Islamic encyclopedia system. |
 | TL-ffb0c8aa | [The Fuck](https://github.com/nvbn/thefuck) | أساسية | oss | — | restricted | — | Simple app which corrects your previous console commands. |

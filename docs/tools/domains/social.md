@@ -1,8 +1,8 @@
 # وسائل التواصل الاجتماعي والمراسلة (Social media & messaging)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **775**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **784**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -37,7 +37,7 @@
 | TL-54ad5db8 | [ASONAM - IEEE/ACM International Conference on Advances in Social Networks Analysis and Mining](http://asonam.cpsc.ucalgary.ca/) | داعمة | web | بوابة الأشخاص | reachable | — | . |
 | TL-7b1823ef | [Assortative Social Networks and Neutral Cultural Evolution](http://bactra.org/notebooks/neutral-cultural-networks.html) | داعمة | web | بوابة الأشخاص | reachable | — | . |
 | TL-7f79bf25 | [Attestwire](https://api.attestwire.com/docs) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Validate EN 16931 e-invoices: XRechnung, ZUGFeRD, Factur-X, Peppol BIS |
-| TL-92964035 | [Awesome OSINT](https://github.com/jivoi/awesome-osint) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-92964035 | [Awesome OSINT](https://github.com/jivoi/awesome-osint) | أساسية | oss | بوابة الأشخاص | reachable | — | a broader curated list covering every OSINT discipline. |
 | TL-358b2011 | [Awesome Telegram](https://github.com/ebertti/awesome-telegram) | أساسية | oss | بوابة الأشخاص | reachable | — | Collection great groups, channels, bots and libraries for Telegram |
 | TL-4e0a093a | [Awesome-Telegram-OSINT](https://github.com/ItIsMeCall911/Awesome-Telegram-OSINT) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-784b5eb6 | [Ayrshare](https://www.ayrshare.com) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Social media APIs to post, get analytics, and manage multiple users social media accounts |
@@ -117,7 +117,6 @@
 | TL-416476f5 | [discord.id](https://discord.id/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-08de74e7 | [Discord.name](https://discord.name/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-57698c4b | [discordbee.com](https://discordbee.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-f6305c63 | [DiscordOSINT](https://github.com/husseinmuhaisen/DiscordOSINT?tab=readme-ov-file#-discord-search-syntax-) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-ec3b2d4f | [DiscordOSINT (T)](https://github.com/husseinmuhaisen/DiscordOSINT) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-00cc72b6 | [Discover The Best Telegram Channels](https://telegramchannels.me/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-0e4f68b1 | [Disqus](https://disqus.com/api/docs/auth/) | داعمة | api | بوابة الأشخاص | reachable | OAuth | Communicate with Disqus data |
@@ -154,7 +153,8 @@
 | TL-7333d1a2 | [FediverseOSINT (T)](https://github.com/cyfinoid/fediverse_osint) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-69863274 | [Find ads on TikTok offc](https://library.tiktok.com/ads) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-84f1b381 | [Find ID Insta Acc](https://skweezer.net/find-instagram-user-id) | أساسية | web | بوابة الأشخاص | restricted | — | — |
-| TL-24d402b9 | [Find Instagram User Id](https://www.codeofaninja.com/tools/find-instagram-user-id/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-24d402b9 | [Find Instagram User ID](https://www.codeofaninja.com/tools/find-instagram-user-id/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-4b3bfc20 | [Finddit](https://viralharia.github.io/finddit) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-1291f385 | [First Tweet](http://ctrlq.org/first) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-b6f40d40 | [FlockNet](https://www.flock.network/) | أساسية | web | بوابة الأشخاص | unreachable | — | A tool for finding and filtering your own #Twitter followers. It allows you to find all the people from a certain city or with certain interests. And then quick |
 | TL-47e4a777 | [Foller.me Analytics](https://foller.me/) | أساسية | web | بوابة الأشخاص | reachable | — | Twitter account detailed analyze |
@@ -191,6 +191,7 @@
 | TL-d987c435 | [Groupe FMR - Flux, Matrices, Réseaux](https://groupefmr.hypotheses.org/) | داعمة | web | بوابة الأشخاص | reachable | — | , in French.<!-- Twitter: @BaugLaurent. --> |
 | TL-034fb03b | [Groupfinder](http://groupfinder.me) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-e9c268e1 | [HackerNews](https://github.com/HackerNews/API) | داعمة | oss | بوابة الأشخاص | reachable | No | Social news for CS and entrepreneurship |
+| TL-657b433d | [Hacks](https://github.com/EdOverflow/hacks) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-fe334f97 | [Hadzy.com](https://hadzy.com/) | أساسية | web | بوابة الأشخاص | reachable | — | YouTube comment search) |
 | TL-b620fbc6 | [Harvard TweetMap](http://worldmap.harvard.edu/tweetmap) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-5169e0a9 | [Hashnode](https://hashnode.com) | داعمة | api | بوابة الأشخاص | reachable | No | A blogging platform built for developers |
@@ -231,21 +232,24 @@
 | TL-6c1dfb87 | [Instagram Privacy](https://help.instagram.com/147542625391305) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-eb03b919 | [Instagram Scraper](https://apify.com/jaroslavhejlek/instagram-scraper) | أساسية | web | بوابة الأشخاص | unreachable | — | Scrape info about accounts, posts, stories and comment |
 | TL-b9154078 | [instagram spoiler Decode hidden text from Telegram](https://spoiler.soxoj.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-4f8f96c5 | [instagrammonitor](https://github.com/misiektoja/instagram_monitor) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-f60fd17e | [InstagramPrivSniffer](https://github.com/obitouka/InstagramPrivSniffer) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-16827bba | [Instahunt](https://instahunt.huntintel.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-30c54030 | [instalooter](https://pypi.org/project/instalooter/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-cfe903d9 | [instanavigation](https://instanavigation.net/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-6d3ed77e | [instanavigation](https://instanavigation.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
+| TL-6d3ed77e | [InstaNavigation](https://instanavigation.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-0c65cf37 | [Instances.Social](https://instances.social/) | أساسية | web | بوابة الأشخاص | reachable | — | A tool for searching across full list of instances in #Mastodon. It can help you choose the right instance to register (matching your views on spam, advertising |
 | TL-0c3bcd5d | [instasploit](https://gitlab.com/anezatra-katedram/instasploit) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-c25637ad | [InstaStoriesViewer](https://insta-stories-viewer.com/opposite6890.recon/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-7231d442 | [instrack](https://instrack.app/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-eae9574a | [IntelTechniques LinkedIn Tool](https://inteltechniques.com/tools/Linkedin.html) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-4aaf53c3 | [intelx Linkedin](https://intelx.io/tools?tab=linkedin) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-0344e472 | [IntelX Telegram](https://intelx.io/tools?tab=telegram) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-4cb9265a | [introduce](http://www.introduceapp.me/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-ee8eac13 | [Introduction to Social Network Methods](http://faculty.ucr.edu/~hanneman/nettext/) | داعمة | web | بوابة الأشخاص | reachable | — | _ (using mostly UCINET), by Robert A. Hanneman and Mark Riddle - Full book online (2001). |
 | TL-255e4138 | [Investigo](https://github.com/tdh8316/Investigo) | أساسية | oss | بوابة الأشخاص | restricted | — | A very simple and fast (written in #go) tool that searches for active links to social network accounts by username (or multiple usernames) |
 | TL-945648ab | [invidious YT Viewer Available Instances](https://docs.invidious.io/instances/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-97affdab | [invowerk](https://invowerk.dev/docs) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Validate e-invoices (ZUGFeRD, Factur-X, XRechnung, Peppol BIS) and get a validation report |
 | TL-1adccd47 | [Isolated Social Networkers](https://crookedtimber.org/2005/05/19/isolated-social-networkers/) | داعمة | web | بوابة الأشخاص | reachable | — | , Networks and Netwars and The Inter-Disciplinary Politics of Interdisciplinary Research or, “Hey, That Was My Idea First.” - Series of blog posts that predate  |
 | TL-42c7e51d | [Jieyab89 SOCMINT-Twitter](https://github.com/Jieyab89/OSINT-Cheat-sheet/tree/main/Script/SOCMINT-Twitter) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-fa37f7ec | [Jump Cutter](https://chrome.google.com/webstore/detail/jump-cutter/lmppdpldfpfdlipofacekcfleacbbncp/related) | أساسية | web | بوابة الأشخاص | reachable | — | An extension for those who watch university lectures on #YouTube and want to save their time. It identifies chunks where the lecturer writes silently on the boa |
@@ -274,14 +278,13 @@
 | TL-6aaf765b | [Linkedin CSE - Search OSINT](https://cse.google.com/cse?cx=daaf18e804f81bed0) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-07443203 | [Linkedin Google Search Custom](https://cse.google.com/cse?cx=002879889969213338875:ykfcyju2xe8) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-b8a00e47 | [Linkedin Google Search Custom 2](https://cse.google.com/cse?cx=012951739560700154499:8rl_7tkzjgq#gsc.tab=0) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-eae9574a | [Linkedin Search Tool](https://inteltechniques.com/tools/Linkedin.html) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-fc0949e3 | [LinkedInDumper](https://github.com/l4rm4nd/LinkedInDumper) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-8572d9ac | [LinkedInt - LinkedIn Recon Tool (T)](https://github.com/vysecurity/LinkedInt) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-0f3d8ed2 | [LINKS Center for Social Network Analysis at the Gatton College of Business and Economics, University of Kentucky](https://sites.google.com/site/uklinkscenter/) | داعمة | web | بوابة الأشخاص | reachable | — | . |
 | TL-c0758b66 | [Linton C. Freeman’s Social Network Research Publications](http://moreno.ss.uci.edu/pubs.html) | داعمة | web | بوابة الأشخاص | unreachable | — | , spanning from 1955 to today. |
 | TL-71884c22 | [Live Book](http://livebook.com.ua/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-0c1f5225 | [loadingram](https://loadingram.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-94d5536b | [Lookupguru](https://lookup.guru/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-94d5536b | [Lookup Guru](https://lookup.guru/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-a34c9646 | [Lyzem Search](https://lyzem.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-36c3508c | [Machine learning advancements in Arabic NLP](https://towardsdatascience.com/machine-learning-advancements-in-arabic-nlp-c6982b2f602b) | داعمة | web | بوابة الأشخاص | unreachable | — | An overview of effective tools and code examples for Arabic NLP, focusing on social media text. |
 | TL-1c93cd05 | [maltego](https://www.maltego.com/categories/osint/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -304,6 +307,7 @@
 | TL-64c00a82 | [Mixed-Method Approaches to Social Network Analysis](http://eprints.ncrm.ac.uk/842/) | داعمة | web | بوابة الأشخاص | restricted | — | (ESRC NCRM Discussion Paper, 2010). |
 | TL-acf9ae8b | [Mixi](https://mixi.jp/) | أساسية | web | بوابة الأشخاص | reachable | — | (JP) |
 | TL-b9851221 | [mollygram](https://mollygram.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-0b3ca740 | [Monocrawl](https://github.com/monocrawl/monocrawl-mcp) | داعمة | oss | بوابة الأشخاص | unchecked | apiKey | Public posts, profiles, comments and products from 70+ social, shopping and search platforms |
 | TL-69400117 | [Mostly Harmless](http://kerrick.github.io/Mostly-Harmless/#features) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-28fd4a87 | [Movetodon](https://movetodon.org/) | أساسية | web | بوابة الأشخاص | reachable | — | Get a list of your Twitter followings in Mastodon. With the ability to sort by date of registration, date of last activity, and buttons for quick subscriptions. |
 | TL-c4231983 | [msgboard](https://msgboard.dev) | داعمة | api | بوابة الأشخاص | reachable | No | Public message board for agent-to-agent messaging, no account or key |
@@ -345,8 +349,6 @@
 | TL-40506d65 | [Orion](https://github.com/Araekiel/orion) | أساسية | oss | بوابة الأشخاص | restricted | — | open-Source Search Engine for social networking websites. |
 | TL-06d2a336 | [Orkut (Brazil)](https://orkut.google.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-a4e1756e | [osinord](https://www.osinord.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-48b095d5 | [OSINT Combine: Reddit Post Analyzer](https://www.osintcombine.com/reddit-post-analyser) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
-| TL-2b685188 | [OSINT Combine: Snapchat MultiViewer](https://www.osintcombine.com/snapchat-multi-viewer) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-ca31da36 | [OSINT compass](https://osint-compass-portal.onrender.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-f804d9a2 | [OSINT Dojo Snapchat Attack Vector](https://www.osintdojo.com/diagrams/snapchat) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-711fe114 | [OSINT.ME CSE](https://cse.google.com/cse?cx=6c3e0c0d3da8e3b4a) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -356,8 +358,8 @@
 | TL-b5eb003f | [osintteam](https://osintteam.blog/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-f8ed434b | [OSoMe](https://osome.iu.edu/) | داعمة | web | بوابة الأشخاص | reachable | — | Observatory on Social Media, an interdisciplinary research center at Indiana University, with tools to browse current and past social media posts. |
 | TL-c9478c32 | [pathsocial](https://www.pathsocial.com/id/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-12da2941 | [Phantom Buster](https://phantombuster.com/phantombuster) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-b4d08d4b | [Phantom Buster](https://phantombuster.com/phantombuster?category=reddit) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-12da2941 | [PhantomBuster](https://phantombuster.com/phantombuster) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-b4d08d4b | [PhantomBuster](https://phantombuster.com/phantombuster?category=reddit) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-8f3daa15 | [Picodash](https://www.picodash.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-470668c3 | [picuki](https://picuki.site/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-6192db0f | [PinGroupie](https://pingroupie.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -389,21 +391,20 @@
 | TL-c3ce5f85 | [Reddit](https://www.reddit.com/dev/api) | داعمة | api | بوابة الأشخاص | reachable | OAuth | Homepage of the internet |
 | TL-a747301c | [Reddit Account Extractor](https://www.reddit.com/user/<USERNAME-HERE>/about.json) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-32c3766b | [Reddit Comment History](https://roadtolarissa.com/javascript/reddit-comment-visualizer/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-8406dba5 | [Reddit Enhancement Suite (Chrome Extension)](https://chrome.google.com/webstore/detail/redditenhancementsuite/kbmfpngjjgdllneeigpgjifpgocmfgmb) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-e175325b | [Reddit Enhancement Suite (Firefox Add-on)](https://addons.mozilla.org/enGB/firefox/addon/reddit-enhancement-suite) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-8406dba5 | [Reddit Enhancement Suite (Chrome)](https://chrome.google.com/webstore/detail/redditenhancementsuite/kbmfpngjjgdllneeigpgjifpgocmfgmb) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-ddea8194 | [Reddit Enhancement Suite (Firefox)](https://addons.mozilla.org/en-GB/firefox/addon/reddit-enhancement-suite) | أساسية | web | بوابة الأشخاص | unchecked | — | — |
 | TL-b19c74f6 | [Reddit find sub](https://anvaka.github.io/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-2cba9daf | [Reddit google cse search](https://cse.google.com/cse?cx=017261104271573007538:bbzhlah6n4o#gsc.tab=0&gsc.sort=) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-657b433d | [Reddit Hacks](https://github.com/EdOverflow/hacks) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-7c491464 | [Reddit Insvestigator](https://www.redditinvestigator.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-54549bac | [Reddit Metis](https://redditmetis.com/) | أساسية | web | بوابة الأشخاص | reachable | — | View statistics fot Reddit users's account |
 | TL-52805054 | [Reddit Metrics](http://redditmetrics.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
+| TL-48b095d5 | [Reddit Post Analyser](https://www.osintcombine.com/reddit-post-analyser) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-34c078cb | [Reddit Post Scraping Tool](https://github.com/rly0nheart/reddit-post-scraping-tool) | أساسية | oss | بوابة الأشخاص | restricted | — | Simple #python script for scraping post from #Reddit (by keywords and subreddit name) |
 | TL-beab0407 | [Reddit Scraper](https://apify.com/trudax/reddit-scraper) | أساسية | web | بوابة الأشخاص | unreachable | — | Crawl posts, comments, communities, and users without login. |
 | TL-97b32a10 | [Reddit Search (cemulate)](http://cemulate.github.io/reddit-search) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-744102fb | [Reddit Search (react-reddit-search-app)](https://react-reddit-search-app.web.app) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-46535eeb | [Reddit Search (realsrikar)](https://realsrikar.github.io/reddit-search) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-e8423acb | [Reddit Search (reddit-search)](http://reddit-search.surge.sh) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-4b3bfc20 | [Reddit Search (viralharia)](https://viralharia.github.io/finddit) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-ccdb607e | [Reddit Shell](https://redditshell.com) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-4198cfa8 | [Reddit Stream](http://reddit-stream.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-76d77607 | [Reddit Timer](https://ebof1223-reddit-timer.netlify.app/) | أساسية | web | بوابة الأشخاص | reachable | — | Get last week's hourly activity schedule for a specific subreddit |
@@ -415,9 +416,9 @@
 | TL-9cf95e44 | [redditcommentsearch.com](http://redditcommentsearch.com) | أساسية | web | بوابة الأشخاص | reachable | — | getting a list of all comments by a Reddit user with a certain name |
 | TL-5115cd92 | [Redditery](http://www.redditery.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-b11d2c1e | [Redditlist](http://redditlist.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-f91f7563 | [RedditP](https://www.redditp.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-10b855b3 | [Redditsearch.io](https://redditsearch.io/) | أساسية | web | بوابة الأشخاص | reachable | — | Reddit search tool |
 | TL-643cc7c1 | [redditvids](https://redditvids.com) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
-| TL-f91f7563 | [reddtip](https://www.redditp.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-67367b68 | [Redes-Sociales](http://www.redes-sociales.net/) | داعمة | web | بوابة الأشخاص | reachable | — | , in Spanish - Information network based at the Universitat Autònoma de Barcelona. |
 | TL-05eaaf93 | [REDES. Revista hispana para el análisis de redes sociales](http://revista-redes.rediris.es/) | داعمة | web | بوابة الأشخاص | unreachable | — | _, in Spanish (INSNA). |
 | TL-b43ad4de | [Redetective](https://www.redective.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | Reddit search tool |
@@ -472,11 +473,12 @@
 | TL-e358bb30 | [SlackPirate (T)](https://github.com/emtunc/SlackPirate) | أساسية | oss | بوابة الأشخاص | reachable | — | tool developed in Python which uses the native Slack APIs to extract 'interesting' information from a Slack workspace given an access token |
 | TL-d49c864b | [Slash Tags](https://github.com/huhmit/slashtags) | أساسية | oss | بوابة الأشخاص | restricted | — | tool for recommending YouTube tags and displaying related statistical data from search keyword(s) |
 | TL-ea078c26 | [Sleeping Time](http://sleepingtime.org/) | أساسية | web | بوابة الأشخاص | unreachable | — | determining the approximate sleeping time of a user based on analysis of the timing of a tweet |
-| TL-c4bae084 | [smat](https://www.smat-app.com/timeline) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-c4bae084 | [SMAT](https://www.smat-app.com/timeline) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-3d125662 | [SNAA - Workshop on Social Network Analysis in Applications](http://snaa.pwr.edu.pl/) | داعمة | web | بوابة الأشخاص | reachable | — | . |
 | TL-53375322 | [Snap Political Ads Library](https://www.snap.com/en-GB/political-ads) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-a4265efe | [SnapBird](http://snapbird.org/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-0a1d6d91 | [Snapchat (T)](https://www.snapchat.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-2b685188 | [Snapchat Multi-Viewer](https://www.osintcombine.com/snapchat-multi-viewer) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-ebdace13 | [SnapDataHub](https://snapdatahub.com/) | أساسية | web | بوابة الأشخاص | reachable | — | Subscriber counts, Spotlight views and growth for public Snapchat creator profiles, plus a daily list of the fastest-growing creators. Free to browse without lo |
 | TL-e0d03fcf | [SnapInsta](https://snapinsta.app) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-3f3b400d | [SnapIntel](https://github.com/Kr0wZ/SnapIntel) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
@@ -530,7 +532,7 @@
 | TL-6be6fcb4 | [Society of Young Network Scientists (SYNS)](https://society-of-young-network-scientists.github.io/) | داعمة | web | بوابة الأشخاص | reachable | — | . Supports early-career network scientists.<!-- Twitter: @official_SYNS. --> |
 | TL-8ae22859 | [SocioPatterns](http://www.sociopatterns.org/) | داعمة | web | بوابة الأشخاص | reachable | — | Interdisciplinary research group that uses wireless sensors to study social network data. |
 | TL-2349df87 | [Sogou WeChat Search](https://weixin.sogou.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-eb911ef4 | [SolG](https://github.com/yezz123/SoIG) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-eb911ef4 | [SoIG](https://github.com/yezz123/SoIG) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-a320e924 | [SoNAR-C - Social Network Analysis Research Center, University of Italian Switzerland (USi)](http://www.sonarcenter.eco.usi.ch/) | داعمة | web | بوابة الأشخاص | restricted | — | . |
 | TL-ab8928a9 | [Sophia Santos](https://gralhix.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-04e01707 | [SourceWolf](https://github.com/ksharinarayanan/SourceWolf) | أساسية | oss | بوابة الأشخاص | restricted | — | A tool for analyzing #javascript files. It finds all the variables, endpoints and social media links mentioned in the code in just a few seconds. |
@@ -538,6 +540,7 @@
 | TL-10e87bc7 | [Speak subtitles to YouTube](https://chrome.google.com/webstore/detail/speak-subtitles-for-youtu/fjoiihoancoimepbgfcmopaciegpigpa/related) | أساسية | web | بوابة الأشخاص | reachable | — | Subtitle dubbing tool with support for several dozen languages and voice variants. Useful for saving time and for education purposes. Works with glitches, try d |
 | TL-2b9d5c20 | [Spotify downloader](https://github.com/spotDL/spotify-downloader) | أساسية | oss | بوابة الأشخاص | restricted | — | download spotify playlist in mp3 from YouTube |
 | TL-c3fe3eac | [Spotlight](http://spotlight.svezet.ru/) | أساسية | web | بوابة الأشخاص | reachable | — | (RU) |
+| TL-c956d3af | [SSSTik](https://ssstik.io/en-1) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-d960b13f | [StackExchange](https://api.stackexchange.com/) | داعمة | api | بوابة الأشخاص | reachable | OAuth | Q&A forum for developers |
 | TL-fef9d998 | [Star Wars Social Networks: The Force Awakens](http://evelinag.com/blog/2016/01-25-social-network-force-awakens/index.html) | داعمة | web | بوابة الأشخاص | reachable | — | Also an example of a social network analysis written in F#. |
 | TL-f19eb12e | [SteamOSINT (T)](https://github.com/Frontline-Femmes/Steam-OSINT) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
@@ -577,13 +580,13 @@
 | TL-59de7833 | [Telegram MTProto](https://core.telegram.org/api#getting-started) | داعمة | api | بوابة الأشخاص | reachable | OAuth | Read and write Telegram data |
 | TL-c113538a | [Telegram OSINT](https://forum.seccodeid.com/d/telegram-nearby-map) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-eee8d094 | [Telegram Scammer list ACC Database](https://apk.ibnux.com/data/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
-| TL-d7d68355 | [Telegram Scraper](https://github.com/th3unkn0n/TeleGram-Scraper) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-5264823f | [Telegram search CSE](https://cse.google.com/cse?cx=004805129374225513871:p8lhfo0g3hg&q=) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-87df48d3 | [Telegram Search Engine](https://xtea.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-9bbfaba9 | [Telegram viewer](https://xn--r1a.website/#) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-fcfd0556 | [telegram-history-dump](https://github.com/tvdstaaij/telegram-history-dump) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-e77fd30c | [Telegram-OSINT (T)](https://github.com/The-Osint-Toolbox/Telegram-OSINT) | أساسية | oss | بوابة الأشخاص | reachable | — | Use your second telegram account. There are many bot tele available on the list |
-| TL-453853b4 | [Telegram-osint-lib](https://github.com/Postuf/telegram-osint-lib) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-453853b4 | [telegram-osint-lib](https://github.com/Postuf/telegram-osint-lib) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-d7d68355 | [TeleGram-Scraper](https://github.com/th3unkn0n/TeleGram-Scraper) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-60897e6f | [telegram-store](https://telegram-store.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-152fe68e | [Telegram-Trilateration](https://github.com/jkctech/Telegram-Trilateration) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-3dff3a03 | [Telegram-Trilateration](https://github.com/jkctech/Telegram-Trilateration?tab=readme-ov-file) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
@@ -594,6 +597,8 @@
 | TL-5e6e1f9a | [Telemetr](https://telemetr.io/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-569766b1 | [telemetr.me RU Lang](https://telemetr.me/all_posts/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-cb1bb0ad | [telemetryapp](https://www.telemetryapp.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-19ea4f71 | [Telemoon](https://telemoon.app/) | أساسية | web | بوابة الأشخاص | unchecked | — | Free Telegram channel statistics, mentions graph and full-text post search, no login |
+| TL-959fb12a | [Telepathy](https://github.com/jordanwildon/Telepathy) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-13dab5f9 | [telepathydb](https://telepathydb.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-a6a75fbd | [Telesco](https://telesco.pe/) | أساسية | web | بوابة الأشخاص | reachable | — | (telesco.pe/telegram-channel-here) |
 | TL-5d02ab47 | [Teletehon](https://docs.telethon.dev/en/stable/basic/installation.html) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -634,7 +639,7 @@
 | TL-95b9dd7d | [toolzu](https://toolzu.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-18e112d0 | [Top.gg](https://top.gg/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-616aa83f | [Tosint (T)](https://github.com/drego85/tosint) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
-| TL-0348fd1c | [toutatis](https://pypi.org/project/toutatis/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-40899bfd | [Toutatis](https://github.com/megadose/toutatis) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-0342a0ad | [TraceLabs Discord](https://discord.com/invite/Rn8z2QNAD9) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-88bcf15c | [Trash Nothing](https://trashnothing.com/developer) | داعمة | api | بوابة الأشخاص | reachable | OAuth | A freecycling community with thousands of free items posted every day |
 | TL-bceea713 | [Treeverse (T)](https://treeverse.app/) | أساسية | web | بوابة الأشخاص | reachable | — | view dialogs in Twitter as a graph |
@@ -723,6 +728,7 @@
 | TL-dd60a998 | [userinfobot - telegram](https://telegram.me/userinfobot) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-4d999a6d | [uunet](http://multilayer.it.uu.se/software.html) | داعمة | web | بوابة الأشخاص | reachable | — | Tools for multilayer social networks. |
 | TL-73ef0f46 | [VennMaker for Historians: Sources, Social Networks and Software](http://revistes.uab.cat/redes/article/view/v21-during-bixier-kronenwett-stark) | داعمة | web | بوابة الأشخاص | unreachable | — | (also available in Spanish; 2011). |
+| TL-23737c89 | [Verified Handles](https://verifiedhandles.org/developers) | داعمة | api | بوابة الأشخاص | unchecked | No | Official social media handles and identifiers of 155,000+ notable people and organisations |
 | TL-c387d779 | [Vicintias.io](https://www.vicinitas.io/free-tools/download-twitter-followers) | أساسية | web | بوابة الأشخاص | unreachable | — | very fast export of information about Twitter account followers to XLSX |
 | TL-ed499438 | [viewsocials](https://www.viewsocials.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-10e23bd5 | [Vizit](https://redditstuff.github.io/sna/vizit/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -746,14 +752,16 @@
 | TL-38ee629c | [WhatsApp Group Links](https://whatsgrouplink.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-33d0b5c1 | [whatsapp Law Enforcement Online Requests](https://www.whatsapp.com/records/login) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-20cc06c0 | [WhatsApp Messenger (T)](https://www.whatsapp.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
-| TL-9055a63a | [Whatsapp Monitor](https://github.com/ErikTschierschke/WhatsappMonitor) | أساسية | oss | بوابة الأشخاص | unreachable | — | — |
 | TL-68b58c99 | [WhatsApp-OSINT](https://github.com/kinghacker0/WhatsApp-OSINT?tab=readme-ov-file) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-f402f2dd | [whatsapp-osint](https://github.com/jasperan/whatsapp-osint) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-e0f1a5ad | [WhatsApp-OSINT (T)](https://github.com/kinghacker0/WhatsApp-OSINT) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-9055a63a | [WhatsappMonitor](https://github.com/ErikTschierschke/WhatsappMonitor) | أساسية | oss | بوابة الأشخاص | unreachable | — | — |
 | TL-bd14dd00 | [whatsfoto](https://github.com/zoutepopcorn/whatsfoto) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-7d8fe93d | [Whotwi](https://en.whotwi.com/) | أساسية | web | بوابة الأشخاص | reachable | — | A free online tool for analysing your #Twitter account: - shows the mutual following; - search for tweets by calendar; - list of most active readers; - analysis |
 | TL-407bdaba | [Wisdom of Reddit](https://wisdomofreddit.com) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-27360f26 | [Women in AI](https://open.spotify.com/show/62v63cucHe8HdZD6ooyCOg) | داعمة | web | بوابة الأشخاص | reachable | — | A biweekly podcast featuring leading female minds in AI, Deep Learning, and Machine Learning, discussing cutting-edge work, technological advancements, and the  |
 | TL-71ac3b64 | [x](https://x.com/) | أساسية | web | بوابة الأشخاص | reachable | — | You must to dork and join the group |
+| TL-73f33c83 | [X Pro](https://pro.x.com/) | أساسية | web | بوابة الأشخاص | unchecked | — | — |
 | TL-d2ff1a35 | [X0rz Tweetsanalyzer (T)](https://github.com/x0rz/tweets_analyzer) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-541949bb | [xcancel like nitter](https://xcancel.com/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-d1509404 | [xfetch](https://xfetch.io) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Read API for X/Twitter search, profiles, tweets, and social graph |
@@ -761,6 +769,7 @@
 | TL-74ce70aa | [xtea](https://xtea.io/ts_en.html) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-b9dc0072 | [Yachudo](http://www.yachudo.com) | أساسية | web | بوابة الأشخاص | reachable | — | (UA) |
 | TL-09dd401d | [Yahoo Groups](https://groups.yahoo.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-5ded283d | [Yark](https://github.com/Owez/yark) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-1f836e12 | [yewtu YT Viewer](https://yewtu.be/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-176fd886 | [Yik Yak (T)](https://www.yikyak.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-2198ec05 | [Youtube Actual Top Comments](https://chrome.google.com/webstore/detail/youtube-actual-top-commen/hbdmelobmfcompinikjdaiphhonbgfpn/) | أساسية | web | بوابة الأشخاص | reachable | — | The main drawback of the standard #YouTube comment display is that it does not sort comments by the number of likes, but simply shows popular comments in a rand |

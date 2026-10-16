@@ -1,8 +1,8 @@
 # استخبارات التهديدات والبرمجيات الخبيثة (Threat intel & malware)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **520**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **521**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -113,6 +113,7 @@
 | TL-5aac1345 | [Doesthedogdie](https://www.doesthedogdie.com/) | أساسية | web | — | reachable | — | This is an ingenious site that lets you find out if a movie (video game) has scenes that might upset someone (death of dogs, cats and horses, animal abuse, dome |
 | TL-390d3fbe | [DomE](https://github.com/v4d1/Dome) | أساسية | oss | — | restricted | — | Fast and reliable #python script that makes active and/or passive scan to obtain subdomains and search for open ports. Used 21 different #OSINT sources (AlienVa |
 | TL-47e5d964 | [Dork Scanner](https://github.com/Balgogan/dorkscanner) | أساسية | oss | — | restricted | — | NOT support Google. Only Bing, ASK and http://WoW.com (AOL) search engines. Can work with very long lists of queries/documents (in .txt files) |
+| TL-45431891 | [DorkEye](https://github.com/xPloits3c/DorkEye) | أساسية | oss | — | unchecked | — | Automated Google dorking tool that generates thousands of advanced queries per second from a file to find exposed files, thanks to CAPTCHA bypass and ban avoida |
 | TL-e44d410c | [Dorks Hunter](https://github.com/six2dez/dorks_hunter) | أساسية | oss | — | restricted | — | A simple script to analyze domain using Google Dorks. It saves in file the results of checking the following categories Backup files, Database files, Exposed do |
 | TL-88b1c28b | [dorks.faisalahmed.me](https://dorks.faisalahmed.me) | أساسية | web | — | reachable | — | online constructor of google dorks for searching "sensitive" wesite pages |
 | TL-ad6972c6 | [DreamThreads](https://mydreamthreads.xyz/dream-interpretation-api) | داعمة | api | — | unreachable | No | Parse dreams into structured entities, emotions, agency, threat, and outcomes |
@@ -219,6 +220,7 @@
 | TL-691c9be0 | [IPWhois.net Blacklist](https://ipwhois.net/blacklist/docs) | داعمة | api | بوابة الأشخاص | restricted | No | Community IP blacklist to check and report abusive IP addresses |
 | TL-4f2c0fd0 | [Is It Hacked?](http://www.isithacked.com) | أساسية | web | — | reachable | — | — |
 | TL-52a89b55 | [is-website-vulnerable](https://github.com/lirantal/is-website-vulnerable) | داعمة | oss | — | restricted | — | finds publicly known security vulnerabilities in a website's frontend JavaScript libraries. |
+| TL-3cbd5ed9 | [isMalicious](https://ismalicious.com/api-docs) | داعمة | api | — | unchecked | apiKey | Reputation of IPs, domains, URLs and file hashes from aggregated threat feeds, plus CVE lookups |
 | TL-1d926076 | [ixss.warsong.pw](http://ixss.warsong.pw/xssor/) | أساسية | web | — | unreachable | — | very old service for making XSS (Cross Site Scripting) faster and easier |
 | TL-04cf3167 | [Jager](https://github.com/sroberts/jager) | أساسية | oss | — | restricted | — | — |
 | TL-717f32cf | [Joe Sandbox Url Analyzer](https://www.url-analyzer.net/) | أساسية | web | — | restricted | — | — |
@@ -284,7 +286,6 @@
 | TL-b9396be7 | [massive-octo-spice - csirtgadgets Github](https://github.com/csirtgadgets/massive-octo-spice) | أساسية | oss | — | restricted | — | CIF is a cyber threat intelligence management system. CIF allows you to combine known malicious threat information from many sources and use that information fo |
 | TL-0e3278d5 | [Mastiff](https://github.com/KoreLogicSecurity/mastiff) | داعمة | oss | — | restricted | — | Static analysis framework that automates the process of extracting key characteristics from a number of different file formats. |
 | TL-35c3b402 | [MEERKAT](https://github.com/TonyPhipps/Meerkat) | داعمة | oss | — | restricted | — | PowerShell-based triage and threat hunting for Windows. |
-| TL-932fde59 | [Metacert](https://metacert.com/) | داعمة | api | — | unreachable | apiKey | Metacert Link Flagging |
 | TL-d57086c1 | [Metadefender Cloud](https://www.metadefender.com) | داعمة | web | — | reachable | — | Free threat intelligence platform providing multiscanning, data sanitization and vulnerability assessment of files. |
 | TL-15f3f3f1 | [Mimir](https://github.com/NullArray/Mimir) | أساسية | oss | — | restricted | — | — |
 | TL-d4bb98cc | [MISP Galaxy](https://www.misp-galaxy.org/360net/) | أساسية | web | — | reachable | — | Known or estimated adversary groups as identified by 360.net. |

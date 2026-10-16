@@ -1,8 +1,8 @@
 # الوثائق والبيانات المفتوحة (Documents & open data)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **443**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **449**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -18,6 +18,7 @@
 | TL-42ef11f5 | [Airtable](https://airtable.com/api) | داعمة | api | — | reachable | apiKey | Integrate with Airtable |
 | TL-48817790 | [ALEX](https://github.com/prosch88/ALEX) | داعمة | oss | — | restricted | — | Extract files from ADB devices on Windows, Linux and MacOS. Mostly a wrapper for adbutils. |
 | TL-7415434d | [Alexa](https://www.alexa.com/) | أساسية | web | — | reachable | — | Keyword Research, Competitive Analysis, Website Ranking |
+| TL-f5fc00a7 | [Allscreenshots](https://allscreenshots.com) | داعمة | api | — | unchecked | apiKey | Website screenshots and PDFs with full-page capture, dark mode and ad blocking |
 | TL-98d1f481 | [Amanah Sunnah](https://sunnah.amanahagent.cloud/developers) | داعمة | api | — | reachable | apiKey | Semantic search across Quran, Hadith, Tafsir & 18K+ Rijal narrators |
 | TL-3badf372 | [Analyze file format online](https://www.aconvert.com/analyze.html) | أساسية | web | — | reachable | — | — |
 | TL-65ec7690 | [Anon Scraper](https://github.com/370rokas/anonscraper) | أساسية | oss | — | restricted | — | Search uploaded files to AnonFile using Google |
@@ -113,6 +114,8 @@
 | TL-5dd81c4c | [Download Sorter](https://chrome.google.com/webstore/detail/download-sorter/mebfblkahpknogabckmdjcmjbnpfdpcj/related) | أساسية | web | — | reachable | — | simple tool that will help set up the distribution of files with different extensions into different folders in a minute and permanently put "Downloads" folder  |
 | TL-f4dad47d | [DPDK](http://dpdk.org/) | داعمة | web | — | reachable | — | DPDK is a set of libraries and drivers for fast packet processing. |
 | TL-d90303b4 | [DSHR's Blog](https://blog.dshr.org/) | أساسية | web | — | reachable | — | David Rosenthal regularly reviews and summarizes work done in the Digital Preservation field. |
+| TL-37908443 | [EIA Open Data](https://www.eia.gov/opendata/) | داعمة | api | — | unchecked | apiKey | US energy statistics: electricity, petroleum, gas |
+| TL-c2033ecf | [Emboss](https://getemboss.ai/docs) | داعمة | api | — | unchecked | apiKey | Make PDF forms fillable, fill them from JSON or documents, and read filled forms back |
 | TL-9f14e32b | [Enigma Public](https://developers.enigma.com/docs) | داعمة | api | — | reachable | apiKey | Broadest collection of public data |
 | TL-e3494ee0 | [EpiModel](https://CRAN.R-project.org/package=EpiModel) | داعمة | web | — | reachable | — | Tools for simulating mathematical models of infectious disease dynamics (presentation paper). |
 | TL-0e2f7f79 | [Eric D. Kolaczyk’s Network Datasets](http://math.bu.edu/people/kolaczyk/datasets.html) | داعمة | dataset | — | reachable | — | . |
@@ -132,6 +135,7 @@
 | TL-a136f8dd | [Finda PDF](https://www.findapdf.com/) | أساسية | web | — | reachable | — | — |
 | TL-5a5b029c | [FindTheData A Research Engine](https://www.findthedata.com/) | أساسية | web | — | unreachable | — | — |
 | TL-548329bd | [Fiugis](https://fiugis.maps.arcgis.com/home/search.html?restrict=false&sortField=relevance&sortOrder=desc&categories=%2FCategories%2FLocation#content) | أساسية | dataset | — | reachable | — | — |
+| TL-dcae2f9c | [flatmark](https://flatmark.dev/docs) | داعمة | api | — | unchecked | apiKey | Convert PDF, Word, PowerPoint, Excel and HTML documents to Markdown for RAG and agents |
 | TL-6b40339d | [Florida Man](https://github.com/juliayxhuang/florida-man-api#readme) | داعمة | oss | — | reachable | No | Static JSON dataset of 10,000+ Florida Man headlines by date |
 | TL-9cfb83f1 | [Forschungscluster der Universitäten Trier und Mainz “Gesellschaftliche Abhängigkeiten und soziale Netzwerke”](http://www.netzwerk-exzellenz.uni-trier.de/) | داعمة | web | — | unreachable | — | , in German. |
 | TL-1d148d9c | [Free Full PDF](http://www.freefullpdf.com) | أساسية | web | — | reachable | — | — |
@@ -281,6 +285,7 @@
 | TL-a153b9bc | [Origami Framework (T)](https://code.google.com/archive/p/origami-pdf/) | أساسية | web | — | reachable | — | — |
 | TL-52fdcd0a | [ORIO - Observatoire des Réseaux Intra- et Inter-Organisationnels](http://blogs.sciences-po.fr/recherche-network-organization-institution-dynamics-multilevel/) | داعمة | web | — | unreachable | — | A research program on networks and regulation. |
 | TL-32fc9c53 | [Orion Media Indexer](https://orionoid.com) | أساسية | web | — | reachable | — | Lightning Fast Link Indexer for Torrents, Usenet, and Hosters |
+| TL-8522efa7 | [OSINT Collection](https://start.me/p/DPYPMz/the-ultimate-osint-collection) | أساسية | dataset | — | unchecked | — | — |
 | TL-278ee9ff | [OSINT ethics](https://stanleycenter.org/publications/osint-applied-ethics-workbook/) | أساسية | web | — | reachable | — | — |
 | TL-91654f0a | [OSINT Researcher](https://apps.apple.com/us/app/osint-researcher/id6747302251) | أساسية | web | — | reachable | — | — |
 | TL-2107182b | [OSLOM2 - Order Statistics Local Optimization Method](http://www.oslom.org/) | داعمة | web | — | reachable | — | Clustering algorithm. |
@@ -298,6 +303,7 @@
 | TL-a1a4b85c | [PDF Search Engine](http://www.pdfsearchengine.info/) | أساسية | web | — | reachable | — | — |
 | TL-ceabf601 | [pdfdrive](https://www.pdfdrive.com/search?q=password) | أساسية | web | — | reachable | — | — |
 | TL-2893bb60 | [PDFgive](http://pdfgive.net/) | أساسية | web | — | unreachable | — | — |
+| TL-48c36709 | [pdfrender](https://pdfrender.dev/docs) | داعمة | api | — | unchecked | apiKey | HTML and CSS to PDF with page headers, footers and page numbers, no headless browser |
 | TL-bca2ead0 | [PDFSB](http://pdfsb.net/) | أساسية | web | — | reachable | — | — |
 | TL-8acd0bcd | [PDFSR](http://pdfsr.com/) | أساسية | web | — | unreachable | — | — |
 | TL-358da94d | [PDFX](https://github.com/metachris/pdfx) | أساسية | oss | — | restricted | — | get meta data of PDF files thrue command line |
@@ -367,7 +373,7 @@
 | TL-7af3ba4b | [SharpKml](https://github.com/samcragg/sharpkml) | داعمة | oss | — | restricted | — | Is able to read/write both KML files and KMZ files. |
 | TL-f27639ba | [Shortcut](https://developer.shortcut.com) | داعمة | api | — | reachable | apiKey | Manage stories, epics, iterations and objectives in a Shortcut workspace |
 | TL-1a953d44 | [Siena Datasets](http://www.stats.ox.ac.uk/~snijders/siena/siena_datasets.htm) | داعمة | dataset | — | reachable | — | . |
-| TL-25f46f3c | [SlashYear](https://slashyear.com/api) | داعمة | api | — | reachable | No | 86,902 historical events as JSON, each quoted from a cited Wikipedia revision |
+| TL-25f46f3c | [SlashYear](https://slashyear.com/api) | داعمة | api | — | reachable | No | Dated historical events as JSON, each quoted from a cited Wikipedia revision |
 | TL-88464073 | [SlideSearchEngine](http://www.slidesearchengine.com/) | أساسية | web | — | reachable | — | — |
 | TL-5c036bf5 | [Slideworld](http://www.slideworld.com/) | أساسية | web | — | unreachable | — | — |
 | TL-60da5cef | [smacpod](https://cran.r-project.org/web/packages/smacpod/index.html) | داعمة | web | — | reachable | — | Various statistical methods for analyzing case-control point data. |

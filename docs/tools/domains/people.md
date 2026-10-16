@@ -1,8 +1,8 @@
 # الأشخاص وأسماء المستخدمين (People & usernames)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **270**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **274**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -40,6 +40,7 @@
 | TL-0a4cb921 | [Code understanding tools list](https://github.com/cipher387/code-understanding-tools) | أساسية | oss | بوابة الأشخاص | reachable | — | Tools for understanding other people's code \|source |
 | TL-081141d5 | [Coderstats](https://coderstats.net) | أساسية | web | بوابة الأشخاص | reachable | — | enter Github username and get detailed statistics of profile: languages, issues, forks, stars and much more |
 | TL-0d6bf9e8 | [Cognito Scanner](https://github.com/padok-team/cognito-scanner) | داعمة | oss | بوابة الأشخاص | restricted | — | CLI tool to pentest Cognito AWS instance. It implements three attacks: unwanted account creation, account oracle and identity pool escalation |
+| TL-66378726 | [Compabase](https://compabase.com/docs/) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Polish company data: 3M+ KRS and CEIDG entities with financial statements, people and rankings |
 | TL-e1730ac4 | [Companies House](https://beta.companieshouse.gov.uk/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-9e0abed9 | [Companies In The UK](https://www.companiesintheuk.co.uk/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-cd2c7532 | [Company Data Rex (EU)](https://www.cdrex.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -101,8 +102,8 @@
 | TL-d4697e4d | [GitHub ReadMe Stats](https://github.com/anuraghazra/github-readme-stats) | داعمة | oss | بوابة الأشخاص | reachable | No | Add dynamically generated statistics to your GitHub profile ReadMe |
 | TL-b611c6e6 | [Github search name and find ID](https://caius.github.io/github_id/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-c664dc74 | [Github User (M)](https://api.github.com/users/%3Cusername%3E/events/public) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
-| TL-1cdc122f | [Github Username Search Engine](https://jonnygovish.github.io/Github-username-search-engine) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-76b20a54 | [Github Username Search Engine](https://githubnotes-47071.firebaseapp.com/#/?_k=n0bgxn) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-76b20a54 | [GitHub Username Search Engine (githubnotes)](https://githubnotes-47071.firebaseapp.com/#/?_k=n0bgxn) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-1cdc122f | [GitHub Username Search Engine (jonnygovish)](https://jonnygovish.github.io/Github-username-search-engine) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-0cb26c73 | [Gitvio](https://gitvio.vercel.app/) | أساسية | web | بوابة الأشخاص | reachable | — | A tool to quickly and easily view detailed information about a user's Github profile: the most popular repositories, number of commits, issues and , statistics  |
 | TL-809a888f | [Google Autocomplete Scraper](https://tools.digitalmethods.net/beta/scrapeGoogle/autocomplete.php) | أساسية | web | بوابة الأشخاص | reachable | — | One of the best ways to learn more about a person, company, or subject is to see what people are more likely to type in a search engine along with it. |
 | TL-7d35ec94 | [hauziz](https://hauziz.com/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
@@ -133,13 +134,13 @@
 | TL-d9ea2ddf | [Itools](http://itools.com/search/people-search) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-f6a97f95 | [Jobster](https://jobster.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-3081b21c | [Joshua Project](https://api.joshuaproject.net/) | داعمة | api | بوابة الأشخاص | reachable | apiKey | People groups of the world with the fewest followers of Christ |
-| TL-6b6b45cc | [Katalis UK Company Enrichment](https://meetkatalis.com/apis) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Verified UK company profiles with an AI summary and accuracy score, from Companies House data |
 | TL-c1cf6515 | [Keybase](https://keybase.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-c4ee9547 | [Kikusernames.com](https://kikusernames.com/search) | أساسية | web | بوابة الأشخاص | reachable | — | Kik messenger username search |
 | TL-a0d9704e | [Knowem](http://www.knowem.com) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-9839e342 | [Kompass](http://www.kompass.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-227f8eab | [lampyre](https://lampyre.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-c82a0de2 | [lenso](https://lenso.ai/en) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-4e18f619 | [Linkook](https://github.com/JackJuly/linkook) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-75812499 | [list brand code name device](https://github.com/KHwang9883/MobileModels/tree/master/brands) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
 | TL-b609a289 | [LittleSis](https://littlesis.org/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-a3f569c6 | [Locate Family](https://www.locatefamily.com/removal2.html) | أساسية | web | بوابة الأشخاص | reachable | — | Request for remove your data from this site |
@@ -176,6 +177,7 @@
 | TL-339f2bf1 | [OPSEC 101](https://github.com/BushidoUK/Operational-Security-101) | أساسية | oss | بوابة الأشخاص | reachable | — | A repository of advice and guides to share with friends and family who are concerned about their safety during online activities and the security of their devic |
 | TL-d2361018 | [Orbis Directory](https://orbisdirectory.bvdinfo.com/version-2016121/OrbisDirectory/Companies) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-7e75380c | [OSINT Pimeyes](https://osint.pimeyes.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-7e693359 | [otinstaller](https://github.com/OSINTVerseHQ/OTinstaller) | أساسية | oss | بوابة الأشخاص | unchecked | — | install and run the open-source tools in this list by name (docs, 1.5-minute demo). |
 | TL-8d211d22 | [Overload Search](https://chrome.google.com/webstore/detail/overload-search-advanced/knihkdaajdhpjgeiadaefmjmpbnlojbg/related) | أساسية | web | بوابة الأشخاص | reachable | — | Advanced query builder in #Google with the possibilities: change the language and country of your search, disable safe search,disable personalization of search  |
 | TL-54c1b7fc | [Owler (R)](https://www.owler.com/corp) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-a685c501 | [PDDIKTI ID](https://pddikti.kemdikbud.go.id/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
@@ -225,6 +227,7 @@
 | TL-d0f2751e | [Search People Free](https://www.searchpeoplefree.com/opt-out) | أساسية | web | بوابة الأشخاص | restricted | — | Request for remove your data from this site |
 | TL-d2bf483c | [Searchable FCC ID Database](https://fccid.io/) | أساسية | web | بوابة الأشخاص | reachable | — | seacrh by FCC ID, Country, Date, Company name or Frequency ( in Mhz) |
 | TL-2981da23 | [SearchBug](http://www.searchbug.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
+| TL-69a8fc69 | [SearchIn](https://osintverse.com/searchin) | أساسية | web | بوابة الأشخاص | unchecked | — | — |
 | TL-38f37074 | [Sherlock Eye](https://sherlockeye.io/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-d2a9ed8f | [SimilarFans](https://similarfans.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | A tool to find OnlyFans profiles with many filters (by country, price, category, age, etc.). |
 | TL-3cda8d02 | [Skip Ease](http://www.skipease.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -259,6 +262,7 @@
 | TL-556e00f2 | [usa-people-search.com](https://www.usa-people-search.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-fa70653d | [User Sherlock](http://www.usersherlock.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-94dce29f | [user-scanner](https://github.com/kaifcodec/user-scanner/releases/tag/v1.1.0) | أساسية | oss | بوابة الأشخاص | reachable | — | — |
+| TL-42be6b5a | [user-scanner](https://github.com/kaifcodec/user-scanner) | أساسية | oss | بوابة الأشخاص | unchecked | — | — |
 | TL-29bf26ee | [Username Check](http://www.usernamecheck.com/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-4663d3e8 | [USSearch](http://www.ussearch.com/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-dce2726f | [UU PDP](https://peraturan.bpk.go.id/Details/229798/uu-no-27-tahun-2022) | أساسية | web | بوابة الأشخاص | restricted | — | <br>**Electronic Information and Transactions Law (UU ITE)** — Law Overview \| Requires a lawful basis for processing personal data (consent, contract, legal ob |
