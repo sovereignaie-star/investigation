@@ -56,11 +56,19 @@ const OFFICERS_URL = `${API}/company/03194697/officers?items_per_page=50`;
 const PSC_URL = `${API}/company/03194697/persons-with-significant-control?items_per_page=50`;
 const SEARCH_URL = `${API}/search/companies?q=ACME%20LIMITED&items_per_page=10`;
 
+/** Anchored, escaped patterns (the tr-005 pattern) — CodeQL flags plain URL strings on the
+ * RegExp|string match union, and a URL regex that is not anchored/escaped may over-match hosts. */
+const HOST = "https://api\\.company-information\\.service\\.gov\\.uk";
+const PROFILE_RE = new RegExp(`^${HOST}/company/03194697$`);
+const OFFICERS_RE = new RegExp(`^${HOST}/company/03194697/officers\\?items_per_page=50$`);
+const PSC_RE = new RegExp(`^${HOST}/company/03194697/persons-with-significant-control\\?items_per_page=50$`);
+const SEARCH_RE = new RegExp(`^${HOST}/search/companies\\?q=ACME%20LIMITED&items_per_page=10$`);
+
 function numberRoutes(): Array<{ match: RegExp | string; response: { status: number; body: string } }> {
   return [
-    { match: PROFILE_URL, response: { status: 200, body: PROFILE } },
-    { match: OFFICERS_URL, response: { status: 200, body: OFFICERS } },
-    { match: PSC_URL, response: { status: 200, body: PSC } },
+    { match: PROFILE_RE, response: { status: 200, body: PROFILE } },
+    { match: OFFICERS_RE, response: { status: 200, body: OFFICERS } },
+    { match: PSC_RE, response: { status: 200, body: PSC } },
   ];
 }
 
@@ -118,7 +126,7 @@ describe("TR-023 companies house", () => {
   });
 
   it("a name search yields registration numbers for the matches (1 request)", async () => {
-    const sim = createSimServer([{ match: SEARCH_URL, response: { status: 200, body: SEARCH } }]);
+    const sim = createSimServer([{ match: SEARCH_RE, response: { status: 200, body: SEARCH } }]);
     const result = await runTransform(companiesHouse, { transport: sim.transport, input: { name: "ACME LIMITED" } });
     expect(result.requestCount).toBe(1);
     expect(sim.requests[0].url).toBe(SEARCH_URL);
@@ -130,14 +138,14 @@ describe("TR-023 companies house", () => {
   });
 
   it("a 404 profile is a negative result: empty findings, no error", async () => {
-    const sim = createSimServer([{ match: PROFILE_URL, response: { status: 404, body: "{}" } }]);
+    const sim = createSimServer([{ match: PROFILE_RE, response: { status: 404, body: "{}" } }]);
     const result = await runTransform(companiesHouse, { transport: sim.transport, input: { company_number: "03194697" } });
     expect(result.requestCount).toBe(1);
     expect(result.output.findings).toEqual([]);
   });
 
   it("a 401 rejects the run (an auth error is never an empty success)", async () => {
-    const sim = createSimServer([{ match: PROFILE_URL, response: { status: 401, body: "{}" } }]);
+    const sim = createSimServer([{ match: PROFILE_RE, response: { status: 401, body: "{}" } }]);
     await expect(runTransform(companiesHouse, { transport: sim.transport, input: { company_number: "03194697" } })).rejects.toThrow(
       /rejected the key/,
     );
