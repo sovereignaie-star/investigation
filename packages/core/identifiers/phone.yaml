@@ -1142,3 +1142,29 @@
     negative:
       - +252612345678#
   sensitivity: normal
+- id: line_type
+  category: Phone
+  labels:
+    en: Phone Line Type
+    ar: نوع خط الهاتف
+  description: The class of a phone number per libphonenumber metadata (TR-036 local analysis)
+  icon: ☎️
+  color: green
+  patterns:
+    - ^(mobile|fixed_line|fixed_line_or_mobile|premium_rate|toll_free|shared_cost|voip|personal_number|pager|uan|voicemail)$
+  validator: null
+  examples:
+    positive:
+      - mobile
+      - fixed_line
+    negative:
+      - Mobile
+      - satellite
+  context:
+    keywords:
+      - line type
+      - number type
+      - telephony
+      - نوع خط
+    required: true
+  sensitivity: normal

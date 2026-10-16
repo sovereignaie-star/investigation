@@ -15,12 +15,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@ir/schema": "workspace:*",
+    "@ir/core": "workspace:*",
     "@ir/engine": "workspace:*",
+    "@ir/schema": "workspace:*",
     "@ir/transform-sandbox": "workspace:*",
     "esbuild": "catalog:",
-    "zod": "catalog:",
-    "@ir/core": "workspace:*"
+    "libphonenumber-js": "^1.13.15",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@ir/sim": "workspace:*",

@@ -350,6 +350,33 @@
     negative:
       - xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   sensitivity: normal
+- id: country_code
+  category: Network
+  labels:
+    en: Country Code
+    ar: رمز دولة
+  description: ISO 3166-1 alpha-2 country code (upper case)
+  icon: 🌐
+  color: blue
+  patterns:
+    - ^[A-Z]{2}$
+  validator: null
+  examples:
+    positive:
+      - SA
+      - US
+    negative:
+      - sa
+      - S1
+  context:
+    keywords:
+      - country
+      - countries
+      - nationality
+      - iso
+      - دولة
+    required: true
+  sensitivity: normal
 - id: geo_point
   category: Network
   labels:
