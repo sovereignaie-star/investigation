@@ -66,6 +66,10 @@
     "version": {
       "type": "string",
       "minLength": 1
+    },
+    "origin": {
+      "type": "string",
+      "enum": ["network", "sim", "replay"]
     }
   },
   "required": ["id", "sha256", "mime", "size", "blobRef", "fetchedAt", "request", "transformId", "version"]
