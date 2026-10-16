@@ -222,6 +222,8 @@
 | Reality Defender | كشف Deepfake | مدفوع | — | مرشح | — |
 | [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | استخراج بيانات الصور | مفتوح | TL-645c328d | مكدس المشروع | TR-031 |
 | [ExifReader](https://github.com/mattiasw/ExifReader) | تحليل بيانات EXIF/XMP/GPS للصور محليًا (TR-031) | مفتوح | TL-f6a3c4db | في الخارطة | TR-031 |
+| [sharp](https://github.com/lovell/sharp) | معالجة صور عالية الأداء ووصول لوحدات بكسل خام (TR-032 — dHash) | مفتوح | TL-4ad3b71d | في الخارطة | TR-032 |
+| [sharp-phash](https://github.com/btd/sharp-phash) | تجزئة إدراكية pHash فوق sharp (TR-032) | مفتوح | TL-3763d11c | في الخارطة | TR-032 |
 
 ### 11 محركات البحث عن الأصول التاريخية
 

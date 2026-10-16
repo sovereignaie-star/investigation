@@ -197,7 +197,12 @@
     "cat": "Radio",
     "desc": "Decoder for ISM band devices (sensors, meters) via SDR."
   },
-  { "name": "Gqrx", "url": "https://github.com/gqrx-sdr/gqrx", "cat": "Radio", "desc": "Software defined radio receiver." },
+  {
+    "name": "Gqrx",
+    "url": "https://github.com/gqrx-sdr/gqrx",
+    "cat": "Radio",
+    "desc": "Software defined radio receiver."
+  },
   {
     "name": "SDR++",
     "url": "https://github.com/AlexandreRouma/SDRPlusPlus",
@@ -258,7 +263,12 @@
     "cat": "Entity resolution",
     "desc": "Probabilistic record linkage at scale."
   },
-  { "name": "Zingg", "url": "https://github.com/zinggAI/zingg", "cat": "Entity resolution", "desc": "Machine-learning entity resolution." },
+  {
+    "name": "Zingg",
+    "url": "https://github.com/zinggAI/zingg",
+    "cat": "Entity resolution",
+    "desc": "Machine-learning entity resolution."
+  },
   {
     "name": "dedupe",
     "url": "https://github.com/dedupeio/dedupe",
@@ -307,7 +317,12 @@
     "cat": "Threat intel & malware",
     "desc": "Infostealer exposure lookups by domain or email."
   },
-  { "name": "Mosint", "url": "https://github.com/alpkeskin/mosint", "cat": "Email & phone", "desc": "Automated email OSINT tool." },
+  {
+    "name": "Mosint",
+    "url": "https://github.com/alpkeskin/mosint",
+    "cat": "Email & phone",
+    "desc": "Automated email OSINT tool."
+  },
   {
     "name": "DataSploit",
     "url": "https://github.com/DataSploit/datasploit",
@@ -422,12 +437,34 @@
     "cat": "Automation & collection frameworks",
     "desc": "Command-line JSON processor."
   },
-  { "name": "Privoxy", "url": "https://www.privoxy.org/", "cat": "Privacy", "desc": "Non-caching web proxy with filtering." },
-  { "name": "Tor Project", "url": "https://www.torproject.org/", "cat": "Dark web & Tor", "desc": "Tor network and Tor Browser." },
+  {
+    "name": "Privoxy",
+    "url": "https://www.privoxy.org/",
+    "cat": "Privacy",
+    "desc": "Non-caching web proxy with filtering."
+  },
+  {
+    "name": "Tor Project",
+    "url": "https://www.torproject.org/",
+    "cat": "Dark web & Tor",
+    "desc": "Tor network and Tor Browser."
+  },
   {
     "name": "ExifReader",
     "url": "https://github.com/mattiasw/ExifReader",
     "cat": "Images / Metadata",
     "desc": "JavaScript EXIF/XMP/GPS metadata parser for images (MPL-2.0; adopted by owner decision 2026-10-16 for TR-031)."
+  },
+  {
+    "name": "sharp",
+    "url": "https://github.com/lovell/sharp",
+    "cat": "Images / Metadata",
+    "desc": "High-performance image processing library (Apache-2.0; adopted by owner decision 2026-10-16 for TR-032 — raw pixel access for dHash)."
+  },
+  {
+    "name": "sharp-phash",
+    "url": "https://github.com/btd/sharp-phash",
+    "cat": "Images / Metadata",
+    "desc": "Perceptual hash (pHash) implementation on top of sharp (MIT; adopted by owner decision 2026-10-16 for TR-032)."
   }
 ]
