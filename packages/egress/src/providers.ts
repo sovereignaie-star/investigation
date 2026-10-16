@@ -23,6 +23,7 @@
  *   documented in docs/security/KEY_TESTS.md (the provider matrix).
  */
 import { urlscan } from "../providers/urlscan.ts";
+import { abusech } from "../providers/abusech.ts";
 import type { ProviderQueryAllow } from "./egress.ts";
 
 export interface ProviderRegistryEntry {
@@ -43,7 +44,7 @@ export interface ProviderRegistryEntry {
  * query parameter — policy D-031/P2-016 forbids that, so they have no entry and their keyed
  * network runs are refused (see docs/security/KEY_TESTS.md for the full matrix).
  */
-export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [urlscan];
+export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [urlscan, abusech];
 
 /** The registry entry a manifest's declared secret name binds to, if any. */
 export function registryEntryForSecret(secretName: string): ProviderRegistryEntry | undefined {

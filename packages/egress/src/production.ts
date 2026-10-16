@@ -13,6 +13,7 @@
  * Returning a decision (not throwing) lets callers report precisely why the network is off.
  */
 import { isIP } from "node:net";
+import { POST_POLICIES } from "../providers/post-policies.ts";
 import {
   createEgressGateway,
   type ProviderQueryAllow,
@@ -33,17 +34,12 @@ export interface ProductionEgressConfig {
   readonly auditSink?: EgressAuditSink;
   readonly limits?: EgressLimits;
   /**
-   * ADR-27: the pinned OAuth2 token host(s) a client-credentials POST may target. Defaults to
-   * `DEFAULT_OAUTH2_TOKEN_HOSTS` (currently the OpenSky auth host — TR-040). Changing or adding a
-   * host here is an ADR-level decision, not a config tweak.
+   * ADR-30: the unified POST policy table. Defaults to the ADR-30 registry data
+   * (POST_POLICIES — packages/egress/providers/post-policies.ts). Changing or adding a row
+   * is an ADR-30 review (a table row + a small PR); the host/path pins of the migrated
+   * ADR-27/28/29 exceptions now live in that table, not here.
    */
-  readonly oauth2AuthHosts?: readonly string[];
-  /**
-   * ADR-28: the pinned OpenSanctions screening host(s) a /match POST may target. Defaults to
-   * `DEFAULT_SCREENING_POST_HOSTS` (currently api.opensanctions.org — TR-025). Changing or
-   * adding a host here is an ADR-level decision, not a config tweak.
-   */
-  readonly screeningPostHosts?: readonly string[];
+  readonly postPolicies?: readonly import("./post-policy.ts").PostPolicy[];
   /**
    * Replace the real resolver / transport. ONLY for deterministic tests of the composition itself; the opt-in and
    * the allow-list are enforced exactly as in production.
@@ -100,14 +96,6 @@ function providerRegistryConfig(cfg: ProductionEgressConfig): {
  * ADR-27: the default pinned OAuth2 token host(s). Currently the OpenSky Network auth realm (TR-040).
  * Any change or addition to this list is an ADR-level decision (ADR-27 condition 4).
  */
-export const DEFAULT_OAUTH2_TOKEN_HOSTS: readonly string[] = ["auth.opensky-network.org"];
-
-/**
- * ADR-28: the default pinned OpenSanctions screening host(s). Currently the OpenSanctions API
- * (TR-025; the path is pinned separately to /match/default). Any change or addition to this
- * list is an ADR-level decision (ADR-28 condition 5).
- */
-export const DEFAULT_SCREENING_POST_HOSTS: readonly string[] = ["api.opensanctions.org"];
 
 /** Validates one allow-list entry: a DNS hostname with at least two labels, no IP, wildcard, port or path. */
 export function validAllowedHost(entry: string): string | null {
@@ -137,8 +125,7 @@ export function createProductionEgress(cfg: ProductionEgressConfig): ProductionE
     resolver: cfg.resolver ?? createSystemResolver(),
     transport: cfg.transport ?? createNodeTransport(),
     allowedHosts: hosts,
-    oauth2AuthHosts: cfg.oauth2AuthHosts ?? DEFAULT_OAUTH2_TOKEN_HOSTS,
-    screeningPostHosts: cfg.screeningPostHosts ?? DEFAULT_SCREENING_POST_HOSTS,
+    postPolicies: cfg.postPolicies ?? POST_POLICIES,
     ...(cfg.limits ? { limits: cfg.limits } : {}),
     ...(cfg.auditSink ? { auditSink: cfg.auditSink } : {}),
     // P2-016: the provider registry for secret-bearing runs — hosts + paths together or neither

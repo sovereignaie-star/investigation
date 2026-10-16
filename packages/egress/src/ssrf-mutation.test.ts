@@ -90,7 +90,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "request content not inspected (sends taken on trust)",
     file: "egress.ts",
-    from: "const contentErr = checkContent(req, postHosts.screening);",
+    from: "const contentErr = checkContent(req, postPolicies);",
     to: "const contentErr = null as EgressResult | null;",
     detectedBy: ["T-SEC-SSRF-043"],
   },
@@ -405,7 +405,7 @@ const TIMING_MUTATIONS: readonly Mutation[] = [
 
 async function loadMutant(m: Mutation | null): Promise<Factory> {
   const dir = fs.mkdtempSync(path.join(ROOT, "m-"));
-  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts", "byte-budget.ts"]) {
+  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts", "byte-budget.ts", "post-policy.ts"]) {
     let src = fs.readFileSync(path.join(HERE, f), "utf8");
     if (m && m.file === f) {
       expect(src.includes(m.from), `mutation anchor for "${m.name}" not found in ${f}`).toBe(true);

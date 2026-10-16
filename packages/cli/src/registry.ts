@@ -35,6 +35,7 @@ import {
   ofacSdn,
   unScConsolidated,
   urlscanSearch,
+  threatfoxSearch,
   euSanctions,
   companiesHouse,
   opensanctions,
@@ -102,6 +103,12 @@ const ipv6Input = (ip: string) => {
 const asnInput = (asn: string) => {
   if (!isAsn(asn)) throw new Error(`"${asn}" is not an AS number`);
   return { ip: asn };
+};
+/** P2-026: a file hash (MD5/SHA256) for TR-047 — validated by pattern, then passed through. */
+const hashInput = (raw: string) => {
+  const value = raw.trim().toLowerCase();
+  if (!/^[a-f0-9]{32}$|^[a-f0-9]{64}$/.test(value)) throw new Error(`"${raw}" is not an MD5 or SHA256 hash`);
+  return { hash: value };
 };
 const httpUrlInput = (url: string) => {
   let u: URL;
@@ -239,6 +246,19 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // the search request URL carries the subject's URL host as the searched domain (q=domain:...)
     sends: ["url", "domain"],
     hosts: ["urlscan.io"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (ADR-29, owner decision 2026-10-17): TR-047 — the ThreatFox IOC search. The POST is
+    // the ADR-29 narrow exception: the pinned host threatfox-api.abuse.ch, the exact path
+    // /api/v1/, the fixed body {query: search_ioc, search_term: the IOC}. The key travels in the
+    // Auth-Key header only (injected by the egress adapter from the vault entry "threatfox"),
+    // never the URL, never the body; the body and the response never enter evidence or audit.
+    transform: threatfoxSearch,
+    module: mod("tr-047-threatfox.ts"),
+    subjects: { ip: hashInput, domain: domainInput, url: httpUrlInput, hash: hashInput },
+    sends: ["ip", "domain", "url", "hash"],
+    hosts: ["threatfox-api.abuse.ch"],
     pageFetch: false,
   },
   {
