@@ -1,8 +1,8 @@
 # الجنائيات الرقمية والاستجابة للحوادث (Forensics & incident response)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **347**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **345**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -143,7 +143,7 @@
 | TL-4572b18e | [Hoarder](https://github.com/muteb/Hoarder) | داعمة | oss | — | restricted | — | Collecting the most valuable artifacts for forensics or incident response investigations. |
 | TL-352c9c51 | [How to Investigate Like a Rockstar](https://books2read.com/u/4jDWoZ) | داعمة | web | — | reachable | — | Live a real crisis to master the secrets of forensic analysis, Sparc Flow, 2017 |
 | TL-67c41d8e | [IBM](https://www.ibm.com/products/qradar-siem) | أساسية | web | — | reachable | — | — |
-| TL-2f9e70b6 | [IDA](https://hex-rays.com/ida-free/) | أساسية | web | — | reachable | — | Disassembler, free edition. |
+| TL-2f9e70b6 | [IDA](https://hex-rays.com/ida-free/) | أساسية | web | — | reachable | — | — |
 | TL-7b886e28 | [IE10Analyzer](https://github.com/moaistory/IE10Analyzer) | داعمة | oss | — | restricted | — | This tool can parse normal records and recover deleted records in WebCacheV01.dat. |
 | TL-0a165f65 | [iLEAPP](https://github.com/abrignoni/iLEAPP) | داعمة | oss | — | restricted | — | An iOS Logs, Events, And Plists Parser |
 | TL-bcb64c1a | [Image Forensic (Ghiro Online)](http://www.imageforensic.org/) | أساسية | web | — | unreachable | — | — |
@@ -173,7 +173,6 @@
 | TL-6d583419 | [Knockknock](https://objective-see.com/products/knockknock.html) | داعمة | web | — | reachable | — | Displays persistent items(scripts, commands, binaries, etc.) that are set to execute automatically on OSX. |
 | TL-419b1ecc | [KontragentPro](https://kontragentpro.ru/api/v2/docs) | داعمة | api | — | reachable | No | Russian company data from state registers by INN or OGRN: profile, finances, timeline |
 | TL-ed20ca62 | [LastActivityView](https://www.nirsoft.net/utils/computer_activity_view.html) | داعمة | web | — | reachable | — | LastActivityView by Nirsoftis a tool for Windows operating system that collects information from various sources on a running system, and displays a log of acti |
-| TL-d7cd0f4f | [Laya Decision Gateway](https://laya.harshad.eu.org) | داعمة | api | — | unchecked | apiKey | Sub-35ms AI gateway for prompt injection defense, support ticket triage & content moderation |
 | TL-32e2d3d3 | [libewf](https://github.com/libyal/libewf) | داعمة | oss | — | restricted | — | Libewf is a library and some tools to access the Expert Witness Compression Format (EWF, E01) |
 | TL-311f555b | [libimobiledevice](https://github.com/libimobiledevice/libimobiledevice) | داعمة | oss | — | reachable | — | Protocol library for iOS devices. |
 | TL-61c9c46c | [libvips](https://github.com/libvips/libvips) | داعمة | oss | — | restricted | — | A fast image processing library with low memory needs. |
@@ -184,8 +183,9 @@
 | TL-c74ae4f2 | [Linux Expl0rer](https://github.com/intezer/linux-explorer) | داعمة | oss | — | reachable | — | Easy-to-use live forensics toolbox for Linux endpoints written in Python & Flask |
 | TL-ffc5d599 | [Linux Memory Grabber](https://github.com/halpomeranz/lmg/) | داعمة | oss | — | restricted | — | Script for dumping Linux memory and creating Volatility profiles. |
 | TL-98980d05 | [LiquiLens](https://liquilens.in/developers/) | داعمة | api | — | reachable | No | Public-record bank and lender failure-risk evidence |
-| TL-3b9d4739 | [List and guides about tools forensic](https://ericzimmerman.github.io/#!index.md) | أساسية | web | — | reachable | — | Windows forensic artifact parsers. |
+| TL-3b9d4739 | [List and guides about tools forensic](https://ericzimmerman.github.io/#!index.md) | أساسية | web | — | reachable | — | — |
 | TL-11b019c7 | [List file signature](https://filesig.search.org/) | أساسية | web | — | reachable | — | — |
+| TL-9d66e1fb | [Live Response Collection](https://www.brimorlabs.com/tools/) | داعمة | web | — | unreachable | — | Automated tool that collects volatile data from Windows, OSX, and \*nix based operating systems. |
 | TL-dd21ce51 | [LiveATC](https://www.liveatc.net/) | أساسية | web | — | restricted | — | Archive of audio recordings between pilots and dispatchers. Useful for investigating incidents and for foreign language comprehension skills (if you learn to un |
 | TL-451625eb | [Log Parser Lizard](https://lizard-labs.com/log_parser_lizard.aspx) | داعمة | web | — | reachable | — | Execute SQL queries against structured log data: server logs, Windows Events, file system, Active Directory, log4net logs, comma/tab separated text, XML or JSON |
 | TL-69d5bb22 | [Logdissect](https://github.com/dogoncouch/logdissect) | داعمة | oss | — | restricted | — | CLI utility and Python API for analyzing log files and other data. |
@@ -259,7 +259,7 @@
 | TL-5b4d9d36 | [PSRecon](https://github.com/gfoss/PSRecon/) | داعمة | oss | — | restricted | — | PSRecon gathers data from a remote Windows host using PowerShell (v2 or later), organizes the data into folders, hashes all extracted data, hashes PowerShell an |
 | TL-335d95fd | [pyle38](https://github.com/iwpnd/pyle38) | داعمة | oss | — | restricted | — | Asynchronous Client for the worlds fastest in-memory geo-database Tile38 |
 | TL-d16b284b | [python-evt](https://github.com/williballenthin/python-evt) | داعمة | oss | — | restricted | — | Pure Python parser for classic Windows Event Log files (.evt) |
-| TL-5ee858cd | [Queimadas INPE](https://terrabrasilis.dpi.inpe.br/queimadas/portal/) | داعمة | api | — | unchecked | No | Access to heat focus data (probable wildfire) |
+| TL-6dc0eb9c | [Queimadas INPE](https://queimadas.dgi.inpe.br/queimadas/dados-abertos/) | داعمة | api | — | unreachable | No | Access to heat focus data (probable wildfire) |
 | TL-775f0d39 | [RaQet](https://raqet.github.io/) | داعمة | web | — | reachable | — | Unconventional remote acquisition and triaging tool that allows triage a disk of a remote computer (client) that is restarted with a purposely built forensic op |
 | TL-b711d8f3 | [RealUptime](https://realuptime.io/docs/api) | داعمة | api | — | reachable | apiKey | Manage uptime monitors, heartbeat checks, incidents and status pages with an API key |
 | TL-abd93845 | [recoverit](https://recoverit.wondershare.net/ad/data-recovery.html?gad_source=1) | أساسية | web | — | reachable | — | — |
@@ -283,7 +283,6 @@
 | TL-ee7b4e55 | [SANS Investigative Forensics Toolkit (sift)](https://github.com/teamdfir/sift) | داعمة | oss | — | reachable | — | Linux distribution for forensic analysis |
 | TL-2ad96938 | [Sealed Rose](https://sealedrose.com/verify-video) | داعمة | api | — | reachable | apiKey | AI media forensics and synthetic content verification for video, audio, image, and text |
 | TL-4d729af7 | [SEARCH Investigative and Forensic Toolbar](https://chrome.google.com/webstore/detail/search-investigative-and/idgjbdfnngdcenpahfalcamfmcjdfbcj/related) | أساسية | web | — | reachable | — | extension with quick access to dozens of online tools for osint, forensics and othef investigations goals. |
-| TL-1712732e | [Seiche](https://seiche.info/developers) | داعمة | api | — | unchecked | No | Free public funding, FX and capital-market evidence with source clocks |
 | TL-190f22c9 | [sentle](https://github.com/cmosig/sentle) | داعمة | oss | — | restricted | — | Sentinel-1 & Sentinel-2 data cubes at large scale (bigger-than-memory) on any machine with integrated cloud detection, snow masking, harmonization, merging, and |
 | TL-5eebb98d | [ShareX (T)](https://getsharex.com/) | أساسية | web | — | reachable | — | — |
 | TL-bde59d37 | [Sherloq](http://github.com/GuidoBartoli/sherloq) | أساسية | oss | — | restricted | — | open source image #forensic toolset made by profesional photograph Guido Bartoli |
@@ -296,7 +295,6 @@
 | TL-5acbe721 | [Sleuthkit](https://www.sleuthkit.org/sleuthkit/) | أساسية | web | — | reachable | — | — |
 | TL-5d8ffb0b | [sleuthkit](https://www.sleuthkit.org/) | أساسية | web | — | reachable | — | Unix and Windows based tool which helps in forensic analysis of computers. It comes with various tools which helps in digital forensics. These tools help in ana |
 | TL-0b25638d | [Snapper (T)](https://github.com/dxa4481/Snapper) | أساسية | oss | — | restricted | — | — |
-| TL-552a11b0 | [SolidPing](https://docs.solidping.io/docs/api) | داعمة | api | — | unchecked | apiKey | Create and run uptime checks, read results and incidents, manage status pages, with a free tier |
 | TL-6248f331 | [Spatial](https://sourceforge.net/projects/spatial/) | داعمة | web | — | restricted | — | Spatial is a generic header-only C++ library providing multi-dimensional in-memory containers, iterators and functionals. |
 | TL-d1979eba | [SPECTR3](https://github.com/alpine-sec/SPECTR3) | داعمة | oss | — | restricted | — | Acquire, triage and investigate remote evidence via portable iSCSI readonly access |
 | TL-1bda6d59 | [Squey](https://squey.org) | داعمة | web | — | reachable | — | Logs/PCAP visualization software designed to detect anomalies and weak signals in large amounts of data. |

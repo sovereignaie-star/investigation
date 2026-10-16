@@ -1,18 +1,18 @@
 # العملات الرقمية وسلاسل الكتل (Crypto & blockchain)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **253**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **248**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
-| TL-7626009a | [0x](https://docs.0x.org/) | داعمة | api | — | unchecked | No | API for querying token and pool stats across various liquidity pools |
+| TL-2e01d69d | [0x](https://0x.org/api) | داعمة | api | — | unreachable | No | API for querying token and pool stats across various liquidity pools |
 | TL-b93315ab | [1inch](https://business.1inch.com/portal/documentation) | داعمة | api | — | reachable | apiKey | API for querying decentralize exchange |
 | TL-24d1b0b3 | [3pxl](https://3xpl.com/bitcoin) | أساسية | web | — | restricted | — | — |
 | TL-26770c02 | [A TON of Privacy](https://github.com/aaarghhh/a_TON_of_privacy) | أساسية | oss | بوابة الأشخاص | restricted | — | Tool for OSINT investigations on TON NFTs. Search info (balance, scam status etc) by Telegram nickname, phone number or domain. |
 | TL-0e4dacbf | [AboutDFIR – The Definitive Compendium Project](https://aboutdfir.com) | داعمة | web | — | reachable | — | Collection of forensic resources for learning and research. Offers lists of certifications, books, blogs, challenges and more |
 | TL-744b08d6 | [ade4](https://cran.r-project.org/web/packages/ade4/index.html) | داعمة | web | — | reachable | — | Tools for multivariate data analysis. Several methods are provided for the analysis (i.e., ordination) of one-table (e.g., principal component analysis, corresp |
-| TL-928b5d69 | [Alchemy Ethereum](https://www.alchemy.com/docs/) | داعمة | api | — | unchecked | apiKey | Ethereum Node-as-a-Service Provider |
+| TL-76db9ba9 | [Alchemy Ethereum](https://docs.alchemy.com/alchemy/) | داعمة | api | — | unreachable | apiKey | Ethereum Node-as-a-Service Provider |
 | TL-d8fbef7d | [Alpha (Mossland)](https://alpha.moss.land/developers) | داعمة | api | — | reachable | No | Korean crypto channel stance + RAG Q&A + canonical entity/topic/event store |
 | TL-f84b858d | [Arkham Intelligence](https://intel.arkm.com/) | أساسية | web | — | reachable | — | — |
 | TL-96c12999 | [Autoregex](https://www.autoregex.xyz/) | أساسية | web | — | reachable | — | AI regular expressions generator. Generates a pattern by verbal description. It does not work perfectly (see picture with bitcoin wallet, there is an error, it  |
@@ -35,7 +35,7 @@
 | TL-0b1d123b | [bitinfocharts](https://bitinfocharts.com/) | أساسية | web | — | reachable | — | — |
 | TL-7a8a0303 | [Bitmex](https://www.bitmex.com/app/apiOverview) | داعمة | api | — | reachable | apiKey | Real-Time Cryptocurrency derivatives trading platform based in Hong Kong |
 | TL-2191280e | [BitPanda](https://developers.bitpanda.com) | داعمة | api | — | reachable | apiKey | Cryptocurrency Information |
-| TL-1284e997 | [bitquery](https://www.bitquery.io/) | أساسية | web | — | reachable | — | Multi-chain blockchain data APIs (GraphQL). |
+| TL-1284e997 | [bitquery](https://www.bitquery.io/) | أساسية | web | — | reachable | — | — |
 | TL-c2b47216 | [Bitquery](https://graphql.bitquery.io/ide) | داعمة | api | — | reachable | apiKey | Onchain GraphQL APIs & DEX APIs |
 | TL-ba578907 | [Bitquery Explorer](https://explorer.bitquery.io/) | أساسية | web | — | restricted | — | — |
 | TL-2b27a9be | [BitRef](https://bitref.com/) | أساسية | web | — | restricted | — | — |
@@ -68,7 +68,7 @@
 | TL-d6dc21b8 | [BTCGlobe](https://btcglobe.live/join#makers) | داعمة | api | — | reachable | No | Bitcoin height, fees, mempool and peer data served live from two self-hosted nodes |
 | TL-18317a73 | [btcnode.uk](https://btcnode.uk) | داعمة | api | — | reachable | No | Bitcoin blockchain data, fees, mempool, SEC insider trades, Reddit sentiment. x402 micropayments for paid endpoints. |
 | TL-fda8efa7 | [BtcTurk](https://docs.btcturk.com/) | داعمة | api | — | reachable | apiKey | Real-time cryptocurrency data, graphs and API that allows buy&sell |
-| TL-d7ed37d5 | [Bybit](https://www.bybit.com/docs/v5/introduction) | داعمة | api | — | unchecked | apiKey | Cryptocurrency data feed and algorithmic trading |
+| TL-e1ab36bb | [Bybit](https://bybit-exchange.github.io/docs/linear/#t-introduction) | داعمة | api | — | unreachable | apiKey | Cryptocurrency data feed and algorithmic trading |
 | TL-5694ed46 | [CakeFuzzer](https://github.com/Zigrin-Security/CakeFuzzer) | داعمة | oss | — | restricted | — | The ultimate web application security testing tool for CakePHP-based web applications. CakeFuzzer employs a predefined set of attacks that are randomly modified |
 | TL-684fbd8b | [Cek Nama Rekening Bank/e-Wallet Indonesia](https://cekrekening.github.io/) | أساسية | web | — | unreachable | — | — |
 | TL-33db6cff | [Chain Radar](https://chainradar.com) | أساسية | web | — | unreachable | — | — |
@@ -88,12 +88,11 @@
 | TL-ebfde3ed | [CoinGecko](http://www.coingecko.com/api) | داعمة | api | — | reachable | No | Cryptocurrency Price, Market, and Developer/Social Data |
 | TL-af3aec06 | [Coinigy](https://coinigy.docs.apiary.io) | داعمة | api | — | reachable | apiKey | Interacting with Coinigy Accounts and Exchange Directly |
 | TL-081bc61f | [Coinlayer](https://coinlayer.com?utm_source=Github&utm_medium=Referral&utm_campaign=Public-apis-repo-Best-sellers) | داعمة | api | — | reachable | apiKey | Real-time Crypto Currency Exchange Rates |
-| TL-ab0c68c0 | [Coinlib](https://coinlib.io/) | داعمة | api | — | unchecked | apiKey | Crypto Currency Prices |
+| TL-626852e9 | [Coinlib](https://coinlib.io/apidocs) | داعمة | api | — | unreachable | apiKey | Crypto Currency Prices |
 | TL-d342c2b0 | [CoinLobster](https://coinlobster.com/developers) | داعمة | api | — | reachable | No | Live executed whale trades across 15 exchanges and on-chain DEX with an unusualness radar |
 | TL-bba2493e | [Coinlore](https://www.coinlore.com/cryptocurrency-data-api) | داعمة | api | — | reachable | No | Cryptocurrencies prices, volume and more |
 | TL-56e4285a | [coinmarketcap](https://coinmarketcap.com/) | أساسية | web | — | reachable | — | — |
 | TL-03ad36c4 | [CoinMarketCap](https://coinmarketcap.com/api/) | داعمة | api | — | reachable | apiKey | Cryptocurrencies Prices |
-| TL-5626ee3f | [Coinmico](https://docs.coinmico.com) | داعمة | api | — | unchecked | apiKey | Crypto prices, volume and liquidity measured from real trades on 50+ exchanges and DEXs |
 | TL-c001e371 | [CoinNudge](https://coinnudge.site/data/api-docs) | داعمة | api | — | reachable | apiKey | Current crypto market breadth, funding and open-interest research datasets |
 | TL-089f1c0f | [Coinpaprika](https://api.coinpaprika.com) | داعمة | api | — | reachable | No | Cryptocurrencies prices, volume and more |
 | TL-baee5448 | [CoinRanking](https://developers.coinranking.com/api/documentation) | داعمة | api | — | reachable | apiKey | Live Cryptocurrency data |
@@ -104,10 +103,9 @@
 | TL-307d2770 | [CompliAPI](https://docs.compliapi.com) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Screen crypto addresses, emails, websites, IDs and countries against OFAC, EU, UK sanctions lists |
 | TL-4b3aa1bf | [CorpStacking](https://www.corpstacking.com/feed.json) | داعمة | api | — | reachable | No | Corporate, government and ETF Bitcoin, Ethereum and Solana treasury disclosures |
 | TL-c58b6cd8 | [Cosma R. Shalizi’s Notebooks](http://bactra.org/notebooks) | داعمة | web | — | reachable | — | on network-related topics, definitely worth listing in (selective) detail: |
-| TL-f4a7f12e | [Covalent](https://www.covalenthq.com/docs/) | داعمة | api | — | unchecked | apiKey | Multi-blockchain data aggregator platform |
+| TL-9f597e5e | [Covalent](https://www.covalenthq.com/docs/api/) | داعمة | api | — | unreachable | apiKey | Multi-blockchain data aggregator platform |
 | TL-fb64b11e | [CryptAPI](https://docs.cryptapi.io/) | داعمة | api | — | reachable | No | Cryptocurrency Payment Processor |
 | TL-6023c0ae | [CryptingUp](https://www.cryptingup.com/apidoc/#introduction) | داعمة | api | — | reachable | No | Cryptocurrency data |
-| TL-cbe8a88f | [Crypto Vision](https://cryptocurrency.cv/developers) | داعمة | api | — | unchecked | No | Free crypto news aggregator with market context, JSON REST and RSS |
 | TL-f328b832 | [CryptoCompare](https://www.cryptocompare.com/api#) | داعمة | api | — | restricted | No | Cryptocurrencies Comparison |
 | TL-905c235e | [Cryptocurrency alerting](https://cryptocurrencyalerting.com/) | أساسية | web | — | reachable | — | track spending and deposits in Bitcoin and Ethereum wallets |
 | TL-b6accb6a | [Cryptocurrency Payment Bitcoin](https://bitcoin.org/en/) | أساسية | web | — | reachable | — | — |
@@ -127,8 +125,6 @@
 | TL-9e80d886 | [DefiLlama](https://defillama.com/) | أساسية | web | — | reachable | — | — |
 | TL-e9580ca8 | [DefiLlama](https://defillama.com/docs/api) | داعمة | api | — | reachable | No | Open and transparent DeFi data, TVL, coin prices, volumes, and yields |
 | TL-816d6a5a | [Definition of Web Archivability](https://nullhandle.org/web-archivability/index.html) | أساسية | web | — | reachable | — | This describes the ease with which web content can be preserved. (Archived version from the Stanford Libraries) |
-| TL-1d250e21 | [Degenscan Intel](https://intel.degenscan.io/carry) | داعمة | api | — | unchecked | apiKey | Hyperliquid funding on every dex (HIP-3 incl.), cross-dex spreads, event feed; free trial key |
-| TL-5b339211 | [Degenscan Intel Macro](https://intel.degenscan.io/docs) | داعمة | api | — | unchecked | apiKey | U.S. Treasury auctions, stablecoin supply, Brazil crypto-dollar premium vs BCB PTAX; free trial key |
 | TL-71d5518e | [dexscreener](https://dexscreener.com/) | أساسية | web | — | restricted | — | — |
 | TL-54809e88 | [Dudelytics](https://dudelytics.com/en/dpmi/data/) | داعمة | api | — | reachable | No | Productive crypto indices, daily benchmarks, sector indices and market-stress data |
 | TL-134e856d | [Dune Analytics](https://dune.com/) | أساسية | web | — | reachable | — | — |
@@ -202,7 +198,7 @@
 | TL-d40c5740 | [OPSEC Roadmap](https://github.com/OffcierCia/Crypto-OpSec-SelfGuard-RoadMap) | أساسية | oss | — | reachable | — | The best DeFi, Blockchain and crypto-related OpSec researches and data terminals |
 | TL-d662bd63 | [Orbit (T)](https://github.com/s0md3v/Orbit) | أساسية | oss | — | restricted | — | — |
 | TL-107492f8 | [OSINTTracker](https://app.osintracker.com/) | أساسية | web | بوابة الأشخاص | reachable | — | A simple and free online tool to visualize investigations and collect data about different entry points (domains, email addresses, crypto wallet numbers) using  |
-| TL-35f53db7 | [OXT.me](https://oxt.me/) | أساسية | web | — | unchecked | — | — |
+| TL-b8b4d421 | [OwlBot](https://owlbot.info/) | داعمة | api | — | unreachable | apiKey | Definitions with example sentence and photo if available |
 | TL-b5feaad7 | [Poloniex](https://docs.poloniex.com) | داعمة | api | — | reachable | apiKey | US based digital asset exchange |
 | TL-cfb373ed | [potential](https://github.com/riatelab/potential) | داعمة | oss | — | restricted | — | An R package to compute the potential model as defined by Stewart (1941). |
 | TL-9af37fad | [Presearch.org](https://presearch.org/) | أساسية | web | — | unreachable | — | privately decentralized search engine, powered by #blockchain technology |
@@ -214,11 +210,11 @@
 | TL-1c273303 | [rooted](https://rooted.wtf/) | أساسية | web | — | reachable | — | Onion links for Crypto domain |
 | TL-3478d65a | [scamsearch](https://www.scamsearch.io/) | أساسية | web | بوابة الأشخاص | reachable | — | Global Scam Database Search by Profile Picture, Email, Username, Pseudo Name, Phone Number, crypto address or website. |
 | TL-7b5420f8 | [ScriptMasterLabs MCP](https://mcp-x402.onrender.com) | داعمة | api | — | reachable | apiKey | Model Context Protocol server with web search, social search & LLM chat paid via x402 |
+| TL-081b1f25 | [ScriptMasterLabs x402](https://acp-x402-scriptmasterlabs.onrender.com) | داعمة | api | — | unreachable | apiKey | 100+ SEC, DeFi, crypto, and macro endpoints for AI agents via x402 micropayments |
 | TL-db26135f | [search3](https://search3.com/) | أساسية | web | — | unreachable | — | New privacy search engine (no trackers + just a little bit of ads). With NFT search tab and cryptocurrencies realtime info tab |
 | TL-3b0943bc | [Secret Key Cryptography](https://www.manning.com/books/secret-key-cryptography) | داعمة | web | — | reachable | — | A book about cryptographic techniques and Secret Key methods. (early access, published continuously, final release Summer 2022) |
 | TL-9e0c3db8 | [Security Checklist by OWASP](https://owasp.org/www-project-application-security-verification-standard/) | داعمة | web | — | reachable | — | A checklist by OWASP for testing web applications based on assurance level. Covers multiple topics like Architecture, IAM, Sanitization, Cryptography and Secure |
 | TL-8ebb9209 | [Self-Sovereign Identity](https://www.manning.com/books/self-sovereign-identity) | داعمة | web | — | reachable | — | A book about how SSI empowers us to receive digitally-signed credentials, store them in private wallets, and securely prove our online identities. (early access |
-| TL-8a892aef | [Shumi](https://docs.shumi.ai/api-reference/introduction) | داعمة | api | — | unchecked | apiKey | Crypto market data: prices, trends, funding rates, sentiment, narratives and market regime |
 | TL-9dde20d0 | [SnapVX](https://github.com/snap-stanford/snapvx) | داعمة | oss | — | restricted | — | A convex optimization solver for problems defined on a graph. |
 | TL-f3b90a5e | [Solana JSON RPC](https://docs.solana.com/developing/clients/jsonrpc-api) | داعمة | api | — | reachable | No | Provides various endpoints to interact with the Solana Blockchain |
 | TL-55d706d7 | [SoloLuck](https://sololuck.io/api) | داعمة | api | بوابة الأشخاص | reachable | No | Bitcoin solo mining pool stats, per-address miner stats and an open dataset of solo-mined blocks |
@@ -250,7 +246,6 @@
 | TL-b09ff8ed | [Watchdata](https://docs.watchdata.io) | داعمة | api | — | reachable | apiKey | Provide simple and reliable API access to Ethereum blockchain |
 | TL-02d00f1f | [web3 username search](https://app.ens.domains/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-b1f87f2a | [Whale Alert](https://whale-alert.io/) | داعمة | web | — | reachable | — | Large blockchain transaction tracking and alerts across chains. |
-| TL-44377d49 | [WhiteBIT](https://docs.whitebit.com) | داعمة | api | — | unchecked | No | European cryptocurrency exchange |
 | TL-431cc46a | [Words](https://www.wordsapi.com/docs/) | داعمة | api | — | reachable | apiKey | Definitions and synonyms for more than 150,000 words |
 | TL-7e35e2bc | [WordSoHard](https://wordsohard.com/api) | داعمة | api | — | reachable | No | Word definitions with Scrabble validity and tile score in one call, built for word games |
 | TL-41dd9bb7 | [XMR SCAN](https://xmrscan.org/) | أساسية | web | — | reachable | — | — |

@@ -1,8 +1,8 @@
 # البريد الإلكتروني والهاتف (Email & phone)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **345**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **346**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -38,6 +38,7 @@
 | TL-436c82b3 | [CALL APP](https://callapp.com/app-features) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-d8932daa | [call Second Phone Number](https://www.call.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-eabbe40f | [Caller Smart](https://www.callersmart.com/opt-out) | أساسية | web | بوابة الأشخاص | reachable | — | Request for remove your data from this site |
+| TL-b5257e71 | [CallerID Test](https://calleridtest.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-0e252016 | [Ceebydith HLR Lookup](https://ceebydith.com/cek-hlr-lokasi-hp.html) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-798fd552 | [Cell Id Lookup](https://www.reskrim.com/cek.php) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-96461a16 | [cellphonetrackers wifi tracker](https://cellphonetrackers.org/gsm/wifi-tracker.php) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -218,7 +219,7 @@
 | TL-7903b8cf | [oathnet](https://oathnet.org/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-1f41ab2e | [Oh365UserFinder](https://github.com/dievus/Oh365UserFinder) | أساسية | oss | بوابة الأشخاص | restricted | — | A simple tool that shows if an #Office365 account is tied to a specific email address. It's possible to check an entire list of emails from a text file at once. |
 | TL-afe2cf4c | [Old Device or Phone](https://www.mobilephonemuseum.com/catalogue) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-6afa0f46 | [OneSignal](https://developers.onesignal.com/) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Self-serve customer engagement solution for Push Notifications, Email, SMS & In-App |
+| TL-14cdaa2c | [OneSignal](https://documentation.onesignal.com/docs/onesignal-api) | داعمة | api | بوابة الأشخاص | unreachable | apiKey | Self-serve customer engagement solution for Push Notifications, Email, SMS & In-App |
 | TL-58718e82 | [Online SMS](https://online-sms.org/) | أساسية | web | بوابة الأشخاص | unreachable | — | — |
 | TL-992f0738 | [Open Cnam](https://www.opencnam.com/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-e193676b | [OpenCNAM](https://docs.maltego.com/support/solutions/articles/15000045282-maltego-opencnam-transforms) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -236,6 +237,7 @@
 | TL-94154650 | [Phone Burner](https://www.phoneburner.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-877dceb9 | [Phone Number Search Constructor](https://cipher387.github.io/phonenumberqueryconstructor/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-647fb472 | [Phone Specification](https://github.com/azharimm/phone-specs-api) | داعمة | oss | بوابة الأشخاص | reachable | No | Rest Api for Phone specifications |
+| TL-d0228c79 | [Phone Specs](https://phone-specs-api-production.up.railway.app/docs) | داعمة | api | بوابة الأشخاص | unreachable | No | Real-time smartphone specifications database for 263 devices |
 | TL-f3288957 | [Phone Validation](https://www.abstractapi.com/phone-validation-api) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Validate phone numbers globally |
 | TL-9b28c8b3 | [Phone Validator](https://www.phonevalidator.com/index.aspx) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-e2882f61 | [Phone Validator](https://www.phonevalidator.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
@@ -269,7 +271,7 @@
 | TL-664e1bf3 | [scatteredsecrets](https://scatteredsecrets.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-dde7893f | [Securing your email](https://cybernews.com/secure-email-providers/find-all-accounts-linked-to-email-address/) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-22deb05d | [Sendgrid](https://docs.sendgrid.com/api-reference/) | داعمة | api | بوابة الأشخاص | reachable | apiKey | A cloud-based SMTP provider that allows you to send emails without having to maintain email servers |
-| TL-8f238b96 | [Sendinblue](https://developers.brevo.com/) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | A service that provides solutions relating to marketing and/or transactional email and/or SMS |
+| TL-94dde59c | [Sendinblue](https://developers.sendinblue.com/docs) | داعمة | api | بوابة الأشخاص | unreachable | apiKey | A service that provides solutions relating to marketing and/or transactional email and/or SMS |
 | TL-9adac63b | [SendRaven](https://sendraven.ai/docs/api) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Email for AI agents: send email, receive replies as threads, with per-key send limits and approvals |
 | TL-3a372429 | [seon](https://seon.io/resources/the-ultimate-guide-to-free-email-lookup-and-reverse-email-lookup-tools/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-eb73d1fe | [Signaliz](https://signaliz.docs.buildwithfern.com/signaliz-api-public-docs/introduction) | داعمة | api | بوابة الأشخاص | unreachable | apiKey | GTM enrichment, lead generation, email verification, and company signals |
@@ -302,7 +304,6 @@
 | TL-d7a40fe9 | [Temp Phone Number](https://temporary-phone-number.com/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-61152f83 | [Temp Phone Number and SMS activate](https://sms-activate.org/en) | أساسية | web | بوابة الأشخاص | reachable | — | — |
 | TL-5e315369 | [Temp Phone Number SMS Receive](https://temp-number.org/) | أساسية | web | بوابة الأشخاص | reachable | — | — |
-| TL-1963412f | [TempMailGrab](https://tempmailgrab.com/api-docs) | داعمة | api | بوابة الأشخاص | unchecked | apiKey | Disposable inboxes for email testing with OTP extraction and webhooks |
 | TL-5e7c743f | [Temsor](https://api.temsor.com/docs) | داعمة | api | بوابة الأشخاص | reachable | apiKey | Validates Turkish national ID, tax number, IBAN, phone, plate and parses addresses |
 | TL-33f8fec5 | [ThatsThem](https://thatsthem.com/reverse-email-lookup) | أساسية | web | بوابة الأشخاص | restricted | — | — |
 | TL-8e318a9b | [The Scraper](https://github.com/champmq/TheScrapper) | أساسية | oss | بوابة الأشخاص | restricted | — | Simple tool for scrapping emails and social media accounts from the website's source code. |

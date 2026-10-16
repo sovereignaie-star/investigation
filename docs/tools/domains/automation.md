@@ -1,8 +1,8 @@
 # أطر الأتمتة والجمع (Automation & collection frameworks)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **138**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **139**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -37,6 +37,7 @@
 | TL-0e9f5696 | [Curiefense](https://github.com/curiefense/curiefense) | داعمة | oss | — | restricted | — | Curiefense adds a broad set of automated web security tools, including a WAF to Envoy Proxy. |
 | TL-af3075dd | [DAAO AU](https://www.daao.org.au/) | أساسية | web | — | restricted | — | — |
 | TL-b45689d6 | [ExtendClass](https://extendsclass.com/) | أساسية | web | — | reachable | — | One of my favorite sites for #automating various routine tasks. Among the many analogues, it stands out for its quality of work and variety of functions (view p |
+| TL-ad825920 | [Falcon Orchestrator](https://github.com/CrowdStrike/falcon-orchestrator) | داعمة | oss | — | restricted | — | Extendable Windows-based application that provides workflow automation, case management and security response functionality. |
 | TL-e74ccd18 | [firecrawl](https://www.firecrawl.dev/) | أساسية | web | — | reachable | — | — |
 | TL-bff4edf2 | [FORCE](https://github.com/davidfrantz/force) | داعمة | oss | — | restricted | — | Framework for Operational Radiometric Correction for Environmental monitoring. |
 | TL-12da6ca7 | [forestError](https://github.com/benjilu/forestError) | داعمة | oss | — | restricted | — | A Unified Framework for Random Forest Prediction Error Estimation. |

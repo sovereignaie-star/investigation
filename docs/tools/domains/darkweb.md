@@ -1,8 +1,8 @@
 # الويب المظلم وTor (Dark web & Tor)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-16. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **228**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **224**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -26,7 +26,6 @@
 | TL-e5c16df0 | [CRYPTBB](http://cryptbbtg65gibadeeo2awe3j7s6evg7eklserehqr4w4e2bis5tebid.onion) | أساسية | web | — | unreachable | — | — |
 | TL-b2718cd6 | [Cyber Int Darkweb Intel Platform](https://cyberint.com/platform/threat-intelligence/) | أساسية | web | — | reachable | — | — |
 | TL-62447d7a | [dailydarkweb](https://dailydarkweb.net/) | أساسية | web | — | reachable | — | — |
-| TL-cbe94ab8 | [Dakint](https://start.me/p/Nx0e6O/darkint) | أساسية | web | — | unchecked | — | — |
 | TL-9a560fb8 | [Dan tor nodes](https://www.dan.me.uk/tornodes) | أساسية | web | — | reachable | — | — |
 | TL-f27c045e | [Danex io (ONION SITE)](http://danexio627wiswvlpt6ejyhpxl5gla5nt2tgvgm2apj2ofrgm44vbeyd.onion) | أساسية | web | — | unreachable | — | — |
 | TL-9a438cbc | [DARC](https://github.com/JarryShaw/darc) | أساسية | oss | — | reachable | — | Darkweb Crawler Project |
@@ -103,7 +102,6 @@
 | TL-e75a2d81 | [IP-API.io](https://ip-api.io) | داعمة | api | — | reachable | apiKey | IP geolocation with VPN/proxy/Tor detection, reputation and risk score |
 | TL-a4335275 | [IPASIS](https://ipasis.com/) | أساسية | api | بوابة الأشخاص | reachable | — | Real-time bot detection and fraud prevention API. Returns risk score (0-100), VPN/proxy/Tor/residential proxy flags, IP reputation, email validation (disposable |
 | TL-23433c9a | [IPLogs](https://iplogs.com/docs) | داعمة | api | — | reachable | No | Free VPN, proxy, Tor and datacenter IP detection. 13 sources, active probing |
-| TL-1e8465ee | [IPScanner](https://ipscanner.io/api-documentation) | داعمة | api | — | unchecked | apiKey | IP network class (residential, mobile, hosting, VPN, residential proxy, Tor) with a confidence score |
 | TL-03219000 | [Jieyab89 darkweb scrapping link](https://github.com/Jieyab89/OSINT-Cheat-sheet/blob/main/Script/Darkweb-Scrapping/onion-site-directory-scrapper.py) | أساسية | oss | — | reachable | — | — |
 | TL-01b1a83a | [Just onion (ONION SITE)](http://justdirs5iebdkegiwbp3k6vwgwyr5mce7pztld23hlluy22ox4r3iad.onion/) | أساسية | web | — | unreachable | — | — |
 | TL-0e1cb4e9 | [KILOS Darknet Search Engine](http://dnmugu4755642434.onion.pet/captcha) | أساسية | web | — | unreachable | — | — |
@@ -113,7 +111,6 @@
 | TL-f65818e3 | [Lowernet dir (ONION SITES)](http://loweruw2vupx3izp4hkmaotner6gjo4ooz6d4kdzqjbfkxqa2nlvjcyd.onion/) | أساسية | web | — | unreachable | — | — |
 | TL-b2413c1d | [Maltego cybersixgill transform](https://www.maltego.com/transform-hub/cybersixgill/) | أساسية | web | — | reachable | — | — |
 | TL-26dd656a | [Maskbreak](https://maskbreak.com/api) | داعمة | api | — | reachable | apiKey | Detect VPNs, proxies, Tor, bots and antidetect browsers at signup, login and checkout |
-| TL-376ac8d4 | [Network Data Labs](https://www.networkdatalabs.com/docs) | داعمة | api | — | unchecked | apiKey | IP geolocation with accuracy radius, ASN, and flags for Tor exits, known VPN networks and hosting |
 | TL-11798b0b | [Not Evil (onion link)](http://hss3uro2hsxfogfq.onion/) | أساسية | web | — | unreachable | — | — |
 | TL-2ccb87ee | [Not Evil 2 (onion link)](http://hss3uro2hsxfogfq.onion.to/) | أساسية | web | — | unreachable | — | — |
 | TL-60d4a6b7 | [NotEvil Search Engine (ONION SITE)](http://notevil2ebbr5xjww6nryjta7bycbriyi2vh7an3wcuovlznvobykmad.onion/) | أساسية | web | — | unreachable | — | — |
@@ -217,7 +214,6 @@
 | TL-d78a845c | [Torgol (ONION SITE)](http://torgolnpeouim56dykfob6jh5r2ps2j73enc42s2um4ufob3ny4fcdyd.onion/) | أساسية | web | — | unreachable | — | — |
 | TL-d11f134e | [TorMap](https://twitter.com/cyb_detective/status/1536682540265873408) | أساسية | web | — | reachable | — | Worldwide online map of Tor Nodes |
 | TL-e6d988fc | [Tornet (ONION SITE)](http://tornetupfu7gcgidt33ftnungxzyfq2pygui5qdoyss34xbgx2qruzid.onion/) | أساسية | web | — | unreachable | — | — |
-| TL-0c048063 | [torproject](https://www.torproject.org/) | أساسية | web | — | reachable | — | Tor network and Tor Browser. |
 | TL-6bab2d2e | [torproject - relay search](https://metrics.torproject.org/) | أساسية | web | — | reachable | — | — |
 | TL-0e6ed635 | [torpy](https://github.com/torpyorg/torpy) | أساسية | oss | — | reachable | — | Python Tor client implementation of the Tor protocol. Torpy can be used to communicate with clearnet hosts or hidden services through the Tor Network |
 | TL-a08e3ede | [Torry](https://www.torry.io/) | أساسية | web | — | reachable | — | — |
