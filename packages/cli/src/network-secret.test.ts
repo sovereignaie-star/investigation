@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
 import { runTransform, runTransformIsolated, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
-import { shodanHost, urlscanSearch, abuseIpDbCheck } from "@ir/transforms";
+import { shodanHost, urlscanSearch, abuseIpDbCheck, hunterDomainEmails } from "@ir/transforms";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
@@ -327,6 +327,105 @@ describe("P2-026: TR-044 (AbuseIPDB) — the network plan wires the real transfo
     expect("error" in plan).toBe(true);
     if (!("error" in plan)) throw new Error("expected a refusal");
     expect(plan.error).toMatch(/ABUSEIPDB_KEY|abuseipdb/i);
+    expect(d.calls).toHaveLength(0);
+  });
+});
+
+/** P2-026: the TR-051 entry — the REAL transform source file for the sandbox composition below. */
+const HUNTER_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-051-hunter-emails.ts", import.meta.url));
+const hunterEntry: RegisteredTransform = {
+  transform: hunterDomainEmails,
+  module: MODULE,
+  subjects: { domain: (v) => ({ domain: v }) },
+  sends: ["domain"],
+  hosts: ["api.hunter.io"],
+  pageFetch: false,
+};
+
+describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform end to end", () => {
+  /** A wire that answers the domain-search endpoint with a valid, well-formed Hunter record. */
+  function hunterDeps(vault: Vault) {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    return {
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: { resolve: async (host: string) => (host === "api.hunter.io" ? ["104.18.110.25"] : []) },
+      transport: {
+        async fetch(req: { url: string; headers?: Record<string, string> }) {
+          calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+          return {
+            status: 200,
+            body: JSON.stringify({
+              data: {
+                domain: "example.com",
+                disposable: false,
+                webmail: false,
+                accept_all: false,
+                pattern: "{first}",
+                organization: "Example",
+                linked_domains: [],
+                emails: [{ value: "contact@example.com", type: "generic", confidence: 98, sources: [] }],
+              },
+              meta: { results: 1, results_approximate: false, limit: 10, offset: 0 },
+            }),
+          };
+        },
+      },
+      vault: () => vault,
+      calls,
+    };
+  }
+
+  it(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-051 code runs in the real sandbox, its domain query passes the per-provider allowlist, the key travels in the X-API-KEY header only and never reaches any persisted record",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const d = hunterDeps(fakeVault({ hunter: "hunter_sandbox_key" }));
+      // the entry's module is the REAL transform source file: runTransformIsolated bundles it with
+      // esbuild and executes it inside the REAL sandbox, its ctx.http being an IPC channel to the
+      // plan's transport (adapter + gateway + fake wire) — the production shape.
+      const entry = { ...hunterEntry, module: HUNTER_MODULE };
+      const plan = planNetworkRun(c, entry, "domain", ["api.hunter.io"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "domain:example.com", "domain", systemClock);
+      const result = await runTransformIsolated(HUNTER_MODULE, {
+        transport: plan.transport,
+        input: { domain: "example.com" },
+        transformId: "TR-051",
+      });
+      // the run SUCCEEDS: the real TR-051 request (the domain query) is permitted by the
+      // registry's per-provider query allowlist, carried through the sandbox IPC boundary
+      expect(result.requestCount).toBe(1);
+      expect(result.output.findings.length).toBeGreaterThan(0);
+      // the wire saw exactly the real request: the query intact, the key in the X-API-KEY header only
+      expect(d.calls).toHaveLength(1);
+      expect(d.calls[0]?.url).toBe("https://api.hunter.io/v2/domain-search?domain=example.com");
+      expect(d.calls[0]?.url).not.toContain("hunter_sandbox_key");
+      expect(d.calls[0]?.headers?.["x-api-key"]).toBe("hunter_sandbox_key");
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, hunterDomainEmails, { domain: "example.com" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the request URL is recorded as evidence;
+      // the findings are bound to that evidence; the key appears NOWHERE in the case or its audit trail
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const persisted = JSON.stringify(reopened.entries());
+      expect(persisted).toContain("/v2/domain-search?domain=example.com");
+      expect(persisted).toContain("has_public_email");
+      expect(persisted).not.toContain("hunter_sandbox_key");
+      const audit = JSON.stringify(reopened.auditTrail());
+      expect(audit).toContain("egress.");
+      expect(audit).not.toContain("hunter_sandbox_key");
+    },
+  );
+
+  it("the vault entry missing => the TR-051 plan is refused fail-closed with the documented reason, before any request", () => {
+    const c = newCase();
+    const d = hunterDeps(fakeVault({}));
+    const plan = planNetworkRun(c, hunterEntry, "domain", ["api.hunter.io"], d);
+    expect("error" in plan).toBe(true);
+    if (!("error" in plan)) throw new Error("expected a refusal");
+    expect(plan.error).toMatch(/HUNTER_KEY|hunter/i);
     expect(d.calls).toHaveLength(0);
   });
 });

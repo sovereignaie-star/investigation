@@ -290,6 +290,9 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       // TR-047 registered (P2-026/ADR-30): its pair is refused fail-closed at setup — this test's
       // vault has no "threatfox" entry (the designed refusal, never a keyless send).
       "TR-047 domain:example.com",
+      // TR-051 registered (P2-026): same designed fail-closed key refusal — no "hunter" entry in
+      // this test's vault either.
+      "TR-051 domain:example.com",
       "TR-003 ipv4:8.8.8.8",
       "TR-006 ipv4:8.8.8.8",
       // TR-044 registered (P2-026): same designed fail-closed key refusal — this test's vault has
@@ -584,8 +587,8 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
       // A keyed pair stopped before its turn records the plain budget/depth stop — the fail-closed
       // key refusal appears only when its turn actually came.
       expect(k.reason).toMatch(
-        k.transformId === "TR-047" || k.transformId === "TR-044"
-          ? /^(setup refused: --network: TR-04[47] requires|budget: runs|depth \d+ > maxDepth 1)/
+        k.transformId === "TR-047" || k.transformId === "TR-044" || k.transformId === "TR-051"
+          ? /^(setup refused: --network: TR-0(4[47]|51) requires|budget: runs|depth \d+ > maxDepth 1)/
           : /budget: runs|depth \d+ > maxDepth 1/,
       );
     }
