@@ -1,10 +1,10 @@
 /**
  * P2-012 — TR-032 contract test (T-RULE-06). Perceptual image hash, LOCAL
- * ONLY (owner decision 2026-10-16: sharp — Apache-2.0 — with sharp-phash —
- * MIT; support and licenses verified by measurement before implementation:
- * sharp-phash's module IS the phash function and returns a 64-bit binary
- * string; `sharp-phash/distance` computes the Hamming distance; dHash is
- * computed from sharp's raw grayscale pixels with no extra dependency).
+ * ONLY (owner decision 2026-10-16, second round: jimp — MIT, pure JavaScript;
+ * the first sharp-based implementation was stopped because sharp's native
+ * .node binary cannot be bundled into the sandbox runner's eval source —
+ * measured on both the CLI build gate and `bundleTransform`; see
+ * DECLARED_LIMITS L-18).
  *
  * The transform takes a base64-encoded image and emits pHash + dHash
  * findings — 64-character binary strings typed `perceptual_hash` (catalog
@@ -12,18 +12,20 @@
  * read as an identifier without context — the TR-036 lesson). ZERO network
  * requests (findings cite `derivedFrom: "input"`).
  *
- * Library behavior MEASURED 2026-10-16 before the transform existed:
- *   - sharp throws on non-image bytes (fail-closed material);
- *   - a lightly perturbed image has Hamming distance 0 from the original
- *     (perceptual stability — the point of the hash).
+ * Library behavior MEASURED 2026-10-16 before the rewrite: jimp decodes a
+ * crafted PNG, exposes `bitmap.data` (RGBA), resizes, and throws on
+ * non-image bytes (fail-closed material).
  *
- * Red first: this test was written before the transform existed and fails on
- * the missing module (the failing test for the right reason).
+ * Red first: the original test (sharp round) was written before the
+ * transform existed and failed on the missing module. The jimp rewrite's
+ * failing gate was the build (sharp unbundleable) — it went red for the
+ * right reason and this suite turns green with jimp.
  */
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
 import { perceptualHash } from "./transforms/tr-032-perceptual-hash.ts";
 import { runTransform } from "./runner.ts";
+import { Jimp } from "jimp";
 
 /** The sim server's transport shape — the counting wrapper keeps it. */
 type SimTransport = ReturnType<typeof createSimServer>["transport"];
@@ -43,27 +45,33 @@ function counting(t: SimTransport): { transport: SimTransport; calls: () => numb
   };
 }
 
-/** A deterministic 64x64 PNG: gradient + block (no fixtures file needed). */
+/** A deterministic 64x64 PNG: gradient + block (crafted with jimp, no fixtures). */
 async function craftPng(perturb = false): Promise<Buffer> {
-  const sharp = await import("sharp");
   const w = 64;
   const h = 64;
-  const raw = Buffer.alloc(w * h * 3);
+  const image = new Jimp({ width: w, height: h, color: 0x000000ff });
+  const data = image.bitmap.data;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 3;
-      raw[i] = (x * 4) % 256;
-      raw[i + 1] = (y * 4) % 256;
-      raw[i + 2] = x < 32 ? 200 : 20;
+      const i = (y * w + x) * 4;
+      data[i] = (x * 4) % 256;
+      data[i + 1] = (y * 4) % 256;
+      data[i + 2] = x < 32 ? 200 : 20;
+      data[i + 3] = 255;
     }
   }
   if (perturb) {
-    for (let i = 0; i < 200; i++) raw[(i * 97) % raw.length] ^= 0x18;
+    for (let i = 0; i < 200; i++) data[(i * 97) % data.length] ^= 0x18;
   }
-  return sharp
-    .default(raw, { raw: { width: w, height: h, channels: 3 } })
-    .png()
-    .toBuffer();
+  return image.getBuffer("image/png");
+}
+
+/** Hamming distance between two equal-length binary strings. */
+function hamming(a: string, b: string): number {
+  if (a.length !== b.length) throw new Error("length mismatch");
+  let d = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+  return d;
 }
 
 describe("TR-032 perceptual image hash (local, no network)", () => {
@@ -87,13 +95,24 @@ describe("TR-032 perceptual image hash (local, no network)", () => {
     for (const f of findings) expect(f.evidence).toBeUndefined();
   });
 
-  it("is perceptually stable: a lightly perturbed image has Hamming distance 0 (pHash)", async () => {
-    const phash = (await import("sharp-phash")).default;
-    const distance = (await import("sharp-phash/distance")).default;
-    const original = await craftPng();
-    const perturbed = await craftPng(true);
-    const d = distance(await phash(original), await phash(perturbed));
-    expect(d).toBe(0);
+  it("is perceptually stable: a lightly perturbed image stays within a few bits", async () => {
+    const run = async (perturb: boolean) => {
+      const content = (await craftPng(perturb)).toString("base64");
+      const result = await runTransform(perceptualHash, {
+        transport: counting(createSimServer([]).transport).transport,
+        input: { content },
+      });
+      const by = new Map(result.output.findings.map((f) => [f.predicate, f.objectValue]));
+      return { phash: by.get("has_phash"), dhash: by.get("has_dhash") };
+    };
+    const original = await run(false);
+    const perturbed = await run(true);
+    if (typeof original.phash !== "string" || typeof perturbed.phash !== "string") throw new Error("missing pHash");
+    if (typeof original.dhash !== "string" || typeof perturbed.dhash !== "string") throw new Error("missing dHash");
+    // A light perturbation must stay close (a random unrelated image would
+    // sit near 32 — half the bits). Bound measured empirically, kept loose.
+    expect(hamming(original.phash, perturbed.phash)).toBeLessThanOrEqual(8);
+    expect(hamming(original.dhash, perturbed.dhash)).toBeLessThanOrEqual(8);
   });
 
   it("rejects non-image bytes and empty input before anything runs (fail-closed, zero transport calls)", async () => {

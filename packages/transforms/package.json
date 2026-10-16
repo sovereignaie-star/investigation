@@ -21,10 +21,9 @@
     "@ir/transform-sandbox": "workspace:*",
     "esbuild": "catalog:",
     "exifreader": "^4.50.0",
+    "jimp": "^1.6.1",
     "libphonenumber-js": "^1.13.15",
     "pdfjs-dist": "^6.4.299",
-    "sharp": "^0.35.5",
-    "sharp-phash": "^2.2.0",
     "zod": "catalog:"
   },
   "devDependencies": {

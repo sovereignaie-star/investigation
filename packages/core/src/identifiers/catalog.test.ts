@@ -11,9 +11,9 @@ const files = readdirSync(dir)
   .sort();
 
 describe("identifier catalog (P1-003, P1-004, P1-008)", () => {
-  it("T-IDL-001/002: 380 types with unique ids, each valid against IdentifierSpec", () => {
-    expect(IDENTIFIER_SPECS.length).toBe(380);
-    expect(new Set(IDENTIFIER_SPECS.map((s) => s.id)).size).toBe(380);
+  it("T-IDL-001/002: 381 types with unique ids, each valid against IdentifierSpec", () => {
+    expect(IDENTIFIER_SPECS.length).toBe(381);
+    expect(new Set(IDENTIFIER_SPECS.map((s) => s.id)).size).toBe(381);
     for (const s of IDENTIFIER_SPECS) expect(IdentifierSpec.safeParse(s).error?.issues ?? [], s.id).toEqual([]);
   });
 

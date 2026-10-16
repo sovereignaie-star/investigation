@@ -1222,16 +1222,8 @@
       "layer": "eyes",
       "sec": "10",
       "section": "محركات البحث عن الصور والوسائط",
-      "name": "sharp",
-      "desc": "معالجة صور عالية الأداء ووصول لوحدات بكسل خام (TR-032 — dHash)",
-      "lic": ["oss"]
-    },
-    {
-      "layer": "eyes",
-      "sec": "10",
-      "section": "محركات البحث عن الصور والوسائط",
-      "name": "sharp-phash",
-      "desc": "تجزئة إدراكية pHash فوق sharp (TR-032)",
+      "name": "jimp",
+      "desc": "معالجة صور بJS خالص — تجزئة إدراكية pHash/dHash (TR-032، بديل sharp المتوقف: L-18)",
       "lic": ["oss"]
     },
     {

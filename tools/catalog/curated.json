@@ -456,15 +456,9 @@
     "desc": "JavaScript EXIF/XMP/GPS metadata parser for images (MPL-2.0; adopted by owner decision 2026-10-16 for TR-031)."
   },
   {
-    "name": "sharp",
-    "url": "https://github.com/lovell/sharp",
+    "name": "jimp",
+    "url": "https://github.com/jimp-dev/jimp",
     "cat": "Images / Metadata",
-    "desc": "High-performance image processing library (Apache-2.0; adopted by owner decision 2026-10-16 for TR-032 — raw pixel access for dHash)."
-  },
-  {
-    "name": "sharp-phash",
-    "url": "https://github.com/btd/sharp-phash",
-    "cat": "Images / Metadata",
-    "desc": "Perceptual hash (pHash) implementation on top of sharp (MIT; adopted by owner decision 2026-10-16 for TR-032)."
+    "desc": "Image processing library written entirely in JavaScript (MIT; adopted by owner decision 2026-10-16 for TR-032 — pure JS, bundles into the sandbox eval source; replaces the stopped sharp round: L-18)."
   }
 ]
