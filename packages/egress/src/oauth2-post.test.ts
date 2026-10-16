@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEgressGateway, type DnsResolver, type EgressTransport, type EgressAuditSink } from "./egress";
+import { opensanctionsMatchPolicy, openskyTokenPolicy } from "../providers/post-policies.ts";
 
 /** ADR-27 — the OAuth2 client-credentials token POST policy (host pin + fixed body shape). */
 
@@ -36,13 +37,13 @@ function gateway(t: EgressTransport, audit?: EgressAuditSink) {
   return createEgressGateway({
     resolver: fakeResolver({ "auth.opensky-network.org": ["93.184.216.34"] }),
     transport: t,
-    oauth2AuthHosts: ["auth.opensky-network.org"],
+    postPolicies: [openskyTokenPolicy],
     auditSink: audit,
     limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
   });
 }
 
-describe("ADR-27: the OAuth2 token POST is a pinned POST kind", () => {
+describe("ADR-30 (migrated from ADR-27): the OAuth2 token POST is a registered POST kind", () => {
   it("a well-formed token POST to the pinned host passes and the body reaches the transport", async () => {
     const t = recordingTransport();
     const audit = collectingAudit();
@@ -119,12 +120,12 @@ describe("ADR-27: the OAuth2 token POST is a pinned POST kind", () => {
     expect(r.transportCalls).toBe(0);
   });
 
-  it("an empty oauth2AuthHosts list allows no token POST (fail-closed)", async () => {
+  it("an empty POST policy table allows no token POST (fail-closed)", async () => {
     const t = recordingTransport();
     const g = createEgressGateway({
       resolver: fakeResolver({ "auth.opensky-network.org": ["93.184.216.34"] }),
       transport: t,
-      oauth2AuthHosts: [],
+      postPolicies: [],
       limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
     const r = await g.request({ ...BASE, url: TOKEN_URL, method: "POST", body: BODY });
@@ -138,8 +139,7 @@ describe("ADR-27: the OAuth2 token POST is a pinned POST kind", () => {
     const g = createEgressGateway({
       resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"] }),
       transport: t,
-      oauth2AuthHosts: ["auth.opensky-network.org"],
-      screeningPostHosts: ["api.opensanctions.org"],
+      postPolicies: [openskyTokenPolicy, opensanctionsMatchPolicy],
       limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
     const r = await g.request({ ...BASE, url: "https://api.opensanctions.org/match/default", method: "POST", body: BODY });

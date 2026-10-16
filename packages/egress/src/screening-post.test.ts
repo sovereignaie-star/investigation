@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEgressGateway, type DnsResolver, type EgressTransport, type EgressAuditSink } from "./egress";
+import { opensanctionsMatchPolicy, openskyTokenPolicy } from "../providers/post-policies.ts";
 
 /** ADR-28 — the OpenSanctions /match screening POST policy (host+path pin + fixed JSON body schema). */
 
@@ -40,7 +41,7 @@ function gateway(t: EgressTransport, audit?: EgressAuditSink, hosts?: string[]) 
   return createEgressGateway({
     resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"] }),
     transport: t,
-    screeningPostHosts: hosts ?? ["api.opensanctions.org"],
+    postPolicies: hosts === undefined ? [opensanctionsMatchPolicy] : [],
     auditSink: audit,
     limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
   });
@@ -52,7 +53,7 @@ function personBody(firstName: string, lastName: string): string {
   });
 }
 
-describe("ADR-28: the OpenSanctions /match screening POST", () => {
+describe("ADR-30 (migrated from ADR-28): the OpenSanctions /match screening POST", () => {
   it("a well-formed Person screening POST to the pinned host+path passes and reaches the transport", async () => {
     const t = recordingTransport();
     const audit = collectingAudit();
@@ -197,8 +198,7 @@ describe("ADR-28: the OpenSanctions /match screening POST", () => {
     const g = createEgressGateway({
       resolver: fakeResolver({ "auth.opensky-network.org": ["93.184.216.34"] }),
       transport: t,
-      oauth2AuthHosts: ["auth.opensky-network.org"],
-      screeningPostHosts: ["api.opensanctions.org"],
+      postPolicies: [openskyTokenPolicy, opensanctionsMatchPolicy],
       limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
     const r = await g.request({
@@ -225,7 +225,7 @@ describe("ADR-28: the OpenSanctions /match screening POST", () => {
     const g = createEgressGateway({
       resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"] }),
       transport: t,
-      screeningPostHosts: ["api.opensanctions.org"],
+      postPolicies: [opensanctionsMatchPolicy],
       limits: { rateLimitPerHostPerSecond: 1, rateLimitBurst: 1 },
     });
     const r1 = await g.request({ ...BASE, url: MATCH_URL, method: "POST", body: personBody("A", "B") });
@@ -252,7 +252,7 @@ describe("ADR-28: the OpenSanctions /match screening POST", () => {
     const g = createEgressGateway({
       resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"], "evil.example": ["93.184.216.35"] }),
       transport,
-      screeningPostHosts: ["api.opensanctions.org"],
+      postPolicies: [opensanctionsMatchPolicy],
       limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
     const r = await g.request({ ...BASE, url: MATCH_URL, method: "POST", body: personBody("Aleksandr", "Zacharov") });
