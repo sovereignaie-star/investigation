@@ -76,7 +76,20 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
     },
   };
   const vaultTestResolver = {
-    resolve: async (host: string) => (host === "ipinfo.io" || host === "www.virustotal.com" ? ["93.184.216.34"] : []),
+    // P2-015: every PROVIDER_KEY_TESTS host the tests exercise resolves to the pinned canary IP.
+    resolve: async (host: string) =>
+      [
+        "ipinfo.io",
+        "www.virustotal.com",
+        "haveibeenpwned.com",
+        "api.securitytrails.com",
+        "api.greynoise.io",
+        "api.binaryedge.io",
+        "api.hunter.io",
+        "urlscan.io",
+      ].includes(host)
+        ? ["93.184.216.34"]
+        : [],
   };
   // Two witnesses against direct network calls: the injected transport
   // above, and the process-wide `fetch` (which the server must never reach for
@@ -121,7 +134,10 @@ describe("vault routes (P1-015, P1-026)", () => {
       ok: true,
       tested: true,
     });
-    expect(vaultTestCalls.length).toBe(1);
+    // P2-015: the save flow itself runs the key test (one call) and the explicit
+    // /test route adds the second — both through the gateway to the pinned host.
+    expect(vaultTestCalls.length).toBe(2);
+    expect(vaultTestCalls.every((c) => c.host === "ipinfo.io")).toBe(true);
     const ip = await call("/lookup/ip", lookup({ ip: "8.8.8.8" }));
     expect(ip.status).toBe(503);
     expect(upstream).toHaveLength(0);
@@ -315,9 +331,10 @@ describe("vault test result honesty (provider status is reported, never fabricat
       expect(res.text).not.toContain(SECRET);
       expect(PinoCapturedGlobal.join("\n")).not.toContain(SECRET);
       expect(PinoCapturedGlobal.join("\n")).not.toContain("PROVIDER_BODY_MARKER");
-      // exactly one transport call, to the pinned provider host, through the gateway
-      expect(s.vaultTestCalls).toHaveLength(1);
-      expect(s.vaultTestCalls[0]).toMatchObject({ host: "ipinfo.io", pinnedIp: "93.184.216.34", method: "GET" });
+      // exactly two transport calls (P2-015 save flow + explicit /test), both to the pinned
+      // provider host, through the gateway
+      expect(s.vaultTestCalls).toHaveLength(2);
+      expect(s.vaultTestCalls.every((c) => c.host === "ipinfo.io" && c.pinnedIp === "93.184.216.34" && c.method === "GET")).toBe(true);
       expect(s.upstream).toEqual([]);
     });
   }
@@ -329,7 +346,14 @@ describe("vault test result honesty (provider status is reported, never fabricat
     expect((await s.call("/vault/ipinfo/test", withAdmin({ method: "POST" }))).status).toBe(200);
     expect((await s.call("/vault/virustotal/test", withAdmin({ method: "POST" }))).status).toBe(200);
     const calls = s.vaultTestCalls as Array<{ url: string; host: string; headers?: Record<string, string> }>;
-    expect(calls.map((c) => c.url)).toEqual(["https://ipinfo.io/8.8.8.8", "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8"]);
+    // P2-015: each save runs its provider's key test too — the four calls are the two
+    // save-flow tests followed by the two explicit /test calls, in call order.
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://ipinfo.io/8.8.8.8",
+      "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8",
+      "https://ipinfo.io/8.8.8.8",
+      "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8",
+    ]);
     expect(calls[0]?.headers?.["authorization"]).toBe(`Bearer ${SECRET}`);
     expect(calls[1]?.headers?.["x-apikey"]).toBe(SECRET);
     expect(calls[1]?.headers?.["authorization"]).toBeUndefined();
@@ -400,5 +424,97 @@ describe("vault test result honesty (provider status is reported, never fabricat
         expect(o.secretDigest).toMatch(/^redacted-hmac-sha256-[0-9a-f]{16}$/);
       }
     });
+  });
+});
+
+describe("P2-015 (D-032): a key test — or a documented reason not to — for every vault provider", () => {
+  it("coverage: every provider the vault lists is either testable or explicitly blocked, never silently untested", async () => {
+    const { KNOWN_PROVIDERS, PROVIDER_KEY_TESTS, PROVIDER_TEST_BLOCKED } = await import("../lib/providers");
+    for (const name of KNOWN_PROVIDERS) {
+      const testable = Object.prototype.hasOwnProperty.call(PROVIDER_KEY_TESTS, name);
+      const blocked = Object.prototype.hasOwnProperty.call(PROVIDER_TEST_BLOCKED, name);
+      expect(`${name}: testable=${testable}, blocked=${blocked}`).toBe(`${name}: testable=${testable}, blocked=${!testable}`);
+    }
+    // the two maps are disjoint and every entry names a real header-bearing test or a reason
+    for (const name of Object.keys(PROVIDER_KEY_TESTS))
+      expect(Object.prototype.hasOwnProperty.call(PROVIDER_TEST_BLOCKED, name)).toBe(false);
+    for (const name of Object.keys(PROVIDER_TEST_BLOCKED))
+      expect(Object.prototype.hasOwnProperty.call(PROVIDER_KEY_TESTS, name)).toBe(false);
+  });
+
+  it("the save flow tests the key where a test exists: PUT returns the test result, never a bare 'saved'", async () => {
+    const s = await start();
+    const res = await s.call("/vault/securitytrails", put(SECRET));
+    expect(res.status).toBe(200);
+    const body = JSON.parse(res.text) as { name?: string; configured?: boolean; tested?: boolean; ok?: boolean; providerStatus?: number };
+    expect(body).toMatchObject({ name: "securitytrails", configured: true, tested: true, ok: true, providerStatus: 200 });
+    expect(s.vaultTestCalls).toHaveLength(1);
+    expect(s.vaultTestCalls[0]).toMatchObject({ host: "api.securitytrails.com", method: "GET" });
+  });
+
+  it("a provider whose only key test needs the key in the URL (shodan) is never ok:true: the save response and the test route both say test_not_possible with the documented reason, and no transport call is made", async () => {
+    const s = await start();
+    const save = JSON.parse((await s.call("/vault/shodan", put(SECRET))).text) as {
+      configured?: boolean;
+      tested?: boolean;
+      ok?: boolean;
+      reason?: string;
+    };
+    expect(save).toMatchObject({ configured: true, tested: false });
+    expect(save.ok).toBe(false);
+    expect(save.reason).toContain("key-in-URL");
+    const test = JSON.parse((await s.call("/vault/shodan/test", withAdmin({ method: "POST" }))).text) as {
+      ok?: boolean;
+      tested?: boolean;
+      reason?: string;
+    };
+    expect(test).toMatchObject({ ok: false, tested: false });
+    expect(test.reason).toContain("key-in-URL");
+    expect(s.vaultTestCalls).toHaveLength(0);
+  });
+
+  it("an unknown provider name is never ok:true", async () => {
+    const s = await start();
+    const r = JSON.parse((await s.call("/vault/not-a-provider/test", withAdmin({ method: "POST" }))).text) as {
+      ok?: boolean;
+      tested?: boolean;
+      reason?: string;
+    };
+    expect(r).toMatchObject({ ok: false, tested: false });
+    expect(r.reason).toBe("no_test_defined");
+  });
+
+  // P2-015: save-then-test each provider (the loop stays outside the it callback: lint complexity).
+  const saveAndTestEach = async (names: readonly string[]) => {
+    const s = await start();
+    for (const name of names) {
+      expect((await s.call(`/vault/${name}`, put(SECRET))).status).toBe(200);
+      expect((await s.call(`/vault/${name}/test`, withAdmin({ method: "POST" }))).status).toBe(200);
+    }
+    return s;
+  };
+
+  // P2-015: header lookup helper (keeps the it() callback under the lint complexity limit).
+  const headerOf = (calls: Array<{ host: string; headers?: Record<string, string> }>) => {
+    const byHost = new Map(calls.map((c) => [c.host, c]));
+    return (host: string, header: string) => byHost.get(host)?.headers?.[header];
+  };
+
+  it("P2-015: each new testable provider sends the key only in its designated header (per provider docs), never in the URL", async () => {
+    const s = await saveAndTestEach(["haveibeenpwned", "securitytrails", "greynoise", "binaryedge", "hunter", "urlscan"]);
+    const calls = s.vaultTestCalls as Array<{ url: string; host: string; method: string; headers?: Record<string, string> }>;
+    // P2-015: each save runs its key test too — 6 providers x (save-flow test + explicit /test).
+    expect(calls).toHaveLength(12);
+    expect(calls.filter((c) => c.host === "haveibeenpwned.com").every((c) => c.method === "GET")).toBe(true);
+    const header = headerOf(calls);
+    expect(header("haveibeenpwned.com", "hibp-api-key")).toBe(SECRET);
+    expect(typeof header("haveibeenpwned.com", "user-agent")).toBe("string");
+    expect(header("api.securitytrails.com", "apikey")).toBe(SECRET);
+    expect(header("api.greynoise.io", "key")).toBe(SECRET);
+    expect(header("api.binaryedge.io", "x-key")).toBe(SECRET);
+    expect(header("api.hunter.io", "x-api-key")).toBe(SECRET);
+    expect(header("urlscan.io", "api-key")).toBe(SECRET);
+    const urls = calls.map((c) => c.url);
+    expect(urls.every((u) => !u.includes(SECRET) && !u.includes("?"))).toBe(true);
   });
 });
