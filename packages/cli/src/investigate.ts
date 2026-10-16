@@ -389,18 +389,33 @@ export async function investigate(
   // runs are refused per entry below with the documented reason.
   const providers = selected
     .map((e) => resolveSecretBinding(e.transform.manifest, opts.network ?? {}))
-    .reduce<{ providerHosts: Record<string, readonly string[]>; providerPaths: Record<string, readonly string[]> }>(
+    .reduce<{
+      providerHosts: Record<string, readonly string[]>;
+      providerPaths: Record<string, readonly string[]>;
+      providerQueries: Record<string, readonly import("@ir/egress").ProviderQueryAllow[]>;
+    }>(
       (acc, r) => {
         if (!r.providers) return acc;
         for (const [name, hosts] of Object.entries(r.providers.providerHosts) as [string, readonly string[]][])
           acc.providerHosts[name] = hosts;
         for (const [name, paths] of Object.entries(r.providers.providerPaths) as [string, readonly string[]][])
           acc.providerPaths[name] = paths;
+        // P2-016 continuation: the per-provider query allowlist merges like hosts+paths — an
+        // investigate run of TR-009 must carry it or the search query would be refused (the gap the
+        // advisor caught: the aggregation dropped it while planNetworkRun passed it).
+        if (r.providers.providerQueries)
+          for (const [name, queries] of Object.entries(r.providers.providerQueries) as [
+            string,
+            readonly import("@ir/egress").ProviderQueryAllow[],
+          ][])
+            acc.providerQueries[name] = queries;
         return acc;
       },
-      { providerHosts: {}, providerPaths: {} },
+      { providerHosts: {}, providerPaths: {}, providerQueries: {} },
     );
   const hasProviders = Object.keys(providers.providerHosts).length > 0;
+  // the aggregated allowlist rides along with the hosts (an empty map is harmless: a provider
+  // with no allowlist entry keeps the fail-closed default — every query refused).
   const gw = openGateway(c, opts.allowHosts, opts.network ?? {}, hasProviders ? providers : undefined);
   if ("error" in gw) return gw;
   c.audit("investigate.started", seedKey, {
