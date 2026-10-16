@@ -192,6 +192,7 @@ const EXACT: Record<string, Normalizer> = {
   vehicle_vin: upperCompact,
   stock_ticker: upperCompact,
   cik_us: digitsOnly,
+  uk_company_number: upperCompact,
   geo_point: (s) => {
     const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(s.trim());
     return m ? `${Number(m[1]).toFixed(6)},${Number(m[2]).toFixed(6)}` : s.trim();

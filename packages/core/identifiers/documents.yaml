@@ -87,6 +87,35 @@
       - شخص
     required: true
   sensitivity: natural_person_gate
+- id: company_name
+  category: Documents
+  labels:
+    en: Company Name
+    ar: اسم شركة
+  description: A free-text company name (a lookup subject; not an entity id — a single word is never one)
+  icon: 🏢
+  color: gray
+  patterns:
+    - ^[\p{L}\p{N}][\p{L}\p{N}&.,'’\-]*(?:\s[\p{L}\p{N}&.,'’\-]+)+$
+  flags: u
+  validator: null
+  examples:
+    positive:
+      - "ACME Limited"
+      - "Smith & Jones Ltd"
+    negative:
+      - "Acme"
+      - "12345"
+  context:
+    keywords:
+      - company
+      - company name
+      - firm
+      - business
+      - شركة
+      - منشأة
+    required: true
+  sensitivity: normal
 - id: passport_generic
   category: Documents
   labels:

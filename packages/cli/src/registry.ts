@@ -35,6 +35,7 @@ import {
   ofacSdn,
   unScConsolidated,
   euSanctions,
+  companiesHouse,
   gleifEntity,
   secEdgar,
   nominatimGeocode,
@@ -120,6 +121,20 @@ const cikInput = (cik: string) => {
 };
 const personNameInput = (name: string) => {
   if (name.length < 3 || name.length > 200) throw new Error(`"${name.slice(0, 40)}" is not a person name`);
+  return { name };
+};
+/** TR-023: a UK Companies House number (the catalog type's own pattern, upper-cased). */
+const ukCompanyInput = (raw: string) => {
+  const number = raw.trim().toUpperCase();
+  if (!/^(?:\d{8}|[A-Za-z]{2}\d{6})$/.test(number)) throw new Error(`"${raw}" is not a UK company number`);
+  return { company_number: number };
+};
+/** TR-023: a company name (multi-word, the catalog type's own shape — a single word is never one). */
+const companyNameInput = (raw: string) => {
+  const name = raw.trim();
+  if (name.length < 3 || name.length > 200 || !/^\S+(?:\s\S+)+$/.test(name)) {
+    throw new Error(`"${raw.slice(0, 40)}" is not a company name`);
+  }
   return { name };
 };
 const addressInput = (address: string) => {
@@ -223,6 +238,17 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { person_name: personNameInput },
     sends: ["person_name"],
     hosts: ["webgate.ec.europa.eu"],
+    pageFetch: false,
+  },
+  {
+    transform: companiesHouse,
+    module: mod("tr-023-companies-house.ts"),
+    // E-02: officers and PSCs are natural persons; the engine's gate requires a purpose confirmation.
+    // The free developer key travels as an Authorization header from the manifest-declared env
+    // name (IR_COMPANIES_HOUSE_TOKEN), never in a URL; without it the run fails closed.
+    subjects: { uk_company_number: ukCompanyInput, company_name: companyNameInput },
+    sends: ["uk_company_number", "company_name"],
+    hosts: ["api.company-information.service.gov.uk"],
     pageFetch: false,
   },
   {
