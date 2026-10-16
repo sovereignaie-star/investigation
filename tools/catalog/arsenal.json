@@ -1220,6 +1220,14 @@
     },
     {
       "layer": "eyes",
+      "sec": "10",
+      "section": "محركات البحث عن الصور والوسائط",
+      "name": "jimp",
+      "desc": "معالجة صور بJS خالص — تجزئة إدراكية pHash/dHash (TR-032، بديل sharp المتوقف: L-18)",
+      "lic": ["oss"]
+    },
+    {
+      "layer": "eyes",
       "sec": "11",
       "section": "محركات البحث عن الأصول التاريخية",
       "name": "Wayback Machine",

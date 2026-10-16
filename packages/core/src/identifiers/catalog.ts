@@ -2624,6 +2624,22 @@ export const IDENTIFIER_SPECS: readonly IdentifierSpecData[] = [
     sensitivity: "normal",
   },
   {
+    id: "perceptual_hash",
+    category: "Hash",
+    labels: { en: "Perceptual Hash", ar: "تجزئة إدراكية" },
+    description: "64-bit perceptual image hash (pHash/dHash) as a binary string; similarity by Hamming distance, not equality",
+    icon: "🖼️",
+    color: "purple",
+    patterns: ["^[01]{64}$"],
+    validator: null,
+    examples: {
+      positive: ["0001111111111111001111111111111111111111111111110111111111111111"],
+      negative: ["00011111111111110011111111111111111111111111111101111111111111112"],
+    },
+    context: { keywords: ["phash", "dhash", "perceptual", "تجزئة إدراكية", "بصمة صورة"], required: true },
+    sensitivity: "normal",
+  },
+  {
     id: "telegram_username",
     category: "Messaging",
     labels: { en: "Telegram Username", ar: "يوزرنيم تيليغرام" },
