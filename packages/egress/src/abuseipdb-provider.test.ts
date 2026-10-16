@@ -13,7 +13,7 @@ import { abuseipdb } from "../providers/abuseipdb.ts";
 const PUBLIC_IP = "93.184.216.34";
 const RESOLVER: DnsResolver = { resolve: async (host) => (host === "api.abuseipdb.com" ? [PUBLIC_IP] : []) };
 
-function gateway() {
+function gateway(overrides?: { maxLength?: number; requestPaths?: readonly string[] }) {
   const calls: string[] = [];
   const transport: EgressTransport = {
     async fetch(req) {
@@ -21,14 +21,21 @@ function gateway() {
       return { status: 200, body: "{}" };
     },
   };
+  const entry = {
+    ...abuseipdb,
+    ...(overrides?.maxLength !== undefined
+      ? { queryAllowlist: [{ param: "ipAddress", type: "string" as const, maxLength: overrides.maxLength }] }
+      : {}),
+    ...(overrides?.requestPaths !== undefined ? { requestPaths: overrides.requestPaths } : {}),
+  };
   const g = createEgressGateway({
     resolver: RESOLVER,
     transport,
     limits: { rateLimitPerHostPerSecond: 100, rateLimitBurst: 100 },
     // Exactly the maps the CLI derives from the registry entry (resolveSecretBinding -> openGateway).
-    providerHosts: { [abuseipdb.name]: abuseipdb.hosts },
-    providerPaths: { [abuseipdb.name]: abuseipdb.requestPaths },
-    providerQueries: { [abuseipdb.name]: abuseipdb.queryAllowlist ?? [] },
+    providerHosts: { [entry.name]: entry.hosts },
+    providerPaths: { [entry.name]: entry.requestPaths },
+    providerQueries: { [entry.name]: entry.queryAllowlist ?? [] },
   });
   return { calls, g };
 }
@@ -102,5 +109,95 @@ describe("TR-044: the AbuseIPDB registry entry (data file) through the gateway",
     expect(abuseipdb.secretHeader).toBe("key");
     expect(abuseipdb.manifestSecretNames).toEqual(["ABUSEIPDB_KEY"]);
     expect(abuseipdb.queryAllowlist).toEqual([{ param: "ipAddress", type: "string", maxLength: 45 }]);
+  });
+});
+
+describe("TR-044: the maxLength control is reachable and is what refuses (negative control included)", () => {
+  // A value the content inventory accepts as a DECLARED kind (a domain, with sends: ["domain"]) but
+  // that exceeds the entry's declared ipAddress maxLength (45) — the request reaches the allowlist
+  // length check itself, not just the inventory refusal.
+  const LONG_DOMAIN = `${"a".repeat(40)}.example.com`; // 52 chars, a well-formed domain
+
+  it("a declared-kind value over the declared maxLength is refused by the allowlist (secret_host_mismatch), before any transport call", async () => {
+    const { calls, g } = gateway();
+    expect(
+      await g.request({
+        caseId: "case-1",
+        purposeRef: "case:case-1",
+        transform: "TR-044@1.0.0",
+        url: `https://api.abuseipdb.com/api/v2/check?ipAddress=${LONG_DOMAIN}`,
+        sends: ["domain"],
+        sensitivity: "normal",
+        pinnedHost: "api.abuseipdb.com",
+        headers: { key: SECRET },
+        secret: SECRET,
+        secretProvider: "abuseipdb",
+      }),
+    ).toMatchObject({ ok: false, reason: "secret_host_mismatch", transportCalls: 0 });
+    expect(calls).toEqual([]);
+  });
+
+  it("negative control: the SAME request passes when the declared maxLength is widened — the length bound is what refused it", async () => {
+    const { calls, g } = gateway({ maxLength: 100 });
+    expect(
+      await g.request({
+        caseId: "case-1",
+        purposeRef: "case:case-1",
+        transform: "TR-044@1.0.0",
+        url: `https://api.abuseipdb.com/api/v2/check?ipAddress=${LONG_DOMAIN}`,
+        sends: ["domain"],
+        sensitivity: "normal",
+        pinnedHost: "api.abuseipdb.com",
+        headers: { key: SECRET },
+        secret: SECRET,
+        secretProvider: "abuseipdb",
+      }),
+    ).toMatchObject({ ok: true });
+    expect(calls).toEqual([`https://api.abuseipdb.com/api/v2/check?ipAddress=${LONG_DOMAIN}`]);
+  });
+});
+
+describe("TR-044: the path control is reachable and is what refuses (negative control included)", () => {
+  // A path whose segment the content inventory accepts as a DECLARED kind (a domain, with
+  // sends: ["domain"]) but that is not the entry's registered path — the request reaches the
+  // provider-path check itself.
+  const PATH = "/api/v2/www.example.com";
+
+  it("a declared-kind path segment outside requestPaths is refused by the path check (secret_host_mismatch), before any transport call", async () => {
+    const { calls, g } = gateway();
+    expect(
+      await g.request({
+        caseId: "case-1",
+        purposeRef: "case:case-1",
+        transform: "TR-044@1.0.0",
+        url: `https://api.abuseipdb.com${PATH}?ipAddress=8.8.8.8`,
+        sends: ["domain", "ip"],
+        sensitivity: "normal",
+        pinnedHost: "api.abuseipdb.com",
+        headers: { key: SECRET },
+        secret: SECRET,
+        secretProvider: "abuseipdb",
+      }),
+    ).toMatchObject({ ok: false, reason: "secret_host_mismatch", transportCalls: 0 });
+    expect(calls).toEqual([]);
+  });
+
+  it("negative control: the SAME request passes when the path is registered — the path allowlist is what refused it", async () => {
+    const { calls, g } = gateway({ requestPaths: [PATH] });
+    expect(
+      await g.request({
+        caseId: "case-1",
+        purposeRef: "case:case-1",
+        transform: "TR-044@1.0.0",
+        url: `https://api.abuseipdb.com${PATH}?ipAddress=8.8.8.8`,
+        sends: ["domain", "ip"],
+        sensitivity: "normal",
+        pinnedHost: "api.abuseipdb.com",
+        headers: { key: SECRET },
+        secret: SECRET,
+        secretProvider: "abuseipdb",
+      }),
+    ).toMatchObject({ ok: true });
+    expect(calls).toEqual([`https://api.abuseipdb.com${PATH}?ipAddress=8.8.8.8`]);
   });
 });

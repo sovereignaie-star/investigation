@@ -111,32 +111,6 @@ describe("TR-044 abuseipdb-check", () => {
     );
   });
 
-  it("emits no findings when the source returns a zero-score clean report", async () => {
-    const sim = createSimServer([
-      {
-        match: /^https:\/\/api\.abuseipdb\.com\/api\/v2\/check\?ipAddress=1\.1\.1\.1$/,
-        response: {
-          status: 200,
-          body: abuseIpDbResponse({
-            ipAddress: "1.1.1.1",
-            abuseConfidenceScore: 0,
-            totalReports: 0,
-            numDistinctUsers: 0,
-            usageType: "Content Delivery Network",
-            isp: "APNIC Labs",
-            domain: "one.one",
-            hostnames: ["one.one"],
-            isTor: false,
-          }),
-        },
-      },
-    ]);
-    const result = await runTransform(abuseIpDbCheck, { transport: sim.transport, input: { ip: "1.1.1.1" } });
-    // Context findings (ISP/domain/hostname/country) still stand; the abuse-score claim does not.
-    expect(result.output.findings.find((f) => f.predicate === "has_abuse_score")).toBeUndefined();
-    expect(result.output.findings.find((f) => f.predicate === "is_tor_exit")).toBeUndefined();
-  });
-
   it("fails closed on a non-200 status", async () => {
     const sim = createSimServer([
       {
@@ -157,5 +131,72 @@ describe("TR-044 abuseipdb-check", () => {
     const sim = createSimServer([]);
     await expect(runTransform(abuseIpDbCheck, { transport: sim.transport, input: {} })).rejects.toThrow(/ip is required/);
     expect(sim.requestCount()).toBe(0);
+  });
+
+  it("a malformed response (no data object) fails as a source error, not an empty success", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.abuseipdb\.com\/api\/v2\/check\?ipAddress=8\.8\.8\.8$/,
+        response: { status: 200, body: JSON.stringify({}) },
+      },
+    ]);
+    await expect(runTransform(abuseIpDbCheck, { transport: sim.transport, input: { ip: "8.8.8.8" } })).rejects.toThrow(/AbuseIPDB check/);
+  });
+
+  it("a response about a DIFFERENT address is refused fail-closed — its record is never attributed to the requested subject", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.abuseipdb\.com\/api\/v2\/check\?ipAddress=8\.8\.8\.8$/,
+        response: { status: 200, body: abuseIpDbResponse({ ipAddress: "1.2.3.4" }) },
+      },
+    ]);
+    await expect(runTransform(abuseIpDbCheck, { transport: sim.transport, input: { ip: "8.8.8.8" } })).rejects.toThrow(
+      /different address/i,
+    );
+  });
+
+  it("a zero score is a real result: the report summary (score, totalReports, distinct users) is carried in the claim, not collapsed", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.abuseipdb\.com\/api\/v2\/check\?ipAddress=1\.1\.1\.1$/,
+        response: {
+          status: 200,
+          body: abuseIpDbResponse({
+            ipAddress: "1.1.1.1",
+            abuseConfidenceScore: 0,
+            totalReports: 0,
+            numDistinctUsers: 0,
+            isp: "APNIC Labs",
+            domain: "one.one",
+            hostnames: ["one.one"],
+            isTor: false,
+          }),
+        },
+      },
+    ]);
+    const result = await runTransform(abuseIpDbCheck, { transport: sim.transport, input: { ip: "1.1.1.1" } });
+    const score = result.output.findings.find((f) => f.predicate === "has_abuse_score");
+    expect(score).toBeDefined();
+    expect(score?.objectValue).toBe("1.1.1.1");
+    // The explanation carries the full report summary — a clean report is data, not absence.
+    expect(score?.explanation).toContain("0%");
+    expect(score?.explanation).toContain("0 reports");
+    // A clean report is not a Tor marker either.
+    expect(result.output.findings.find((f) => f.predicate === "is_tor_exit")).toBeUndefined();
+  });
+
+  it("an invalid domain/hostname value in the response is skipped, not emitted as a finding", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.abuseipdb\.com\/api\/v2\/check\?ipAddress=8\.8\.8\.8$/,
+        response: {
+          status: 200,
+          body: abuseIpDbResponse({ domain: "not a domain!", hostnames: ["also not! a hostname"] }),
+        },
+      },
+    ]);
+    const result = await runTransform(abuseIpDbCheck, { transport: sim.transport, input: { ip: "8.8.8.8" } });
+    expect(result.output.findings.find((f) => f.predicate === "has_domain")).toBeUndefined();
+    expect(result.output.findings.find((f) => f.predicate === "has_hostname")).toBeUndefined();
   });
 });

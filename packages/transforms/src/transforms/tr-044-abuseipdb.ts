@@ -22,6 +22,7 @@
 import { defineTransform } from "../manifest.ts";
 import type { TransformFinding } from "../output.ts";
 import { isIpv4, isIpv6, parseJson, expectStatus } from "./util.ts";
+import { matchesSpec, specById } from "@ir/core/identifiers";
 
 const ABUSEIPDB_CHECK = "https://api.abuseipdb.com/api/v2/check";
 
@@ -33,6 +34,8 @@ export interface Tr044Input {
 interface AbuseIpDbData {
   readonly ipAddress?: string;
   readonly abuseConfidenceScore?: number;
+  readonly totalReports?: number;
+  readonly numDistinctUsers?: number;
   readonly isTor?: boolean;
   readonly usageType?: string;
   readonly isp?: string;
@@ -41,7 +44,7 @@ interface AbuseIpDbData {
   readonly countryCode?: string;
 }
 
-/** A string that is non-empty after trimming and not longer than a registrable domain. */
+/** A string that is non-empty after trimming and not longer than the declared bound. */
 function cleanText(value: unknown, max: number): string | undefined {
   if (typeof value !== "string") return undefined;
   const v = value.trim();
@@ -49,18 +52,32 @@ function cleanText(value: unknown, max: number): string | undefined {
   return v;
 }
 
-/** The abuse-confidence claim on the IP itself — only when the source reports a non-zero score
- *  (0 is a clean report, not a claim). */
+/** A value that matches its CATALOG spec (pattern + validator), not merely a short string — a
+ *  malformed source value is skipped, never emitted as a finding (D-018). */
+function catalogValue(value: unknown, type: string, max: number): string | undefined {
+  const v = cleanText(value, max);
+  if (v === undefined) return undefined;
+  const spec = specById(type);
+  if (spec === undefined || matchesSpec(spec, v).pattern !== true) return undefined;
+  return v;
+}
+
+/** The abuse-confidence claim on the IP itself. The score is the source's own confidence measure
+ *  (mapped directly, the TR-047 precedent); a score of 0 is a REAL clean result — the claim is
+ *  still made, carrying the full report summary (score, totalReports, distinct users) in its
+ *  explanation. Only a missing or out-of-range score omits the claim. */
 function abuseScoreFinding(data: AbuseIpDbData, ip: string, objectType: string, requestId: number): TransformFinding | undefined {
   const score = data.abuseConfidenceScore;
-  if (typeof score !== "number" || score <= 0 || score > 100) return undefined;
+  if (typeof score !== "number" || score < 0 || score > 100) return undefined;
+  const reports = typeof data.totalReports === "number" && data.totalReports >= 0 ? data.totalReports : 0;
+  const users = typeof data.numDistinctUsers === "number" && data.numDistinctUsers >= 0 ? data.numDistinctUsers : 0;
   return {
     predicate: "has_abuse_score",
     evidence: [requestId],
     objectType,
     objectValue: ip,
     confidence: score / 100,
-    explanation: `AbuseIPDB: ${ip} has an abuse confidence score of ${score}%`,
+    explanation: `AbuseIPDB: ${ip} has an abuse confidence score of ${score}% (${reports} reports from ${users} distinct users)`,
   };
 }
 
@@ -88,7 +105,7 @@ function contextFindings(data: AbuseIpDbData, ip: string, objectType: string, re
       explanation: `AbuseIPDB: ${ip} is operated by ${isp}`,
     });
   }
-  const domain = cleanText(data.domain, 253);
+  const domain = catalogValue(data.domain, "domain", 253);
   if (domain !== undefined) {
     findings.push({
       predicate: "has_domain",
@@ -100,7 +117,7 @@ function contextFindings(data: AbuseIpDbData, ip: string, objectType: string, re
     });
   }
   for (const hostname of data.hostnames ?? []) {
-    const h = cleanText(hostname, 253);
+    const h = catalogValue(hostname, "hostname", 253);
     if (h === undefined) continue;
     findings.push({
       predicate: "has_hostname",
@@ -147,7 +164,15 @@ export const abuseIpDbCheck = defineTransform<Tr044Input>(
     const res = await ctx.http.get(`${ABUSEIPDB_CHECK}?ipAddress=${encodeURIComponent(ip)}`);
     expectStatus(res, [200], "AbuseIPDB check");
     const parsed = parseJson(res.body, "AbuseIPDB check") as { data?: AbuseIpDbData };
-    const data = parsed.data ?? {};
+    if (parsed.data === undefined || parsed.data === null || typeof parsed.data !== "object") {
+      throw new Error("TR-044: AbuseIPDB check returned a malformed response (no data object)");
+    }
+    const data = parsed.data;
+    // The record must be about the requested address — a response about a different address is
+    // never attributed to the requested subject (fail-closed, not silent misattribution).
+    if (data.ipAddress !== undefined && data.ipAddress !== ip) {
+      throw new Error(`TR-044: AbuseIPDB check returned a different address (${data.ipAddress}) than requested (${ip})`);
+    }
     const score = abuseScoreFinding(data, ip, objectType, res.requestId);
     const findings = contextFindings(data, ip, objectType, res.requestId);
     if (score !== undefined) findings.unshift(score);
