@@ -9,7 +9,13 @@
  * - the capture time (DateTimeOriginal, normalized to "YYYY-MM-DD HH:mm:ss" —
  *   EXIF timestamps carry no timezone, so no zone is ever invented);
  * - the GPS coordinates (DMS rationals converted to decimal degrees, signed
- *   by GPSLatitudeRef/GPSLongitudeRef when present — S/W are negative).
+ *   by GPSLatitudeRef/GPSLongitudeRef — S/W are negative). The hemisphere
+ *   refs are REQUIRED: absent refs mean the hemisphere is unknown, and no
+ *   geo finding is emitted at all (nothing is guessed — measured 2026-10-16:
+ *   ExifReader returns the refs as `value: ["S"]` with a prose description
+ *   like "South latitude", so the sign is read from the value array, the
+ *   library's own convention);
+ * - the XMP creation tool (CreatorTool), the software that created the file.
  *
  * Every finding cites `derivedFrom: "input"`: the analysis is computed from the
  * input alone, and a run that made no request must not cite request evidence
@@ -76,16 +82,31 @@ function dateFinding(tags: Record<string, ExifTag>): TransformFinding | undefine
   };
 }
 
-/** GPS finding: DMS rationals to decimal degrees, signed by the refs when present. */
+/** Hemisphere letter ("N"/"S"/"E"/"W") from a GPS ref tag, or undefined.
+ * Measured: the ref's `value` is a char array (["S"]); the `description` is
+ * prose ("South latitude") — only the value array is authoritative. */
+function refHemisphere(tag: ExifTag | undefined): string | undefined {
+  const v = tag?.value;
+  if (Array.isArray(v) && v.length > 0) {
+    const joined = v.join("");
+    if (typeof joined === "string" && /^[NSEW]$/.test(joined)) return joined;
+  }
+  if (typeof v === "string" && /^[NSEW]$/.test(v)) return v;
+  return undefined;
+}
+
+/** GPS finding: DMS rationals to decimal degrees, signed by the refs — which
+ * are REQUIRED: without them the hemisphere is unknown and nothing is emitted. */
 function geoFinding(tags: Record<string, ExifTag>): TransformFinding | undefined {
   const latRatios = tags.GPSLatitude?.value as readonly Rational[] | undefined;
   const lngRatios = tags.GPSLongitude?.value as readonly Rational[] | undefined;
   if (!Array.isArray(latRatios) || !Array.isArray(lngRatios)) return undefined;
+  const latRef = refHemisphere(tags.GPSLatitudeRef);
+  const lngRef = refHemisphere(tags.GPSLongitudeRef);
+  if (latRef === undefined || lngRef === undefined) return undefined; // never guess the hemisphere
   const lat = dmsToDecimal(latRatios);
   const lng = dmsToDecimal(lngRatios);
   if (lat === undefined || lng === undefined) return undefined;
-  const latRef = tags.GPSLatitudeRef?.description;
-  const lngRef = tags.GPSLongitudeRef?.description;
   const signedLat = latRef === "S" ? -lat : lat;
   const signedLng = lngRef === "W" ? -lng : lng;
   return {
@@ -94,7 +115,21 @@ function geoFinding(tags: Record<string, ExifTag>): TransformFinding | undefined
     objectType: "geo_point",
     objectValue: `${signedLat.toFixed(6)},${signedLng.toFixed(6)}`,
     confidence: 1,
-    explanation: `GPS coordinates from EXIF (DMS to decimal degrees; refs ${latRef ?? "N"}/${lngRef ?? "E"} applied)`,
+    explanation: `GPS coordinates from EXIF (DMS to decimal degrees; refs ${latRef}/${lngRef} applied)`,
+  };
+}
+
+/** XMP tool finding: CreatorTool — the software that created the file. */
+function xmpToolFinding(tags: Record<string, ExifTag>): TransformFinding | undefined {
+  const tool = typeof tags.CreatorTool?.description === "string" ? tags.CreatorTool.description.trim() : "";
+  if (tool.length === 0) return undefined;
+  return {
+    predicate: "created_with",
+    derivedFrom: "input",
+    objectType: "application",
+    objectValue: tool,
+    confidence: 1,
+    explanation: "creation tool from XMP CreatorTool (local parse, no network)",
   };
 }
 
@@ -130,7 +165,7 @@ export const exifMetadata = defineTransform<{ content: string }>(
     }
 
     const findings: TransformFinding[] = [];
-    for (const finding of [cameraFinding(tags), dateFinding(tags), geoFinding(tags)]) {
+    for (const finding of [cameraFinding(tags), dateFinding(tags), geoFinding(tags), xmpToolFinding(tags)]) {
       if (finding !== undefined) findings.push(finding);
     }
     return { findings };

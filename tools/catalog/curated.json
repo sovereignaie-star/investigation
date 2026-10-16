@@ -426,7 +426,7 @@
   { "name": "Tor Project", "url": "https://www.torproject.org/", "cat": "Dark web & Tor", "desc": "Tor network and Tor Browser." },
   {
     "name": "ExifReader",
-    "url": "https://github.com/mattiaswandel/ExifReader",
+    "url": "https://github.com/mattiasw/ExifReader",
     "cat": "Images / Metadata",
     "desc": "JavaScript EXIF/XMP/GPS metadata parser for images (MPL-2.0; adopted by owner decision 2026-10-16 for TR-031)."
   }
