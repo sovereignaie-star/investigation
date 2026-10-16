@@ -67,14 +67,18 @@ export function vaultRouter(
     res.json({ entries: names.map((name) => ({ name, configured: configured.has(name), updatedAt: configured.get(name) ?? null })) });
   });
 
-  router.put("/vault/:name", (req, res) => {
+  router.put("/vault/:name", async (req, res) => {
     const name = param(req.params["name"]);
     const secret: unknown = (req.body as { secret?: unknown } | undefined)?.secret;
     try {
       assertVaultName(name);
       if (typeof secret !== "string") throw new Error('body must be {"secret": string}');
       const info = getVault().set(name, secret);
-      res.json({ name: info.name, configured: true, updatedAt: info.updatedAt });
+      // P2-015 (D-032): the save never answers a bare "saved". Where a key test exists and a
+      // transport is wired, the save response carries the test result (saving and verification
+      // stay distinct: a failed test does NOT unsave the key — the response reports both facts).
+      // Where no test is possible, the response says so with the documented reason.
+      res.json({ name: info.name, configured: true, updatedAt: info.updatedAt, ...(await runKeyTest(name)) });
     } catch (x) {
       res.status(400).json({ error: (x as Error).message });
     }
@@ -84,19 +88,21 @@ export function vaultRouter(
     res.status(getVault().delete(param(req.params["name"])) ? 204 : 404).end();
   });
 
+  /**
+   * P2-015: run the provider key test through the gateway when a transport is wired. Without a
+   * transport (the server is on FAIL_CLOSED_TRANSPORT by design — L-05) the result is an honest
+   * tested:false with the reason; it is never fabricated as ok.
+   */
+  const runKeyTest = async (name: string): Promise<{ ok: boolean; tested: boolean; reason?: string; providerStatus?: number }> => {
+    const transport = opts.vaultTestTransport;
+    const resolver = opts.vaultTestResolver;
+    if (!transport || !resolver) return { ok: false, tested: false, reason: "transport_not_configured" };
+    return testProviderKey(name, getVault(), transport, resolver);
+  };
+
   router.post("/vault/:name/test", async (req, res) => {
     try {
-      const transport = opts.vaultTestTransport;
-      const resolver = opts.vaultTestResolver;
-      if (!transport || !resolver) {
-        // No transport injected: this is a simulation-only cycle with no real
-        // network path. The route degrades to "not tested" (200, tested: false)
-        // rather than failing, because the e2e gate calls it on the built
-        // server. Production wiring of a real transport is an owner decision.
-        res.json({ ok: false, tested: false, reason: "transport_not_configured" });
-        return;
-      }
-      res.json(await testProviderKey(param(req.params["name"]), getVault(), transport, resolver));
+      res.json(await runKeyTest(param(req.params["name"])));
     } catch {
       res.status(502).json({ ok: false, tested: true, error: "provider unreachable" });
     }
