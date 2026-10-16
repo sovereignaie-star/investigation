@@ -12,7 +12,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { manualClock } from "@ir/core";
 import type { DnsResolver, EgressTransport } from "@ir/egress";
-import { project } from "@ir/ledger/projections";
+import { project, projectionHash } from "@ir/ledger/projections";
+import { replayCase } from "@ir/engine";
 import { openCase } from "@ir/store";
 import { probeIsolation } from "@ir/transform-sandbox";
 import { main, type CliOptions } from "./ir.ts";
@@ -425,6 +426,57 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
       error: expect.stringContaining("connection reset"),
     });
     expect(log.transportCalls[2].status).toBeUndefined();
+  });
+
+  it("T-ETH-006 (P2-014): replay preserves the case's history — no new transport rows, origins not reclassified, projection unchanged", async () => {
+    const dir = tempDir("netlog-replay");
+    const c = openCase(dir, { actor: "test", create: { title: "t", purpose: "مراجعة بنية تحتية", legalBasis: "security_incident" } });
+    const bytes = new TextEncoder().encode("<html>ok</html>");
+    // a historical network run: one stored outcome (origin network) and one transport row
+    c.addEvidence({
+      bytes,
+      mime: "text/html",
+      request: { method: "GET", url: "https://source.example/", headers: {}, status: 200 },
+      transformId: "tr-010",
+      version: "1.0.0",
+      origin: "network",
+    });
+    c.audit("egress.allowed", "source.example", { transform: "TR-010@1.0.0", transportCalls: 1, reason: null });
+    c.audit("egress.transport", "source.example", {
+      transform: "TR-010@1.0.0",
+      url: "https://source.example/",
+      status: 200,
+      attempt: 1,
+      transportCalls: 1,
+    });
+    const before = readCase(dir);
+    const hashBefore = projectionHash(before.p);
+
+    // replay the run offline against the case's own evidence and blob store
+    const records = before.evidence.map((e) => ({
+      request: { method: (e as { request: { method: string } }).request.method, url: (e as { request: { url: string } }).request.url },
+      sha256: (e as { sha256: string }).sha256,
+      mime: (e as { mime: string }).mime,
+    }));
+    const res = await replayCase({
+      records,
+      blobs: { get: () => bytes }, // the case's stored blob
+      input: { kind: "lookup", canonicalInput: "https://source.example/" },
+      caps: { maxNodes: 5, maxDepth: 3, maxRequests: 5, maxCostEstimate: 100, maxElapsedMs: 5_000 },
+    });
+    expect(res.served).toBe(1);
+    expect(res.missed).toBe(0);
+
+    // the case's history is untouched: same evidence count, same transport rows, origins NOT
+    // reclassified by the replay (a replayed outcome is served from storage, not a new connection),
+    // and the projection is byte-identical.
+    const after = readCase(dir);
+    expect(after.evidence).toHaveLength(before.evidence.length);
+    expect(after.p.networkLog.transportCalls).toHaveLength(1);
+    expect(after.p.networkLog.transportCalls[0]).toMatchObject({ url: "https://source.example/", status: 200 });
+    expect(after.p.networkLog.responses).toHaveLength(1);
+    expect(after.p.networkLog.responses[0].origin).toBe("network");
+    expect(projectionHash(after.p)).toBe(hashBefore);
   });
 
   it("T-ETH-006 (P2-014): a simulated run's stored outcome is marked origin sim and never presented as a real connection", async () => {
