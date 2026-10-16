@@ -73,10 +73,7 @@ export interface Transform<TInput = unknown> {
 export function createTransformHttp(transport: HttpTransport, signal?: AbortSignal): TransformHttp {
   const runSignal = signal ?? new AbortController().signal;
   const request = async (method: "GET" | "HEAD" | "POST", url: string, headers?: Readonly<Record<string, string>>, reqBody?: string) => {
-    const res: TransportResponse = await transport.fetch(
-      { method, url, headers, body: reqBody, oauth2Token: method === "POST" ? true : undefined },
-      runSignal,
-    );
+    const res: TransportResponse = await transport.fetch({ method, url, headers, body: reqBody }, runSignal);
     // A response that arrives after cancellation is never a success, even if the
     // transport completed it (the engine enforces the same rule on its own path).
     if (runSignal.aborted) {

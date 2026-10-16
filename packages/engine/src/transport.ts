@@ -10,12 +10,12 @@ export interface TransportRequest {
   readonly url: string;
   readonly headers?: Readonly<Record<string, string>>;
   /**
-   * Request body — allowed ONLY on the ADR-27 OAuth2 token POST (client-credentials, pinned auth
-   * host, form-urlencoded body built from project secrets). Never recorded in evidence or audit.
+   * Request body — allowed ONLY on a POST of one of the two pinned kinds: the ADR-27 OAuth2
+   * token request (client-credentials, pinned auth host, form body from project secrets) or the
+   * ADR-28 OpenSanctions /match screening request (pinned host+path, fixed-schema JSON body
+   * carrying the subject's name). Never recorded in evidence or audit.
    */
   readonly body?: string;
-  /** Marks the request as the ADR-27 OAuth2 token request — the only legal POST. */
-  readonly oauth2Token?: true;
 }
 
 export interface TransportResponse {

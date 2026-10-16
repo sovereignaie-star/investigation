@@ -90,7 +90,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "request content not inspected (sends taken on trust)",
     file: "egress.ts",
-    from: "const contentErr = checkContent(req);",
+    from: "const contentErr = checkContent(req, postHosts.screening);",
     to: "const contentErr = null as EgressResult | null;",
     detectedBy: ["T-SEC-SSRF-043"],
   },

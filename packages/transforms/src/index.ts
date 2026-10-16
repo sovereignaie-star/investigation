@@ -25,6 +25,7 @@ export * from "./transforms/tr-019-pgp-keys.ts";
 export * from "./transforms/tr-020-email-tech.ts";
 export * from "./transforms/tr-021-gleif.ts";
 export * from "./transforms/tr-026-ofac-sdn.ts";
+export * from "./transforms/tr-025-opensanctions.ts";
 export * from "./transforms/tr-027-un-sc.ts";
 export * from "./transforms/tr-028-eu-sanctions.ts";
 export * from "./transforms/tr-023-companies-house.ts";

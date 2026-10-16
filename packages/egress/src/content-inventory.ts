@@ -137,14 +137,50 @@ function surfaces(
   // form pair is read as "key value" (the raw concatenated text would hide values from the
   // detector: "client_id=AB123456" is one token, "client_id AB123456" is a readable pair). The
   // values are project secrets, but the natural-person backstop applies to it like a header.
+  // ADR-28: a JSON body (the OpenSanctions /match screening body) is inventoried by its string
+  // values joined with spaces — the fixed schema carries the screening subject's name in
+  // firstName/lastName/name properties, and the raw JSON text would hide it from the detector
+  // (the values sit between quotes and braces). The body surface is where the ADR-28 person-name
+  // waiver applies (judgeInventory), so the name must be detectable there.
   if (body !== undefined && body !== "") {
-    try {
-      for (const [k, v] of new URLSearchParams(body)) out.push(["body", `${k} ${v}`]);
-    } catch {
-      out.push(["body", body]); // not a form body: the raw text is still inventoried
+    const jsonValues = jsonStringValues(body);
+    if (jsonValues !== null) {
+      out.push(["body", jsonValues.join(" ")]);
+    } else {
+      try {
+        for (const [k, v] of new URLSearchParams(body)) out.push(["body", `${k} ${v}`]);
+      } catch {
+        out.push(["body", body]); // not a form body: the raw text is still inventoried
+      }
     }
   }
   return out;
+}
+
+/**
+ * ADR-28: the string values of a JSON object body, or null when the body is not a JSON object.
+ * Only strings are collected (bounded count); keys and structural tokens are ignored.
+ */
+function jsonStringValues(body: string): string[] | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const values: string[] = [];
+  const walk = (node: unknown): void => {
+    if (values.length > 64) return;
+    if (typeof node === "string") {
+      if (node !== "") values.push(node);
+      return;
+    }
+    if (node === null || typeof node !== "object") return;
+    for (const v of Object.values(node as Record<string, unknown>)) walk(v);
+  };
+  walk(parsed);
+  return values;
 }
 
 interface RawFinding extends ContentFinding {
@@ -304,6 +340,7 @@ export function crossHostHeaders(headers: Readonly<Record<string, string>> | und
 export function judgeInventory(
   findings: readonly ContentFinding[],
   sends: readonly string[],
+  opts?: { allowPersonNameOnBody?: boolean },
 ): { reason: "natural_person" | "undeclared_data"; detail: string } | null {
   for (const f of findings) {
     // P2-011 (review fix, 2026-10-15): a person_name reading on the wire refuses ALWAYS, exactly like a
@@ -311,8 +348,18 @@ export function judgeInventory(
     // sends declares. `sends: [person_name]` marks the run as being ABOUT a person (the engine's E-02
     // purpose gate); it is never permission to put the name in a URL, header or redirect. The person
     // transforms download fixed files and match locally, so a legitimate person run never trips this.
+    // ADR-28 (2026-10-16): the OpenSanctions /match screening POST body is the ONE exception — the
+    // subject's own name is the essence of the query. The gateway (which calls this with
+    // allowPersonNameOnBody, re-derived from the pinned host+path, never from a transform-supplied
+    // marker) allows a person_name reading on the body surface for that POST kind only. Every other
+    // natural-person reading (a passport, a national ID, a name on any other surface) still refuses.
     const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
-    if (np) return { reason: "natural_person", detail: `${f.surface} carries a natural-person identifier (${np.type})` };
+    if (np) {
+      const waived = opts?.allowPersonNameOnBody === true && f.surface === "body" && np.type === "person_name";
+      if (!waived) {
+        return { reason: "natural_person", detail: `${f.surface} carries a natural-person identifier (${np.type})` };
+      }
+    }
   }
   // ADR-27: the OAuth2 token POST body is built from project secrets only (fixed keys: grant_type,
   // client_id, client_secret — checked by the gateway's shape policy). The natural-person backstop

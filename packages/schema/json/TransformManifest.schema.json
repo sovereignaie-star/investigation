@@ -87,7 +87,7 @@
     },
     "license": {
       "type": "string",
-      "enum": ["LC-A", "LC-B", "LC-C", "LC-D"]
+      "enum": ["LC-A", "LC-B", "LC-C", "LC-D", "LC-E"]
     }
   },
   "required": ["id", "version", "inputs", "outputs", "network", "limits", "sensitivity", "license"]
