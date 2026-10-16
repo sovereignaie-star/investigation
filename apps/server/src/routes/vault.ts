@@ -118,7 +118,7 @@ export function vaultRouter(
    * decision 2026-10-16): the production default IS the real transport (IR_ENABLE_KEY_TESTS=1);
    * without the opt-in the result is an honest tested:false with the reason; never fabricated ok.
    */
-  const runKeyTest = async (name: string): Promise<{ ok: boolean; tested: boolean; reason?: string; providerStatus?: number }> => {
+  const runKeyTest = async (name: string): Promise<Awaited<ReturnType<typeof testProviderKey>>> => {
     // L-05: the production default is the REAL transport; an injected transport (tests) always
     // takes precedence — the same code path either way (no parallel test transport).
     const transport = opts.vaultTestTransport ?? realTransport;

@@ -24,6 +24,7 @@ vi.mock("../lib/logger", async (importOriginal) => {
 import { openVault } from "@ir/store";
 import { createApp } from "../app";
 import { LOOKUPS_DISABLED, lookupsEnabled, keyTestsEnabled, vaultRouter } from "./vault";
+import { parseQuotaStatus, testProviderKey } from "../lib/providers";
 
 const SECRET = "ipinfo_token_9c1e_never_returned";
 const ADMIN_TOKEN = "admin-token-123";
@@ -566,5 +567,138 @@ describe("L-05 (owner decision 2026-10-16): production key testing goes through 
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
     const res = await fetch(base + "/vault/ipinfo/test", withAdmin({ method: "POST" }));
     expect(await res.json()).toMatchObject({ ok: false, tested: false, reason: "transport_not_configured" });
+  });
+});
+
+describe("P2-024: the quota status on the key-test response (balance display + the 80% alert)", () => {
+  const RESOLVER = { resolve: async () => ["93.184.216.34"] as string[] };
+
+  it("urlscan: documented rate-limit headers compute the used percentage and raise the 80% alert", () => {
+    const q = parseQuotaStatus(
+      "urlscan",
+      {
+        headers: {
+          "X-Rate-Limit-Limit": "100",
+          "X-Rate-Limit-Remaining": "15",
+          "X-Rate-Limit-Action": "search",
+          "X-Rate-Limit-Window": "day",
+          "X-Rate-Limit-Scope": "user",
+        },
+      },
+      () => "2026-10-16T20:00:00.000Z",
+    );
+    expect(q).toMatchObject({
+      provider: "urlscan",
+      source: "rate-limit-headers",
+      limit: 100,
+      remaining: 15,
+      usedPct: 85,
+      alert80: true,
+      action: "search",
+      window: "day",
+      scope: "user",
+    });
+  });
+
+  it("urlscan: below the threshold the alert stays off", () => {
+    const q = parseQuotaStatus(
+      "urlscan",
+      { headers: { "x-rate-limit-limit": "100", "x-rate-limit-remaining": "30" } },
+      () => "2026-10-16T20:00:00.000Z",
+    );
+    expect(q).toMatchObject({ usedPct: 70, alert80: false });
+  });
+
+  it("urlscan: a response with no usable headers is an honest refresh failure, never a zero balance", () => {
+    const q = parseQuotaStatus("urlscan", { headers: {} }, () => "2026-10-16T20:00:00.000Z");
+    expect(q).toMatchObject({ supported: false, status: "not_supported" });
+  });
+
+  it('hunter: the documented account fields are surfaced RAW — no percentage (the "available" semantics are not documented)', () => {
+    const q = parseQuotaStatus(
+      "hunter",
+      {
+        body: JSON.stringify({
+          requests: { searches: { used: 14260, available: 10000 }, verifications: { used: 4266, available: 10000 } },
+          reset_date: "2026-10-24",
+        }),
+      },
+      () => "2026-10-16T20:00:00.000Z",
+    );
+    expect(q).toMatchObject({
+      provider: "hunter",
+      source: "account-fields",
+      raw: {
+        "requests.searches.used": 14260,
+        "requests.searches.available": 10000,
+        "requests.verifications.used": 4266,
+        "requests.verifications.available": 10000,
+        reset_date: "2026-10-24",
+      },
+    });
+    expect(q).not.toHaveProperty("usedPct");
+    expect(q).not.toHaveProperty("alert80");
+  });
+
+  it("the honest three states: not supported (verified absence) vs not verified (unreachable references) — never a zero balance", () => {
+    const ipinfo = parseQuotaStatus("ipinfo", { headers: {}, body: "" }, () => "2026-10-16T20:00:00.000Z");
+    expect(ipinfo).toMatchObject({ supported: false, status: "not_supported" });
+    const vt = parseQuotaStatus("virustotal", { headers: {}, body: "" }, () => "2026-10-16T20:00:00.000Z");
+    expect(vt).toMatchObject({ supported: false, status: "not_verified" });
+  });
+
+  it("the route surfaces the quota on a successful key test (urlscan headers -> the 80% alert reaches the key-management caller)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-q-"));
+    dirs.push(dir);
+    const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
+    vault.set("urlscan", SECRET);
+    const transport = {
+      async fetch() {
+        return {
+          status: 200,
+          body: "{}",
+          headers: {
+            "x-api-key-ok": "1",
+            "X-Rate-Limit-Limit": "50",
+            "X-Rate-Limit-Remaining": "5",
+            "X-Rate-Limit-Action": "search",
+            "X-Rate-Limit-Window": "day",
+          },
+        };
+      },
+    };
+    const app = createApp(
+      vaultRouter(() => vault, { env: { IR_ADMIN_TOKEN: ADMIN_TOKEN }, vaultTestTransport: transport, vaultTestResolver: RESOLVER }),
+    );
+    const server = app.listen(0, "127.0.0.1");
+    servers.push(server);
+    await new Promise((r) => server.once("listening", r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    const res = await fetch(base + "/vault/urlscan/test", withAdmin({ method: "POST" }));
+    const body = (await res.json()) as {
+      ok: boolean;
+      tested: boolean;
+      quota?: { supported: boolean; usedPct?: number; alert80?: boolean };
+    };
+    expect(body).toMatchObject({ ok: true, tested: true });
+    expect(body.quota).toMatchObject({ supported: true, usedPct: 90, alert80: true });
+    // the secret never appears in the response
+    expect(JSON.stringify(body)).not.toContain(SECRET);
+  });
+
+  it("testProviderKey returns the parsed quota for hunter (raw fields, no percentage) on a successful test", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-srv-q2-"));
+    dirs.push(dir);
+    const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
+    vault.set("hunter", SECRET);
+    const transport = {
+      async fetch() {
+        return { status: 200, body: JSON.stringify({ requests: { searches: { used: 10, available: 1000 } }, reset_date: "2026-10-24" }) };
+      },
+    };
+    const r = await testProviderKey("hunter", vault, transport, RESOLVER);
+    expect(r).toMatchObject({ ok: true, tested: true });
+    expect(r.quota).toMatchObject({ supported: true, source: "account-fields" });
+    expect((r.quota as { raw?: Record<string, unknown> }).raw).toMatchObject({ "requests.searches.used": 10 });
   });
 });

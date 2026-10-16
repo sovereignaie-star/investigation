@@ -58,6 +58,171 @@ export const PROVIDER_KEY_TESTS: Readonly<Record<string, ProviderKeyTest>> = {
 };
 
 /**
+ * P2-024: how a provider reports its key's quota on the key-test response. DATA, per provider, with
+ * each source documented in docs/security/KEY_TESTS.md. Two kinds:
+ *
+ * - `rate-limit-headers`: the provider documents rate-limit headers on every rate-limited response
+ *   with EXACT semantics (limit + remaining for the action's tightest window) — the only kind a
+ *   computed percentage (and the 80% alert) is derived from.
+ * - `account-fields`: the provider documents usage fields on the account/test response but NOT the
+ *   semantics of "available" (total allowance vs remaining) — the raw values are surfaced WITHOUT
+ *   a computed percentage until the semantics are verified.
+ *
+ * Providers absent from this map report an honest status (see PROVIDER_QUOTA_UNSUPPORTED /
+ * PROVIDER_QUOTA_UNVERIFIED) — missing data is never a zero balance.
+ */
+export type ProviderQuotaRead =
+  | { readonly kind: "rate-limit-headers"; readonly headerPrefix: string }
+  | { readonly kind: "account-fields"; readonly bodyFields: readonly string[] };
+
+/** P2-024: providers whose official documentation reports NO usage/balance on the API (verified absence). */
+export const PROVIDER_QUOTA_UNSUPPORTED: Readonly<Record<string, string>> = {
+  ipinfo:
+    "the official docs report no API usage/balance endpoint (Lite is unlimited; paid plans enforce a monthly limit with 429 + dashboard alerts, not API reporting)",
+  securitytrails: "the official docs report no API usage/remaining-quota endpoint (email notifications only)",
+  greynoise: "the official docs report no remaining-quota endpoint (the 429 response carries a rate-limit reason only)",
+  haveibeenpwned: "the subscription status returns plan info and Rpm but NO usage/balance fields (verified against the official API docs)",
+};
+
+/** P2-024: providers whose quota reporting could NOT be verified this cycle (the reference pages were unreachable) — NOT "unsupported". */
+export const PROVIDER_QUOTA_UNVERIFIED: Readonly<Record<string, string>> = {
+  virustotal:
+    "the user-level quota endpoints are documented to exist (/users/{id}/overall_quotas) but the response fields could not be verified against the official reference this cycle",
+  binaryedge: "the subscription endpoint's documented response fields could not be verified against the official docs this cycle",
+};
+
+/**
+ * P2-024: the quota reads with verified semantics.
+ * - urlscan: the X-Rate-Limit-* headers (the official API docs document every header: Scope, Action,
+ *   Window, Limit = "your rate-limit for this action and window", Remaining = "remaining calls for
+ *   this action and window, not counting the current request", Reset, Reset-After).
+ * - hunter: the account response's requests.* used/available + reset_date (the official docs show the
+ *   fields but do NOT document what "available" means — total allowance vs remaining — so the raw
+ *   values are surfaced without a computed percentage).
+ */
+export const PROVIDER_QUOTA: Readonly<Record<string, ProviderQuotaRead>> = {
+  urlscan: { kind: "rate-limit-headers", headerPrefix: "x-rate-limit-" },
+  hunter: {
+    kind: "account-fields",
+    bodyFields: [
+      "requests.searches.used",
+      "requests.searches.available",
+      "requests.verifications.used",
+      "requests.verifications.available",
+      "reset_date",
+    ],
+  },
+};
+
+/** P2-024: the structured quota status (the advisor's metadata: provider, key, scope, action, window, read time, raw values, computed state). */
+export interface QuotaStatus {
+  /** Always true on this shape (the failure shape carries supported: false with a reason). */
+  readonly supported: true;
+  readonly provider: string;
+  readonly readAt: string;
+  readonly source: "rate-limit-headers" | "account-fields";
+  /** urlscan: the header's scope (user/team) and the action+window the reported limit refers to. */
+  readonly scope?: string;
+  readonly action?: string;
+  readonly window?: string;
+  readonly limit?: number;
+  readonly remaining?: number;
+  /** Computed ONLY from verified semantics (urlscan's headers): the used fraction of the tightest window. */
+  readonly usedPct?: number;
+  /** True when usedPct >= 80 — the acceptance alert (surfaced in the key-management response). */
+  readonly alert80?: boolean;
+  /** hunter: the raw documented fields, surfaced without a percentage (the "available" semantics unverified). */
+  readonly raw?: Record<string, unknown>;
+}
+
+/**
+ * P2-024: parse the quota from a successful key-test response. The body/headers are read here and
+ * NEVER returned raw to the client — only the parsed status is.
+ */
+/** Reads one rate-limit header case-insensitively by its suffix (limit, remaining, scope, ...). */
+function rateHeader(headers: Record<string, string>, prefix: string, suffix: string): string | undefined {
+  const wanted = `${prefix}${suffix}`.toLowerCase();
+  for (const [k, v] of Object.entries(headers)) if (k.toLowerCase() === wanted) return v;
+  return undefined;
+}
+
+/** urlscan-style: the documented rate-limit headers (limit + remaining for the tightest window). */
+function parseRateLimitHeaders(
+  name: string,
+  headers: Record<string, string>,
+  prefix: string,
+  now: () => string,
+): QuotaStatus | { supported: false; status: "not_supported"; reason: string } {
+  const limit = Number(rateHeader(headers, prefix, "limit"));
+  const remaining = Number(rateHeader(headers, prefix, "remaining"));
+  if (!Number.isFinite(limit) || !Number.isFinite(remaining) || limit <= 0) {
+    // the response carried no usable rate-limit headers — an honest refresh failure, never a zero balance
+    return { supported: false, status: "not_supported", reason: "the key-test response carried no usable rate-limit headers" };
+  }
+  const usedPct = Math.round(((limit - remaining) / limit) * 100);
+  const opt = (suffix: string) => {
+    const v = rateHeader(headers, prefix, suffix);
+    return v === undefined ? {} : { [suffix]: v };
+  };
+  return {
+    supported: true,
+    provider: name,
+    readAt: now(),
+    source: "rate-limit-headers",
+    ...opt("scope"),
+    ...opt("action"),
+    ...opt("window"),
+    limit,
+    remaining: Math.max(0, remaining),
+    usedPct,
+    alert80: usedPct >= 80,
+  };
+}
+
+/** hunter-style: the documented account fields, surfaced raw without a percentage (semantics unverified). */
+function parseAccountFields(
+  name: string,
+  body: string | undefined,
+  fields: readonly string[],
+  now: () => string,
+): QuotaStatus | { supported: false; status: "not_supported"; reason: string } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body ?? "");
+  } catch {
+    return { supported: false, status: "not_supported", reason: "the key-test response body was not readable JSON" };
+  }
+  const raw: Record<string, unknown> = {};
+  for (const field of fields) raw[field] = deepGet(parsed, field);
+  return { supported: true, provider: name, readAt: now(), source: "account-fields", raw };
+}
+
+/** Walks a dotted path ("requests.searches.used") and yields the value (undefined when absent). */
+function deepGet(value: unknown, path: string): unknown {
+  let cur: unknown = value;
+  for (const part of path.split(".")) {
+    if (cur && typeof cur === "object" && part in (cur as Record<string, unknown>)) cur = (cur as Record<string, unknown>)[part];
+    else return undefined;
+  }
+  return cur;
+}
+
+export function parseQuotaStatus(
+  name: string,
+  response: { headers?: Record<string, string>; body?: string },
+  now: () => string,
+): QuotaStatus | { supported: false; status: "not_supported" | "not_verified"; reason: string } {
+  const unsupported = PROVIDER_QUOTA_UNSUPPORTED[name];
+  if (unsupported !== undefined) return { supported: false, status: "not_supported", reason: unsupported };
+  const unverified = PROVIDER_QUOTA_UNVERIFIED[name];
+  if (unverified !== undefined) return { supported: false, status: "not_verified", reason: unverified };
+  const read = PROVIDER_QUOTA[name];
+  if (!read) return { supported: false, status: "not_supported", reason: "no quota read defined for this provider" };
+  if (read.kind === "rate-limit-headers") return parseRateLimitHeaders(name, response.headers ?? {}, read.headerPrefix, now);
+  return parseAccountFields(name, response.body, read.bodyFields, now);
+}
+
+/**
  * P2-015 (D-032): providers whose key CANNOT be tested under the governing policies, each with its
  * documented reason. "حيث يمكن" — the acceptance criterion is met by an explicit, auditable reason,
  * never by a silent `{ ok: true, tested: false }`.
@@ -188,12 +353,40 @@ function resolveKeyTest(name: string): { refusal?: { ok: false; tested: false; r
   return { test };
 }
 
+/**
+ * P2-024: the final contract of a key test — the provider's status plus, on success, the parsed quota
+ * from the SAME response (no extra request, no extra quota consumption). The body/headers are read
+ * here only; the parsed status is returned, never the raw response.
+ */
+function finalizeKeyTest(
+  name: string,
+  response: { status: number; headers?: Record<string, string>; body?: string } | undefined,
+): {
+  ok: boolean;
+  tested: boolean;
+  reason?: string;
+  providerStatus?: number;
+  quota?: QuotaStatus | { supported: false; status: string; reason: string };
+} {
+  const status = response?.status;
+  if (response === undefined || status === undefined) return { ok: false, tested: false, reason: "provider_response_unavailable" };
+  const ok = status >= 200 && status < 300;
+  const quota = ok ? parseQuotaStatus(name, { headers: response.headers, body: response.body }, () => new Date().toISOString()) : undefined;
+  return { ok, tested: true, providerStatus: status, reason: ok ? undefined : `provider_status_${status}`, ...(quota ? { quota } : {}) };
+}
+
 export async function testProviderKey(
   name: string,
   vault: Vault,
   transport: VaultEgressTransport,
   resolver: VaultDnsResolver,
-): Promise<{ ok: boolean; tested: boolean; reason?: string; providerStatus?: number }> {
+): Promise<{
+  ok: boolean;
+  tested: boolean;
+  reason?: string;
+  providerStatus?: number;
+  quota?: QuotaStatus | { supported: false; status: string; reason: string };
+}> {
   const resolved = resolveKeyTest(name);
   if (resolved.refusal) return resolved.refusal;
   const test = resolved.test;
@@ -238,10 +431,7 @@ export async function testProviderKey(
   // the caller can distinguish a valid key (2xx) from an invalid one
   // (401/403) or an upstream fault (5xx). The body is NOT returned — it may
   // contain provider-specific data that is out of scope for this route.
-  const status = result.response?.status;
-  if (status === undefined) return { ok: false, tested: false, reason: "provider_response_unavailable" };
-  const ok = status >= 200 && status < 300;
-  return { ok, tested: true, providerStatus: status, reason: ok ? undefined : `provider_status_${status}` };
+  return finalizeKeyTest(name, result.response);
 }
 
 /**
