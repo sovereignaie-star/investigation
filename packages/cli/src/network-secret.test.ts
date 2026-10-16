@@ -10,8 +10,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
-import { runTransform, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
+import {
+  runTransform,
+  runTransformIsolated,
+  recordingTransport,
+  RateLimiter,
+  TransformRunError,
+  type TransformEvidence,
+} from "@ir/transforms";
 import { shodanHost, urlscanSearch } from "@ir/transforms";
+import { recordRunFailure, ensureSubject } from "./run-record.ts";
+import { systemClock } from "@ir/core";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
 import type { RegisteredTransform } from "./registry.ts";
 
@@ -21,6 +30,8 @@ afterEach(() => {
 });
 
 const MODULE = fileURLToPath(import.meta.url); // exists; the plan only checks existence
+/** The REAL TR-009 source file — the sandbox bundles and executes this module (not a fixture). */
+const URLSCAN_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-009-urlscan.ts", import.meta.url));
 
 /** A vault double: list/has drive the plan-time check; reveal is the per-request reader. */
 function fakeVault(entries: Record<string, string | undefined>): Vault {
@@ -112,35 +123,53 @@ describe("P2-016: the network plan binds the manifest's secret to the vault (or 
     expect(d.calls).toHaveLength(0);
   });
 
-  it("COMPOSITION (runner + recording + case evidence): the real TR-009 request construction is refused by the query policy and the secret never reaches any persisted record", async () => {
-    const c = newCase();
-    const d = deps(fakeVault({ urlscan: "n_urlscan_composition_key" }));
-    const plan = planNetworkRun(c, urlscanEntry, "url", ["urlscan.io"], d);
-    if ("error" in plan) throw new Error(plan.error);
-    // The runner's real composition: the recording transport around the plan's transport (the
-    // same wrapper runTransform uses), then the REAL transform code — its actual request
-    // construction (GET /api/v1/search/?q=domain:...) is what the policy refuses.
-    const evidence: TransformEvidence[] = [];
-    const signal = new AbortController().signal;
-    const recorded = recordingTransport(
-      plan.transport,
-      evidence,
-      new RateLimiter(1, Date.now, (ms) => new Promise((r) => setTimeout(r, ms))),
-      15_000,
-      2_000_000,
-      signal,
-    );
-    await expect(runTransform(urlscanSearch, { transport: recorded, input: { url: "https://example.com" }, signal })).rejects.toThrowError(
-      /secret_host_mismatch/,
-    );
-    // the failure is recorded as evidence with the URL the transform asked for — and no secret anywhere
-    const persisted = JSON.stringify(evidence) + JSON.stringify(d.calls);
-    expect(persisted).not.toContain("n_urlscan_composition_key");
-    expect(d.calls).toHaveLength(0); // the transport was never reached (refused before DNS)
-    // the case's audit chain carries the refusal, also without the secret
-    const audit = JSON.stringify(c.auditTrail());
-    expect(audit).not.toContain("n_urlscan_composition_key");
-  });
+  it(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-009 code, its actual request construction, is refused by the query policy and the secret never reaches any persisted record",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const d = deps(fakeVault({ urlscan: "n_urlscan_sandbox_key" }));
+      // the entry's module is the REAL transform source file: runTransformIsolated bundles it with
+      // esbuild and executes it inside the REAL sandbox (seccomp + namespaces), its ctx.http being
+      // an IPC channel to the plan's transport (adapter + gateway + fake wire) — the production shape.
+      const entry = { ...urlscanEntry, module: URLSCAN_MODULE };
+      const plan = planNetworkRun(c, entry, "url", ["urlscan.io"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "url:example.com", "url", systemClock);
+      let failure: TransformRunError | undefined;
+      try {
+        await runTransformIsolated(URLSCAN_MODULE, {
+          transport: plan.transport,
+          input: { url: "https://example.com" },
+          transformId: "TR-009",
+        });
+        throw new Error("expected the sandboxed TR-009 run to fail (its real request carries a query)");
+      } catch (x) {
+        if (!(x instanceof TransformRunError)) throw x;
+        failure = x;
+      }
+      // the failure is the documented policy refusal, carried through the sandbox IPC boundary
+      expect(failure.message).toMatch(/secret_host_mismatch/);
+      // the transport was never reached (refused before DNS) — the wire never saw the key or the host
+      expect(d.calls).toHaveLength(0);
+      // persist the failure into the case exactly as the CLI does (D3: failures are recorded, never dropped)
+      const stored = recordRunFailure(c, subjectId, urlscanSearch, { url: "https://example.com" }, failure, systemClock, "network");
+      // POSITIVE: the failed request's evidence is recorded, with the real URL the transform asked for
+      expect(stored.length).toBeGreaterThanOrEqual(1);
+      expect(stored[0]?.url).toContain("/api/v1/search/?q=domain:example.com");
+      // reopen the case and verify the PERSISTED records: the request URL and refusal are there; the key is not
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const persisted = JSON.stringify(reopened.entries());
+      expect(persisted).toContain("/api/v1/search/?q=domain:example.com");
+      expect(persisted).toContain("secret_host_mismatch");
+      expect(persisted).not.toContain("n_urlscan_sandbox_key");
+      const audit = JSON.stringify(reopened.auditTrail());
+      expect(audit).toContain("egress.");
+      expect(audit).not.toContain("n_urlscan_sandbox_key");
+    },
+  );
 
   it("COMPOSITION (infrastructure canary, NOT a TR-009 integration): a query-free request to the registered path passes with the key in the header", async () => {
     const c = newCase();
