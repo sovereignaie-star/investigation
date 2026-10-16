@@ -3054,3 +3054,11 @@
 - **إغلاق الفجوة (السبب الجذري لجولة sharp):** `bundleTransform` (مُدمج الصندوق المعزول) ينجح الآن — jimp مضمّن في المصدر (1.9MB، بلا أي ثنائي)، أي أن TR-032 يعمل في مسار العزل الإلزامي (P2-005) لا في التشغيل الداخلي فقط.
 - **التسجيل (GR-10):** استُبدلت صفوف sharp/sharp-phash بصف jimp (TL-060b80df) في curated.json وcatalog.csv وarsenal.json وARSENAL.md؛ حُدّث صف TR-032 في الخارطة.
 - **الإثبات:** 3 اختبارات عقد خضراء (نمط + استقرار إدراكي ≤8 بت + فشل مغلق)؛ السلسلة: 1555+6+6+3+3 = **1573 ناجحًا/6 متخطاة**؛ البوابات الست exit 0 (بما فيها build التي كانت حمراء في جولة sharp).
+
+### 2026-10-16 — [P2-012] إصلاح فشل فحص docker في PR #167: الحزمة المفردة تنكسر على require('fs') من gifwrap
+- **المنفّذ:** وكيل sovereignaie-star
+- **ما تم:** فحص docker في PR #167 (TR-032) فشل على CI — `node ir.mjs --help` داخل الصورة انكسر بـ`Error: Dynamic require of "fs" is not supported`. السبب الجذري: jimp يسحب `gifwrap` التي تستدعي `require('fs')` على مستوى الوحدة؛ حزمة `@ir/cli` تُبنى ESM مفردة (`--format=esm`) وshim الـrequire الذي يولده esbuild يرمي في ESM بلا require. أُعيد الإنتاج محلياً (نفس الخطأ بالحرف)، ثم الإصلاح: banner في أمر بناء `@ir/cli` يعرّف `require` عبر `createRequire` من `node:module` (بلا تغيير في الكود المدمج — قرار esbuild الموثق لحزم ESM تحمل اعتماديات CJS).
+- **أحمر أولاً:** اختبار انحدار جديد `packages/cli/src/bundle.test.ts` (T-CLI-BUNDLE-001) — يبني الحزمة بشيفرتها الحقيقية ويشغل `node dist/ir.mjs --help` (مطابقة فحص docker: الصورة النهائية تنسخ ir.mjs وحده بلا node_modules). فشل قبل الإصلاح للسبب نفسه (exit 1 + `Dynamic require of "fs"`) واخضر بعده.
+- **الأدلة:** `pnpm exec vitest run packages/cli/src/bundle.test.ts` => 1 failed قبل الإصلاح، 1 passed بعده؛ البوابات المحلية exit 0 كلها: `pnpm run lint` و`pnpm run typecheck` و`pnpm run build` و`node scripts/governance/check.mjs --consistency` (متسق) و`pnpm run test` => 112 ملفاً / **1574 ناجحاً / 6 متخطاة** (1573+1).
+- **ما لم يتم / ملاحظات:** [مُلاحظ] تشغيل الحزمة يطبع تحذيرات اختيارية من jimp عن `@napi-rs/canvas` (مكتبة اختيارية غير مثبتة — pHash/dHash لا يحتاجها؛ تحذير غير قاتل، يوثق ولا يُعالج). دمج PR #167 ما زال بانتظار مراجعة D-8 من `@xuuux-voox` وترتيب المكدس (#166 أولاً).
+- **التالي:** طلب مراجعة D-8 لـ#166 و#167؛ ثم التحقق بعد الدمج على main لـPR #164/#165 (TR-036/TR-031) وتوثيقه.
