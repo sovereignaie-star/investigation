@@ -32,6 +32,12 @@ export interface ProductionEgressConfig {
   readonly auditSink?: EgressAuditSink;
   readonly limits?: EgressLimits;
   /**
+   * ADR-27: the pinned OAuth2 token host(s) a client-credentials POST may target. Defaults to
+   * `DEFAULT_OAUTH2_TOKEN_HOSTS` (currently the OpenSky auth host — TR-040). Changing or adding a
+   * host here is an ADR-level decision, not a config tweak.
+   */
+  readonly oauth2AuthHosts?: readonly string[];
+  /**
    * Replace the real resolver / transport. ONLY for deterministic tests of the composition itself; the opt-in and
    * the allow-list are enforced exactly as in production.
    */
@@ -44,6 +50,12 @@ export type ProductionEgressDecision =
   | { readonly enabled: false; readonly reason: string };
 
 const HOST_LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
+
+/**
+ * ADR-27: the default pinned OAuth2 token host(s). Currently the OpenSky Network auth realm (TR-040).
+ * Any change or addition to this list is an ADR-level decision (ADR-27 condition 4).
+ */
+export const DEFAULT_OAUTH2_TOKEN_HOSTS: readonly string[] = ["auth.opensky-network.org"];
 
 /** Validates one allow-list entry: a DNS hostname with at least two labels, no IP, wildcard, port or path. */
 export function validAllowedHost(entry: string): string | null {
@@ -73,6 +85,7 @@ export function createProductionEgress(cfg: ProductionEgressConfig): ProductionE
     resolver: cfg.resolver ?? createSystemResolver(),
     transport: cfg.transport ?? createNodeTransport(),
     allowedHosts: hosts,
+    oauth2AuthHosts: cfg.oauth2AuthHosts ?? DEFAULT_OAUTH2_TOKEN_HOSTS,
     ...(cfg.limits ? { limits: cfg.limits } : {}),
     ...(cfg.auditSink ? { auditSink: cfg.auditSink } : {}),
   });

@@ -251,7 +251,14 @@ export function recordingTransport(
           record({ url: req.url, method: req.method, error: err });
           throw new CancellationError(err.message);
         }
-        record({ url: req.url, method: req.method, status: res.status, headers: res.headers ?? {}, body });
+        // ADR-27: the OAuth2 token response body (the access token) is NEVER recorded in evidence —
+        // the token lives in the operator's memory only (never serialized, never on disk). The
+        // request body is never recorded either (evidence carries no request bodies at all).
+        if (req.oauth2Token === true) {
+          record({ url: req.url, method: req.method, status: res.status });
+        } else {
+          record({ url: req.url, method: req.method, status: res.status, headers: res.headers ?? {}, body });
+        }
         return { ...res, requestId };
       } catch (err) {
         if (err instanceof TransformRunError) throw err;

@@ -89,6 +89,10 @@ export function createEgressHttpTransport(opts: EgressAdapterOptions): HttpTrans
         url: req.url,
         method: req.method,
         headers: req.headers ? Object.fromEntries(Object.entries(req.headers)) : undefined,
+        // ADR-27: the OAuth2 token POST body + marker (the only legal POST). The gateway enforces
+        // the pinned auth host and the fixed body shape; the body never enters evidence or audit.
+        body: req.body,
+        oauth2Token: req.oauth2Token,
         signal,
       });
       if (!result.ok) {

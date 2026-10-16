@@ -859,10 +859,10 @@ export const SSRF_CASES: readonly SsrfCase[] = [
   },
   {
     id: "T-SEC-SSRF-043",
-    title: "content: there is no body channel; a body field is an unknown field, refused before DNS",
-    req: { body: "alice@example.org" } as unknown as Partial<EgressRequest>,
+    title: "content: ADR-27 — the body channel exists ONLY for the OAuth2 token POST; a body on a non-token request is refused before DNS",
+    req: { url: "https://example.com/", body: "alice@example.org" } as unknown as Partial<EgressRequest>,
     dns: { "example.com": [PUB] },
-    expect: denied("unknown_field", 0, 0),
+    expect: denied("invalid_request", 0, 0),
   },
   // 043 — redirect content policy (P2-032, ADR-08 section 4): every server-chosen hop is inventoried before it is sent
   {

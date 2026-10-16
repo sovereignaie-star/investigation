@@ -81,8 +81,17 @@ export interface EgressRequest {
   systemContext?: boolean;
   transform: string;
   url: string;
-  method?: "GET" | "HEAD";
+  method?: "GET" | "HEAD" | "POST";
   headers?: Record<string, string>;
+  /**
+   * ADR-27: the OAuth2 client-credentials token request body. Allowed ONLY on a POST marked
+   * `oauth2Token` to a gateway-pinned auth host; must be form-urlencoded with exactly
+   * grant_type=client_credentials + client_id + client_secret. Never recorded in evidence or
+   * audit; the content inventory inspects it like headers.
+   */
+  body?: string;
+  /** ADR-27: marks the request as an OAuth2 client-credentials token request (the only legal POST). */
+  oauth2Token?: boolean;
   sends?: string[];
   sensitivity?: string;
   secret?: string;
@@ -170,6 +179,8 @@ export interface EgressTransport {
     pinnedIp: string;
     method: string;
     headers?: Record<string, string>;
+    /** ADR-27: the OAuth2 token POST body (the only request body that ever exists). */
+    body?: string;
     signal?: AbortSignal;
     /**
      * P2-039: the gateway's per-response cap (`maxSizeBytes`) for this hop. A streaming transport stops reading past
@@ -259,6 +270,12 @@ export interface EgressOptions {
    * missing from the map is refused too. Unset means no path restriction (hosts are still checked).
    */
   readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * ADR-27: the ONLY hosts an OAuth2 client-credentials token POST may target (exact match after
+   * normalisation). Unset or empty = no POST is ever allowed (fail-closed). Currently
+   * ["auth.opensky-network.org"] (TR-040). Changing or adding a token host requires a new ADR.
+   */
+  readonly oauth2AuthHosts?: readonly string[];
 }
 
 /**
@@ -328,6 +345,8 @@ const REQUEST_FIELDS = new Set([
   "signal",
   "capability",
   "staticPaths",
+  "body",
+  "oauth2Token",
   "byteBudget",
   "requestBudget",
 ]);
@@ -413,8 +432,28 @@ function validateRequestShape(req: EgressRequest): EgressResult | null {
   if (typeof req.url !== "string" || req.url === "") {
     return deny("invalid_request", 0, "url must be a non-empty string");
   }
-  if (req.method !== undefined && req.method !== "GET" && req.method !== "HEAD") {
-    return deny("invalid_request", 0, "method must be GET or HEAD");
+  if (req.method !== undefined && req.method !== "GET" && req.method !== "HEAD" && req.method !== "POST") {
+    return deny("invalid_request", 0, "method must be GET, HEAD or POST");
+  }
+  const postErr = validateOauth2PostShape(req);
+  if (postErr) return postErr;
+  return null;
+}
+
+/** ADR-27 shape rules for the body/marker (host pin + form shape live in `checkOauth2Post`). */
+function validateOauth2PostShape(req: EgressRequest): EgressResult | null {
+  if (req.method === "POST") {
+    if (req.oauth2Token !== true) {
+      return deny("invalid_request", 0, "POST is only allowed for an OAuth2 client-credentials token request (ADR-27)");
+    }
+    if (typeof req.body !== "string" || req.body === "") {
+      return deny("invalid_request", 0, "the OAuth2 token POST must carry a non-empty form body (ADR-27)");
+    }
+    return null;
+  }
+  // A non-token request must not carry a body or the marker at all.
+  if (req.body !== undefined || req.oauth2Token !== undefined) {
+    return deny("invalid_request", 0, "a request body / oauth2Token marker is only allowed on the OAuth2 token POST (ADR-27)");
   }
   return null;
 }
@@ -544,7 +583,7 @@ function checkContent(req: EgressRequest): EgressResult | null {
   } catch {
     return null;
   }
-  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret, req.staticPaths), req.sends ?? []);
+  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret, req.staticPaths, req.body), req.sends ?? []);
   return verdict ? deny(verdict.reason, 0, verdict.detail) : null;
 }
 
@@ -590,6 +629,47 @@ function checkSecretShape(req: EgressRequest): EgressResult | null {
   if (!req.pinnedHost) return deny("secret_host_mismatch", 0, "a secret requires pinnedHost");
   if (!req.secretProvider) return deny("secret_host_mismatch", 0, "a secret requires secretProvider");
   if (secretInUrl(req.url, req.secret)) return deny("credentials", 0, "the secret must not appear in the URL");
+  return null;
+}
+
+/**
+ * ADR-27: the ONLY POST the gateway ever carries — an OAuth2 client-credentials token request.
+ * The target host must be on the gateway's pinned `oauth2AuthHosts` list (trusted parent code; changing
+ * it requires a new ADR), the scheme must be https, and the body must be form-urlencoded with
+ * EXACTLY grant_type=client_credentials + client_id + client_secret — a body built from project
+ * secrets only. The body text never enters an audit event, a denial detail or evidence; this check
+ * only validates shape and host. It is also inventoried (content-inventory) like the headers.
+ */
+function checkOauth2Post(req: EgressRequest, url: URL, allowed: ReadonlySet<string> | undefined): EgressResult | null {
+  if (req.method !== "POST") return null;
+  const host = normalizeHost(url.hostname);
+  if (allowed === undefined || allowed.size === 0) {
+    return deny("invalid_request", 0, "no OAuth2 token host is pinned in this gateway (ADR-27 fail-closed)");
+  }
+  if (!allowed.has(host)) {
+    return deny("invalid_request", 0, `POST to "${host}" is not on the pinned OAuth2 token host list (ADR-27)`);
+  }
+  if (url.protocol !== "https:") {
+    return deny("invalid_request", 0, "the OAuth2 token POST must use https (ADR-27)");
+  }
+  if (url.search !== "" || url.hash !== "") {
+    return deny("invalid_request", 0, "the OAuth2 token POST must carry no query or fragment (ADR-27)");
+  }
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(req.body);
+  } catch {
+    return deny("invalid_request", 0, "the OAuth2 token body must be application/x-www-form-urlencoded (ADR-27)");
+  }
+  const keys = [...params.keys()].sort().join(",");
+  if (keys !== "client_id,client_secret,grant_type" || params.get("grant_type") !== "client_credentials") {
+    // The detail names the required keys only — the body itself is never echoed.
+    return deny(
+      "invalid_request",
+      0,
+      "the OAuth2 token body must be exactly grant_type=client_credentials, client_id, client_secret (ADR-27)",
+    );
+  }
   return null;
 }
 
@@ -698,6 +778,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   // An explicitly empty allowedHosts list allows nothing (fail-closed); undefined means public mode.
   const allowedSet: ReadonlySet<string> | undefined =
     opts.allowedHosts === undefined ? undefined : new Set(opts.allowedHosts.map(normalizeHost).filter((h) => h !== ""));
+  // ADR-27: the pinned OAuth2 token hosts (unset or empty = no POST is ever allowed, fail-closed).
+  const oauth2HostSet: ReadonlySet<string> | undefined =
+    opts.oauth2AuthHosts === undefined ? undefined : new Set(opts.oauth2AuthHosts.map(normalizeHost).filter((h) => h !== ""));
 
   function audit(event: EgressAuditEvent): void {
     // D-017 / P2-006: an audit failure is never swallowed silently. When a sink is configured
@@ -839,6 +922,21 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return deny("invalid_url");
     }
 
+    // --- 6b: ADR-27 OAuth2 token POST policy (host pin + fixed body shape), before DNS ---
+    const oauth2Err = checkOauth2Post(req, currentUrl, oauth2HostSet);
+    if (oauth2Err) {
+      audit({
+        kind: "denied",
+        reason: oauth2Err.reason,
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        host: currentUrl.hostname,
+        transportCalls: 0,
+      });
+      return oauth2Err;
+    }
+
     // --- 7: literal address class, then scheme / port / credentials ---
     const shape = literalHostCheck(currentUrl) ?? urlChecks(currentUrl);
     if (shape) {
@@ -958,7 +1056,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     let hopCount = 0;
     // P2-032: the first hop's host and the values the transform sent to it; later hops are judged against them.
     const firstHost = normalizeHost(initialUrl.hostname);
-    const sent = sentValues(initialUrl, req.headers, req.secret, req.staticPaths);
+    const sent = sentValues(initialUrl, req.headers, req.secret, req.staticPaths, req.body);
     let hopHeaders = req.headers;
     while (true) {
       // Cancellation before DNS: no resolver call, no transport call.
@@ -1116,6 +1214,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         pinnedIp,
         method: req.method ?? "GET",
         headers: headers === undefined ? undefined : { ...headers },
+        // ADR-27: the OAuth2 token POST body (the only request that ever has one).
+        body: req.body,
         signal: hopController.signal,
         maxBodyBytes: limits.maxSizeBytes,
         ...(req.byteBudget

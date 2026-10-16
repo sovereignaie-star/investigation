@@ -22,7 +22,7 @@
  */
 import { extract, specById } from "@ir/core/identifiers";
 
-export type ContentSurface = "path" | "query" | "fragment" | "header";
+export type ContentSurface = "path" | "query" | "fragment" | "header" | "body";
 
 /** One reading of a detected value: its `sends` kind, catalog type and sensitivity. */
 export interface ContentReading {
@@ -123,6 +123,7 @@ function surfaces(
   url: URL,
   headers: Readonly<Record<string, string>> | undefined,
   secret: string | undefined,
+  body?: string,
 ): Array<[ContentSurface, string]> {
   const out: Array<[ContentSurface, string]> = [];
   for (const seg of url.pathname.split("/")) if (seg !== "") out.push(["path", decode(seg)]);
@@ -131,6 +132,17 @@ function surfaces(
   for (const [name, value] of Object.entries(headers ?? {})) {
     if (secret !== undefined && secret !== "" && value.includes(secret)) continue;
     out.push(["header", `${name} ${value}`]);
+  }
+  // ADR-27: the OAuth2 token POST body is inventoried exactly like the query surface — each
+  // form pair is read as "key value" (the raw concatenated text would hide values from the
+  // detector: "client_id=AB123456" is one token, "client_id AB123456" is a readable pair). The
+  // values are project secrets, but the natural-person backstop applies to it like a header.
+  if (body !== undefined && body !== "") {
+    try {
+      for (const [k, v] of new URLSearchParams(body)) out.push(["body", `${k} ${v}`]);
+    } catch {
+      out.push(["body", body]); // not a form body: the raw text is still inventoried
+    }
   }
   return out;
 }
@@ -172,10 +184,11 @@ function inventoryRaw(
   headers: Readonly<Record<string, string>> | undefined,
   secret: string | undefined,
   staticPaths?: readonly string[],
+  body?: string,
 ): RawFinding[] {
   const out: RawFinding[] = [];
   const fixedPath = isStaticPath(url, staticPaths);
-  for (const [surface, text] of surfaces(url, headers, secret)) {
+  for (const [surface, text] of surfaces(url, headers, secret, body)) {
     for (const hit of extract(text)) {
       const readings = hit.candidates
         .filter((c) => c.score === hit.best.score)
@@ -197,8 +210,9 @@ export function inventoryRequest(
   headers: Readonly<Record<string, string>> | undefined,
   secret: string | undefined,
   staticPaths?: readonly string[],
+  body?: string,
 ): ContentFinding[] {
-  return inventoryRaw(url, headers, secret, staticPaths).map(({ surface, readings }) => ({ surface, readings }));
+  return inventoryRaw(url, headers, secret, staticPaths, body).map(({ surface, readings }) => ({ surface, readings }));
 }
 
 /**
@@ -210,8 +224,9 @@ export function sentValues(
   headers: Readonly<Record<string, string>> | undefined,
   secret: string | undefined,
   staticPaths?: readonly string[],
+  body?: string,
 ): ReadonlySet<string> {
-  return new Set(inventoryRaw(url, headers, secret, staticPaths).map((f) => f.value.toLowerCase()));
+  return new Set(inventoryRaw(url, headers, secret, staticPaths, body).map((f) => f.value.toLowerCase()));
 }
 
 /** Decoded text of a URL's host and every surface, lower case, for value comparison. */
@@ -299,7 +314,14 @@ export function judgeInventory(
     const np = f.readings.find((r) => r.sensitivity === "natural_person_gate");
     if (np) return { reason: "natural_person", detail: `${f.surface} carries a natural-person identifier (${np.type})` };
   }
-  return undeclaredIn(findings, sends);
+  // ADR-27: the OAuth2 token POST body is built from project secrets only (fixed keys: grant_type,
+  // client_id, client_secret — checked by the gateway's shape policy). The natural-person backstop
+  // above applies to it exactly like a header surface; its other readings are not case data, so the
+  // undeclared-data judgment skips the body surface (the owner's wording: «فحص البيانات الشخصية كالترويسات»).
+  return undeclaredIn(
+    findings.filter((f) => f.surface !== "body"),
+    sends,
+  );
 }
 
 /** The first finding none of whose readings is a declared kind (natural-person readings are judged separately). */

@@ -36,6 +36,7 @@ import {
   unScConsolidated,
   euSanctions,
   companiesHouse,
+  opensky,
   gleifEntity,
   secEdgar,
   nominatimGeocode,
@@ -136,6 +137,18 @@ const companyNameInput = (raw: string) => {
     throw new Error(`"${raw.slice(0, 40)}" is not a company name`);
   }
   return { name };
+};
+/** TR-040: an ICAO24 transponder address (6 hex digits, lower-cased). */
+const icao24Input = (raw: string) => {
+  const icao24 = raw.trim().toLowerCase();
+  if (!/^[0-9a-f]{6}$/.test(icao24)) throw new Error(`"${raw}" is not an ICAO24 address`);
+  return { icao24 };
+};
+/** TR-040: a flight callsign (upper-case alphanumeric, 2-8 chars). */
+const callsignInput = (raw: string) => {
+  const callsign = raw.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,8}$/.test(callsign)) throw new Error(`"${raw}" is not a flight callsign`);
+  return { callsign };
 };
 const addressInput = (address: string) => {
   if (address.length < 5 || address.length > 300) throw new Error(`"${address.slice(0, 40)}" is not an address`);
@@ -249,6 +262,19 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { uk_company_number: ukCompanyInput, company_name: companyNameInput },
     sends: ["uk_company_number", "company_name"],
     hosts: ["api.company-information.service.gov.uk"],
+    pageFetch: false,
+  },
+  {
+    transform: opensky,
+    module: mod("tr-040-opensky.ts"),
+    // ADR-27: OAuth2 client-credentials only — the token POST goes to the pinned auth host
+    // (auth.opensky-network.org) with a fixed form body built from the manifest-declared env
+    // secrets (IR_OPENSKY_CLIENT_ID/IR_OPENSKY_CLIENT_SECRET); without either the run fails
+    // closed. The Bearer token lives in memory only — never in evidence, audit or disk.
+    // sends: the flights query carries the subject icao24; the states path carries no case data.
+    subjects: { icao24: icao24Input, flight_callsign: callsignInput },
+    sends: ["icao24"],
+    hosts: ["auth.opensky-network.org", "opensky-network.org"],
     pageFetch: false,
   },
   {
