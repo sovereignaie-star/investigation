@@ -34,6 +34,7 @@ import {
   waybackCdx,
   ofacSdn,
   unScConsolidated,
+  urlscanSearch,
   euSanctions,
   companiesHouse,
   opensanctions,
@@ -225,6 +226,19 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { url: httpUrlInput },
     sends: ["url", "domain"],
     hosts: ["web.archive.org"],
+    pageFetch: false,
+  },
+  {
+    // P2-016 continuation (owner decision 2026-10-16): TR-009 is registered now that the
+    // per-provider query allowlist permits its search query (?q=domain:...) — the key travels in
+    // the registry's api-key header only (D-031), read from the vault per request; the run is
+    // refused fail-closed when the vault entry "urlscan" is not set.
+    transform: urlscanSearch,
+    module: mod("tr-009-urlscan.ts"),
+    subjects: { url: httpUrlInput },
+    // the search request URL carries the subject's URL host as the searched domain (q=domain:...)
+    sends: ["url", "domain"],
+    hosts: ["urlscan.io"],
     pageFetch: false,
   },
   {

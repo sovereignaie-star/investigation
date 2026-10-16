@@ -103,14 +103,27 @@ export function openGateway(
   c: Case,
   allowHosts: readonly string[],
   deps: NetworkDeps,
-  /** P2-016: the run's provider registry config (hosts + paths, both or neither). */
-  providers?: { providerHosts: Record<string, readonly string[]>; providerPaths: Record<string, readonly string[]> },
+  /**
+   * P2-016: the run's provider registry config (hosts + paths, both or neither; the query allowlist
+   * rides along when the provider's registry entry declares one — P2-016 continuation).
+   */
+  providers?: {
+    providerHosts: Record<string, readonly string[]>;
+    providerPaths: Record<string, readonly string[]>;
+    providerQueries?: Record<string, readonly import("@ir/egress").ProviderQueryAllow[]>;
+  },
 ): NetworkGateway | { error: string } {
   const events: EgressAuditEvent[] = [];
   const decision = createProductionEgress({
     allowedHosts: allowHosts,
     env: deps.env ?? process.env,
-    ...(providers ? { providerHosts: providers.providerHosts, providerPaths: providers.providerPaths } : {}),
+    ...(providers
+      ? {
+          providerHosts: providers.providerHosts,
+          providerPaths: providers.providerPaths,
+          ...(providers.providerQueries ? { providerQueries: providers.providerQueries } : {}),
+        }
+      : {}),
     ...(deps.resolver ? { resolver: deps.resolver } : {}),
     ...(deps.transport ? { transport: deps.transport } : {}),
     ...(deps.limits ? { limits: deps.limits } : {}),
@@ -258,7 +271,11 @@ export function resolveSecretBinding(
   deps: NetworkDeps,
 ): {
   binding?: SecretBinding;
-  providers?: { providerHosts: Record<string, readonly string[]>; providerPaths: Record<string, readonly string[]> };
+  providers?: {
+    providerHosts: Record<string, readonly string[]>;
+    providerPaths: Record<string, readonly string[]>;
+    providerQueries?: Record<string, readonly import("@ir/egress").ProviderQueryAllow[]>;
+  };
   error?: string;
 } {
   const secretNames = manifest.secrets ?? [];
@@ -302,6 +319,9 @@ export function resolveSecretBinding(
     providers: {
       providerHosts: { [registryEntry.name]: registryEntry.hosts },
       providerPaths: { [registryEntry.name]: registryEntry.requestPaths },
+      // P2-016 continuation (owner decision 2026-10-16): the entry's closed query allowlist, when
+      // it declares one; a provider without an allowlist keeps the fail-closed default (no query).
+      ...(registryEntry.queryAllowlist ? { providerQueries: { [registryEntry.name]: registryEntry.queryAllowlist } } : {}),
     },
   };
 }

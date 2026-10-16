@@ -15,15 +15,15 @@
  *   rules). Declared explicitly — never inferred by stripping suffixes;
  * - `requestPaths`: the exact URL paths (no query, no fragment) a secret-bearing request of this
  *   provider may target — the gateway's `providerPaths` list (T-SEC-SSRF-042). These are the
- *   TRANSFORM's request paths, distinct from the server's fixed key-test path (P2-015 matrix).
- *
- * NOTE (documented policy conflict, P2-016): the gateway refuses ANY query on a secret-bearing
- * request. urlscan's search API requires a query (`/api/v1/search/?q=...`), so TR-009's real
- * requests are refused by that policy even with this entry in place. Resolving that (e.g. a
- * registry-driven query allowlist per provider) is an owner decision; until then the injection
- * boundary is complete but the TR-009 network integration cannot pass the gateway.
+ *   TRANSFORM's request paths, distinct from the server's fixed key-test path (P2-015 matrix);
+ * - `queryAllowlist`: the CLOSED list of query parameters (name + value type + declared max
+ *   length) a secret-bearing request of this provider may carry (P2-016 continuation, owner
+ *   decision 2026-10-16). A parameter outside the list is refused fail-closed; a provider without
+ *   an allowlist refuses every query (the unchanged default). Each parameter's source is
+ *   documented in docs/security/KEY_TESTS.md (the provider matrix).
  */
 import { urlscan } from "../providers/urlscan.ts";
+import type { ProviderQueryAllow } from "./egress.ts";
 
 export interface ProviderRegistryEntry {
   readonly name: string;
@@ -32,6 +32,8 @@ export interface ProviderRegistryEntry {
   readonly manifestSecretNames: readonly string[];
   readonly vaultEntry: string;
   readonly requestPaths: readonly string[];
+  /** P2-016 continuation: the closed query-parameter allowlist (absent = every query refused). */
+  readonly queryAllowlist?: readonly ProviderQueryAllow[];
 }
 
 /**

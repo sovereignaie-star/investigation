@@ -54,3 +54,13 @@ TR-023 (Companies House) وTR-025 (OpenSanctions) وTR-040 (OpenSky) تقرأ م
 - ipgeolocation — <https://ipgeolocation.io/documentation/ip-location-api.html> (`apiKey` استعلام)
 - WhoisXML — نمط `apiKey` في الاستعلام (توثيق الواجهة)
 - Etherscan — `apikey` معامِل استعلام في `api.etherscan.io/v2/api`
+
+## قائمة سماح الاستعلام لكل مزوّد (قرار المالك 2026-10-16 — استكمال P2-016)
+
+الحد المعلن L-21 في `docs/DECLARED_LIMITS.md`: طلب حامل سر لا يحمل إلا بارامترات مدوّنة في مدخل المزوّد (`packages/egress/providers/`) — اسم البارامتر + نوع القيمة + طول أقصى معلن — وأي بارامتر خارج القائمة يُرفض فشل-مغلق. مصدر كل بارامتر:
+
+| المزوّد | البارامتر | النوع | الطول الأقصى | المصدر (وثائق المزوّد الرسمية) |
+|---|---|---|---|---|
+| urlscan | `q` | string | 512 (حدّنا المعلن) | [توثيق urlscan الرسمي](https://urlscan.io/docs/api/) — Search API، GET `/api/v1/search/`: «q — The query term (ElasticSearch Query String Query). Default: `*`». الوثائق لا تعلن حداً أقصى للطول؛ 512 حدّنا المعلن. |
+
+ملاحظتان: (1) الوثائق نفسها تذكر `size` و`search_after` لنقطة البحث — **غير مسموحين** عمداً: TR-009 لا يرسل إلا `q`، والقائمة المحصورة أضيق من سطح المزوّد الموثق بقصد (فشل-مغلق). (2) إضافة بارامتر أو مزوّد = تعديل بيانات السجل في `packages/egress/providers/` مع تحديث هذا الجدول بالمصدر.

@@ -10,16 +10,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
-import {
-  runTransform,
-  runTransformIsolated,
-  recordingTransport,
-  RateLimiter,
-  TransformRunError,
-  type TransformEvidence,
-} from "@ir/transforms";
+import { runTransform, runTransformIsolated, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
 import { shodanHost, urlscanSearch } from "@ir/transforms";
-import { recordRunFailure, ensureSubject } from "./run-record.ts";
+import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
@@ -193,7 +186,7 @@ const host = await probeIsolation();
 
 describe.skipIf(!host.full)("P2-016: real-sandbox composition (skipped where full isolation is unavailable)", () => {
   it(
-    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-009 code, its actual request construction, is refused by the query policy and the secret never reaches any persisted record",
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-009 code runs in the real sandbox, its search query passes the per-provider allowlist (owner decision 2026-10-16), the key travels in the provider header only and never reaches any persisted record",
     { timeout: 60_000 },
     async () => {
       const c = newCase();
@@ -207,32 +200,25 @@ describe.skipIf(!host.full)("P2-016: real-sandbox composition (skipped where ful
       const plan = planNetworkRun(c, entry, "url", ["urlscan.io"], d);
       if ("error" in plan) throw new Error(plan.error);
       const subjectId = ensureSubject(c, "url:example.com", "url", systemClock);
-      let failure: TransformRunError | undefined;
-      try {
-        await runTransformIsolated(URLSCAN_MODULE, {
-          transport: plan.transport,
-          input: { url: "https://example.com" },
-          transformId: "TR-009",
-        });
-        throw new Error("expected the sandboxed TR-009 run to fail (its real request carries a query)");
-      } catch (x) {
-        if (!(x instanceof TransformRunError)) throw x;
-        failure = x;
-      }
-      // the failure is the documented policy refusal, carried through the sandbox IPC boundary
-      expect(failure.message).toMatch(/secret_host_mismatch/);
-      // the transport was never reached (refused before DNS) — the wire never saw the key or the host
-      expect(d.calls).toHaveLength(0);
-      // persist the failure into the case exactly as the CLI does (D3: failures are recorded, never dropped)
-      const stored = recordRunFailure(c, subjectId, urlscanSearch, { url: "https://example.com" }, failure, systemClock, "network");
-      // POSITIVE: the failed request's evidence is recorded, with the real URL the transform asked for
-      expect(stored.length).toBeGreaterThanOrEqual(1);
-      expect(stored[0]?.url).toContain("/api/v1/search/?q=domain:example.com");
-      // reopen the case and verify the PERSISTED records: the request URL and refusal are there; the key is not
+      // the run SUCCEEDS: the real TR-009 request (a search query) is permitted by the registry's
+      // per-provider query allowlist, carried through the sandbox IPC boundary
+      const result = await runTransformIsolated(URLSCAN_MODULE, {
+        transport: plan.transport,
+        input: { url: "https://example.com" },
+        transformId: "TR-009",
+      });
+      // the wire saw exactly the real request: the query intact, the key in the provider header only
+      expect(d.calls).toHaveLength(1);
+      expect(d.calls[0]?.url).toBe("https://urlscan.io/api/v1/search/?q=domain:example.com");
+      expect(d.calls[0]?.url).not.toContain("n_urlscan_sandbox_key");
+      expect(d.calls[0]?.headers?.["api-key"]).toBe("n_urlscan_sandbox_key");
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, urlscanSearch, { url: "https://example.com" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the request URL is recorded as evidence;
+      // the key appears NOWHERE in the case or its audit trail
       const reopened = openCase(dir, { actor: "verifier", readOnly: true });
       const persisted = JSON.stringify(reopened.entries());
       expect(persisted).toContain("/api/v1/search/?q=domain:example.com");
-      expect(persisted).toContain("secret_host_mismatch");
       expect(persisted).not.toContain("n_urlscan_sandbox_key");
       const audit = JSON.stringify(reopened.auditTrail());
       expect(audit).toContain("egress.");

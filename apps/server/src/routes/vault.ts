@@ -2,6 +2,10 @@ import express, { Router, type IRouter, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { validate } from "@ir/core/validate";
 import { assertVaultName, type Vault } from "@ir/store";
+// L-05 (owner decision 2026-10-16): the REAL transport factories — the same ones the production
+// egress composition uses. There is no parallel test transport for key testing in production; the
+// egress gateway (imported via ../lib/providers) governs every request exactly as always.
+import { createNodeTransport, createSystemResolver } from "@ir/egress";
 import { requireAdmin } from "../lib/admin";
 import {
   KNOWN_PROVIDERS,
@@ -29,6 +33,17 @@ const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,253}$/;
 export function lookupsEnabled(env: NodeJS.ProcessEnv): boolean {
   return env["IR_OFFLINE"] !== "1" && env["IR_ENABLE_LOOKUPS"] === "1";
 }
+/**
+ * L-05 (owner decision 2026-10-16): production key testing goes through the REAL transport —
+ * `IR_ENABLE_KEY_TESTS=1` exactly wires the vault key test to the real node transport + system
+ * resolver (the same factories the production egress composition uses; no parallel test transport).
+ * `IR_OFFLINE=1` still wins — the gateway itself re-reads it on every request and refuses offline,
+ * so the master switch is enforced one layer down with an honest reason. Fail closed: any other
+ * value (including "true") leaves the key test unwired (transport_not_configured, tested:false).
+ */
+export function keyTestsEnabled(env: NodeJS.ProcessEnv): boolean {
+  return env["IR_ENABLE_KEY_TESTS"] === "1";
+}
 export const LOOKUPS_DISABLED = {
   error: "external lookups are disabled on this server (set IR_ENABLE_LOOKUPS=1 to allow them; see .env.example)",
 } as const;
@@ -38,11 +53,21 @@ export function vaultRouter(
   getVault: () => Vault,
   opts: {
     env?: NodeJS.ProcessEnv;
-    /** The egress transport + resolver for /vault/:name/test. Injected in tests; never a real socket. */
+    /**
+     * The egress transport + resolver for /vault/:name/test. Injected in tests. In production
+     * (L-05, owner decision 2026-10-16) the default is the REAL transport (createNodeTransport +
+     * createSystemResolver — the production composition's own factories) when IR_ENABLE_KEY_TESTS=1:
+     * no parallel test transport exists; the gateway governs every request as always.
+     */
     vaultTestTransport?: VaultEgressTransport;
     vaultTestResolver?: VaultDnsResolver;
   } = {},
 ): IRouter {
+  // L-05: the production default is the REAL transport (created once per router when the opt-in is
+  // set — IR_ENABLE_KEY_TESTS=1 exactly; the gateway itself re-reads IR_OFFLINE on every request).
+  const keyTestsOn = keyTestsEnabled(opts.env ?? process.env);
+  const realTransport = keyTestsOn ? createNodeTransport() : undefined;
+  const realResolver = keyTestsOn ? createSystemResolver() : undefined;
   const lookupsOn = lookupsEnabled(opts.env ?? process.env);
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env);
@@ -89,13 +114,15 @@ export function vaultRouter(
   });
 
   /**
-   * P2-015: run the provider key test through the gateway when a transport is wired. Without a
-   * transport (the server is on FAIL_CLOSED_TRANSPORT by design — L-05) the result is an honest
-   * tested:false with the reason; it is never fabricated as ok.
+   * P2-015: run the provider key test through the gateway when a transport is wired. L-05 (owner
+   * decision 2026-10-16): the production default IS the real transport (IR_ENABLE_KEY_TESTS=1);
+   * without the opt-in the result is an honest tested:false with the reason; never fabricated ok.
    */
   const runKeyTest = async (name: string): Promise<{ ok: boolean; tested: boolean; reason?: string; providerStatus?: number }> => {
-    const transport = opts.vaultTestTransport;
-    const resolver = opts.vaultTestResolver;
+    // L-05: the production default is the REAL transport; an injected transport (tests) always
+    // takes precedence — the same code path either way (no parallel test transport).
+    const transport = opts.vaultTestTransport ?? realTransport;
+    const resolver = opts.vaultTestResolver ?? realResolver;
     if (!transport || !resolver) return { ok: false, tested: false, reason: "transport_not_configured" };
     return testProviderKey(name, getVault(), transport, resolver);
   };
