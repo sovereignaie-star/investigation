@@ -178,13 +178,20 @@ function summary(p: Projection, hash: string): string {
     `projection at seq ${p.seq}`,
     `  nodes ${c.nodes} (entities ${c.entities}), edges ${c.edges} (claims ${c.claims}), observations ${c.observations}, evidence ${c.evidence}, active merges ${c.merges}`,
     `  coverage: ${p.coverage.cells.length} cells over ${p.coverage.transforms.length} transforms, ${p.coverage.untouched.length} untouched nodes`,
-    `  network (P2-014): ${p.networkLog.requests.length} requests (${p.networkLog.requests.filter((q) => q.decision !== "allowed").length} not allowed), ${p.networkLog.responses.length} stored responses`,
+    `  network (P2-014): ${p.networkLog.requests.length} requests (${p.networkLog.requests.filter((q) => q.decision !== "allowed").length} not allowed), ${p.networkLog.transportCalls.length} transport calls, ${p.networkLog.responses.length} stored outcomes (${originSummary(p.networkLog.responses)})`,
     `  issues: ${p.issues.length}${p.issues
       .slice(0, 5)
       .map((i) => `\n    #${i.seq} ${i.code}: ${i.message}`)
       .join("")}`,
     `  sha256 ${hash}`,
   ].join("\n");
+}
+
+/** P2-014: outcome origins in the network line — a sim/replay/unknown outcome is a stored outcome, not a real connection. */
+function originSummary(responses: readonly { origin?: string }[]): string {
+  const count = (o: string) => responses.filter((r) => r.origin === o).length;
+  const unknown = responses.filter((r) => r.origin === undefined).length;
+  return `network: ${count("network")}, sim: ${count("sim")}, replay: ${count("replay")}, unknown: ${unknown}`;
 }
 
 /** `ir project` (P1-016, toward T-LED-020): offline rebuild of the views from the chain. */
@@ -303,15 +310,27 @@ function runRoute(
   v: RunValues,
   opts: CliOptions,
 ):
-  | { transport: HttpTransport; isolatedModule?: string; allowedHosts?: readonly string[]; events?: readonly EgressAuditEvent[] }
+  | {
+      transport: HttpTransport;
+      origin: "network" | "sim";
+      isolatedModule?: string;
+      allowedHosts?: readonly string[];
+      events?: readonly EgressAuditEvent[];
+    }
   | { error: string } {
-  if (!v.network) return { transport: createSimServer(v.sim ? readSimRules(v.sim) : []).transport };
+  if (!v.network) return { transport: createSimServer(v.sim ? readSimRules(v.sim) : []).transport, origin: "sim" };
   if (c.info().legalBasis === "training_simulation") {
     return { error: "--network: this is a simulation case (legal basis training_simulation); use a case with a real basis" };
   }
   const plan = planNetworkRun(c, entry, subjectType, v["allow-host"] ?? [], opts.network ?? {});
   if ("error" in plan) return plan;
-  return { transport: plan.transport, isolatedModule: plan.isolatedModule, allowedHosts: plan.allowedHosts, events: plan.events };
+  return {
+    transport: plan.transport,
+    origin: "network",
+    isolatedModule: plan.isolatedModule,
+    allowedHosts: plan.allowedHosts,
+    events: plan.events,
+  };
 }
 
 /**
@@ -395,14 +414,14 @@ async function runTransformCommand(
         if (x instanceof TransformRunError) {
           // P2-036: the error observation cites the failed request's own evidence (or a run record naming the
           // stage, message and every response received) — never the last response, never an empty success.
-          recordRunFailure(c, subjectId, transform, input, x, clock);
+          recordRunFailure(c, subjectId, transform, input, x, clock, route.origin);
           err(`ir run: ${x.message}${hostRefusalHint(entry, route.events)}`);
           return 1;
         }
         throw x;
       }
       // P2-036: every finding is bound to the evidence of the request(s) it cites (TransformFinding.evidence).
-      const recorded = recordRunSuccess(c, subjectId, transform, input, result, clock);
+      const recorded = recordRunSuccess(c, subjectId, transform, input, result, clock, route.origin);
       const { expand, negative } = recorded;
       const p = project(c.entries());
       const hash = projectionHash(p);
