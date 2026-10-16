@@ -315,7 +315,7 @@ class Investigation {
         isolatedModule: plan.isolatedModule,
         transformId: entry.transform.manifest.id,
       });
-      recordRunSuccess(this.c, subjectId, entry.transform, input, result, this.clock);
+      recordRunSuccess(this.c, subjectId, entry.transform, input, result, this.clock, "network");
       const findings = result.output.findings;
       this.coverage.push({
         ...base,
@@ -326,7 +326,7 @@ class Investigation {
       this.enqueue(childrenOf(findings, node.depth + 1));
     } catch (x) {
       if (!(x instanceof TransformRunError)) throw x;
-      recordRunFailure(this.c, subjectId, entry.transform, input, x, this.clock);
+      recordRunFailure(this.c, subjectId, entry.transform, input, x, this.clock, "network");
       const why = this.failure(x);
       this.coverage.push({
         ...base,

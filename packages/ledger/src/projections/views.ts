@@ -182,45 +182,94 @@ export interface NetworkResponse {
   size: number;
   transformId: string;
   version: string;
+  /** P2-014: how the request was executed; a "sim"/"replay" outcome is a recorded outcome, not a real connection. */
+  origin?: "network" | "sim" | "replay";
+}
+export interface NetworkTransportCall {
+  seq: number;
+  at: string;
+  /** The URL of the actual transport call, secret-redacted. */
+  url: string;
+  /** The 1-based hop index of the attempt. */
+  attempt: number;
+  host: string;
+  status?: number;
+  /** The failure message when the attempt failed. */
+  error?: string;
+  transform?: string;
 }
 export interface NetworkLog {
   requests: NetworkRequest[];
+  /** Every ACTUAL transport call (first hop, redirects, failures) — one row per attempt. */
+  transportCalls: NetworkTransportCall[];
   responses: NetworkResponse[];
+}
+
+function requestRow(a: Projector["audits"][number]): NetworkRequest | null {
+  const decision = EGRESS_ACTION.exec(a.action)?.[1] as NetworkRequest["decision"] | undefined;
+  if (!decision) return null; // case lifecycle, robots policy, … — not outbound requests
+  const detail = a.detail as Record<string, unknown> | undefined;
+  return {
+    seq: a.seq,
+    at: a.at,
+    decision,
+    host: a.target,
+    ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
+    ...(typeof detail?.transportCalls === "number" ? { transportCalls: detail.transportCalls } : { transportCalls: 0 }),
+    ...(typeof detail?.reason === "string" ? { reason: detail.reason } : {}),
+  };
+}
+
+function transportRow(a: Projector["audits"][number]): NetworkTransportCall | null {
+  if (a.action !== "egress.transport") return null;
+  const detail = a.detail as Record<string, unknown> | undefined;
+  if (typeof detail?.url !== "string" || typeof detail?.attempt !== "number") return null; // malformed: not a log row
+  return {
+    seq: a.seq,
+    at: a.at,
+    url: detail.url,
+    attempt: detail.attempt,
+    host: a.target,
+    ...(typeof detail?.status === "number" ? { status: detail.status } : {}),
+    ...(typeof detail?.error === "string" ? { error: detail.error } : {}),
+    ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
+  };
+}
+
+function responseRow(ev: Projector["evidence"] extends Map<string, infer V> ? V : never): NetworkResponse | null {
+  if (ev.request.method === "LOCAL" || ev.request.url.startsWith("local://")) return null;
+  return {
+    seq: ev.seq,
+    at: ev.fetchedAt,
+    evidenceId: ev.id,
+    method: ev.request.method,
+    url: ev.request.url,
+    ...(ev.request.status !== undefined ? { status: ev.request.status } : {}),
+    size: ev.size,
+    transformId: ev.transformId,
+    version: ev.version,
+    ...(ev.origin ? { origin: ev.origin } : {}),
+  };
 }
 
 export function networkLogView(p: Projector): NetworkLog {
   const requests: NetworkRequest[] = [];
+  const transportCalls: NetworkTransportCall[] = [];
   for (const a of p.audits) {
-    const decision = EGRESS_ACTION.exec(a.action)?.[1] as NetworkRequest["decision"] | undefined;
-    if (!decision) continue; // case lifecycle, robots policy, … — not outbound requests
-    const detail = a.detail as Record<string, unknown> | undefined;
-    requests.push({
-      seq: a.seq,
-      at: a.at,
-      decision,
-      host: a.target,
-      ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
-      ...(typeof detail?.transportCalls === "number" ? { transportCalls: detail.transportCalls } : { transportCalls: 0 }),
-      ...(typeof detail?.reason === "string" ? { reason: detail.reason } : {}),
-    });
+    const request = requestRow(a);
+    if (request) requests.push(request);
+    else {
+      const call = transportRow(a);
+      if (call) transportCalls.push(call);
+    }
   }
   const responses: NetworkResponse[] = [];
   for (const ev of p.evidence.values()) {
-    if (ev.request.method === "LOCAL" || ev.request.url.startsWith("local://")) continue;
-    responses.push({
-      seq: ev.seq,
-      at: ev.fetchedAt,
-      evidenceId: ev.id,
-      method: ev.request.method,
-      url: ev.request.url,
-      ...(ev.request.status !== undefined ? { status: ev.request.status } : {}),
-      size: ev.size,
-      transformId: ev.transformId,
-      version: ev.version,
-    });
+    const row = responseRow(ev);
+    if (row) responses.push(row);
   }
   responses.sort((a, b) => a.seq - b.seq);
-  return { requests, responses };
+  return { requests, transportCalls, responses };
 }
 
 export interface CoverageCell {

@@ -197,7 +197,7 @@ export interface EgressAuditSink {
 }
 
 export interface EgressAuditEvent {
-  readonly kind: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit";
+  readonly kind: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit" | "transport";
   readonly reason?: EgressReason;
   readonly caseId?: string;
   readonly transform?: string;
@@ -205,6 +205,14 @@ export interface EgressAuditEvent {
   readonly method?: string;
   readonly transportCalls: number;
   readonly detail?: string;
+  /** Present on `transport` events (P2-014): the URL of the actual transport call, secret-redacted. */
+  readonly url?: string;
+  /** Present on `transport` events (P2-014): the HTTP status the call returned. */
+  readonly status?: number;
+  /** Present on `transport` events (P2-014): the failure message when the attempt failed. */
+  readonly error?: string;
+  /** Present on `transport` events (P2-014): the 1-based hop index of the attempt. */
+  readonly attempt?: number;
   /** True when the request was a system-level request (no caseId). */
   readonly systemContext?: boolean;
   /** Placeholder for a redacted secret digest. Never the raw secret. */
@@ -989,7 +997,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         return resolved;
       }
       const metered = { bytes: 0 };
-      const hop = await transportHop(
+      const hop = await transportHopRecorded(
         req,
         currentUrl,
         (resolved as ResolvedAddress).pinnedIp,
@@ -1019,6 +1027,51 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   }
 
   /**
+   * P2-014 (T-ETH-006): every ACTUAL transport call is one `transport` audit event, recorded at the
+   * `opts.transport.fetch` boundary itself — the first hop, every redirect hop, and attempts that FAIL
+   * are all rows. Allow/deny decisions stay separate (`egress.allowed`/`egress.denied`); this row proves
+   * an attempt was made, never that it was allowed or that it succeeded. On `transport` events the
+   * required `transportCalls` field carries the 1-based attempt index (which hop this was). The URL is
+   * secret-redacted (defense in depth: a hostile origin can echo request material back in a redirect's
+   * query — the raw secret must never reach the case chain).
+   */
+  /**
+   * P2-014: wraps transportHop so the SUCCESS row is emitted outside the transport catch — an audit-sink
+   * failure in the success path must fail the request closed (the audit trail is security-relevant) without
+   * being misread as a transport failure or double-emitting a row.
+   */
+  async function transportHopRecorded(
+    req: EgressRequest,
+    currentUrl: URL,
+    pinnedIp: string,
+    headers: Readonly<Record<string, string>> | undefined,
+    hopCount: number,
+    deadline: number,
+    abort: AbortCtl,
+    metered: { bytes: number },
+  ): Promise<TransportResp | EgressResult> {
+    const outcome = await transportHop(req, currentUrl, pinnedIp, headers, hopCount, deadline, abort, metered);
+    if (!("code" in outcome && outcome.code !== undefined)) {
+      // P2-014: the call was actually made — record it at the fetch boundary (success carries its status).
+      auditTransportCall(req, currentUrl, hopCount + 1, (outcome as TransportResp).status);
+    }
+    return outcome;
+  }
+
+  function auditTransportCall(req: EgressRequest, url: URL, attempt: number, status?: number, error?: string): void {
+    const href = req.secret !== undefined ? redactInText(url.href, req.secret) : url.href;
+    const secretDigest = req.secret !== undefined ? redactSecret(req.secret) : undefined;
+    audit({
+      kind: "transport",
+      ...auditCtx(req, url.hostname, attempt, secretDigest),
+      url: href,
+      attempt,
+      ...(status !== undefined ? { status } : {}),
+      ...(error !== undefined ? { error } : {}),
+    });
+  }
+
+  /**
    * One transport hop. The hop AbortController merges (a) the per-hop connect
    * timer and (b) the request-level abort (caller signal). Both the timer and
    * the request-abort listener are always released, so no listener or timer
@@ -1043,6 +1096,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     const hopTimer = setTimeout(() => hopController.abort(new Error("egress hop timeout")), Math.max(1, hopDeadline - now()));
     const onReqAbort = () => hopController.abort(abort.controller.signal.reason);
     abort.controller.signal.addEventListener("abort", onReqAbort, { once: true });
+    // P2-014: set once the transport was actually invoked — declared here so the catch block can see it
+    // (a failure after the call is still an attempt; a synchronous throw before it is not).
+    let fetchInitiated = false;
     try {
       // The gateway does not rely on the transport honouring the signal: the hop settles when the signal fires even
       // if the transport keeps running (its late result is discarded), so a deadline is a real upper bound.
@@ -1051,6 +1107,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         if (hopController.signal.aborted) fire();
         else hopController.signal.addEventListener("abort", fire, { once: true });
       });
+      // P2-014: marked BEFORE the call — a transport whose fetch() throws synchronously was still
+      // invoked, and that attempt is a row (a synchronous throw is a failed attempt, not a non-attempt).
+      fetchInitiated = true;
       const fetching = opts.transport.fetch({
         url: currentUrl.href,
         host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
@@ -1078,6 +1137,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       const safeDetail = req.secret ? redactInText(detail, req.secret) : detail;
+      // P2-014: a failed attempt is still an attempt — a row with the error, never silently absent.
+      if (fetchInitiated) auditTransportCall(req, currentUrl, hopCount + 1, undefined, safeDetail);
       if (isCancelled(req, abort)) {
         audit({ kind: "transport_error", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
         return deny("cancelled", hopCount + 1, "request cancelled by caller during transport");
