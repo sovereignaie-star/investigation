@@ -185,19 +185,23 @@ export interface NetworkResponse {
   /** P2-014: how the request was executed; a "sim"/"replay" outcome is a recorded outcome, not a real connection. */
   origin?: "network" | "sim" | "replay";
 }
-export interface NetworkHop {
+export interface NetworkTransportCall {
   seq: number;
   at: string;
-  /** The full URL of the completed redirect-target call (its own external request). */
+  /** The URL of the actual transport call, secret-redacted. */
   url: string;
-  status: number;
+  /** The 1-based hop index of the attempt. */
+  attempt: number;
   host: string;
+  status?: number;
+  /** The failure message when the attempt failed. */
+  error?: string;
   transform?: string;
 }
 export interface NetworkLog {
   requests: NetworkRequest[];
-  /** Completed redirect-target calls (hopCount >= 2): every transport call is exactly one row somewhere. */
-  hops: NetworkHop[];
+  /** Every ACTUAL transport call (first hop, redirects, failures) — one row per attempt. */
+  transportCalls: NetworkTransportCall[];
   responses: NetworkResponse[];
 }
 
@@ -216,16 +220,18 @@ function requestRow(a: Projector["audits"][number]): NetworkRequest | null {
   };
 }
 
-function hopRow(a: Projector["audits"][number]): NetworkHop | null {
-  if (a.action !== "egress.hop") return null;
+function transportRow(a: Projector["audits"][number]): NetworkTransportCall | null {
+  if (a.action !== "egress.transport") return null;
   const detail = a.detail as Record<string, unknown> | undefined;
-  if (typeof detail?.url !== "string" || typeof detail?.status !== "number") return null; // malformed: not a log row
+  if (typeof detail?.url !== "string" || typeof detail?.attempt !== "number") return null; // malformed: not a log row
   return {
     seq: a.seq,
     at: a.at,
     url: detail.url,
-    status: detail.status,
+    attempt: detail.attempt,
     host: a.target,
+    ...(typeof detail?.status === "number" ? { status: detail.status } : {}),
+    ...(typeof detail?.error === "string" ? { error: detail.error } : {}),
     ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
   };
 }
@@ -248,13 +254,13 @@ function responseRow(ev: Projector["evidence"] extends Map<string, infer V> ? V 
 
 export function networkLogView(p: Projector): NetworkLog {
   const requests: NetworkRequest[] = [];
-  const hops: NetworkHop[] = [];
+  const transportCalls: NetworkTransportCall[] = [];
   for (const a of p.audits) {
     const request = requestRow(a);
     if (request) requests.push(request);
     else {
-      const hop = hopRow(a);
-      if (hop) hops.push(hop);
+      const call = transportRow(a);
+      if (call) transportCalls.push(call);
     }
   }
   const responses: NetworkResponse[] = [];
@@ -263,7 +269,7 @@ export function networkLogView(p: Projector): NetworkLog {
     if (row) responses.push(row);
   }
   responses.sort((a, b) => a.seq - b.seq);
-  return { requests, hops, responses };
+  return { requests, transportCalls, responses };
 }
 
 export interface CoverageCell {

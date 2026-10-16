@@ -178,13 +178,20 @@ function summary(p: Projection, hash: string): string {
     `projection at seq ${p.seq}`,
     `  nodes ${c.nodes} (entities ${c.entities}), edges ${c.edges} (claims ${c.claims}), observations ${c.observations}, evidence ${c.evidence}, active merges ${c.merges}`,
     `  coverage: ${p.coverage.cells.length} cells over ${p.coverage.transforms.length} transforms, ${p.coverage.untouched.length} untouched nodes`,
-    `  network (P2-014): ${p.networkLog.requests.length} requests (${p.networkLog.requests.filter((q) => q.decision !== "allowed").length} not allowed), ${p.networkLog.responses.length} stored responses`,
+    `  network (P2-014): ${p.networkLog.requests.length} requests (${p.networkLog.requests.filter((q) => q.decision !== "allowed").length} not allowed), ${p.networkLog.transportCalls.length} transport calls, ${p.networkLog.responses.length} stored outcomes (${originSummary(p.networkLog.responses)})`,
     `  issues: ${p.issues.length}${p.issues
       .slice(0, 5)
       .map((i) => `\n    #${i.seq} ${i.code}: ${i.message}`)
       .join("")}`,
     `  sha256 ${hash}`,
   ].join("\n");
+}
+
+/** P2-014: outcome origins in the network line — a sim/replay/unknown outcome is a stored outcome, not a real connection. */
+function originSummary(responses: readonly { origin?: string }[]): string {
+  const count = (o: string) => responses.filter((r) => r.origin === o).length;
+  const unknown = responses.filter((r) => r.origin === undefined).length;
+  return `network: ${count("network")}, sim: ${count("sim")}, replay: ${count("replay")}, unknown: ${unknown}`;
 }
 
 /** `ir project` (P1-016, toward T-LED-020): offline rebuild of the views from the chain. */

@@ -369,13 +369,57 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
 
     const k = readCase(dir);
     const log = k.p.networkLog;
-    // every observed transport call is exactly one row: robots + entry = request rows, redirect target = hop row
+    // T-ETH-006: the FULL list of transport calls the transport actually observed, robots included,
+    // is compared with the log ROW FOR ROW (order and multiplicity) — not by separate counts:
+    const observed = [...x.robotsCalls, ...x.calls.map((c) => c.url)];
+    expect(log.transportCalls.map((t) => t.url)).toEqual(observed);
+    // each row carries its hop index and outcome
+    expect(log.transportCalls[0]).toMatchObject({ url: "https://source.example/robots.txt", attempt: 1 });
+    expect(log.transportCalls[1]).toMatchObject({ url: "https://source.example/", attempt: 1, status: 302 });
+    expect(log.transportCalls[2]).toMatchObject({ url: "https://alt.example/moved", attempt: 2, status: 200 });
+    // gateway decisions stay separate from transport calls (robots + entry; the redirect hop adds no decision)
     expect(log.requests).toHaveLength(2);
-    expect(log.hops).toHaveLength(1);
-    expect(log.hops[0]).toMatchObject({ url: "https://alt.example/moved", status: 200, host: "alt.example" });
-    // the entry request's own outcome is a stored response (its first hop is the request row, not a hop row)
+    // the entry request's own outcome is a stored response marked network (its URL is the requested one;
+    // the final status/bytes are the last hop's — the hop URLs live in the transport rows)
     expect(log.responses).toHaveLength(1);
     expect(log.responses[0]).toMatchObject({ url: "https://source.example/", origin: "network" });
+  });
+
+  it("T-ETH-006 (P2-014): a redirect chain whose next call FAILS — the failed attempt is a row with its error, never absent", async () => {
+    const dir = tempDir("netlog-redirect-fail");
+    const x = fake({ "source.example": [PUBLIC_IP], "alt.example": [PUBLIC_IP] }, (_n, url): Resp => {
+      if (new URL(url).host === "alt.example") throw new Error("connection reset by peer");
+      return { status: 302, headers: { location: "https://alt.example/moved" } };
+    });
+    const r = await run(
+      [
+        "run",
+        dir,
+        "TR-010",
+        "url",
+        "https://source.example/",
+        "--network",
+        "--allow-host",
+        "source.example",
+        "--allow-host",
+        "alt.example",
+        ...CASE_ARGS,
+        "--json",
+      ],
+      { network: { env: ON, resolver: x.resolver, transport: x.transport } },
+    );
+    expect(r.code).toBe(1); // the run fails closed…
+    const k = readCase(dir);
+    const log = k.p.networkLog;
+    // …but every attempt is visible, row for row (robots + entry + the failed redirect target)
+    const observed = [...x.robotsCalls, ...x.calls.map((c) => c.url)];
+    expect(log.transportCalls.map((t) => t.url)).toEqual(observed);
+    expect(log.transportCalls[2]).toMatchObject({
+      url: "https://alt.example/moved",
+      attempt: 2,
+      error: expect.stringContaining("connection reset"),
+    });
+    expect(log.transportCalls[2].status).toBeUndefined();
   });
 
   it("T-ETH-006 (P2-014): a simulated run's stored outcome is marked origin sim and never presented as a real connection", async () => {
@@ -395,6 +439,12 @@ describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform
     expect(log.responses).toHaveLength(1);
     expect(log.responses[0]).toMatchObject({ url: "https://sim.example/" });
     expect(log.responses[0].origin).toBe("sim");
+    // the user-facing text never presents the sim outcome as a real connection either:
+    const proj = await run(["project", dir, ...CASE_ARGS], {});
+    expect(proj.code).toBe(0);
+    expect(proj.out).toMatch(
+      /network \(P2-014\): 0 requests \(0 not allowed\), 0 transport calls, 1 stored outcomes \(network: 0, sim: 1, replay: 0, unknown: 0\)/,
+    );
   });
 
   it("an authorised host that resolves to a private address is refused before the transport, and the refusal is recorded", async () => {
