@@ -36,6 +36,7 @@ import {
   unScConsolidated,
   urlscanSearch,
   threatfoxSearch,
+  abuseIpDbCheck,
   euSanctions,
   companiesHouse,
   opensanctions,
@@ -259,6 +260,20 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { ip: hashInput, domain: domainInput, url: httpUrlInput, hash: hashInput },
     sends: ["ip", "domain", "url", "hash"],
     hosts: ["threatfox-api.abuse.ch"],
+    pageFetch: false,
+  },
+  {
+    // P2-026: TR-044 — the AbuseIPDB check. The key (vault entry "abuseipdb") travels in the
+    // registry's `Key` header only (D-031), read from the vault per request; the request sends
+    // ONLY the ipAddress query (the per-provider allowlist refuses maxAgeInDays/verbose — the
+    // closed list is narrower than the provider's documented surface on purpose, fail-closed). The
+    // run is refused fail-closed when the vault entry is not set.
+    transform: abuseIpDbCheck,
+    module: mod("tr-044-abuseipdb.ts"),
+    subjects: { ipv4: ipv4Input, ipv6: ipv6Input },
+    // The request URL's query carries the subject IP itself.
+    sends: ["ip"],
+    hosts: ["api.abuseipdb.com"],
     pageFetch: false,
   },
   {

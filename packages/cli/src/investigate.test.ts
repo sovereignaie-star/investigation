@@ -292,6 +292,9 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       "TR-047 domain:example.com",
       "TR-003 ipv4:8.8.8.8",
       "TR-006 ipv4:8.8.8.8",
+      // TR-044 registered (P2-026): same designed fail-closed key refusal — this test's vault has
+      // no "abuseipdb" entry either; its queued pair never reached its turn before the stop.
+      "TR-044 ipv4:8.8.8.8",
       "TR-001 hostname:a.iana-servers.net",
       "TR-001 hostname:b.iana-servers.net",
     ]);
@@ -576,10 +579,14 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
     const notRun = covOf(r).filter((k) => k.state === "not_run");
     expect(notRun.length).toBeGreaterThan(0);
     for (const k of notRun) {
-      // TR-047's keyless pair is the designed fail-closed setup refusal (P2-026 registration);
-      // every other stop is a budget/depth stop.
+      // TR-047's and TR-044's keyless pairs are the designed fail-closed setup refusals (P2-026
+      // registrations — this test's vault has neither entry); every other stop is a budget/depth stop.
+      // A keyed pair stopped before its turn records the plain budget/depth stop — the fail-closed
+      // key refusal appears only when its turn actually came.
       expect(k.reason).toMatch(
-        k.transformId === "TR-047" ? /^setup refused: --network: TR-047 requires/ : /budget: runs|depth \d+ > maxDepth 1/,
+        k.transformId === "TR-047" || k.transformId === "TR-044"
+          ? /^(setup refused: --network: TR-04[47] requires|budget: runs|depth \d+ > maxDepth 1)/
+          : /budget: runs|depth \d+ > maxDepth 1/,
       );
     }
     // every queued host name is accounted for (ran or not_run), none silently dropped
