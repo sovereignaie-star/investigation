@@ -15,11 +15,19 @@
  *
  * The test image is crafted in the helper: a minimal JPEG (SOI + APP1 EXIF +
  * EOI) carrying Make="TestCam", Model="X100", DateTimeOriginal
- * "2026:01:02 03:04:05" and GPS 21°29'81.2"N 39°11'44.9"E (DMS rationals),
- * which is 21.505889,39.195806 in decimal degrees.
+ * "2026:01:02 03:04:05" and GPS 21°29'8.12"N 39°11'4.49"E (valid DMS
+ * rationals — seconds below 60 — with hemisphere refs), which is
+ * 21.485589,39.184581 in decimal degrees.
  *
- * Red first: this test was written before the transform existed and failed on
- * the missing module (the failing test for the right reason).
+ * The acceptance review (2026-10-16) added: a southern/western variant (S/W
+ * refs make both coordinates negative), a GPS-without-refs case (the
+ * transform must NOT guess the hemisphere — no geo finding is emitted), and
+ * an XMP-only image (CreatorTool → "created_with"/"application").
+ *
+ * Red first: the original tests were written before the transform existed and
+ * failed on the missing module. The no-refs and XMP tests were red against
+ * the first implementation (it assumed N/E and had no XMP finding — the
+ * failing tests for the right reasons before the corrective fix).
  */
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
@@ -45,11 +53,22 @@ function counting(t: SimTransport): { transport: SimTransport; calls: () => numb
 }
 
 /**
- * A minimal JPEG whose APP1 segment carries an EXIF TIFF with Make, Model and
- * a GPS IFD (DMS rationals). Offsets are computed from the TIFF start:
- * header 8 | IFD0 42 (2 + 3*12 + 4) | data area 11 | GPS IFD 30 | rationals 48.
+ * Hemisphere refs: "N"/"S" for latitude, "E"/"W" for longitude, or null to omit
+ * the ref entries entirely (the transform must not guess the hemisphere).
  */
-function craftExifJpeg(): Buffer {
+interface GpsRefs {
+  lat: "N" | "S" | null;
+  lng: "E" | "W" | null;
+}
+
+/**
+ * A minimal JPEG whose APP1 segment carries an EXIF TIFF with Make, Model and
+ * a GPS IFD (DMS rationals + hemisphere refs when provided). Offsets are
+ * computed from the TIFF start: header 8 | IFD0 54 (2 + 4*12 + 4) | data area
+ * 11 | GPS IFD (54 with refs, 30 without) | rationals 48. Refs are 2-byte
+ * ASCII values written inline into the 4-byte IFD value field.
+ */
+function craftExifJpeg(refs: GpsRefs = { lat: "N", lng: "E" }): Buffer {
   const tiffHeader = Buffer.from([0x4d, 0x4d, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x08]);
   const ifd = Buffer.alloc(54); // 2 + 4*12 + 4
   const makeVal = Buffer.from("TestCam\0");
@@ -66,37 +85,63 @@ function craftExifJpeg(): Buffer {
   entry(0, 0x010f, 2, makeVal.length, 8 + 54); // Make -> data area
   entry(1, 0x0110, 2, modelVal.length, 8 + 54 + makeVal.length); // Model
   entry(2, 0x9003, 2, dateVal.length, 8 + 54 + makeVal.length + modelVal.length); // DateTimeOriginal
-  entry(3, 0x8825, 4, 1, 8 + 54 + dataArea.length); // GPS IFD pointer
+  const gpsIfdOffset = 8 + 54 + dataArea.length;
+  entry(3, 0x8825, 4, 1, gpsIfdOffset); // GPS IFD pointer
 
-  const gpsIfd = Buffer.alloc(30);
+  const hasLatRef = refs.lat !== null;
+  const hasLngRef = refs.lng !== null;
+  const gpsEntryCount = (hasLatRef ? 1 : 0) + 1 + (hasLngRef ? 1 : 0) + 1;
+  const gpsIfd = Buffer.alloc(2 + gpsEntryCount * 12 + 4);
   const gpsEntry = (i: number, tagId: number, typ: number, count: number, val: number) => {
     gpsIfd.writeUInt16BE(tagId, 2 + i * 12);
     gpsIfd.writeUInt16BE(typ, 4 + i * 12);
     gpsIfd.writeUInt32BE(count, 6 + i * 12);
     gpsIfd.writeUInt32BE(val, 10 + i * 12);
   };
-  gpsIfd.writeUInt16BE(2, 0);
-  const latOffset = 8 + 54 + dataArea.length + 30;
+  gpsIfd.writeUInt16BE(gpsEntryCount, 0);
+  const latOffset = gpsIfdOffset + gpsIfd.length;
   const lngOffset = latOffset + 24;
-  gpsEntry(0, 0x0002, 5, 3, latOffset); // GPSLatitude (DMS rationals)
-  gpsEntry(1, 0x0004, 5, 3, lngOffset); // GPSLongitude
-  gpsIfd.writeUInt32BE(0, 26); // next IFD = none
+  let i = 0;
+  if (hasLatRef) {
+    gpsEntry(i, 0x0001, 2, 2, 0); // GPSLatitudeRef — ASCII fits inline
+    gpsIfd.write(refs.lat + "\0", 10 + i * 12);
+    i++;
+  }
+  gpsEntry(i, 0x0002, 5, 3, latOffset); // GPSLatitude (DMS rationals)
+  i++;
+  if (hasLngRef) {
+    gpsEntry(i, 0x0003, 2, 2, 0); // GPSLongitudeRef — ASCII fits inline
+    gpsIfd.write(refs.lng + "\0", 10 + i * 12);
+    i++;
+  }
+  gpsEntry(i, 0x0004, 5, 3, lngOffset); // GPSLongitude
+  gpsIfd.writeUInt32BE(0, 2 + gpsEntryCount * 12); // next IFD = none
 
   const rationals = Buffer.alloc(48);
   const dms = (deg: [number, number], min: [number, number], sec: [number, number], at: number) => {
-    [deg, min, sec].forEach((r, i) => {
-      rationals.writeUInt32BE(r[0], at + i * 8);
-      rationals.writeUInt32BE(r[1], at + i * 8 + 4);
+    [deg, min, sec].forEach((r, j) => {
+      rationals.writeUInt32BE(r[0], at + j * 8);
+      rationals.writeUInt32BE(r[1], at + j * 8 + 4);
     });
   };
-  dms([21, 1], [29, 1], [812000, 10000], 0); // 21° 29' 81.2" N
-  dms([39, 1], [11, 1], [449000, 10000], 24); // 39° 11' 44.9" E
+  dms([21, 1], [29, 1], [812, 100], 0); // 21° 29' 8.12" — valid seconds < 60
+  dms([39, 1], [11, 1], [449, 100], 24); // 39° 11' 4.49" — valid seconds < 60
 
   const tiff = Buffer.concat([tiffHeader, ifd, dataArea, gpsIfd, rationals]);
   const app1 = Buffer.concat([Buffer.from("Exif\0\0"), tiff]);
   const len = Buffer.alloc(2);
   len.writeUInt16BE(app1.length + 2);
   return Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.from([0xff, 0xe1]), len, app1, Buffer.from([0xff, 0xd9])]);
+}
+
+/** A JPEG whose only metadata is an XMP APP1 segment (no EXIF at all). */
+function craftXmpJpeg(): Buffer {
+  const xmp =
+    '<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description xmlns:xmp="http://ns.adobe.com/xap/1.0/"><xmp:CreatorTool>XmpTestTool</xmp:CreatorTool></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
+  const payload = Buffer.concat([Buffer.from("http://ns.adobe.com/xap/1.0/\0"), Buffer.from(xmp)]);
+  const len = Buffer.alloc(2);
+  len.writeUInt16BE(payload.length + 2);
+  return Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.from([0xff, 0xe1]), len, payload, Buffer.from([0xff, 0xd9])]);
 }
 
 describe("TR-031 image EXIF metadata (local, no network)", () => {
@@ -108,12 +153,12 @@ describe("TR-031 image EXIF metadata (local, no network)", () => {
     expect(result.requestCount).toBe(0);
     expect(counted.calls()).toBe(0);
     const findings = result.output.findings;
-    // 21 + 29/60 + 81.2/3600 = 21.505889; 39 + 11/60 + 44.9/3600 = 39.195806
+    // 21 + 29/60 + 8.12/3600 = 21.485589; 39 + 11/60 + 4.49/3600 = 39.184581
     expect(findings).toContainEqual(
       expect.objectContaining({
         predicate: "captured_at",
         objectType: "geo_point",
-        objectValue: "21.505889,39.195806",
+        objectValue: "21.485589,39.184581",
         derivedFrom: "input",
       }),
     );
@@ -134,6 +179,55 @@ describe("TR-031 image EXIF metadata (local, no network)", () => {
       }),
     );
     for (const f of findings) expect(f.evidence).toBeUndefined();
+  });
+
+  it("S/W hemisphere refs make both coordinates negative", async () => {
+    const sim = createSimServer([]);
+    const counted = counting(sim.transport);
+    const input = { content: craftExifJpeg({ lat: "S", lng: "W" }).toString("base64") };
+    const result = await runTransform(exifMetadata, { transport: counted.transport, input });
+    expect(result.requestCount).toBe(0);
+    expect(result.output.findings).toContainEqual(
+      expect.objectContaining({
+        predicate: "captured_at",
+        objectType: "geo_point",
+        objectValue: "-21.485589,-39.184581",
+        derivedFrom: "input",
+      }),
+    );
+  });
+
+  it("GPS coordinates WITHOUT hemisphere refs emit NO geo finding (the hemisphere is never guessed)", async () => {
+    const sim = createSimServer([]);
+    const counted = counting(sim.transport);
+    const input = { content: craftExifJpeg({ lat: null, lng: null }).toString("base64") };
+    const result = await runTransform(exifMetadata, { transport: counted.transport, input });
+    expect(result.requestCount).toBe(0);
+    const findings = result.output.findings;
+    expect(findings.find((f) => f.predicate === "captured_at")).toBeUndefined();
+    // The other EXIF facts are still emitted — only the geo finding is withheld.
+    expect(findings).toContainEqual(
+      expect.objectContaining({ predicate: "captured_with", objectType: "camera", objectValue: "TestCam X100" }),
+    );
+    expect(findings).toContainEqual(
+      expect.objectContaining({ predicate: "captured_at_time", objectType: "date", objectValue: "2026-01-02 03:04:05" }),
+    );
+  });
+
+  it("extracts the creation tool from an XMP-only image (CreatorTool)", async () => {
+    const sim = createSimServer([]);
+    const counted = counting(sim.transport);
+    const input = { content: craftXmpJpeg().toString("base64") };
+    const result = await runTransform(exifMetadata, { transport: counted.transport, input });
+    expect(result.requestCount).toBe(0);
+    expect(result.output.findings).toContainEqual(
+      expect.objectContaining({
+        predicate: "created_with",
+        objectType: "application",
+        objectValue: "XmpTestTool",
+        derivedFrom: "input",
+      }),
+    );
   });
 
   it("a valid image WITHOUT EXIF is a legitimate empty result (not an error)", async () => {

@@ -221,7 +221,7 @@
 | [Sensity](https://sensity.ai/) | كشف Deepfake | مدفوع | TL-d0c8a805 | في الكتالوج | — |
 | Reality Defender | كشف Deepfake | مدفوع | — | مرشح | — |
 | [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | استخراج بيانات الصور | مفتوح | TL-645c328d | مكدس المشروع | TR-031 |
-| [ExifReader](https://github.com/mattiaswandel/ExifReader) | تحليل بيانات EXIF/XMP/GPS للصور محليًا (TR-031) | مفتوح | TL-f6a3c4db | في الخارطة | TR-031 |
+| [ExifReader](https://github.com/mattiasw/ExifReader) | تحليل بيانات EXIF/XMP/GPS للصور محليًا (TR-031) | مفتوح | TL-f6a3c4db | في الخارطة | TR-031 |
 
 ### 11 محركات البحث عن الأصول التاريخية
 
