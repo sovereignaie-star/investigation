@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
+import { runTransform, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
 import { shodanHost, urlscanSearch } from "@ir/transforms";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
 import type { RegisteredTransform } from "./registry.ts";
@@ -109,6 +110,85 @@ describe("P2-016: the network plan binds the manifest's secret to the vault (or 
     if (!("error" in plan)) throw new Error("expected a refusal");
     expect(plan.error).toMatch(/SHODAN_KEY/i);
     expect(d.calls).toHaveLength(0);
+  });
+
+  it("COMPOSITION (runner + recording + case evidence): the real TR-009 request construction is refused by the query policy and the secret never reaches any persisted record", async () => {
+    const c = newCase();
+    const d = deps(fakeVault({ urlscan: "n_urlscan_composition_key" }));
+    const plan = planNetworkRun(c, urlscanEntry, "url", ["urlscan.io"], d);
+    if ("error" in plan) throw new Error(plan.error);
+    // The runner's real composition: the recording transport around the plan's transport (the
+    // same wrapper runTransform uses), then the REAL transform code — its actual request
+    // construction (GET /api/v1/search/?q=domain:...) is what the policy refuses.
+    const evidence: TransformEvidence[] = [];
+    const signal = new AbortController().signal;
+    const recorded = recordingTransport(
+      plan.transport,
+      evidence,
+      new RateLimiter(1, Date.now, (ms) => new Promise((r) => setTimeout(r, ms))),
+      15_000,
+      2_000_000,
+      signal,
+    );
+    await expect(runTransform(urlscanSearch, { transport: recorded, input: { url: "https://example.com" }, signal })).rejects.toThrowError(
+      /secret_host_mismatch/,
+    );
+    // the failure is recorded as evidence with the URL the transform asked for — and no secret anywhere
+    const persisted = JSON.stringify(evidence) + JSON.stringify(d.calls);
+    expect(persisted).not.toContain("n_urlscan_composition_key");
+    expect(d.calls).toHaveLength(0); // the transport was never reached (refused before DNS)
+    // the case's audit chain carries the refusal, also without the secret
+    const audit = JSON.stringify(c.auditTrail());
+    expect(audit).not.toContain("n_urlscan_composition_key");
+  });
+
+  it("COMPOSITION (infrastructure canary, NOT a TR-009 integration): a query-free request to the registered path passes with the key in the header", async () => {
+    const c = newCase();
+    const d = deps(fakeVault({ urlscan: "n_urlscan_canary_key" }));
+    const plan = planNetworkRun(c, urlscanEntry, "url", ["urlscan.io"], d);
+    if ("error" in plan) throw new Error(plan.error);
+    const evidence: TransformEvidence[] = [];
+    const signal = new AbortController().signal;
+    const recorded = recordingTransport(
+      plan.transport,
+      evidence,
+      new RateLimiter(1, Date.now, (ms) => new Promise((r) => setTimeout(r, ms))),
+      15_000,
+      2_000_000,
+      signal,
+    );
+    const res = await runTransform(
+      // a minimal real-shaped transform whose request is query-free (the registry path) — this
+      // proves the INJECTION composition only; it is not a working TR-009 integration (the real
+      // search request needs a query, which the policy refuses — see the documented conflict).
+      {
+        ...urlscanSearch,
+        run: async (_input: { url: string }, ctx: { http: { get: (url: string) => Promise<unknown> } }) => {
+          await ctx.http.get("https://urlscan.io/api/v1/search/");
+          return { findings: [] };
+        },
+      } as never,
+      { transport: recorded, input: { url: "https://example.com" }, signal },
+    );
+    expect(res.requestCount).toBe(1);
+    expect(d.calls[0]?.headers?.["api-key"]).toBe("n_urlscan_canary_key");
+    expect(JSON.stringify(evidence)).not.toContain("n_urlscan_canary_key");
+  });
+
+  it("a vault that cannot be opened refuses the plan with a fixed message (no opener error text)", () => {
+    const c = newCase();
+    const d = deps(fakeVault({ urlscan: "k" }));
+    const broken = {
+      ...d,
+      vault: () => {
+        throw new Error("opener detail with secrets inside");
+      },
+    };
+    const plan = planNetworkRun(c, urlscanEntry, "url", ["urlscan.io"], broken);
+    expect("error" in plan).toBe(true);
+    if (!("error" in plan)) throw new Error("expected a refusal");
+    expect(plan.error).toMatch(/vault could not be opened/i);
+    expect(plan.error).not.toContain("opener detail");
   });
 
   it("a manifest declaring more than one secret is refused explicitly (one binding per run, no silent pick)", () => {

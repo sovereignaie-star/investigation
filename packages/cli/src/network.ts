@@ -253,7 +253,7 @@ export function planNetworkRun(
  * registry entry (key-in-URL-only providers: shodan, etherscan) is refused by policy D-031/P2-016;
  * a locked vault or a missing entry refuses the run rather than sending it keyless.
  */
-function resolveSecretBinding(
+export function resolveSecretBinding(
   manifest: { id: string; secrets?: readonly string[] },
   deps: NetworkDeps,
 ): {
@@ -280,9 +280,10 @@ function resolveSecretBinding(
   let vault: Vault;
   try {
     vault = openVault();
-  } catch (x) {
+  } catch {
+    // The opener's own error text is not propagated (it could carry anything); a fixed message.
     return {
-      error: `--network: ${manifest.id} requires ${secretName} but the vault could not be opened (${(x as Error).message}); the run is refused rather than sent without the key`,
+      error: `--network: ${manifest.id} requires ${secretName} but the vault could not be opened (locked or unreadable); the run is refused rather than sent without the key`,
     };
   }
   if (!vault.has(registryEntry.vaultEntry)) {

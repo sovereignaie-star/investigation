@@ -103,6 +103,24 @@ describe("P2-016: secret injection at the adapter (key in the registry header, n
     expect(w.calls.map((c) => c.headers?.["api-key"])).toEqual(["first-key", "second-key"]);
   });
 
+  it("a reader that THROWS refuses the request fail-closed, and the reader's own error text never surfaces", async () => {
+    const w = wire();
+    const transport = createEgressHttpTransport({
+      gateway: gateway(w),
+      baseRequest: BASE,
+      secretBinding: {
+        ...BINDING,
+        readSecret: () => {
+          throw new Error("reader exploded with n_urlscan_test_key inside");
+        },
+      },
+    });
+    await expect(
+      transport.fetch({ method: "GET", url: "https://urlscan.io/api/v1/search/" }, new AbortController().signal),
+    ).rejects.toThrowError(/secret for urlscan is unavailable/i);
+    expect(w.calls).toHaveLength(0);
+  });
+
   it("an unavailable credential refuses the request fail-closed, before the gateway touches the transport", async () => {
     const w = wire();
     const transport = createEgressHttpTransport({
@@ -116,24 +134,69 @@ describe("P2-016: secret injection at the adapter (key in the registry header, n
     expect(w.calls).toHaveLength(0);
   });
 
-  it("a request to a host outside the binding carries no secret and no injected header", async () => {
+  it("a request to a host outside the binding is REFUSED — a credentialed run stays pinned to its provider, never a keyless request", async () => {
     const w = wire();
     const transport = createEgressHttpTransport({ gateway: gateway(w), baseRequest: BASE, secretBinding: BINDING });
-    const res = await transport.fetch({ method: "GET", url: "https://example.com/docs" }, new AbortController().signal);
-    expect(res.status).toBe(200);
-    expect(w.calls).toHaveLength(1);
-    expect(w.calls[0]?.headers?.["api-key"]).toBeUndefined();
-    expect(JSON.stringify(w.calls[0]?.headers ?? {})).not.toContain("n_urlscan_test_key");
+    await expect(transport.fetch({ method: "GET", url: "https://example.com/docs" }, new AbortController().signal)).rejects.toThrowError(
+      /outside the pinned provider hosts/i,
+    );
+    expect(w.calls).toHaveLength(0);
   });
 
-  it("a provider response echoing the secret header back is redacted before it can reach evidence", async () => {
-    const w = wire({ "Api-Key": "n_urlscan_test_key", "content-type": "application/json" });
+  it("a provider response echoing the secret back — in ANY header or the body — is REFUSED outright (canary: the credential never reaches the sandbox or evidence)", async () => {
+    for (const echo of [
+      { headers: { "Api-Key": "n_urlscan_test_key" } }, // header echo (any case/name)
+      { headers: { "x-echo": "leak:n_urlscan_test_key" } }, // arbitrary header carrying the value
+      { body: '{"note":"n_urlscan_test_key"}' }, // body echo
+    ]) {
+      const spy = {
+        calls: [],
+        transport: { fetch: async (_req: { url: string; headers?: Record<string, string> }) => ({ status: 200, ...echo }) },
+      };
+      const transport = createEgressHttpTransport({ gateway: gateway(spy as never), baseRequest: BASE, secretBinding: BINDING });
+      await expect(
+        transport.fetch({ method: "GET", url: "https://urlscan.io/api/v1/search/" }, new AbortController().signal),
+      ).rejects.toThrowError(/echoed the credential/i);
+    }
+  });
+
+  it("a clean provider response passes the reflection guard (no false positives on ordinary bodies)", async () => {
+    const w = wire({ "content-type": "application/json" });
     const transport = createEgressHttpTransport({ gateway: gateway(w), baseRequest: BASE, secretBinding: BINDING });
     const res = await transport.fetch({ method: "GET", url: "https://urlscan.io/api/v1/search/" }, new AbortController().signal);
     expect(res.status).toBe(200);
-    expect(JSON.stringify(res.headers ?? {})).not.toContain("n_urlscan_test_key");
-    expect(Object.keys(res.headers ?? {}).some((h) => h.toLowerCase() === "api-key")).toBe(false);
     expect(res.headers?.["content-type"]).toBe("application/json");
+  });
+
+  it("redirect containment: a redirect to a host outside the provider's registry never receives the secret (the gateway refuses the hop)", async () => {
+    // first hop: 302 to an outside host; the gateway must refuse the redirect hop (the secret
+    // stays bound to the provider's hosts on EVERY hop — T-SEC-SSRF-042 per-hop path check).
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    const redirectTransport = {
+      async fetch(req: { url: string; headers?: Record<string, string> }) {
+        calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+        if (calls.length === 1) {
+          return { status: 302, headers: { location: "https://example.com/steal" } };
+        }
+        return { status: 200, body: "{}" };
+      },
+    };
+    const transport = createEgressHttpTransport({
+      gateway: createEgressGateway({
+        resolver: RESOLVER,
+        transport: redirectTransport,
+        providerHosts: { urlscan: BINDING.hosts },
+        providerPaths: { urlscan: PATHS },
+        limits: { rateLimitPerHostPerSecond: 100, rateLimitBurst: 100, maxRedirects: 2 },
+      }),
+      baseRequest: BASE,
+      secretBinding: BINDING,
+    });
+    await expect(
+      transport.fetch({ method: "GET", url: "https://urlscan.io/api/v1/search/" }, new AbortController().signal),
+    ).rejects.toThrowError(/secret_host_mismatch|host_not_allowed|redirect/i);
+    // the only transport call is the first hop to the provider; the outside host was never contacted
+    expect(calls.map((c) => c.url)).toEqual(["https://urlscan.io/api/v1/search/"]);
   });
 
   it("DOCUMENTED CONFLICT (P2-016): TR-009's real search request carries a query, and the query policy refuses secret-bearing requests — the injection is refused by T-SEC-SSRF-042 until the owner decides on a registry-driven query allowlist", async () => {

@@ -144,13 +144,32 @@ function applySecretBinding(
 ): {
   headers?: Record<string, string>;
   secretFields: Partial<Pick<EgressRequest, "secret" | "secretProvider" | "pinnedHost">>;
+  /** The raw secret when one was attached (for the response reflection guard); never logged. */
+  secret?: string;
 } {
   let headers = req.headers ? Object.fromEntries(Object.entries(req.headers)) : undefined;
   let secretFields: Partial<Pick<EgressRequest, "secret" | "secretProvider" | "pinnedHost">> = {};
   if (!binding) return { headers, secretFields };
   const host = hostOf(req.url);
-  if (!binding.hosts.some((h) => h.toLowerCase() === host)) return { headers, secretFields };
-  const secret = binding.readSecret();
+  // A credentialed run is pinned to its provider (the manifest's pinned mode): a request to any
+  // other host is refused, never silently sent keyless — the binding must not turn a pinned,
+  // credentialed run into an unrestricted keyless one (robots.txt and other auxiliary fetches go
+  // through their own transport, built without a binding).
+  if (!binding.hosts.some((h) => h.toLowerCase() === host)) {
+    throw new TransportError(
+      "transport:ssrf-blocked",
+      `the request to ${host || "(unparsable URL)"} is outside the pinned provider hosts (${binding.hosts.join(", ")}) of this credentialed run; refused`,
+      { retryable: false },
+    );
+  }
+  let secret: string | undefined;
+  try {
+    secret = binding.readSecret();
+  } catch {
+    // The reader's own error text is not propagated (it could carry anything); the refusal is
+    // fail-closed with a fixed message.
+    secret = undefined;
+  }
   if (secret === undefined || secret === "") {
     // Fail-closed BEFORE the gateway: an unavailable credential is never a keyless request.
     throw new TransportError(
@@ -161,7 +180,15 @@ function applySecretBinding(
   }
   headers = injectSecretHeader(headers, binding.secretHeader, secret);
   secretFields = { secret, secretProvider: binding.secretProvider, pinnedHost: host };
-  return { headers, secretFields };
+  return { headers, secretFields, secret };
+}
+
+/** True when the raw secret value appears anywhere in the response (body, headers — any case). */
+function responseReflectsSecret(resp: { body?: unknown; headers?: Record<string, string> }, secret: string | undefined): boolean {
+  if (secret === undefined) return false;
+  const body = typeof resp.body === "string" ? resp.body : resp.body instanceof Uint8Array ? new TextDecoder().decode(resp.body) : "";
+  if (body.includes(secret)) return true;
+  return Object.entries(resp.headers ?? {}).some(([, value]) => value.includes(secret));
 }
 
 /** The request URL's lowercase hostname, or "" for a URL that does not parse. */
@@ -210,6 +237,18 @@ export function createEgressHttpTransport(opts: EgressAdapterOptions): HttpTrans
       // A response flagged as aborted is a late completion after cancellation: never a success.
       if (!resp || resp.aborted === true || signal.aborted) {
         throw new TransportError("transport:cancelled", EGRESS_ADAPTER_CANCELLED, { retryable: false });
+      }
+      // P2-016: credential-reflection guard. If the raw secret appears anywhere in the response —
+      // the body, any header (a hostile or echoing origin), a Location — the response is REFUSED
+      // (fail-closed): it must never reach the sandboxed transform or the recorded evidence.
+      // The response is not rewritten: a body that echoes the credential is not accepted with the
+      // echo scrubbed out, it is rejected outright.
+      if (responseReflectsSecret(resp, injected.secret)) {
+        throw new TransportError(
+          "transport:ssrf-blocked",
+          "the provider response echoed the credential; the response is refused rather than delivered or recorded",
+          { retryable: false },
+        );
       }
       return {
         status: resp.status,
