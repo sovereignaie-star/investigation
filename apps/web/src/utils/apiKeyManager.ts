@@ -184,9 +184,18 @@ export const apiKeyManager = {
   async test(key: keyof ApiKeys): Promise<{ success: boolean; message: string }> {
     try {
       const res = await fetch(vaultUrl(key, "/test"), { method: "POST", headers: headers() });
-      const r = (await res.json()) as { ok: boolean; tested: boolean };
+      const r = (await res.json()) as {
+        ok: boolean;
+        tested: boolean;
+        quota?: { supported: boolean; usedPct?: number; alert80?: boolean; window?: string; action?: string };
+      };
       if (!r.tested)
         return r.ok ? { success: true, message: "تم الحفظ (لم يتم الاختبار)" } : { success: false, message: "المفتاح غير موجود" };
+      // P2-024: the 80% alert is surfaced HERE (the key-management surface), not left a backend field.
+      if (r.ok && r.quota?.supported && r.quota.alert80 && r.quota.usedPct !== undefined) {
+        const what = r.quota.action ? `${r.quota.action} (${r.quota.window ?? "نافذة"})` : "الحصة";
+        return { success: true, message: `المفتاح صحيح — تنبيه: استُهلك ${r.quota.usedPct}% من ${what}` };
+      }
       return r.ok ? { success: true, message: "المفتاح صحيح" } : { success: false, message: "المفتاح غير صحيح" };
     } catch {
       return { success: false, message: "خطأ في الاتصال" };
