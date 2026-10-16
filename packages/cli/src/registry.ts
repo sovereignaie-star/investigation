@@ -36,6 +36,7 @@ import {
   unScConsolidated,
   euSanctions,
   companiesHouse,
+  opensanctions,
   opensky,
   gleifEntity,
   secEdgar,
@@ -262,6 +263,27 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { uk_company_number: ukCompanyInput, company_name: companyNameInput },
     sends: ["uk_company_number", "company_name"],
     hosts: ["api.company-information.service.gov.uk"],
+    pageFetch: false,
+  },
+  {
+    transform: opensanctions,
+    module: mod("tr-025-opensanctions.ts"),
+    // ADR-28: the screening POST goes to the pinned api.opensanctions.org/match/{dataset} with a
+    // fixed-schema JSON body carrying the subject's name only (case data — never recorded in
+    // evidence/audit/disk; the response body is not recorded either). /search (GET) is the
+    // discovery path for entity names; person screening is match-only (the name would travel
+    // in a recorded URL otherwise). The API key travels as an Authorization: ApiKey header from
+    // the manifest-declared env name (IR_OPENSANCTIONS_TOKEN), never in a URL; without it the
+    // run fails closed. sends: the person run is gated by E-02 (person_name), like TR-026/027/028.
+    // NOTE (P2-013): company_name subjects are refused by the CLI --network gate (the public
+    // send kinds do not include company_name — the same state as TR-023's company subjects);
+    // the engine path covers both subject kinds.
+    subjects: {
+      person_name: (raw: string) => ({ person_name: raw }),
+      company_name: (raw: string) => ({ company_name: raw }),
+    },
+    sends: ["person_name"],
+    hosts: ["api.opensanctions.org"],
     pageFetch: false,
   },
   {

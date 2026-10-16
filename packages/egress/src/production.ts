@@ -38,6 +38,12 @@ export interface ProductionEgressConfig {
    */
   readonly oauth2AuthHosts?: readonly string[];
   /**
+   * ADR-28: the pinned OpenSanctions screening host(s) a /match POST may target. Defaults to
+   * `DEFAULT_SCREENING_POST_HOSTS` (currently api.opensanctions.org — TR-025). Changing or
+   * adding a host here is an ADR-level decision, not a config tweak.
+   */
+  readonly screeningPostHosts?: readonly string[];
+  /**
    * Replace the real resolver / transport. ONLY for deterministic tests of the composition itself; the opt-in and
    * the allow-list are enforced exactly as in production.
    */
@@ -56,6 +62,13 @@ const HOST_LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
  * Any change or addition to this list is an ADR-level decision (ADR-27 condition 4).
  */
 export const DEFAULT_OAUTH2_TOKEN_HOSTS: readonly string[] = ["auth.opensky-network.org"];
+
+/**
+ * ADR-28: the default pinned OpenSanctions screening host(s). Currently the OpenSanctions API
+ * (TR-025; the path is pinned separately to /match/default). Any change or addition to this
+ * list is an ADR-level decision (ADR-28 condition 5).
+ */
+export const DEFAULT_SCREENING_POST_HOSTS: readonly string[] = ["api.opensanctions.org"];
 
 /** Validates one allow-list entry: a DNS hostname with at least two labels, no IP, wildcard, port or path. */
 export function validAllowedHost(entry: string): string | null {
@@ -86,6 +99,7 @@ export function createProductionEgress(cfg: ProductionEgressConfig): ProductionE
     transport: cfg.transport ?? createNodeTransport(),
     allowedHosts: hosts,
     oauth2AuthHosts: cfg.oauth2AuthHosts ?? DEFAULT_OAUTH2_TOKEN_HOSTS,
+    screeningPostHosts: cfg.screeningPostHosts ?? DEFAULT_SCREENING_POST_HOSTS,
     ...(cfg.limits ? { limits: cfg.limits } : {}),
     ...(cfg.auditSink ? { auditSink: cfg.auditSink } : {}),
   });

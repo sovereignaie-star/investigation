@@ -15,8 +15,8 @@ export const Admiralty = z.object({
 /** Per-type sensitivity: "natural_person_gate" requires purpose confirmation (E-02); "minor" stops auto-expansion (E-08). */
 export const Sensitivity = z.enum(["normal", "natural_person_gate", "minor"]);
 
-/** Transform license class (ROADMAP 14.x): A local, B public no key, C free user key, D paid user key. */
-export const LicenseClass = z.enum(["LC-A", "LC-B", "LC-C", "LC-D"]);
+/** Transform license class (ROADMAP 7.3): A local, B public no key, C free user key, D paid user key, E usage-restricted (non-commercial / attribution). */
+export const LicenseClass = z.enum(["LC-A", "LC-B", "LC-C", "LC-D", "LC-E"]);
 
 export const LocalizedLabel = z
   .object({ ar: z.string().min(1).optional(), en: z.string().min(1).optional() })

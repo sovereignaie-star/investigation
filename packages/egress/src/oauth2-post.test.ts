@@ -42,11 +42,11 @@ function gateway(t: EgressTransport, audit?: EgressAuditSink) {
   });
 }
 
-describe("ADR-27: the OAuth2 token POST is the only legal POST", () => {
+describe("ADR-27: the OAuth2 token POST is a pinned POST kind", () => {
   it("a well-formed token POST to the pinned host passes and the body reaches the transport", async () => {
     const t = recordingTransport();
     const audit = collectingAudit();
-    const r = await gateway(t, audit).request({ ...BASE, url: TOKEN_URL, method: "POST", body: BODY, oauth2Token: true });
+    const r = await gateway(t, audit).request({ ...BASE, url: TOKEN_URL, method: "POST", body: BODY });
     expect(r.ok).toBe(true);
     expect(t.calls).toHaveLength(1);
     expect(t.calls[0].method).toBe("POST");
@@ -56,22 +56,21 @@ describe("ADR-27: the OAuth2 token POST is the only legal POST", () => {
     expect(JSON.stringify(audit.events)).not.toContain("grant_type");
   });
 
-  it("a POST without the marker is refused before DNS", async () => {
+  it("a POST without a body is refused before DNS (the policy is host-routed, marker-free)", async () => {
     const t = recordingTransport();
-    const r = await gateway(t).request({ ...BASE, url: TOKEN_URL, method: "POST", body: BODY });
+    const r = await gateway(t).request({ ...BASE, url: TOKEN_URL, method: "POST" });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("invalid_request");
     expect(r.transportCalls).toBe(0);
   });
 
-  it("a POST to a host that is not the pinned token host is refused before DNS", async () => {
+  it("a POST to a host that is neither a pinned token host nor a pinned screening host is refused before DNS", async () => {
     const t = recordingTransport();
     const r = await gateway(t).request({
       ...BASE,
       url: "https://evil.example/token",
       method: "POST",
       body: BODY,
-      oauth2Token: true,
     });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("invalid_request");
@@ -86,17 +85,17 @@ describe("ADR-27: the OAuth2 token POST is the only legal POST", () => {
       "not a form body",
     ]) {
       const t = recordingTransport();
-      const r = await gateway(t).request({ ...BASE, url: TOKEN_URL, method: "POST", body, oauth2Token: true });
+      const r = await gateway(t).request({ ...BASE, url: TOKEN_URL, method: "POST", body });
       expect(r.ok).toBe(false);
       expect(r.reason).toBe("invalid_request");
       expect(r.transportCalls).toBe(0);
     }
   });
 
-  it("a GET or HEAD with a body (or the marker) is refused before DNS", async () => {
+  it("a GET or HEAD with a body is refused before DNS", async () => {
     const t = recordingTransport();
     const g = gateway(t);
-    const r1 = await g.request({ ...BASE, url: TOKEN_URL, method: "GET", body: BODY, oauth2Token: true });
+    const r1 = await g.request({ ...BASE, url: TOKEN_URL, method: "GET", body: BODY });
     expect(r1.ok).toBe(false);
     expect(r1.reason).toBe("invalid_request");
     const r2 = await g.request({ ...BASE, url: TOKEN_URL, body: BODY });
@@ -114,14 +113,13 @@ describe("ADR-27: the OAuth2 token POST is the only legal POST", () => {
       url: TOKEN_URL,
       method: "POST",
       body: "grant_type=client_credentials&client_id=AB123456&client_secret=x",
-      oauth2Token: true,
     });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("natural_person");
     expect(r.transportCalls).toBe(0);
   });
 
-  it("an empty oauth2AuthHosts list allows no POST at all (fail-closed)", async () => {
+  it("an empty oauth2AuthHosts list allows no token POST (fail-closed)", async () => {
     const t = recordingTransport();
     const g = createEgressGateway({
       resolver: fakeResolver({ "auth.opensky-network.org": ["93.184.216.34"] }),
@@ -129,9 +127,24 @@ describe("ADR-27: the OAuth2 token POST is the only legal POST", () => {
       oauth2AuthHosts: [],
       limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
     });
-    const r = await g.request({ ...BASE, url: TOKEN_URL, method: "POST", body: BODY, oauth2Token: true });
+    const r = await g.request({ ...BASE, url: TOKEN_URL, method: "POST", body: BODY });
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("invalid_request");
     expect(t.calls).toHaveLength(0);
+  });
+
+  it("an OAuth2 token body sent to the screening host is refused (each pinned host takes only its own POST shape)", async () => {
+    const t = recordingTransport();
+    const g = createEgressGateway({
+      resolver: fakeResolver({ "api.opensanctions.org": ["93.184.216.34"] }),
+      transport: t,
+      oauth2AuthHosts: ["auth.opensky-network.org"],
+      screeningPostHosts: ["api.opensanctions.org"],
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100 },
+    });
+    const r = await g.request({ ...BASE, url: "https://api.opensanctions.org/match/default", method: "POST", body: BODY });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("invalid_request");
+    expect(r.transportCalls).toBe(0);
   });
 });

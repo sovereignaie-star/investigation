@@ -251,10 +251,11 @@ export function recordingTransport(
           record({ url: req.url, method: req.method, error: err });
           throw new CancellationError(err.message);
         }
-        // ADR-27: the OAuth2 token response body (the access token) is NEVER recorded in evidence —
-        // the token lives in the operator's memory only (never serialized, never on disk). The
-        // request body is never recorded either (evidence carries no request bodies at all).
-        if (req.oauth2Token === true) {
+        // ADR-27 + ADR-28: a POST response body is NEVER recorded in evidence — the OAuth2
+        // token response (the access token, a secret) and the OpenSanctions /match screening
+        // response (candidate names, case data) both stay out of the records. The request body
+        // is never recorded either (evidence carries no request bodies at all).
+        if (req.method === "POST") {
           record({ url: req.url, method: req.method, status: res.status });
         } else {
           record({ url: req.url, method: req.method, status: res.status, headers: res.headers ?? {}, body });

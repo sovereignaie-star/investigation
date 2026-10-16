@@ -84,14 +84,13 @@ export interface EgressRequest {
   method?: "GET" | "HEAD" | "POST";
   headers?: Record<string, string>;
   /**
-   * ADR-27: the OAuth2 client-credentials token request body. Allowed ONLY on a POST marked
-   * `oauth2Token` to a gateway-pinned auth host; must be form-urlencoded with exactly
-   * grant_type=client_credentials + client_id + client_secret. Never recorded in evidence or
-   * audit; the content inventory inspects it like headers.
+   * ADR-27 / ADR-28: a POST request body. Two legal POST kinds exist, both routed by the pinned
+   * host (and path): an OAuth2 client-credentials token body (form-urlencoded, built from project
+   * secrets) to a gateway-pinned auth host, or an OpenSanctions /match screening body (a fixed
+   * JSON schema built from the subject's name) to a gateway-pinned screening host. Neither body
+   * is ever recorded in evidence or audit; the content inventory inspects the body like headers.
    */
   body?: string;
-  /** ADR-27: marks the request as an OAuth2 client-credentials token request (the only legal POST). */
-  oauth2Token?: boolean;
   sends?: string[];
   sensitivity?: string;
   secret?: string;
@@ -272,10 +271,17 @@ export interface EgressOptions {
   readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
   /**
    * ADR-27: the ONLY hosts an OAuth2 client-credentials token POST may target (exact match after
-   * normalisation). Unset or empty = no POST is ever allowed (fail-closed). Currently
+   * normalisation). Unset or empty = no token POST is ever allowed (fail-closed). Currently
    * ["auth.opensky-network.org"] (TR-040). Changing or adding a token host requires a new ADR.
    */
   readonly oauth2AuthHosts?: readonly string[];
+  /**
+   * ADR-28: the hosts an OpenSanctions /match screening POST may target (exact match after
+   * normalisation; the path is pinned separately to /match/{dataset}). Unset or empty = no screening
+   * POST is ever allowed (fail-closed). Currently ["api.opensanctions.org"] (TR-025). Changing or
+   * adding a screening host requires a new ADR.
+   */
+  readonly screeningPostHosts?: readonly string[];
 }
 
 /**
@@ -346,7 +352,6 @@ const REQUEST_FIELDS = new Set([
   "capability",
   "staticPaths",
   "body",
-  "oauth2Token",
   "byteBudget",
   "requestBudget",
 ]);
@@ -435,25 +440,24 @@ function validateRequestShape(req: EgressRequest): EgressResult | null {
   if (req.method !== undefined && req.method !== "GET" && req.method !== "HEAD" && req.method !== "POST") {
     return deny("invalid_request", 0, "method must be GET, HEAD or POST");
   }
-  const postErr = validateOauth2PostShape(req);
+  const postErr = validatePostShape(req);
   if (postErr) return postErr;
   return null;
 }
 
-/** ADR-27 shape rules for the body/marker (host pin + form shape live in `checkOauth2Post`). */
-function validateOauth2PostShape(req: EgressRequest): EgressResult | null {
+/** POST shape rules (the host pin + per-policy body shape live in `checkPostPolicy`). */
+function validatePostShape(req: EgressRequest): EgressResult | null {
   if (req.method === "POST") {
-    if (req.oauth2Token !== true) {
-      return deny("invalid_request", 0, "POST is only allowed for an OAuth2 client-credentials token request (ADR-27)");
-    }
+    // Which POST kind this is (OAuth2 token vs screening) is decided later by the pinned host
+    // (and path) in `checkPostPolicy`; here only the carrying shape is enforced.
     if (typeof req.body !== "string" || req.body === "") {
-      return deny("invalid_request", 0, "the OAuth2 token POST must carry a non-empty form body (ADR-27)");
+      return deny("invalid_request", 0, "a POST must carry a non-empty body (ADR-27 token / ADR-28 screening)");
     }
     return null;
   }
-  // A non-token request must not carry a body or the marker at all.
-  if (req.body !== undefined || req.oauth2Token !== undefined) {
-    return deny("invalid_request", 0, "a request body / oauth2Token marker is only allowed on the OAuth2 token POST (ADR-27)");
+  // A GET/HEAD must not carry a body at all.
+  if (req.body !== undefined) {
+    return deny("invalid_request", 0, "a request body is only allowed on a POST (ADR-27 token / ADR-28 screening)");
   }
   return null;
 }
@@ -544,28 +548,63 @@ function literalHostCheck(url: URL): EgressResult | null {
   return null;
 }
 
+/**
+ * The ADR-27/ADR-28 POST policy pre-check for `preDnsChecks`: parses the URL only to route the
+ * pinned POST kinds; an unparsable URL is left to the URL check (invalid_url) — a typed refusal
+ * downstream, not a swallow here.
+ */
+function postPolicyCheck(
+  req: EgressRequest,
+  postHosts: { oauth2?: ReadonlySet<string>; screening?: ReadonlySet<string> },
+): EgressResult | null {
+  let postUrl: URL;
+  try {
+    postUrl = new URL(req.url);
+  } catch {
+    return null;
+  }
+  return checkPostPolicy(req, postUrl, postHosts.oauth2, postHosts.screening);
+}
+
+/**
+ * The narrow systemContext scope: it exempts the request from caseId ONLY for the approved
+ * vault-key-validation purpose/transform (review log Q4), and only with a registered vault
+ * capability (see vault-capability.ts). `systemContext: true` alone never enables it.
+ */
+function checkSystemContext(req: EgressRequest, opts: EgressOptions): EgressResult | null {
+  if (!req.systemContext) return null;
+  if (req.purposeRef !== "vault-key-validation" || req.transform !== "vault.test@1") {
+    return deny("invalid_request", 0, "systemContext is only valid for purposeRef=vault-key-validation with transform=vault.test@1");
+  }
+  if (!req.caseId && !hasVaultCapability(opts, req)) {
+    return deny("no_case", 0, "systemContext exemption requires a vault capability");
+  }
+  return null;
+}
+
 /** Pre-DNS policy checks (offline, case, sensitivity, sends, headers, secrets). */
-function preDnsChecks(req: EgressRequest, offline: boolean, opts: EgressOptions): EgressResult | null {
+function preDnsChecks(
+  req: EgressRequest,
+  offline: boolean,
+  opts: EgressOptions,
+  postHosts: { oauth2?: ReadonlySet<string>; screening?: ReadonlySet<string> },
+): EgressResult | null {
   if (offline) return deny("offline");
   if (!req.systemContext && !req.caseId) return deny("no_case");
   if (!req.purposeRef) return deny("no_case");
-  // systemContext is narrowly scoped: it exempts the request from caseId ONLY
-  // for the approved vault-key-validation purpose/transform (review log Q4).
-  if (req.systemContext && (req.purposeRef !== "vault-key-validation" || req.transform !== "vault.test@1")) {
-    return deny("invalid_request", 0, "systemContext is only valid for purposeRef=vault-key-validation with transform=vault.test@1");
-  }
-  // The systemContext caseId exemption is honored ONLY when the caller attached
-  // a capability object that is one of the vault capabilities registered on
-  // the gateway options (see vault-capability.ts). `systemContext: true` alone
-  // or any boolean on the request can never enable the exemption.
-  if (req.systemContext && !req.caseId && !hasVaultCapability(opts, req)) {
-    return deny("no_case", 0, "systemContext exemption requires a vault capability");
-  }
+  const sysErr = checkSystemContext(req, opts);
+  if (sysErr) return sysErr;
   const sensErr = checkSensitivity(req.sensitivity);
   if (sensErr) return sensErr;
   const manifestErr = checkSends(req.sends);
   if (manifestErr) return manifestErr;
-  const contentErr = checkContent(req);
+  // ADR-27 / ADR-28: the POST policy (the pinned kinds) runs BEFORE the content inventory, so
+  // a host/path violation is reported as invalid_request, and the content check derives the
+  // screening person-name waiver only for a genuinely pinned screening URL. An unparsable URL
+  // is left to the URL check (invalid_url).
+  const postErr = postPolicyCheck(req, postHosts);
+  if (postErr) return postErr;
+  const contentErr = checkContent(req, postHosts.screening);
   if (contentErr) return contentErr;
   const headerErr = checkHeaders(req.headers);
   if (headerErr) return headerErr;
@@ -576,14 +615,22 @@ function preDnsChecks(req: EgressRequest, offline: boolean, opts: EgressOptions)
  * T-SEC-SSRF-043: what the request actually carries must be what `sends` declares (content-inventory.ts). Before
  * DNS; an unparsable URL is left to the URL check (invalid_url).
  */
-function checkContent(req: EgressRequest): EgressResult | null {
+function checkContent(req: EgressRequest, screeningHosts?: ReadonlySet<string>): EgressResult | null {
   let url: URL;
   try {
     url = new URL(req.url);
   } catch {
     return null;
   }
-  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret, req.staticPaths, req.body), req.sends ?? []);
+  // ADR-28: the OpenSanctions /match screening POST is the ONE wire surface where the screening
+  // subject's own name (a person_name reading on the body) is allowed — it is the essence of the
+  // query, the run is gated upstream by E-02 (natural_person_gate sensitivity requires purpose
+  // confirmation before the run starts), and the body never enters evidence/audit/disk. The
+  // gateway re-derives the fact from the pinned host+path, never from a transform-supplied marker.
+  const allowPersonNameOnBody = isScreeningPostUrl(req, url, screeningHosts);
+  const verdict = judgeInventory(inventoryRequest(url, req.headers, req.secret, req.staticPaths, req.body), req.sends ?? [], {
+    allowPersonNameOnBody,
+  });
   return verdict ? deny(verdict.reason, 0, verdict.detail) : null;
 }
 
@@ -601,9 +648,11 @@ function checkSends(sends: string[] | undefined): EgressResult | null {
   if (sends === undefined) return deny("missing_manifest");
   // E-02 (P2-013): a natural-person subject's run declares person_name as its only extra kind; the
   // run itself is gated by the engine (a case with a stated purpose), and the subject never appears
-  // in a URL, header or body (the person transforms download fixed files and match locally). The
-  // wire-level inspection (judgeInventory) is unchanged: any natural-person identifier found on the
-  // wire is refused whatever sends says.
+  // in a URL or header (the person transforms download fixed files and match locally — and since
+  // ADR-28, the OpenSanctions /match screening POST carries the subject's name in its fixed-schema
+  // body, the single allowed body surface, see judgeInventory). The wire-level inspection
+  // (judgeInventory) is unchanged otherwise: any natural-person identifier found on the wire is
+  // refused whatever sends says.
   for (const kind of sends) {
     if (!PUBLIC_ALLOWED_SENDS.has(kind) && !PERSON_SUBJECT_SENDS.has(kind)) return deny("undeclared_data");
   }
@@ -633,10 +682,9 @@ function checkSecretShape(req: EgressRequest): EgressResult | null {
 }
 
 /**
- * ADR-27: the ONLY POST the gateway ever carries — an OAuth2 client-credentials token request.
- * The target host must be on the gateway's pinned `oauth2AuthHosts` list (trusted parent code; changing
- * it requires a new ADR), the scheme must be https, and the body must be form-urlencoded with
- * EXACTLY grant_type=client_credentials + client_id + client_secret — a body built from project
+ * ADR-27: an OAuth2 client-credentials token POST — routed by its pinned host (`oauth2AuthHosts`).
+ * The scheme must be https, and the body must be form-urlencoded with EXACTLY
+ * grant_type=client_credentials + client_id + client_secret — a body built from project
  * secrets only. The body text never enters an audit event, a denial detail or evidence; this check
  * only validates shape and host. It is also inventoried (content-inventory) like the headers.
  */
@@ -671,6 +719,146 @@ function checkOauth2Post(req: EgressRequest, url: URL, allowed: ReadonlySet<stri
     );
   }
   return null;
+}
+
+/**
+ * ADR-28: the pinned OpenSanctions /match screening POST path — the exact path TR-025 uses
+ * (`/match/default`, the whole-database dataset). Any other path (another dataset, another
+ * endpoint) is a new ADR, not a config tweak.
+ */
+const SCREENING_POST_PATH = /^\/match\/default$/;
+/** ADR-28 condition 4: the screening body is capped at 4096 bytes. */
+const SCREENING_POST_MAX_BODY_BYTES = 4096;
+/** ADR-28 condition 1: the fixed schema — only these entity schemas, only these name properties. */
+const SCREENING_SCHEMAS = new Set(["Person", "Company"]);
+const SCREENING_PROPERTIES = new Set(["firstName", "lastName", "name"]);
+/** ADR-28 condition 1: every field is typed and length-capped. */
+const SCREENING_VALUE_MAX_CHARS = 100;
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return null;
+  return v as Record<string, unknown>;
+}
+
+/**
+ * ADR-28: the second legal POST — an OpenSanctions /match screening, routed by its pinned host
+ * (`screeningPostHosts`) AND path. The body must be a JSON object matching a FIXED schema exactly
+ * (condition 1: built from a fixed schema, no free text, no extra fields, every field typed and
+ * length-capped): `{"queries": {"q": {"schema": "Person"|"Company", "properties": {...}}}}` with
+ * `properties` keys from {firstName, lastName, name} only, each a single string of at most 100
+ * characters. The body carries the screening subject's name — case data — so it never enters an
+ * audit event, a denial detail or evidence (the denial details below never echo body values), and
+ * the response body is never recorded either. Widening the schema (or any other endpoint) is a
+ * new ADR, not a config tweak.
+ */
+function checkScreeningPost(req: EgressRequest, url: URL, allowed: ReadonlySet<string> | undefined): EgressResult | null {
+  if (req.method !== "POST") return null;
+  const host = normalizeHost(url.hostname);
+  if (allowed === undefined || allowed.size === 0) {
+    return deny("invalid_request", 0, "no screening POST host is pinned in this gateway (ADR-28 fail-closed)");
+  }
+  if (!allowed.has(host)) {
+    return deny("invalid_request", 0, `POST to "${host}" is not on the pinned ADR-28 screening host list`);
+  }
+  if (url.protocol !== "https:") {
+    return deny("invalid_request", 0, "the screening POST must use https (ADR-28)");
+  }
+  if (url.search !== "" || url.hash !== "") {
+    return deny("invalid_request", 0, "the screening POST must carry no query or fragment (ADR-28)");
+  }
+  if (!SCREENING_POST_PATH.test(url.pathname)) {
+    return deny("invalid_request", 0, "the screening POST path must be /match/{dataset} (ADR-28)");
+  }
+  if (typeof req.body !== "string" || req.body === "") {
+    return deny("invalid_request", 0, "the screening POST must carry a non-empty JSON body (ADR-28)");
+  }
+  if (Buffer.byteLength(req.body, "utf8") > SCREENING_POST_MAX_BODY_BYTES) {
+    return deny("invalid_request", 0, `the screening POST body exceeds ${SCREENING_POST_MAX_BODY_BYTES} bytes (ADR-28)`);
+  }
+  return screeningBodyShape(req.body);
+}
+
+/**
+ * ADR-28 condition 1: the fixed JSON body schema walk. The walk only ever names the required
+ * shape — body values (the subject's name) are never echoed into a denial detail.
+ */
+function screeningBodyShape(body: string): EgressResult | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return deny("invalid_request", 0, "the screening POST body must be a JSON object (ADR-28)");
+  }
+  const top = asRecord(parsed);
+  if (top === null || Object.keys(top).join(",") !== "queries") {
+    return deny("invalid_request", 0, "the screening body must be exactly {queries} (ADR-28)");
+  }
+  const queries = asRecord(top.queries);
+  if (queries === null || Object.keys(queries).join(",") !== "q") {
+    return deny("invalid_request", 0, "the screening body must carry exactly one query, keyed q (ADR-28)");
+  }
+  const query = asRecord(queries.q);
+  if (query === null) {
+    return deny("invalid_request", 0, "each screening query must be exactly {schema, properties} (ADR-28)");
+  }
+  return screeningQueryShape(query);
+}
+
+function screeningQueryShape(query: Record<string, unknown>): EgressResult | null {
+  if (Object.keys(query).sort().join(",") !== "properties,schema") {
+    return deny("invalid_request", 0, "each screening query must be exactly {schema, properties} (ADR-28)");
+  }
+  if (typeof query.schema !== "string" || !SCREENING_SCHEMAS.has(query.schema)) {
+    return deny("invalid_request", 0, "the screening schema must be Person or Company (ADR-28)");
+  }
+  const props = asRecord(query.properties);
+  const propKeys = props === null ? [] : Object.keys(props);
+  if (props === null || propKeys.length === 0 || propKeys.length > SCREENING_PROPERTIES.size) {
+    return deny("invalid_request", 0, "the screening properties must be one to three name fields (ADR-28)");
+  }
+  return screeningPropertiesShape(props, propKeys);
+}
+
+function screeningPropertiesShape(props: Record<string, unknown>, propKeys: readonly string[]): EgressResult | null {
+  for (const k of propKeys) {
+    if (!SCREENING_PROPERTIES.has(k)) {
+      return deny("invalid_request", 0, "the screening properties must be firstName/lastName/name only (ADR-28)");
+    }
+    const v = props[k];
+    if (!Array.isArray(v) || v.length !== 1 || typeof v[0] !== "string" || v[0] === "" || v[0].length > SCREENING_VALUE_MAX_CHARS) {
+      return deny("invalid_request", 0, "each screening property must be one string of at most 100 characters (ADR-28)");
+    }
+  }
+  return null;
+}
+
+/**
+ * The POST policy router (ADR-27 + ADR-28): a POST is legal only on a host pinned for one of the
+ * two POST kinds — an OAuth2 token host (form body) or an OpenSanctions screening host (fixed JSON
+ * body, pinned path). The URL alone selects the policy; there is no marker a sandboxed transform
+ * could set. Any other POST host is refused before DNS.
+ */
+function checkPostPolicy(
+  req: EgressRequest,
+  url: URL,
+  oauth2Hosts: ReadonlySet<string> | undefined,
+  screeningHosts: ReadonlySet<string> | undefined,
+): EgressResult | null {
+  if (req.method !== "POST") return null;
+  const host = normalizeHost(url.hostname);
+  if (oauth2Hosts?.has(host)) return checkOauth2Post(req, url, oauth2Hosts);
+  if (screeningHosts?.has(host)) return checkScreeningPost(req, url, screeningHosts);
+  return deny("invalid_request", 0, `POST to "${host}" is not a pinned POST host (ADR-27 OAuth2 token / ADR-28 OpenSanctions screening)`);
+}
+
+/** True when the request is an ADR-28 OpenSanctions /match screening POST to a pinned host+path. */
+function isScreeningPostUrl(req: EgressRequest, url: URL, screeningHosts: ReadonlySet<string> | undefined): boolean {
+  return (
+    req.method === "POST" &&
+    screeningHosts !== undefined &&
+    screeningHosts.has(normalizeHost(url.hostname)) &&
+    SCREENING_POST_PATH.test(url.pathname)
+  );
 }
 
 /**
@@ -778,9 +966,12 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   // An explicitly empty allowedHosts list allows nothing (fail-closed); undefined means public mode.
   const allowedSet: ReadonlySet<string> | undefined =
     opts.allowedHosts === undefined ? undefined : new Set(opts.allowedHosts.map(normalizeHost).filter((h) => h !== ""));
-  // ADR-27: the pinned OAuth2 token hosts (unset or empty = no POST is ever allowed, fail-closed).
+  // ADR-27: the pinned OAuth2 token hosts (unset or empty = no token POST is ever allowed, fail-closed).
   const oauth2HostSet: ReadonlySet<string> | undefined =
     opts.oauth2AuthHosts === undefined ? undefined : new Set(opts.oauth2AuthHosts.map(normalizeHost).filter((h) => h !== ""));
+  // ADR-28: the pinned OpenSanctions screening hosts (unset or empty = no screening POST, fail-closed).
+  const screeningHostSet: ReadonlySet<string> | undefined =
+    opts.screeningPostHosts === undefined ? undefined : new Set(opts.screeningPostHosts.map(normalizeHost).filter((h) => h !== ""));
 
   function audit(event: EgressAuditEvent): void {
     // D-017 / P2-006: an audit failure is never swallowed silently. When a sink is configured
@@ -891,7 +1082,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // IR_OFFLINE=1 in the process environment always wins, read per request (so setting it later still applies);
     // `offline: false` in the options cannot override it.
     const offline = opts.offline === true || process.env["IR_OFFLINE"] === "1";
-    const pre = preDnsChecks(req, offline, opts);
+    const pre = preDnsChecks(req, offline, opts, { oauth2: oauth2HostSet, screening: screeningHostSet });
     if (pre) {
       audit({
         kind: "denied",
@@ -922,21 +1113,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return deny("invalid_url");
     }
 
-    // --- 6b: ADR-27 OAuth2 token POST policy (host pin + fixed body shape), before DNS ---
-    const oauth2Err = checkOauth2Post(req, currentUrl, oauth2HostSet);
-    if (oauth2Err) {
-      audit({
-        kind: "denied",
-        reason: oauth2Err.reason,
-        caseId: req.caseId,
-        systemContext: req.systemContext,
-        transform: req.transform,
-        host: currentUrl.hostname,
-        transportCalls: 0,
-      });
-      return oauth2Err;
-    }
-
+    // --- 6b: POST policy (ADR-27 OAuth2 token + ADR-28 OpenSanctions screening) — enforced in
+    // preDnsChecks (before the content inventory) so host/path violations surface as
+    // invalid_request and the screening waiver is only derived for pinned screening URLs ---
     // --- 7: literal address class, then scheme / port / credentials ---
     const shape = literalHostCheck(currentUrl) ?? urlChecks(currentUrl);
     if (shape) {
@@ -1045,6 +1224,52 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     return deny("byte_budget", hops, `response would pass the byte budget (${b.used}/${b.limit} bytes used)`);
   }
 
+  /**
+   * Per-hop pre-DNS checks. The ADR-27/ADR-28 POST policy runs on EVERY hop's URL — a redirect
+   * must never carry a POST body (case data / secrets) to an unpinned host+path, whatever the
+   * redirect status implies about method preservation. Then cancellation, deadline and the
+   * P2-041/P2-042 budgets (the byte budget first: a hop it would refuse consumes no request slot).
+   */
+  function hopPreFlight(
+    req: EgressRequest,
+    currentUrl: URL,
+    hopCount: number,
+    deadline: number,
+    abort: AbortCtl,
+    secretDigest?: string,
+  ): EgressResult | null {
+    const hopPostErr = checkPostPolicy(req, currentUrl, oauth2HostSet, screeningHostSet);
+    if (hopPostErr) {
+      audit({ kind: "denied", reason: hopPostErr.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return hopPostErr;
+    }
+    // Cancellation before DNS: no resolver call, no transport call.
+    if (isCancelled(req, abort)) {
+      audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return deny("cancelled", hopCount, "request cancelled by caller before DNS");
+    }
+    if (now() >= deadline) {
+      audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
+      return deny("timeout_total", hopCount);
+    }
+    // P2-041/P2-042: the shared request budget sees EVERY hop (the first hop and every redirect) — take one
+    // BEFORE DNS, so `state.requests` reflects every DNS+connect+bytes+rate-consuming transport call, and
+    // no redirect hop can start once the investigation's request budget is exhausted (the outer requestMeter
+    // wraps gateway.request() once per entry request and cannot see hops inside runHops).
+    const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
+    if (spent) return spent;
+    const reqBudget = req.requestBudget;
+    if (reqBudget !== undefined && !reqBudget.take()) {
+      audit({ kind: "denied", reason: "request_budget", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return deny(
+        "request_budget",
+        hopCount,
+        `investigation request budget exhausted (${reqBudget.usedCount}/${reqBudget.limit} requests)`,
+      );
+    }
+    return null;
+  }
+
   async function runHops(
     req: EgressRequest,
     initialUrl: URL,
@@ -1059,36 +1284,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     const sent = sentValues(initialUrl, req.headers, req.secret, req.staticPaths, req.body);
     let hopHeaders = req.headers;
     while (true) {
-      // Cancellation before DNS: no resolver call, no transport call.
-      if (isCancelled(req, abort)) {
-        audit({ kind: "denied", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
-        return deny("cancelled", hopCount, "request cancelled by caller before DNS");
-      }
-      if (now() >= deadline) {
-        audit({ kind: "timeout", reason: "timeout_total", ...auditCtx(req, currentUrl.hostname, hopCount) });
-        return deny("timeout_total", hopCount);
-      }
-      // P2-041/P2-042: the shared request budget sees EVERY hop (the first hop and every redirect) — take one
-      // BEFORE DNS (after the byte budget's pre-DNS check), so `state.requests` reflects every
-      // DNS+connect+bytes+rate-consuming transport call, and no redirect hop can start once the investigation's
-      // request budget is exhausted (the outer requestMeter wraps gateway.request() once per entry request and
-      // cannot see hops inside runHops).
-      // P2-042: the byte budget is checked FIRST: a hop the byte budget would refuse before DNS consumes no
-      // request slot. (Order before P2-042: the request budget took one, THEN the byte budget refused the hop
-      // — a hop that never reached DNS or the transport had still consumed a request of the investigation.)
-      const spent = budgetExhausted(req, currentUrl.hostname, hopCount, secretDigest);
-      if (spent) return spent;
-      const reqBudget = req.requestBudget;
-      if (reqBudget !== undefined) {
-        if (!reqBudget.take()) {
-          audit({ kind: "denied", reason: "request_budget", ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
-          return deny(
-            "request_budget",
-            hopCount,
-            `investigation request budget exhausted (${reqBudget.usedCount}/${reqBudget.limit} requests)`,
-          );
-        }
-      }
+      // Per-hop pre-DNS checks: the POST policy (every hop — a redirect must never carry a
+      // POST body to an unpinned host+path), cancellation, deadline and budgets.
+      const pre = hopPreFlight(req, currentUrl, hopCount, deadline, abort, secretDigest);
+      if (pre) return pre;
       const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
       if ("code" in resolved && resolved.code !== undefined) {
         audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });

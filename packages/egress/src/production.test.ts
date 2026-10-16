@@ -190,4 +190,35 @@ describe("createProductionEgress (P2-003): off by default, never global", () => 
     expect(noCase.reason).toBe("no_case");
     expect(tr.calls).toEqual([]);
   });
+
+  it("enabled: the composition wires the ADR-28 screening POST host by default (a well-formed /match POST passes, another listed host's POST refuses)", async () => {
+    const tr = t();
+    const d = createProductionEgress({
+      allowedHosts: ["api.opensanctions.org", "source.example"],
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: createSystemResolver({
+        lookup: lookupOf({
+          "api.opensanctions.org": [{ address: "93.184.216.34", family: 4 }],
+          "source.example": [{ address: "93.184.216.34", family: 4 }],
+        }),
+      }),
+      transport: tr,
+    });
+    if (!d.enabled) throw new Error(d.reason);
+    // The screening POST to the pinned host+path passes — the production composition includes
+    // DEFAULT_SCREENING_POST_HOSTS without any caller-side wiring (ADR-28; TR-025).
+    const screening = await d.gateway.request({
+      ...BASE,
+      sends: ["person_name"],
+      url: "https://api.opensanctions.org/match/default",
+      method: "POST",
+      body: JSON.stringify({ queries: { q: { schema: "Person", properties: { firstName: ["Aleksandr"], lastName: ["Zacharov"] } } } }),
+    });
+    expect(screening.ok, screening.reason).toBe(true);
+    expect(tr.calls).toHaveLength(1);
+    // A POST to a listed-but-unpinned host is still refused: the allow-list never opens POST.
+    const other = await d.gateway.request({ ...BASE, url: "https://source.example/collect", method: "POST", body: "x=y" });
+    expect(other.reason).toBe("invalid_request");
+    expect(tr.calls).toHaveLength(1);
+  });
 });
