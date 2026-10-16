@@ -187,14 +187,14 @@ rl.on("line", (l) => {
     p.reject(err);
   }
 });
-const ipcFetch = (method, url) => new Promise((resolve, reject) => {
+const ipcFetch = (method, url, headers) => new Promise((resolve, reject) => {
   const id = nextId++;
   pending.set(id, { resolve, reject });
-  ipc({ op: "fetch", id, method, url });
+  ipc({ op: "fetch", id, method, url, headers });
 });
 const http = {
-  get: (url) => ipcFetch("GET", url),
-  head: (url) => ipcFetch("HEAD", url),
+  get: (url, headers) => ipcFetch("GET", url, headers),
+  head: (url, headers) => ipcFetch("HEAD", url, headers),
 };
 const ctx = { http, manifest: def.manifest, input, signal: new AbortController().signal };
 try {
@@ -224,6 +224,14 @@ interface IpcState {
   outcome: { ok: boolean; output?: unknown; error?: { kind: string; message: string } } | undefined;
   fatal: { kind: string; message: string } | undefined;
   writeError: string | undefined;
+}
+
+/** The child's request headers arrive as parsed JSON: accept only a string -> string record
+ *  (anything else is dropped, never passed to the transport unchecked). */
+function messageHeaders(raw: unknown): Readonly<Record<string, string>> | undefined {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
+  if (!Object.values(raw).every((v) => typeof v === "string")) return undefined;
+  return raw as Record<string, string>;
 }
 
 /** Handle one IPC message from the sandboxed child (ready / fetch / result / fatal). */
@@ -277,6 +285,7 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
     case "fetch": {
       if (!state.http) return;
       const method = msg.method === "HEAD" ? "head" : "get";
+      const headers = messageHeaders(msg.headers);
       const answer = (payload: string) => {
         try {
           stdin?.write(payload);
@@ -286,7 +295,7 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
           state.writeError = err instanceof Error ? err.message : String(err);
         }
       };
-      state.http[method](String(msg.url)).then(
+      state.http[method](String(msg.url), headers).then(
         (res) =>
           answer(
             JSON.stringify({

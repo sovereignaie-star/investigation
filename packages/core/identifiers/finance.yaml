@@ -307,6 +307,25 @@
     negative:
       - "320193A"
   sensitivity: normal
+- id: uk_company_number
+  category: Finance
+  labels:
+    en: UK Companies House Number
+    ar: رقم شركة بريطانية (سجل الشركات)
+  description: UK Companies House company number (8 digits, or 2 letters + 6 digits)
+  icon: 🏛️
+  color: blue
+  patterns:
+    - ^(?:\d{8}|[A-Za-z]{2}\d{6})$
+  validator: null
+  examples:
+    positive:
+      - "03194697"
+      - "SC123456"
+    negative:
+      - "12345"
+      - "SC12345"
+  sensitivity: normal
 - id: stock_ticker
   category: Finance
   labels:

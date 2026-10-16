@@ -27,6 +27,7 @@ export * from "./transforms/tr-021-gleif.ts";
 export * from "./transforms/tr-026-ofac-sdn.ts";
 export * from "./transforms/tr-027-un-sc.ts";
 export * from "./transforms/tr-028-eu-sanctions.ts";
+export * from "./transforms/tr-023-companies-house.ts";
 export * from "./transforms/tr-024-sec-edgar.ts";
 export * from "./transforms/tr-030-nominatim.ts";
 export * from "./transforms/tr-033-reverse-image.ts";
