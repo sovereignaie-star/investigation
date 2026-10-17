@@ -18,6 +18,7 @@ export * from "./transforms/tr-045-greynoise.ts";
 export * from "./transforms/tr-046-otx-pulses.ts";
 export * from "./transforms/tr-047-threatfox.ts";
 export * from "./transforms/tr-048-securitytrails-dns-history.ts";
+export * from "./transforms/tr-049-censys.ts";
 export * from "./transforms/tr-051-hunter-emails.ts";
 export * from "./transforms/tr-052-common-crawl.ts";
 export * from "./transforms/tr-053-brave-web-search.ts";

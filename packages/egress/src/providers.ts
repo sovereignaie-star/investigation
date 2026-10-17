@@ -31,6 +31,7 @@ import { greynoise } from "../providers/greynoise.ts";
 import { otx } from "../providers/otx.ts";
 import { securitytrails } from "../providers/securitytrails.ts";
 import { brave } from "../providers/brave.ts";
+import { censys } from "../providers/censys.ts";
 import type { ProviderQueryAllow } from "./egress.ts";
 import type { PathParameterTemplate } from "./path-template.ts";
 
@@ -51,6 +52,16 @@ export interface ProviderRegistryEntry {
   readonly requestPathTemplates?: readonly PathParameterTemplate[];
   /** P2-016 continuation: the closed query-parameter allowlist (absent = every query refused). */
   readonly queryAllowlist?: readonly ProviderQueryAllow[];
+  /**
+   * P2-026 (owner decision 2026-10-17 — the vault credential_pair extension): the kind of the
+   * credential this provider's vault entry holds. "secret" (the default, the existing shape) is
+   * a single key placed as-is in `secretHeader`. "credential_pair" is an API ID + secret PAIR
+   * stored as ONE vault entry of the pair kind — the CLI builds the provider's documented
+   * pair-credential header value from it (e.g. Censys' HTTP Basic `Authorization: Basic
+   * base64(id:secret)`, TR-049) and the gateway injects that value in `secretHeader` exactly as
+   * a single key, so neither part of the credential ever travels in the URL (D-031/P2-016).
+   */
+  readonly credentialKind?: "secret" | "credential_pair";
 }
 
 /**
@@ -70,6 +81,7 @@ export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
   otx,
   securitytrails,
   brave,
+  censys,
 ];
 
 /** The registry entry a manifest's declared secret name binds to, if any. */

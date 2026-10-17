@@ -194,12 +194,25 @@ export const securitytrailsPathPolicy: PathParameterPolicy = {
     "SecurityTrails terms (https://docs.securitytrails.com/docs/overview): the API is read-only, usage-based plans — LC-D per the roadmap. 253 is the longest DNS name (RFC 1123 §2.1) — OUR declared bound where the source documents none.",
 };
 
+/** P2-026: Censys (TR-049) — the host view with the subject IP in the path. */
+export const censysPathPolicy: PathParameterPolicy = {
+  provider: "censys",
+  host: "search.censys.io",
+  method: "GET",
+  templates: [{ template: "/v2/hosts/{ip}", params: [{ name: "ip", type: "ip", maxLength: 45 }] }],
+  fieldsSource:
+    "https://docs.censys.com/docs/ls-api — the Legacy Search API reference (verified 2026-10-17): GET /v2/hosts/{ip-address} returns the host view (services observed). 45 is the longest textual IPv6 address (RFC 4291 §2.2) — OUR declared bound.",
+  terms:
+    "Censys terms (https://censys.io/terms): the Search API is quota-limited by tier; the credential is an API ID + secret pair over HTTP Basic (LC-D per the roadmap).",
+};
+
 /** The P2-026 path_parameter table — the single source of truth for path-template providers. */
 export const PATH_PARAMETER_POLICIES: readonly PathParameterPolicy[] = [
   virustotalPathPolicy,
   greynoisePathPolicy,
   otxPathPolicy,
   securitytrailsPathPolicy,
+  censysPathPolicy,
 ];
 
 export type { PostBodySchema, PostPolicy, PathParameterPolicy };
