@@ -15,8 +15,10 @@
  * (1) CodeQL's js/incomplete-hostname-regexp flags plain URL strings that flow into the sim
  * server's `new RegExp` (the wildcard branch) as unescaped-hostname regexes — a literal with
  * every metacharacter escaped is not flagged (precedent: tr-052.test.ts collinfo); (2) the
- * runtime semantics are identical: the sim's plain-string branch is exact equality, and an
- * anchored fully-escaped literal tests the same single URL.
+ * runtime semantics are equivalent for these fixed URLs — the sim's plain-string branch is exact
+ * equality and an anchored fully-escaped literal matches exactly that URL. One documented JS
+ * nuance: `$` also matches before a trailing newline; no URL in these tests contains one, so
+ * the passing suite pins the equivalence on every exercised path.
  */
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
