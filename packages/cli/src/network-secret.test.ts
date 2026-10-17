@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
 import { runTransform, runTransformIsolated, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
-import { shodanHost, urlscanSearch } from "@ir/transforms";
+import { shodanHost, urlscanSearch, abuseIpDbCheck } from "@ir/transforms";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
@@ -225,4 +225,112 @@ describe.skipIf(!host.full)("P2-016: real-sandbox composition (skipped where ful
       expect(audit).not.toContain("n_urlscan_sandbox_key");
     },
   );
+});
+
+/** P2-026: the TR-044 entry — the REAL transform source file for the sandbox composition below. */
+const ABUSEIPDB_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-044-abuseipdb.ts", import.meta.url));
+const abuseipdbEntry: RegisteredTransform = {
+  transform: abuseIpDbCheck,
+  module: MODULE,
+  subjects: { ipv4: (v) => ({ ip: v }), ipv6: (v) => ({ ip: v }) },
+  sends: ["ip"],
+  hosts: ["api.abuseipdb.com"],
+  pageFetch: false,
+};
+
+describe("P2-026: TR-044 (AbuseIPDB) — the network plan wires the real transform end to end", () => {
+  /** A wire that answers the check endpoint with a valid, well-formed AbuseIPDB record. */
+  function abuseipdbDeps(vault: Vault) {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    return {
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: { resolve: async (host: string) => (host === "api.abuseipdb.com" ? ["93.184.216.34"] : []) },
+      transport: {
+        async fetch(req: { url: string; headers?: Record<string, string> }) {
+          calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+          return {
+            status: 200,
+            body: JSON.stringify({
+              data: {
+                ipAddress: "8.8.8.8",
+                isPublic: true,
+                ipVersion: 4,
+                isWhitelisted: false,
+                abuseConfidenceScore: 100,
+                countryCode: "US",
+                usageType: "Content Delivery Network",
+                isp: "Google LLC",
+                domain: "google.com",
+                hostnames: ["dns.google"],
+                isTor: false,
+                totalReports: 2741,
+                numDistinctUsers: 553,
+                lastReportedAt: "2026-10-15T00:00:00Z",
+              },
+            }),
+          };
+        },
+      },
+      vault: () => vault,
+      calls,
+    };
+  }
+
+  // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
+  // where isolation is available and skips elsewhere (the TR-009 pattern: CI runners without
+  // bubblewrap/cgroup delegation cannot host the real sandbox; the plan-level refusals below
+  // still run everywhere).
+  it.skipIf(!host.full)(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-044 code runs in the real sandbox, its ipAddress query passes the per-provider allowlist, the key travels in the provider header only and never reaches any persisted record",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const d = abuseipdbDeps(fakeVault({ abuseipdb: "n_abuseipdb_sandbox_key" }));
+      // the entry's module is the REAL transform source file: runTransformIsolated bundles it with
+      // esbuild and executes it inside the REAL sandbox, its ctx.http being an IPC channel to the
+      // plan's transport (adapter + gateway + fake wire) — the production shape.
+      const entry = { ...abuseipdbEntry, module: ABUSEIPDB_MODULE };
+      const plan = planNetworkRun(c, entry, "ipv4", ["api.abuseipdb.com"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "ipv4:8.8.8.8", "ipv4", systemClock);
+      const result = await runTransformIsolated(ABUSEIPDB_MODULE, {
+        transport: plan.transport,
+        input: { ip: "8.8.8.8" },
+        transformId: "TR-044",
+      });
+      // the run SUCCEEDS: the real TR-044 request (the ipAddress query) is permitted by the
+      // registry's per-provider query allowlist, carried through the sandbox IPC boundary
+      expect(result.requestCount).toBe(1);
+      expect(result.output.findings.length).toBeGreaterThan(0);
+      // the wire saw exactly the real request: the query intact, the key in the provider header only
+      expect(d.calls).toHaveLength(1);
+      expect(d.calls[0]?.url).toBe("https://api.abuseipdb.com/api/v2/check?ipAddress=8.8.8.8");
+      expect(d.calls[0]?.url).not.toContain("n_abuseipdb_sandbox_key");
+      expect(d.calls[0]?.headers?.key).toBe("n_abuseipdb_sandbox_key");
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, abuseIpDbCheck, { ip: "8.8.8.8" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the request URL is recorded as evidence;
+      // the findings are bound to that evidence; the key appears NOWHERE in the case or its audit trail
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const persisted = JSON.stringify(reopened.entries());
+      expect(persisted).toContain("/api/v2/check?ipAddress=8.8.8.8");
+      expect(persisted).toContain("has_abuse_score");
+      expect(persisted).not.toContain("n_abuseipdb_sandbox_key");
+      const audit = JSON.stringify(reopened.auditTrail());
+      expect(audit).toContain("egress.");
+      expect(audit).not.toContain("n_abuseipdb_sandbox_key");
+    },
+  );
+
+  it("the vault entry missing => the TR-044 plan is refused fail-closed with the documented reason, before any request", () => {
+    const c = newCase();
+    const d = abuseipdbDeps(fakeVault({}));
+    const plan = planNetworkRun(c, abuseipdbEntry, "ipv4", ["api.abuseipdb.com"], d);
+    expect("error" in plan).toBe(true);
+    if (!("error" in plan)) throw new Error("expected a refusal");
+    expect(plan.error).toMatch(/ABUSEIPDB_KEY|abuseipdb/i);
+    expect(d.calls).toHaveLength(0);
+  });
 });

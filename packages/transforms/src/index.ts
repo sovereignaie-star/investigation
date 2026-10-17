@@ -12,6 +12,7 @@ export * from "./transforms/tr-006-ip-to-asn.ts";
 export * from "./transforms/tr-007-ipinfo.ts";
 export * from "./transforms/tr-008-shodan.ts";
 export * from "./transforms/tr-009-urlscan.ts";
+export * from "./transforms/tr-044-abuseipdb.ts";
 export * from "./transforms/tr-047-threatfox.ts";
 export * from "./transforms/tr-010-http-scan.ts";
 export * from "./transforms/tr-011-wayback-cdx.ts";
