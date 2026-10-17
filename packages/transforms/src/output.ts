@@ -34,6 +34,18 @@ export const TransformFindingSchema = z.object({
    * of the transform, no source response). The caller binds it to the run record, never to a source response.
    */
   derivedFrom: z.literal("input").optional(),
+  /**
+   * P2-031 — capture time from the receiver/source (ISO-8601 UTC). Optional: when absent the expansion layer keeps
+   * the processing time (the old behavior, so existing transforms are unaffected). Rejected fail-closed when the
+   * value is not a valid ISO-8601 UTC timestamp.
+   */
+  observedAt: z.string().optional(),
+  /**
+   * P2-031 — claim validity window (ISO-8601 UTC), passed through to the Claim. Optional and backward compatible.
+   * A validTo earlier than its validFrom is rejected fail-closed by the expansion layer.
+   */
+  validFrom: z.string().optional(),
+  validTo: z.string().optional(),
 });
 
 /** The full output of a transform run. */
