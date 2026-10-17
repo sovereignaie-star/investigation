@@ -38,6 +38,12 @@ const LINE_2 =
 const CDX_URL =
   "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100";
 
+// P2-026 (CodeQL): the sim match is a fully-escaped RegExp LITERAL (anchored exact match) — a
+// plain URL string flowing into the sim server's `new RegExp` trips js/incomplete-hostname-regexp;
+// CDX_URL stays a string because the assertion below compares it as data.
+const CDX_URL_MATCH =
+  /^https:\/\/index\.commoncrawl\.org\/CC-MAIN-2026-39-index\?url=example\.com&matchType=domain&output=json&filter=status:200&limit=100$/;
+
 describe("TR-052 common-crawl-index", () => {
   it("discovers the newest collection via collinfo.json, then emits a finding per capture of the domain (timestamp/status/mime in the explanation)", async () => {
     const sim = createSimServer([
@@ -45,7 +51,7 @@ describe("TR-052 common-crawl-index", () => {
       {
         // An exact string match (no regex) — the sim server compares the URL literally; this also
         // keeps code scanners from seeing a regex built from an interpolated string.
-        match: CDX_URL,
+        match: CDX_URL_MATCH,
         response: { status: 200, body: cdxBody([LINE_1, LINE_2]) },
       },
     ]);

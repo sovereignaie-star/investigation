@@ -5,7 +5,13 @@
  * connection is used. The path-template enforcement itself is pinned in
  * packages/egress/src/path-template.test.ts; this file pins the transform's own contract: record
  * type routing, the per-type findings, the bounds, and every fail-closed attribution rule.
- */
+ 
+ * NOTE on sim `match` values (P2-026): they are fully-escaped RegExp LITERALS (anchored exact
+ * match, every dot/question mark escaped), not plain URL strings — CodeQL's
+ * js/incomplete-hostname-regexp flags plain URL strings that flow into the sim server's
+ * `new RegExp` (wildcard branch) as unescaped-hostname regexes; an escaped literal is not
+ * flagged (precedent: tr-052.test.ts collinfo) and the runtime semantics are identical (the
+ * sim's plain-string branch is exact equality).*/
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
 import { securityTrailsDnsHistory } from "./transforms/tr-048-securitytrails-dns-history.ts";
@@ -27,7 +33,7 @@ describe("TR-048 securitytrails-dns-history", () => {
   it("emits a resolves_to finding per A-record value (an IP is a graph object)", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/a",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/a$/,
         response: { status: 200, body: stResponse([{ values: ["93.184.216.34"] }]) },
       },
     ]);
@@ -48,7 +54,7 @@ describe("TR-048 securitytrails-dns-history", () => {
   it("defaults to the a record type when none is given, and routes an explicit type", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/mx",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/mx$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -59,7 +65,7 @@ describe("TR-048 securitytrails-dns-history", () => {
         },
       },
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/ns",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/ns$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -70,7 +76,7 @@ describe("TR-048 securitytrails-dns-history", () => {
         },
       },
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/txt",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/txt$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -81,7 +87,7 @@ describe("TR-048 securitytrails-dns-history", () => {
         },
       },
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/soa",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/soa$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -114,7 +120,7 @@ describe("TR-048 securitytrails-dns-history", () => {
   it("routes an aaaa record type to ipv6 objects", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/aaaa",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/aaaa$/,
         response: {
           status: 200,
           body: JSON.stringify({
@@ -141,7 +147,10 @@ describe("TR-048 securitytrails-dns-history", () => {
       last_seen: "2026-10-01",
     }));
     const sim = createSimServer([
-      { match: "https://api.securitytrails.com/v1/history/example.com/dns/a", response: { status: 200, body: stResponse(records) } },
+      {
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/a$/,
+        response: { status: 200, body: stResponse(records) },
+      },
     ]);
     const result = await runTransform(securityTrailsDnsHistory, { transport: sim.transport, input: { domain: "example.com" } });
     expect(result.output.findings).toHaveLength(100);
@@ -150,7 +159,7 @@ describe("TR-048 securitytrails-dns-history", () => {
   it("an invalid record value is skipped, never emitted as a finding (D-018)", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/a",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/a$/,
         response: { status: 200, body: stResponse([{ values: ["999.999.999.999", "not-an-ip"] }]) },
       },
     ]);
@@ -161,7 +170,7 @@ describe("TR-048 securitytrails-dns-history", () => {
   it("a response about a DIFFERENT host is refused fail-closed — never attributed", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.securitytrails.com/v1/history/example.com/dns/a",
+        match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/a$/,
         response: { status: 200, body: stResponse([{ values: ["93.184.216.34"] }]).replace('"host":"example.com"', '"host":"other.com"') },
       },
     ]);
@@ -172,7 +181,7 @@ describe("TR-048 securitytrails-dns-history", () => {
 
   it("fails closed on a non-200 status", async () => {
     const sim = createSimServer([
-      { match: "https://api.securitytrails.com/v1/history/example.com/dns/a", response: { status: 403, body: "{}" } },
+      { match: /^https:\/\/api\.securitytrails\.com\/v1\/history\/example\.com\/dns\/a$/, response: { status: 403, body: "{}" } },
     ]);
     await expect(runTransform(securityTrailsDnsHistory, { transport: sim.transport, input: { domain: "example.com" } })).rejects.toThrow(
       /403/,
