@@ -37,7 +37,15 @@ import {
   type ByteBudget,
   type RequestBudget,
 } from "@ir/egress";
-import { createEgressHttpTransport, TransportError, type HttpTransport, type TransportResponse, type SecretBinding } from "@ir/engine";
+import {
+  createEgressHttpTransport,
+  naturalPersonGate,
+  TransportError,
+  type HttpTransport,
+  type PurposeConfirmation,
+  type TransportResponse,
+  type SecretBinding,
+} from "@ir/engine";
 import { vaultFromEnv, type Case, type Vault } from "@ir/store";
 import type { RegisteredTransform } from "./registry.ts";
 
@@ -152,18 +160,47 @@ export function openGateway(
   return { gateway: decision.gateway, allowedHosts: decision.allowedHosts, events };
 }
 
+/**
+ * P2-026 (owner decision 2026-10-17 — item 3): the CENTRAL PurposeConfirmation wiring. The engine's
+ * natural-person gate (naturalPersonGate) is the single enforcement point for natural-person-gated
+ * runs in the CLI paths — `ir run --network` (planNetworkRun) AND `ir investigate` (networkRunFor):
+ * the confirmation is built from the CASE itself (the stated purpose + the ledger's actor — the
+ * confirmer), and every natural-person-gated run — subject-level (a person_name subject) or
+ * transform-level (a natural_person_gate manifest) — routes through the engine's gate, fail-closed:
+ * no purpose, no confirmer, no run. Not per-transform; there is deliberately no option or env var
+ * that turns this off (mirroring the egress gateway's natural_person refusal, T-SEC-SSRF-040).
+ * E-01 guarantees a purpose at case creation, so an empty purpose is the legacy pre-P1-028
+ * database shape — refused fail-closed before any transport, on BOTH paths (the investigate path
+ * previously did not enforce the subject-level requirement at all — the gap this wiring closes).
+ */
+export function purposeConfirmationFor(c: Case): PurposeConfirmation {
+  // A case whose ledger exposes no actor (a legacy double shape) confirms nothing: the empty
+  // confirmer is a fail-closed refusal in the engine's gate, never a pass-through.
+  const confirmedBy = c.ledger?.actor ?? "";
+  return { purpose: c.info().purpose, confirmedBy };
+}
+
+/** The engine's gate, run against the case's own confirmation — the shared refusal for both
+ *  subject-level and transform-level natural-person runs. */
+function naturalPersonGateRefusal(c: Case, what: string): string | undefined {
+  const gate = naturalPersonGate({ sensitivity: "natural_person_gate" }, purposeConfirmationFor(c));
+  if (gate.allowed) return undefined;
+  return `--network: ${what} requires a purpose confirmation (E-02: the engine's natural-person gate — a stated purpose and a confirmer); this case has none`;
+}
+
 /** The transform-level E-02 mirror (P2-026/TR-051): a transform whose manifest declares
  *  natural_person_gate — the RESPONSE carries natural-person data (e.g. a domain's people's public
- *  emails) — runs only under a case with a stated purpose. E-01 guarantees a purpose at case
- *  creation, so an empty purpose is the legacy pre-P1-028 database shape — refused fail-closed before
- *  any transport, exactly like the subject-level check in this file. The deeper question — whether
- *  response-side natural-person data should require an EXPLICIT per-run purpose confirmation (the
- *  engine's PurposeConfirmation mechanism, currently unwired in the CLI paths) beyond the case's
- *  stated purpose — is an open owner decision documented in the P2-026 STATUS row. */
+ *  emails) — runs only under a case whose purpose confirmation passes the engine's gate. */
 function naturalPersonTransformGate(c: Case, entry: RegisteredTransform): string | undefined {
   if (entry.transform.manifest.sensitivity !== "natural_person_gate") return undefined;
-  if (c.info().purpose.trim() !== "") return undefined;
-  return `--network: ${entry.transform.manifest.id} returns natural-person data (natural_person_gate); this case has no stated purpose (E-01/E-02)`;
+  return naturalPersonGateRefusal(c, `${entry.transform.manifest.id} returns natural-person data (natural_person_gate)`);
+}
+
+/** The subject-level E-02 gate (P2-026 item 3): a natural-person SUBJECT's run routes through the
+ *  same engine gate with the case's purpose confirmation — enforced centrally on BOTH CLI paths. */
+function personSubjectPurposeGate(c: Case, spec: ReturnType<typeof specById>): string | undefined {
+  if (spec?.sensitivity !== "natural_person_gate") return undefined;
+  return naturalPersonGateRefusal(c, `subject type "${spec.id}" is a natural-person subject`);
 }
 
 /** The subject-level E-02 rule (P2-013): a natural-person subject (person_name) may run only when the
@@ -205,8 +242,12 @@ export function networkRunFor(
 ): NetworkPlan | { error: string } {
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
+  // P2-026 (item 3): the central subject-level gate on the investigate path too — the engine's
+  // naturalPersonGate with the case's own purpose confirmation (the gap this wiring closes).
+  const subjectPurposeRefusal = personSubjectPurposeGate(c, spec);
+  if (subjectPurposeRefusal !== undefined) return { error: subjectPurposeRefusal };
   const kind = sendKindOf(spec.id, spec.category);
-  // E-02 (P2-026/TR-051): the transform-level mirror of the natural-person-subject rule below.
+  // E-02 (P2-026/TR-051): the transform-level mirror of the natural-person-subject rule above.
   const transformGateRefusal = naturalPersonTransformGate(c, entry);
   if (transformGateRefusal !== undefined) return { error: transformGateRefusal };
   const gateRefusal = subjectGateRefusal(spec, kind);
@@ -256,10 +297,12 @@ export function planNetworkRun(
   // E-02 (P2-013): a natural-person subject runs only under a case whose stated purpose is the
   // confirmation (E-01 requires a >= 10-char purpose at case creation; an empty purpose means the
   // case predates that record and cannot gate a person run).
+  // P2-026 (item 3): the central subject-level gate — the engine's naturalPersonGate with the
+  // case's own purpose confirmation (previously an ad-hoc purpose check here, and NOT enforced at
+  // all on the investigate path).
   const spec0 = specById(subjectType);
-  if (spec0?.sensitivity === "natural_person_gate" && c.info().purpose.trim() === "") {
-    return { error: `--network: subject type "${subjectType}" is a natural-person subject; this case has no stated purpose (E-01/E-02)` };
-  }
+  const subjectPurposeRefusal = personSubjectPurposeGate(c, spec0);
+  if (subjectPurposeRefusal !== undefined) return { error: subjectPurposeRefusal };
   // The subject and module checks come before the gateway is opened (no audit noise for a refused plan).
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
