@@ -66,7 +66,15 @@ export class Ledger {
     }
   }
 
-  /** Appends one entry. The payload is canonicalized now, so later mutation of the caller's object cannot change it. */
+  /** The ledger's operating actor (the identity case operations are recorded under). P2-026
+   *  (owner decision 2026-10-17 — item 3): the central PurposeConfirmation wiring reads it as the
+   *  confirmer of the case's purpose — the engine's natural-person gate requires a confirmer, not
+   *  just a purpose. */
+  get actor(): string {
+    return this.#actor;
+  }
+
+  /** Appends one entry; the payload is canonicalized now, so later mutation of the caller's object cannot change it. */
   append(kind: Kind, payload: unknown, actor: string = this.#actor): Entry {
     const all = this.#store.all();
     const last = all[all.length - 1];
