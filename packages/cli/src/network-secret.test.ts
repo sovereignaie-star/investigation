@@ -276,7 +276,11 @@ describe("P2-026: TR-044 (AbuseIPDB) — the network plan wires the real transfo
     };
   }
 
-  it(
+  // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
+  // where isolation is available and skips elsewhere (the TR-009 pattern: CI runners without
+  // bubblewrap/cgroup delegation cannot host the real sandbox; the plan-level refusals below
+  // still run everywhere).
+  it.skipIf(!host.full)(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-044 code runs in the real sandbox, its ipAddress query passes the per-provider allowlist, the key travels in the provider header only and never reaches any persisted record",
     { timeout: 60_000 },
     async () => {
