@@ -16,6 +16,7 @@ import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
+import { project } from "@ir/ledger/projections";
 import type { RegisteredTransform } from "./registry.ts";
 
 const dirs: string[] = [];
@@ -431,6 +432,24 @@ describe("P2-026: TR-052 (Common Crawl, keyless) — the network plan wires the 
       const persisted = JSON.stringify(reopened.entries());
       expect(persisted).toContain("marker-capture-path");
       expect(persisted).toContain("has_crawl_capture");
+      // STRUCTURAL evidence binding (not just text): the has_crawl_capture claim cites the evidence of
+      // the CDX request itself — every cited evidence id resolves to the CDX query URL on the wire.
+      const proj = project(reopened.entries());
+      const edge = proj.graph.edges.find((e) => e.predicate === "has_crawl_capture");
+      expect(edge).toBeDefined();
+      expect((edge?.evidenceIds ?? []).length).toBeGreaterThan(0);
+      const urls = new Map(
+        reopened
+          .entries()
+          .filter((e) => e.kind === "evidence.stored")
+          .map((e) => {
+            const p = e.payload as { id: string; request: { url: string } };
+            return [p.id, p.request.url];
+          }),
+      );
+      for (const id of edge?.evidenceIds ?? []) {
+        expect(urls.get(id)).toContain("CC-MAIN-2026-39-index?url=example.com");
+      }
     },
   );
 

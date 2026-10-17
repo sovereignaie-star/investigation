@@ -278,6 +278,39 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
     expect(verifyCase(dir).ok).toBe(true);
   });
 
+  it("P2-026 negative control: a capture URL on a host NOT on the operator's list is refused before any request to it — discovery never grants a network permission", async () => {
+    const dir = tempDir();
+    // The same world, except the CDX answer returns a capture on a host the operator never listed.
+    const x = edge({
+      ...WORLD,
+      "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100": json(
+        JSON.stringify(
+          'com,example)/ 20260812000000 {"url": "https://unlisted.example/page", "mime": "text/html", "status": "200", "digest": "sha1:ccc"}',
+        ),
+      ),
+      // TR-011 asks its own host (web.archive.org, listed) about the capture URL — an empty CDX is a
+      // genuine negative; the refusal under test is TR-010's, isolated to its own failed cell.
+      "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Funlisted.example%2Fpage&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&limit=100":
+        json(""),
+    });
+    const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
+      network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
+    });
+    const cov = covOf(r);
+    // TR-052 itself ran and recorded the capture (the finding is data, not a permission).
+    expect(stateOf(cov, "TR-052", "domain:example.com")).toBe("found");
+    // TR-010 on the capture URL is refused fail-closed on the unlisted host — the reason names the
+    // host_not_allowed rule, and NO request ever reached unlisted.example (the wire proves it).
+    const t010 = cell(cov, "TR-010", "url:https://unlisted.example/page");
+    expect(t010).toHaveLength(1);
+    expect(t010[0]).toMatchObject({ state: "failed" });
+    expect(t010[0].reason).toMatch(/not on the allowedHosts list/);
+    expect(x.calls.every((c) => c.host !== "unlisted.example")).toBe(true);
+    // The refusal is recorded (exit 1 — a failed coverage cell is a designed, audible stop), not dropped.
+    expect(r.code).toBe(1);
+    expect(verifyCase(dir).ok).toBe(true);
+  });
+
   it("one canonical node per identifier, every edge from every source kept; repeats from one source are not independent", async () => {
     const dir = tempDir();
     const net = () => {

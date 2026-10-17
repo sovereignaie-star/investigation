@@ -43,7 +43,9 @@ describe("TR-052 common-crawl-index", () => {
     const sim = createSimServer([
       { match: /^https:\/\/index\.commoncrawl\.org\/collinfo\.json$/, response: { status: 200, body: COLLINFO } },
       {
-        match: new RegExp(`^${CDX_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
+        // An exact string match (no regex) — the sim server compares the URL literally; this also
+        // keeps code scanners from seeing a regex built from an interpolated string.
+        match: CDX_URL,
         response: { status: 200, body: cdxBody([LINE_1, LINE_2]) },
       },
     ]);
