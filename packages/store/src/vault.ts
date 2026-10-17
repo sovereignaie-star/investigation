@@ -33,6 +33,23 @@ export interface Vault {
   delete(name: string): boolean;
   /** Server-side use only (connectors). Never send the result to a client or a log. */
   reveal(name: string): string | undefined;
+  /**
+   * P2-026 (owner decision 2026-10-17): a provider credential PAIR (an API ID + a secret — e.g.
+   * Censys for TR-049) stored as ONE entry of the new kind, instead of pretending it is a single
+   * secret. Both parts are sealed together with the same AES-256-GCM entry machinery (AAD binds
+   * the format + entry name, so parts cannot be swapped between entries).
+   */
+  setPair(name: string, id: string, secret: string): VaultEntryInfo;
+  /** The typed pair read — undefined unless the entry IS a pair (never synthesized from a single secret). */
+  revealPair(name: string): VaultCredentialPair | undefined;
+  /** The entry's kind: "secret", "credential_pair", or undefined when the entry is absent. */
+  kindOf(name: string): VaultEntryKind | undefined;
+}
+
+export type VaultEntryKind = "secret" | "credential_pair";
+export interface VaultCredentialPair {
+  readonly id: string;
+  readonly secret: string;
 }
 
 export type VaultMaster = { key: Uint8Array } | { passphrase: string; kdf?: Partial<KdfCost> } | { keyFile: string };
@@ -78,6 +95,26 @@ function readVaultFile(file: string): VaultFile | undefined {
   } catch (x) {
     if ((x as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw x;
+  }
+}
+
+/**
+ * The credential-pair envelope: a pair entry's sealed value is this exact JSON shape. The parse is
+ * STRICT (exactly three keys, irVaultPair === 1, both parts non-empty strings) so a plain secret is
+ * never misread as a pair — the residual ambiguity (a caller deliberately setting this exact string
+ * as a plain secret) is documented and accepted: no caller path sets envelopes via set().
+ */
+function parsePairEnvelope(raw: string): VaultCredentialPair | undefined {
+  try {
+    const p = JSON.parse(raw) as { irVaultPair?: unknown; id?: unknown; secret?: unknown };
+    if (p === null || typeof p !== "object") return undefined;
+    if (p.irVaultPair !== 1) return undefined;
+    if (typeof p.id !== "string" || typeof p.secret !== "string") return undefined;
+    if (p.id === "" || p.secret === "") return undefined;
+    if (Object.keys(p).length !== 3) return undefined;
+    return { id: p.id, secret: p.secret };
+  } catch {
+    return undefined;
   }
 }
 
@@ -151,6 +188,25 @@ export function openVault(file: string, master: VaultMaster, opts: { clock?: Clo
       return true;
     },
     reveal: (name) => (has(name) ? open(name, state.entries[name] as Sealed) : undefined),
+    setPair(name, id, secret) {
+      assertVaultName(name);
+      const pairId = id.trim();
+      const pairSecret = secret.trim();
+      if (pairId.length === 0 || pairId.length > 4096) throw new Error("credential pair id must be 1..4096 characters");
+      if (pairSecret.length === 0 || pairSecret.length > 4096) throw new Error("credential pair secret must be 1..4096 characters");
+      const envelope = JSON.stringify({ irVaultPair: 1, id: pairId, secret: pairSecret });
+      state.entries[name] = seal(name, envelope);
+      save();
+      return { name, updatedAt: state.entries[name].updatedAt };
+    },
+    revealPair: (name) => {
+      if (!has(name)) return undefined;
+      return parsePairEnvelope(open(name, state.entries[name] as Sealed));
+    },
+    kindOf: (name) => {
+      if (!has(name)) return undefined;
+      return parsePairEnvelope(open(name, state.entries[name] as Sealed)) !== undefined ? "credential_pair" : "secret";
+    },
   };
 }
 

@@ -116,6 +116,13 @@ const fakeVault = (entries: Record<string, string>): Vault => ({
   },
   delete: () => false,
   reveal: (name) => entries[name],
+  // P2-026 (credential_pair extension): the fakes serve single secrets only — a pair entry is
+  // never synthesized, and kindOf reports what the fake actually holds.
+  setPair: () => {
+    throw new Error("not used in tests");
+  },
+  revealPair: () => undefined,
+  kindOf: (name) => (name in entries ? "secret" : undefined),
 });
 
 type EdgeReq = Parameters<EgressTransport["fetch"]>[0];
