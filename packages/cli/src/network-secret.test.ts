@@ -11,11 +11,12 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
 import { runTransform, runTransformIsolated, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
-import { shodanHost, urlscanSearch, abuseIpDbCheck, hunterDomainEmails } from "@ir/transforms";
+import { shodanHost, urlscanSearch, abuseIpDbCheck, hunterDomainEmails, commonCrawlIndex } from "@ir/transforms";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
+import { project } from "@ir/ledger/projections";
 import type { RegisteredTransform } from "./registry.ts";
 
 const dirs: string[] = [];
@@ -345,6 +346,120 @@ const hunterEntry: RegisteredTransform = {
   hosts: ["api.hunter.io"],
   pageFetch: false,
 };
+
+/** P2-026: the TR-052 entry — the REAL transform source file for the sandbox composition below. */
+const COMMONCRAWL_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-052-common-crawl.ts", import.meta.url));
+const commonCrawlEntry: RegisteredTransform = {
+  transform: commonCrawlIndex,
+  module: MODULE,
+  subjects: { domain: (v) => ({ domain: v }) },
+  sends: ["domain"],
+  hosts: ["index.commoncrawl.org"],
+  pageFetch: false,
+};
+
+describe("P2-026: TR-052 (Common Crawl, keyless) — the network plan wires the real transform end to end", () => {
+  /** A wire that answers the two documented requests: the collinfo collection list, then the newest CDX API. */
+  function commonCrawlDeps() {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    return {
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: { resolve: async (host: string) => (host === "index.commoncrawl.org" ? ["93.184.216.34"] : []) },
+      transport: {
+        async fetch(req: { url: string; headers?: Record<string, string> }) {
+          calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+          if (req.url === "https://index.commoncrawl.org/collinfo.json") {
+            // The real collinfo shape: a list of collections, newest first, each with its cdx-api.
+            return {
+              status: 200,
+              body: JSON.stringify([{ id: "CC-MAIN-2026-39", "cdx-api": "https://index.commoncrawl.org/CC-MAIN-2026-39-index" }]),
+            };
+          }
+          // The newest collection's CDX API: one CDXJ record of an https capture (the capture URL
+          // carries a distinctive marker path proving the finding derives from the answer, not a guess).
+          return {
+            status: 200,
+            body: JSON.stringify(
+              'com,example)/ 20260812000000 {"url": "https://www.example.com/marker-capture-path", "mime": "text/html", "status": "200", "digest": "sha1:marker-digest"}',
+            ),
+          };
+        },
+      },
+      vault: () => fakeVault({}),
+      calls,
+    };
+  }
+
+  // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
+  // where isolation is available and skips elsewhere (the TR-009 pattern; CI runners without
+  // bubblewrap/cgroup delegation cannot host the real sandbox).
+  it.skipIf(!host.full)(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the keyless TR-052 runs in the real sandbox, sends exactly the two documented requests and never needs a vault",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const d = commonCrawlDeps();
+      // the entry's module is the REAL transform source file: runTransformIsolated bundles it with
+      // esbuild and executes it inside the REAL sandbox, its ctx.http being an IPC channel to the
+      // plan's transport (adapter + gateway + fake wire) — the production shape.
+      const entry = { ...commonCrawlEntry, module: COMMONCRAWL_MODULE };
+      const plan = planNetworkRun(c, entry, "domain", ["index.commoncrawl.org"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "domain:example.com", "domain", systemClock);
+      const result = await runTransformIsolated(COMMONCRAWL_MODULE, {
+        transport: plan.transport,
+        input: { domain: "example.com" },
+        transformId: "TR-052",
+      });
+      // the run SUCCEEDS: exactly the two documented requests — the collection list first, then the
+      // newest collection's CDX API with the domain query (both on index.commoncrawl.org).
+      expect(result.requestCount).toBe(2);
+      expect(result.output.findings.length).toBeGreaterThan(0);
+      expect(d.calls).toHaveLength(2);
+      expect(d.calls[0]?.url).toBe("https://index.commoncrawl.org/collinfo.json");
+      expect(d.calls[1]?.url).toBe(
+        "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100",
+      );
+      // the collection id is read from the wire answer — never hardcoded into the request
+      expect(d.calls[1]?.url).toContain("CC-MAIN-2026-39");
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, commonCrawlIndex, { domain: "example.com" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the capture URL (the marker path proves the
+      // finding derives from the wire answer) is recorded as evidence and the finding is bound to it.
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const persisted = JSON.stringify(reopened.entries());
+      expect(persisted).toContain("marker-capture-path");
+      expect(persisted).toContain("has_crawl_capture");
+      // STRUCTURAL evidence binding (not just text): the has_crawl_capture claim cites the evidence of
+      // the CDX request itself — every cited evidence id resolves to the CDX query URL on the wire.
+      const proj = project(reopened.entries());
+      const edge = proj.graph.edges.find((e) => e.predicate === "has_crawl_capture");
+      expect(edge).toBeDefined();
+      expect((edge?.evidenceIds ?? []).length).toBeGreaterThan(0);
+      const urls = new Map(
+        reopened
+          .entries()
+          .filter((e) => e.kind === "evidence.stored")
+          .map((e) => {
+            const p = e.payload as { id: string; request: { url: string } };
+            return [p.id, p.request.url];
+          }),
+      );
+      for (const id of edge?.evidenceIds ?? []) {
+        expect(urls.get(id)).toContain("CC-MAIN-2026-39-index?url=example.com");
+      }
+    },
+  );
+
+  it("TR-052 is KEYLESS: the plan builds with an EMPTY vault — no secret binding exists to refuse (the TR-011 wayback pattern, not the TR-047 keyed one)", () => {
+    const c = newCase();
+    const d = commonCrawlDeps();
+    const plan = planNetworkRun(c, commonCrawlEntry, "domain", ["index.commoncrawl.org"], d);
+    expect("error" in plan).toBe(false);
+  });
+});
 
 describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform end to end", () => {
   /** A wire that answers the domain-search endpoint with a valid, well-formed Hunter record. */

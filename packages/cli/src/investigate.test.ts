@@ -23,7 +23,16 @@ import { main, type CliOptions } from "./ir.ts";
 const ON = { IR_ENABLE_NETWORK: "1" };
 const CASE_ARGS = ["--purpose", "تحقيق في بنية تحتية عامة لحادث أمني مصرح به", "--legal-basis", "security_incident"];
 const LIMITS: EgressLimits = { rateLimitBurst: 64 };
-const HOSTS = ["dns.google", "data.iana.org", "rdap.verisign.com", "rdap.arin.net", "crt.sh"];
+const HOSTS = [
+  "dns.google",
+  "data.iana.org",
+  "rdap.verisign.com",
+  "rdap.arin.net",
+  "crt.sh",
+  "index.commoncrawl.org",
+  "www.example.com",
+  "web.archive.org",
+];
 const DNS: Readonly<Record<string, string[]>> = {
   "dns.google": ["8.8.8.8"],
   "data.iana.org": ["192.0.47.59"],
@@ -34,6 +43,10 @@ const DNS: Readonly<Record<string, string[]>> = {
   "www.example.com": ["93.184.216.34"],
   // P2-016 continuation: TR-009 (registered) targets urlscan.io.
   "urlscan.io": ["93.184.216.34"],
+  // P2-026: TR-052 (registered, keyless) targets index.commoncrawl.org.
+  "index.commoncrawl.org": ["93.184.216.34"],
+  // P2-026: TR-011 (wayback) targets web.archive.org — the capture URL TR-052 found expands into it.
+  "web.archive.org": ["93.184.216.34"],
 };
 
 type Resp = Awaited<ReturnType<EgressTransport["fetch"]>>;
@@ -65,6 +78,23 @@ const WORLD: Readonly<Record<string, Resp>> = {
   [q("8.8.8.8.origin.asn.cymru.com", 16)]: json(F.CYMRU_8888),
   "https://data.iana.org/rdap/asn.json": json(F.IANA_ASN),
   "https://rdap.arin.net/registry/autnum/15169": json(F.RDAP_AS15169),
+  // P2-026: TR-052 (keyless) — the documented collinfo collection list, then the newest collection's
+  // CDX answer for the domain (CDXJ JSON-lines; one https capture of example.com — the capture URL
+  // expands into url entities the world below serves: the page for TR-010, an empty CDX for TR-011).
+  "https://index.commoncrawl.org/collinfo.json": json(
+    JSON.stringify([{ id: "CC-MAIN-2026-39", "cdx-api": "https://index.commoncrawl.org/CC-MAIN-2026-39-index" }]),
+  ),
+  "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100": json(
+    JSON.stringify(
+      'com,example)/ 20260812000000 {"url": "https://www.example.com/about", "mime": "text/html", "status": "200", "digest": "sha1:aaa"}',
+    ),
+  ),
+  // The capture URL's page (TR-010) and its robots.txt (404 = no robots restrictions).
+  "https://www.example.com/robots.txt": { status: 404, body: "" },
+  "https://www.example.com/about": json("<html><body>ok</body></html>", 200),
+  // TR-011 on the capture URL: an empty CDX answer — a genuine negative (no snapshots).
+  "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fwww.example.com%2Fabout&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&limit=100":
+    json(""),
 };
 
 const dirs: string[] = [];
@@ -209,6 +239,7 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
     const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
       network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
     });
+
     expect(r.err).toBe("");
     expect(r.code).toBe(0);
     const cov = covOf(r);
@@ -216,6 +247,8 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
     expect(stateOf(cov, "TR-001", "domain:example.com")).toBe("found");
     expect(stateOf(cov, "TR-002", "domain:example.com")).toBe("found");
     expect(stateOf(cov, "TR-004", "domain:example.com")).toBe("found");
+    // P2-026: TR-052 (keyless) runs on the domain seed — its capture URL expands into a url entity.
+    expect(stateOf(cov, "TR-052", "domain:example.com")).toBe("found");
     expect(stateOf(cov, "TR-003", "ipv4:8.8.8.8")).toBe("found");
     expect(stateOf(cov, "TR-006", "ipv4:8.8.8.8")).toBe("found");
     // P2-039: the host names found at depth 0 are expanded by TR-001 at depth 1.
@@ -236,10 +269,45 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
     expect((r.result?.unexpandable ?? []).filter((k) => k.startsWith("hostname:"))).toEqual([]);
     // Every request was on the operator's list; the list was never widened.
     for (const c of x.calls) expect(HOSTS).toContain(c.host);
-    // Each (transform, identifier) ran once: 3 domain runs, 2 on 8.8.8.8, 4 TR-001 runs on host names.
-    expect(r.result?.runs).toBe(9);
+    // Each (transform, identifier) ran once: 3 domain runs + TR-052, 2 on 8.8.8.8, 4 TR-001 runs on
+    // host names, and the capture URL's 2 (TR-010 found, TR-011 none; TR-009/TR-047 are keyless-
+    // refused at setup — designed not_run, the TR-047/TR-051 precedent).
+    expect(r.result?.runs).toBe(12);
     // Consecutive runs are paced by one gateway token interval (rate 1/s).
     expect(r.pacing.filter((ms) => ms === 1000).length).toBeGreaterThanOrEqual(4);
+    expect(verifyCase(dir).ok).toBe(true);
+  });
+
+  it("P2-026 negative control: a capture URL on a host NOT on the operator's list is refused before any request to it — discovery never grants a network permission", async () => {
+    const dir = tempDir();
+    // The same world, except the CDX answer returns a capture on a host the operator never listed.
+    const x = edge({
+      ...WORLD,
+      "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100": json(
+        JSON.stringify(
+          'com,example)/ 20260812000000 {"url": "https://unlisted.example/page", "mime": "text/html", "status": "200", "digest": "sha1:ccc"}',
+        ),
+      ),
+      // TR-011 asks its own host (web.archive.org, listed) about the capture URL — an empty CDX is a
+      // genuine negative; the refusal under test is TR-010's, isolated to its own failed cell.
+      "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Funlisted.example%2Fpage&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&limit=100":
+        json(""),
+    });
+    const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
+      network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
+    });
+    const cov = covOf(r);
+    // TR-052 itself ran and recorded the capture (the finding is data, not a permission).
+    expect(stateOf(cov, "TR-052", "domain:example.com")).toBe("found");
+    // TR-010 on the capture URL is refused fail-closed on the unlisted host — the reason names the
+    // host_not_allowed rule, and NO request ever reached unlisted.example (the wire proves it).
+    const t010 = cell(cov, "TR-010", "url:https://unlisted.example/page");
+    expect(t010).toHaveLength(1);
+    expect(t010[0]).toMatchObject({ state: "failed" });
+    expect(t010[0].reason).toMatch(/not on the allowedHosts list/);
+    expect(x.calls.every((c) => c.host !== "unlisted.example")).toBe(true);
+    // The refusal is recorded (exit 1 — a failed coverage cell is a designed, audible stop), not dropped.
+    expect(r.code).toBe(1);
     expect(verifyCase(dir).ok).toBe(true);
   });
 
@@ -293,6 +361,9 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       // TR-051 registered (P2-026): same designed fail-closed key refusal — no "hunter" entry in
       // this test's vault either.
       "TR-051 domain:example.com",
+      // TR-052 registered (P2-026, keyless): no setup refusal exists to protect it — the runs budget
+      // simply stopped the queue before its turn.
+      "TR-052 domain:example.com",
       "TR-003 ipv4:8.8.8.8",
       "TR-006 ipv4:8.8.8.8",
       // TR-044 registered (P2-026): same designed fail-closed key refusal — this test's vault has
@@ -507,11 +578,13 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
     const cov = covOf(r);
     const ran = cov.filter((k) => k.state === "found" || k.state === "none" || k.state === "failed");
 
-    // Selection by entity type: domain -> TR-001/002/004; ipv4 -> TR-003/006; hostname -> TR-001 only.
+    // Selection by entity type: domain -> TR-001/002/004/052; ipv4 -> TR-003/006; hostname -> TR-001 only;
+    // url -> TR-010/011 (P2-026: TR-052's capture URL expands into the graph).
     const byType = (t: string) => [...new Set(ran.filter((k) => k.entityKey.startsWith(`${t}:`)).map((k) => k.transformId))].sort();
-    expect(byType("domain")).toEqual(["TR-001", "TR-002", "TR-004"]);
+    expect(byType("domain")).toEqual(["TR-001", "TR-002", "TR-004", "TR-052"]);
     expect(byType("ipv4")).toEqual(["TR-003", "TR-006"]);
     expect(byType("hostname")).toEqual(["TR-001"]);
+    expect(byType("url")).toEqual(["TR-010", "TR-011"]);
     // The seed produced a host name (name server), an IP address and a subdomain (certificate name).
     for (const k of ["hostname:a.iana-servers.net", "ipv4:8.8.8.8", "hostname:www.example.com"]) {
       expect(
@@ -523,7 +596,7 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
     // Every run went through the sandbox (one isolated child per run, the registry module), IPC and the gateway:
     // the only transport is the gateway's, and each run's request count matches what reached it.
     expect(isolatedRuns.modules).toHaveLength(r.result?.runs ?? -1);
-    for (const m of isolatedRuns.modules) expect(m).toMatch(/transforms\/src\/transforms\/tr-00[1-6]-[a-z-]+\.ts$/);
+    for (const m of isolatedRuns.modules) expect(m).toMatch(/transforms\/src\/transforms\/tr-(00[1-6]|010|011|052)-[a-z-]+\.ts$/);
     expect(ran.reduce((n, k) => n + k.requests, 0)).toBe(x.calls.length);
 
     // found / none / not_run are distinct (failed is covered below and in the budget tests).
@@ -558,9 +631,12 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
     const sup = r.result?.corroboration.filter((g) => g.predicate === "resolves_to" && g.object === "ipv4:8.8.8.8") ?? [];
     for (const g of sup) expect(g.sources).toHaveLength(1);
 
-    // Discovered names never become network permissions: no request to any discovered host.
+    // Discovered names never become network permissions: no request to any discovered host that
+    // is NOT on the operator's list. (www.example.com IS on this test's list — the operator allowed
+    // page fetches there, which is why TR-010 could fetch TR-052's capture URL; discovery of a name
+    // never grants it — only the operator's list does, and the other three stay unrequested.)
     for (const c of x.calls) expect(HOSTS).toContain(c.host);
-    for (const h of ["a.iana-servers.net", "b.iana-servers.net", "www.example.com", "api.example.com"]) {
+    for (const h of ["a.iana-servers.net", "b.iana-servers.net", "api.example.com"]) {
       expect(x.calls.some((c) => c.host === h)).toBe(false);
     }
 
