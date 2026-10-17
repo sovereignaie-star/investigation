@@ -4,6 +4,7 @@
  * vault (fail-closed) and hands the adapter a per-request reader; the sandboxed transform never
  * sees the key. SIMULATION ONLY: fake resolver/transport/vault; IR_ENABLE_NETWORK injected via deps.
  */
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -21,6 +22,7 @@ import {
   greyNoiseClassification,
   otxPulses,
   securityTrailsDnsHistory,
+  braveWebSearch,
 } from "@ir/transforms";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
@@ -756,4 +758,144 @@ describe("P2-026 (owner decision 2026-10-17): the path_parameter batch — the n
     expect("error" in st).toBe(true);
     expect((st as { error: string }).error).toMatch(/SECURITYTRAILS_KEY but the vault has no entry "securitytrails"/);
   });
+});
+
+describe("P2-026 (owner decision 2026-10-17 — the restricted-storage provider): TR-053 (Brave web search) — the plan wires the key, and the RAW RESPONSE never reaches a persisted record", () => {
+  const braveEntry: RegisteredTransform = {
+    transform: braveWebSearch,
+    module: MODULE,
+    subjects: { person_name: (v) => ({ name: v }), domain: (v) => ({ domain: v }) },
+    sends: ["person_name", "domain"],
+    hosts: ["api.search.brave.com"],
+    pageFetch: false,
+  };
+  const BRAVE_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-053-brave-web-search.ts", import.meta.url));
+
+  /** A wire whose raw response carries content markers that must NEVER reach a persisted record. */
+  function braveDeps(vault: Vault) {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    return {
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: { resolve: async (host: string) => (host === "api.search.brave.com" ? ["104.16.53.111"] : []) },
+      transport: {
+        async fetch(req: { url: string; headers?: Record<string, string> }) {
+          calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+          return {
+            status: 200,
+            body: JSON.stringify({
+              web: {
+                results: [
+                  { url: "https://example.com/about", title: "MARKER-RAW-TITLE", description: "MARKER-RAW-DESC" },
+                  { url: "https://news.example.org/story", title: "T2", description: "MARKER-RAW-DESC-2" },
+                ],
+              },
+            }),
+          };
+        },
+      },
+      vault: () => vault,
+      calls,
+    };
+  }
+
+  it("PLAN LEVEL (no sandbox needed): the key travels in the X-Subscription-Token header only and the q query passes the closed allowlist", async () => {
+    const c = newCase();
+    const d = braveDeps(fakeVault({ brave: "n_brave_plan_key" }));
+    const plan = planNetworkRun(c, braveEntry, "domain", ["api.search.brave.com"], d);
+    if ("error" in plan) throw new Error(plan.error);
+    const signal = new AbortController().signal;
+    const ok = await plan.transport.fetch({ url: "https://api.search.brave.com/res/v1/web/search?q=example.com", method: "GET" }, signal);
+    expect(ok.status).toBe(200);
+    expect(d.calls).toHaveLength(1);
+    expect(d.calls[0]?.url).toBe("https://api.search.brave.com/res/v1/web/search?q=example.com");
+    expect(d.calls[0]?.headers?.["x-subscription-token"]).toBe("n_brave_plan_key");
+    expect(d.calls[0]?.url).not.toContain("n_brave_plan_key");
+  });
+
+  it("the vault entry missing => the TR-053 plan is refused fail-closed with the documented reason, before any request", () => {
+    const c = newCase();
+    const d = braveDeps(fakeVault({}));
+    const plan = planNetworkRun(c, braveEntry, "domain", ["api.search.brave.com"], d);
+    expect("error" in plan).toBe(true);
+    expect((plan as { error: string }).error).toMatch(/BRAVE_SUBSCRIPTION_TOKEN but the vault has no entry "brave"/);
+    expect(d.calls).toHaveLength(0);
+  });
+
+  it("E-02: TR-053 (a natural_person_gate manifest — web results about people) is refused on a case with no stated purpose, before any request", () => {
+    // E-01 makes a purpose-less case impossible through the store — the documented test double
+    // (the TR-051 precedent: the legacy case with an empty purpose).
+    const legacy = { info: () => ({ id: "case-legacy", purpose: "" }) } as unknown as ReturnType<typeof newCase>;
+    const d = braveDeps(fakeVault({ brave: "n_brave_plan_key" }));
+    const plan = planNetworkRun(legacy, braveEntry, "domain", ["api.search.brave.com"], d);
+    expect("error" in plan).toBe(true);
+    if (!("error" in plan)) throw new Error("expected a refusal");
+    expect(plan.error).toMatch(/natural-person|E-01\/E-02|stated purpose/);
+    expect(d.calls).toHaveLength(0);
+  });
+
+  // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
+  // where isolation is available and skips elsewhere (the TR-009/TR-044/TR-051 pattern).
+  it.skipIf(!host.full)(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-053 code runs in the real sandbox, the key travels in the X-Subscription-Token header only, and the RAW RESPONSE never reaches any persisted record — the evidence is the sha256 digest envelope and the links are the findings",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const d = braveDeps(fakeVault({ brave: "n_brave_sandbox_key" }));
+      const entry = { ...braveEntry, module: BRAVE_MODULE };
+      const plan = planNetworkRun(c, entry, "domain", ["api.search.brave.com"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "domain:example.com", "domain", systemClock);
+      const result = await runTransformIsolated(BRAVE_MODULE, {
+        transport: plan.transport,
+        input: { domain: "example.com" },
+        transformId: "TR-053",
+      });
+      // the run SUCCEEDS and the findings are the result LINKS (the only content claimed)
+      expect(result.requestCount).toBe(1);
+      expect(result.output.findings).toHaveLength(2);
+      expect(result.output.findings[0]?.objectValue).toBe("https://example.com/about");
+      // the wire saw exactly the real request: the q query, the key in the header only
+      expect(d.calls).toHaveLength(1);
+      expect(d.calls[0]?.url).toBe("https://api.search.brave.com/res/v1/web/search?q=example.com");
+      expect(d.calls[0]?.headers?.["x-subscription-token"]).toBe("n_brave_sandbox_key");
+      // the in-run evidence record is the DIGEST ENVELOPE, not the raw body
+      const ev = result.evidence[0];
+      const envelope = JSON.parse(ev.body ?? "") as { sha256: string; bytes: number };
+      expect(envelope.sha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(envelope.bytes).toBeGreaterThan(0);
+      expect(ev.body).not.toContain("MARKER-RAW");
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, braveWebSearch, { domain: "example.com" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the query URL is recorded; the findings
+      // (the links) are bound to the digest evidence; the raw response content and the key appear
+      // NOWHERE — only the sha256 envelope is stored
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const entries = reopened.entries() as unknown as Array<{ kind?: string; payload?: { blobRef?: string } }>;
+      const persisted = JSON.stringify(entries);
+      expect(persisted).toContain("/res/v1/web/search?q=example.com");
+      expect(persisted).toContain("mentioned_in");
+      expect(persisted).toContain("https://example.com/about");
+      expect(persisted).not.toContain("MARKER-RAW-TITLE");
+      expect(persisted).not.toContain("MARKER-RAW-DESC");
+      expect(persisted).not.toContain("n_brave_sandbox_key");
+      // the stored evidence BLOB is the digest envelope itself — proven cryptographically: the
+      // evidence record's own sha256 is the hash of the ENVELOPE string (the in-run evidence
+      // body), so the stored blob cannot be the raw response (whose hash differs)
+      const storedEntry = entries.find((e) => e.kind === "evidence.stored")?.payload as { sha256?: string; size?: number } | undefined;
+      expect(storedEntry?.sha256).toBe(
+        createHash("sha256")
+          .update(ev.body ?? "")
+          .digest("hex"),
+      );
+      expect(storedEntry?.size).toBe(ev.body?.length);
+      // the blob is encrypted at rest (the case policy) — the raw markers and the key are absent
+      // from every persisted ledger record and the audit trail (asserted above and below)
+      const audit = JSON.stringify(reopened.auditTrail());
+      expect(audit).toContain("egress.");
+      expect(audit).not.toContain("n_brave_sandbox_key");
+      expect(audit).not.toContain("MARKER-RAW-DESC");
+    },
+  );
 });

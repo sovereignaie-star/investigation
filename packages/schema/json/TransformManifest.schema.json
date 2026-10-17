@@ -88,6 +88,10 @@
     "license": {
       "type": "string",
       "enum": ["LC-A", "LC-B", "LC-C", "LC-D", "LC-E"]
+    },
+    "restrictedEvidence": {
+      "default": false,
+      "type": "boolean"
     }
   },
   "required": ["id", "version", "inputs", "outputs", "network", "limits", "sensitivity", "license"]

@@ -110,6 +110,18 @@ export const TransformManifest = z.object({
   }),
   sensitivity: Sensitivity,
   license: LicenseClass,
+  /**
+   * P2-026 (owner decision 2026-10-17 — TR-053): restricted evidence storage. A provider whose
+   * terms forbid storing its results (Brave's Search API terms: "shall not ... store, cache, or
+   * create a database of Search Results") gets its raw responses kept OUT of the case records:
+   * the RUNNER replaces the response body in the evidence record with a sha256 digest envelope
+   * ({sha256, bytes}). What is stored: the query (the request URL), the time (fetchedAt), the
+   * links (the findings), the hash and the byte count — nothing else. The flag is a manifest
+   * POLICY (reviewed like every manifest field); the sandboxed transform cannot opt out of it
+   * and cannot bypass it — the recording happens in the parent, outside the sandbox. Absent
+   * (the default, every other transform): the unchanged full-body evidence.
+   */
+  restrictedEvidence: z.boolean().default(false),
 });
 export type TransformManifest = z.infer<typeof TransformManifest>;
 

@@ -30,6 +30,7 @@ import { virustotal } from "../providers/virustotal.ts";
 import { greynoise } from "../providers/greynoise.ts";
 import { otx } from "../providers/otx.ts";
 import { securitytrails } from "../providers/securitytrails.ts";
+import { brave } from "../providers/brave.ts";
 import type { ProviderQueryAllow } from "./egress.ts";
 import type { PathParameterTemplate } from "./path-template.ts";
 
@@ -68,6 +69,7 @@ export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
   greynoise,
   otx,
   securitytrails,
+  brave,
 ];
 
 /** The registry entry a manifest's declared secret name binds to, if any. */
