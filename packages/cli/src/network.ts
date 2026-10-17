@@ -150,6 +150,34 @@ export function openGateway(
   return { gateway: decision.gateway, allowedHosts: decision.allowedHosts, events };
 }
 
+/** The transform-level E-02 mirror (P2-026/TR-051): a transform whose manifest declares
+ *  natural_person_gate — the RESPONSE carries natural-person data (e.g. a domain's people's public
+ *  emails) — runs only under a case with a stated purpose. E-01 guarantees a purpose at case
+ *  creation, so an empty purpose is the legacy pre-P1-028 database shape — refused fail-closed before
+ *  any transport, exactly like the subject-level check in this file. The deeper question — whether
+ *  response-side natural-person data should require an EXPLICIT per-run purpose confirmation (the
+ *  engine's PurposeConfirmation mechanism, currently unwired in the CLI paths) beyond the case's
+ *  stated purpose — is an open owner decision documented in the P2-026 STATUS row. */
+function naturalPersonTransformGate(c: Case, entry: RegisteredTransform): string | undefined {
+  if (entry.transform.manifest.sensitivity !== "natural_person_gate") return undefined;
+  if (c.info().purpose.trim() !== "") return undefined;
+  return `--network: ${entry.transform.manifest.id} returns natural-person data (natural_person_gate); this case has no stated purpose (E-01/E-02)`;
+}
+
+/** The subject-level E-02 rule (P2-013): a natural-person subject (person_name) may run only when the
+ *  investigation's purpose confirmation is present in the run plan; the engine's gate refuses without
+ *  one, so the subject never reaches networkRunFor without it. The subject IS the screening input (the
+ *  name is what the operator typed), it never appears in a request URL/header/body — the transforms
+ *  download fixed files and match locally — and the inventory still refuses any natural-person identifier
+ *  found on the wire. Minor subjects stop auto-expansion (E-08). */
+function subjectGateRefusal(spec: ReturnType<typeof specById>, kind: ReturnType<typeof sendKindOf>): string | undefined {
+  const personGateOk = spec?.sensitivity === "natural_person_gate" && PURPOSE_CONFIRMED_SUBJECTS.has(spec.id);
+  if (spec?.sensitivity === "minor" || (!PUBLIC_SEND_KINDS.has(kind) && !personGateOk)) {
+    return "--network: subject type is not data the gateway may send (P2-013)";
+  }
+  return undefined;
+}
+
 /** The transport and sandbox module for one transform run on one subject type, through an open gateway. */
 export function networkRunFor(
   c: Case,
@@ -176,15 +204,11 @@ export function networkRunFor(
   const spec = specById(subjectType);
   if (!spec) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
   const kind = sendKindOf(spec.id, spec.category);
-  // E-02 (P2-013): a natural-person subject (person_name, natural_person_gate) may run only when the
-  // investigation's purpose confirmation is present in the run plan; the engine's gate refuses without one,
-  // so the subject never reaches this function without it. The subject IS the screening input (the name is
-  // what the operator typed), it never appears in a request URL/header/body — the transforms download fixed
-  // files and match locally — and the inventory still refuses any natural-person identifier found on the wire.
-  const personGateOk = spec.sensitivity === "natural_person_gate" && PURPOSE_CONFIRMED_SUBJECTS.has(spec.id);
-  if (spec.sensitivity === "minor" || (!PUBLIC_SEND_KINDS.has(kind) && !personGateOk)) {
-    return { error: `--network: subject type "${subjectType}" is not data the gateway may send (P2-013)` };
-  }
+  // E-02 (P2-026/TR-051): the transform-level mirror of the natural-person-subject rule below.
+  const transformGateRefusal = naturalPersonTransformGate(c, entry);
+  if (transformGateRefusal !== undefined) return { error: transformGateRefusal };
+  const gateRefusal = subjectGateRefusal(spec, kind);
+  if (gateRefusal !== undefined) return { error: `${gateRefusal} (type "${subjectType}")` };
   const transform = entry.transform;
   // P2-037: the sandbox module comes from the registry entry (one explicit path per registered transform).
   const isolatedModule = deps.isolatedModules ? deps.isolatedModules[transform.manifest.id] : entry.module;

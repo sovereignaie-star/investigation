@@ -109,6 +109,42 @@ describe("TR-051 hunter-domain-emails", () => {
     );
   });
 
+  it("an empty data object (no domain field, no emails) is malformed — the documented no-result state carries domain: null and emails: [] explicitly", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.hunter\.io\/v2\/domain-search\?domain=example\.com$/,
+        response: { status: 200, body: JSON.stringify({ data: {} }) },
+      },
+    ]);
+    await expect(runTransform(hunterDomainEmails, { transport: sim.transport, input: { domain: "example.com" } })).rejects.toThrow(
+      /Hunter/,
+    );
+  });
+
+  it("a data array is malformed — never attributed to the subject", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.hunter\.io\/v2\/domain-search\?domain=example\.com$/,
+        response: { status: 200, body: JSON.stringify({ data: [] }) },
+      },
+    ]);
+    await expect(runTransform(hunterDomainEmails, { transport: sim.transport, input: { domain: "example.com" } })).rejects.toThrow(
+      /Hunter/,
+    );
+  });
+
+  it("a missing emails field is malformed — the documented no-result state carries emails: [] explicitly", async () => {
+    const sim = createSimServer([
+      {
+        match: /^https:\/\/api\.hunter\.io\/v2\/domain-search\?domain=example\.com$/,
+        response: { status: 200, body: JSON.stringify({ data: { domain: "example.com" } }) },
+      },
+    ]);
+    await expect(runTransform(hunterDomainEmails, { transport: sim.transport, input: { domain: "example.com" } })).rejects.toThrow(
+      /Hunter/,
+    );
+  });
+
   it("a response about a DIFFERENT domain is refused fail-closed — its records are never attributed to the requested subject", async () => {
     const sim = createSimServer([
       {

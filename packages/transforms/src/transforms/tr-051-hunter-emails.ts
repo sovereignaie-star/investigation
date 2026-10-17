@@ -37,7 +37,6 @@ interface HunterEmail {
   readonly value?: string;
   readonly type?: string;
   readonly confidence?: number;
-  readonly position?: string | null;
 }
 
 interface HunterData {
@@ -61,7 +60,10 @@ function patternFinding(domain: string, pattern: string, requestId: number): Tra
 }
 
 /** One finding per published, well-formed email — the source's own confidence maps directly
- *  (the TR-047/TR-044 precedent). Invalid values are skipped, never emitted (D-018). */
+ *  (the TR-047/TR-044 precedent). Invalid values are skipped, never emitted (D-018). Minimal
+ *  collection: only the email value and the source's confidence enter the finding — the response's
+ *  richer personal fields (first/last name, position, phone, social profiles) are read by no code
+ *  path here. */
 function emailFindings(data: HunterData, requestId: number): TransformFinding[] {
   const findings: TransformFinding[] = [];
   const seen = new Set<string>();
@@ -72,17 +74,39 @@ function emailFindings(data: HunterData, requestId: number): TransformFinding[] 
     const confidence =
       typeof email.confidence === "number" && email.confidence >= 0 && email.confidence <= 100 ? email.confidence / 100 : 0.5;
     const kind = email.type === "generic" ? "role-based" : "personal";
-    const position = typeof email.position === "string" && email.position.trim() !== "" ? `, ${email.position.trim()}` : "";
     findings.push({
       predicate: "has_public_email",
       evidence: [requestId],
       objectType: "email",
       objectValue: value,
       confidence,
-      explanation: `Hunter: ${value} is a published ${kind} email${position}`,
+      explanation: `Hunter: ${value} is a published ${kind} email`,
     });
   }
   return findings;
+}
+
+/** The validated Hunter record. The response's shape is part of its validity: `data` must be a
+ *  plain object (the documented no-result state carries domain: null and emails: [] EXPLICITLY — an
+ *  empty data object or a missing emails field is a malformed response, never an empty success). The
+ *  domain field must be present: a string equal to the requested domain, or null (the documented
+ *  no-result state). A response about a different domain is never attributed to the requested subject. */
+function parseHunterRecord(body: string, domain: string): HunterData {
+  const parsed = parseJson(body, "Hunter domain search") as { data?: HunterData };
+  if (parsed.data === undefined || parsed.data === null || typeof parsed.data !== "object" || Array.isArray(parsed.data)) {
+    throw new Error("TR-051: Hunter domain search returned a malformed response (no data object)");
+  }
+  const data = parsed.data;
+  if (data.domain === undefined) {
+    throw new Error("TR-051: Hunter domain search returned a malformed response (no domain field)");
+  }
+  if (!Array.isArray(data.emails)) {
+    throw new Error("TR-051: Hunter domain search returned a malformed response (no emails array)");
+  }
+  if (data.domain !== null && data.domain !== domain) {
+    throw new Error(`TR-051: Hunter domain search returned a different domain (${data.domain}) than requested (${domain})`);
+  }
+  return data;
 }
 
 export const hunterDomainEmails = defineTransform<Tr051Input>(
@@ -103,16 +127,7 @@ export const hunterDomainEmails = defineTransform<Tr051Input>(
     if (domain === "" || !domain.includes(".")) throw new Error(`TR-051: "${input.domain}" is not a registrable domain`);
     const res = await ctx.http.get(`${HUNTER_DOMAIN_SEARCH}?domain=${encodeURIComponent(domain)}`);
     expectStatus(res, [200], "Hunter domain search");
-    const parsed = parseJson(res.body, "Hunter domain search") as { data?: HunterData };
-    if (parsed.data === undefined || parsed.data === null || typeof parsed.data !== "object") {
-      throw new Error("TR-051: Hunter domain search returned a malformed response (no data object)");
-    }
-    const data = parsed.data;
-    // The record must be about the requested domain — a response about a different domain is
-    // never attributed to the requested subject (fail-closed, not silent misattribution).
-    if (data.domain !== null && data.domain !== undefined && data.domain !== domain) {
-      throw new Error(`TR-051: Hunter domain search returned a different domain (${data.domain}) than requested (${domain})`);
-    }
+    const data = parseHunterRecord(res.body, domain);
     // The source's no-result state (data.domain null, empty emails) is a real negative: an empty
     // finding set, not an error — the coverage map records it as "none".
     const findings = emailFindings(data, res.requestId);

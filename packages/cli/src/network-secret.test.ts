@@ -363,7 +363,21 @@ describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform 
                 pattern: "{first}",
                 organization: "Example",
                 linked_domains: [],
-                emails: [{ value: "contact@example.com", type: "generic", confidence: 98, sources: [] }],
+                emails: [
+                  {
+                    value: "contact@example.com",
+                    type: "generic",
+                    confidence: 98,
+                    sources: [],
+                    // Distinctive personal fields the transform must NOT turn into findings or
+                    // persisted case records (minimal collection — the raw response is evidence
+                    // like any source response, but no finding derives from these fields).
+                    first_name: "MarkerFirstName",
+                    last_name: "MarkerLastName",
+                    phone_number: "+1-555-MARKER-PHONE",
+                    linkedin: "https://linkedin.com/in/marker-profile",
+                  },
+                ],
               },
               meta: { results: 1, results_approximate: false, limit: 10, offset: 0 },
             }),
@@ -413,6 +427,14 @@ describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform 
       expect(persisted).toContain("/v2/domain-search?domain=example.com");
       expect(persisted).toContain("has_public_email");
       expect(persisted).not.toContain("hunter_sandbox_key");
+      // Minimal collection, proven on the wire record: the response's personal fields (name, phone,
+      // social profile) reach NO persisted case record — findings, runs, coverage — only the email
+      // values and the domain pattern do. (The raw response body is stored as evidence exactly like
+      // every source response — that is the evidence design, not a finding.)
+      expect(persisted).not.toContain("MarkerFirstName");
+      expect(persisted).not.toContain("MarkerLastName");
+      expect(persisted).not.toContain("MARKER-PHONE");
+      expect(persisted).not.toContain("marker-profile");
       const audit = JSON.stringify(reopened.auditTrail());
       expect(audit).toContain("egress.");
       expect(audit).not.toContain("hunter_sandbox_key");
@@ -426,6 +448,21 @@ describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform 
     expect("error" in plan).toBe(true);
     if (!("error" in plan)) throw new Error("expected a refusal");
     expect(plan.error).toMatch(/HUNTER_KEY|hunter/i);
+    expect(d.calls).toHaveLength(0);
+  });
+
+  it("E-02: TR-051 (a natural_person_gate manifest — the RESPONSE carries people's emails) is refused on a case with no stated purpose, before any request — the same rule the subject-level check applies to natural-person subjects", () => {
+    // A purpose-less case cannot be created through the store (E-01 refuses it at creation), so this
+    // exercises the gate through a legacy-database double: `info().purpose === ""` is exactly the
+    // pre-P1-028 shape the subject-level check in planNetworkRun guards against. The positive
+    // control is the composition test above: the SAME entry on a real purpose-stating case builds
+    // the plan and the run succeeds (the case purpose IS the E-02 confirmation).
+    const legacy = { info: () => ({ id: "case-legacy", purpose: "" }) } as unknown as ReturnType<typeof newCase>;
+    const d = hunterDeps(fakeVault({ hunter: "hunter_sandbox_key" }));
+    const plan = planNetworkRun(legacy, hunterEntry, "domain", ["api.hunter.io"], d);
+    expect("error" in plan).toBe(true);
+    if (!("error" in plan)) throw new Error("expected a refusal");
+    expect(plan.error).toMatch(/natural-person|E-01\/E-02|stated purpose/);
     expect(d.calls).toHaveLength(0);
   });
 });
