@@ -38,6 +38,7 @@ import {
   threatfoxSearch,
   abuseIpDbCheck,
   hunterDomainEmails,
+  commonCrawlIndex,
   euSanctions,
   companiesHouse,
   opensanctions,
@@ -290,6 +291,21 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The request URL's query carries the subject domain itself.
     sends: ["domain"],
     hosts: ["api.hunter.io"],
+    pageFetch: false,
+  },
+  {
+    // P2-026: TR-052 — the Common Crawl index presence. KEYLESS (LC-B, public): no secret binding, no
+    // provider registry entry (the registry exists for header-injected secrets — the TR-011 pattern).
+    // Two documented requests on index.commoncrawl.org: the fixed /collinfo.json collection list
+    // (newest first — the collection id is never hardcoded), then the newest collection's CDX API
+    // with the domain as the url query (matchType=domain, filter=status:200, limit=100 — bounded).
+    transform: commonCrawlIndex,
+    module: mod("tr-052-common-crawl.ts"),
+    subjects: { domain: domainInput },
+    // The CDX query's url parameter carries the subject domain; the remaining documented parameters
+    // (matchType, output, filter, limit) are literals.
+    sends: ["domain"],
+    hosts: ["index.commoncrawl.org"],
     pageFetch: false,
   },
   {
