@@ -21,7 +21,9 @@ import {
   greyNoiseClassification,
   otxPulses,
   securityTrailsDnsHistory,
+  censysHostsCertificates,
 } from "@ir/transforms";
+import { openVault } from "@ir/store";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
@@ -763,4 +765,140 @@ describe("P2-026 (owner decision 2026-10-17): the path_parameter batch — the n
     expect("error" in st).toBe(true);
     expect((st as { error: string }).error).toMatch(/SECURITYTRAILS_KEY but the vault has no entry "securitytrails"/);
   });
+});
+
+describe("P2-026 (owner decision 2026-10-17 — the vault credential_pair extension): TR-049 (Censys) — the network plan wires the PAIR credential end to end", () => {
+  const censysEntry: RegisteredTransform = {
+    transform: censysHostsCertificates,
+    module: MODULE,
+    subjects: { ipv4: (v) => ({ ip: v }), domain: (v) => ({ domain: v }) },
+    sends: ["ip", "domain"],
+    hosts: ["search.censys.io"],
+    pageFetch: false,
+  };
+  const CENSYS_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-049-censys.ts", import.meta.url));
+  const PAIR_ID = "censys-api-id-01234567";
+  const PAIR_SECRET = "censys-secret-0123456789abcdef";
+
+  /** A REAL vault (the real sealed-file code path) holding the Censys credential PAIR. */
+  function pairVault(): { vault: Vault; dir: string } {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-censys-"));
+    dirs.push(dir);
+    const v = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(7) });
+    v.setPair("censys", PAIR_ID, PAIR_SECRET);
+    return { vault: v, dir };
+  }
+
+  /** A wire that answers the host view with a valid, well-formed Censys record. */
+  function censysDeps(vault: Vault) {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    return {
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: { resolve: async (host: string) => (host === "search.censys.io" ? ["104.16.53.111"] : []) },
+      transport: {
+        async fetch(req: { url: string; headers?: Record<string, string> }) {
+          calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+          return {
+            status: 200,
+            body: JSON.stringify({
+              code: 200,
+              status: "OK",
+              result: {
+                ip: "45.83.66.10",
+                services: [{ port: 443, transport_protocol: "TCP", service_name: "HTTPS" }],
+              },
+            }),
+          };
+        },
+      },
+      vault: () => vault,
+      calls,
+    };
+  }
+
+  it("PLAN LEVEL (no sandbox needed): the pair entry builds the Basic auth header value on the wire — the credential NEVER appears in the URL or as a raw single secret", async () => {
+    const c = newCase();
+    const pv = pairVault();
+    const d = censysDeps(pv.vault);
+    const plan = planNetworkRun(c, censysEntry, "ipv4", ["search.censys.io"], d);
+    if ("error" in plan) throw new Error(plan.error);
+    const signal = new AbortController().signal;
+    const ok = await plan.transport.fetch({ url: "https://search.censys.io/v2/hosts/45.83.66.10", method: "GET" }, signal);
+    expect(ok.status).toBe(200);
+    expect(d.calls).toHaveLength(1);
+    expect(d.calls[0]?.url).toBe("https://search.censys.io/v2/hosts/45.83.66.10");
+    // the pair travels as the documented Basic value in the authorization header ONLY
+    const expected = `Basic ${Buffer.from(`${PAIR_ID}:${PAIR_SECRET}`, "utf8").toString("base64")}`;
+    expect(d.calls[0]?.headers?.["authorization"]).toBe(expected);
+    expect(d.calls[0]?.url).not.toContain(PAIR_ID);
+    expect(d.calls[0]?.url).not.toContain(PAIR_SECRET);
+  });
+
+  it('a SINGLE-SECRET entry under "censys" is refused fail-closed (the pair kind is documented in the registry row — no half-credential run)', () => {
+    const c = newCase();
+    const d = censysDeps(fakeVault({ censys: "a-single-secret" }));
+    const plan = planNetworkRun(c, censysEntry, "ipv4", ["search.censys.io"], d);
+    expect("error" in plan).toBe(true);
+    expect((plan as { error: string }).error).toMatch(/CENSYS_API_ID as a credential PAIR/);
+    expect(d.calls).toHaveLength(0);
+  });
+
+  it("the vault entry missing => the TR-049 plan is refused fail-closed with the documented reason, before any request", () => {
+    const c = newCase();
+    const d = censysDeps(fakeVault({}));
+    const plan = planNetworkRun(c, censysEntry, "ipv4", ["search.censys.io"], d);
+    expect("error" in plan).toBe(true);
+    expect((plan as { error: string }).error).toMatch(/CENSYS_API_ID but the vault has no entry "censys"/);
+    expect(d.calls).toHaveLength(0);
+  });
+
+  // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
+  // where isolation is available and skips elsewhere (the TR-009/TR-044/TR-051 pattern).
+  it.skipIf(!host.full)(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-049 code runs in the real sandbox, its PATH-CARRYING request passes the central path-template check, the PAIR travels as the Basic value in the authorization header only and never reaches any persisted record",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const pv = pairVault();
+      const d = censysDeps(pv.vault);
+      const entry = { ...censysEntry, module: CENSYS_MODULE };
+      const plan = planNetworkRun(c, entry, "ipv4", ["search.censys.io"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "ipv4:45.83.66.10", "ipv4", systemClock);
+      const result = await runTransformIsolated(CENSYS_MODULE, {
+        transport: plan.transport,
+        input: { ip: "45.83.66.10" },
+        transformId: "TR-049",
+      });
+      // the run SUCCEEDS: the real TR-049 request (the subject in the PATH) is permitted by the
+      // central path-template row — the closed ip type — carried through the sandbox IPC boundary
+      expect(result.requestCount).toBe(1);
+      expect(result.output.findings.length).toBeGreaterThan(0);
+      // the wire saw exactly the real request: the subject in the path, the pair as the Basic value
+      expect(d.calls).toHaveLength(1);
+      expect(d.calls[0]?.url).toBe("https://search.censys.io/v2/hosts/45.83.66.10");
+      const expected = `Basic ${Buffer.from(`${PAIR_ID}:${PAIR_SECRET}`, "utf8").toString("base64")}`;
+      expect(d.calls[0]?.headers?.["authorization"]).toBe(expected);
+      expect(d.calls[0]?.url).not.toContain(PAIR_ID);
+      expect(d.calls[0]?.url).not.toContain(PAIR_SECRET);
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, censysHostsCertificates, { ip: "45.83.66.10" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the request URL is recorded as evidence;
+      // the findings are bound to that evidence; the pair (both parts, raw and Basic-encoded)
+      // appears NOWHERE in the case or its audit trail
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const persisted = JSON.stringify(reopened.entries());
+      expect(persisted).toContain("/v2/hosts/45.83.66.10");
+      expect(persisted).toContain("exposes_service");
+      expect(persisted).not.toContain(PAIR_ID);
+      expect(persisted).not.toContain(PAIR_SECRET);
+      expect(persisted).not.toContain(expected);
+      const audit = JSON.stringify(reopened.auditTrail());
+      expect(audit).toContain("egress.");
+      expect(audit).not.toContain(PAIR_ID);
+      expect(audit).not.toContain(PAIR_SECRET);
+    },
+  );
 });

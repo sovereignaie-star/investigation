@@ -334,6 +334,39 @@ export function resolveSecretBinding(
       error: `--network: ${manifest.id} requires ${secretName} but the vault has no entry "${registryEntry.vaultEntry}"; set it before running — the run is refused rather than sent without the key`,
     };
   }
+  // P2-026 (owner decision 2026-10-17 — the vault credential_pair extension): a provider whose
+  // credential is a PAIR (API ID + secret, e.g. Censys' HTTP Basic auth) reads its pair from the
+  // vault entry and the CLI builds the provider's documented pair-credential header value from
+  // it; the gateway injects that value in the entry's secretHeader exactly as a single key. A
+  // vault entry that is not a pair is a designed refusal — the run is never sent with a
+  // half-credential or a misread single secret.
+  if (registryEntry.credentialKind === "credential_pair") {
+    if (vault.kindOf(registryEntry.vaultEntry) !== "credential_pair") {
+      return {
+        error: `--network: ${manifest.id} requires ${secretName} as a credential PAIR (API ID + secret) but the vault entry "${registryEntry.vaultEntry}" is not a pair; set it in the pair form — the run is refused rather than sent with a half-credential`,
+      };
+    }
+    return {
+      binding: {
+        secretProvider: registryEntry.name,
+        hosts: registryEntry.hosts,
+        secretHeader: registryEntry.secretHeader,
+        requestPaths: registryEntry.requestPaths,
+        readSecret: () => {
+          const pair = vault.revealPair(registryEntry.vaultEntry);
+          return pair === undefined ? undefined : `Basic ${Buffer.from(`${pair.id}:${pair.secret}`, "utf8").toString("base64")}`;
+        },
+      },
+      providers: {
+        providerHosts: { [registryEntry.name]: registryEntry.hosts },
+        providerPaths: { [registryEntry.name]: registryEntry.requestPaths },
+        ...(registryEntry.queryAllowlist ? { providerQueries: { [registryEntry.name]: registryEntry.queryAllowlist } } : {}),
+        ...(registryEntry.requestPathTemplates
+          ? { providerPathTemplates: { [registryEntry.name]: registryEntry.requestPathTemplates } }
+          : {}),
+      },
+    };
+  }
   return {
     binding: {
       secretProvider: registryEntry.name,
