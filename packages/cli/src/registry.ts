@@ -43,6 +43,7 @@ import {
   otxPulses,
   securityTrailsDnsHistory,
   commonCrawlIndex,
+  censysHostsCertificates,
   euSanctions,
   companiesHouse,
   opensanctions,
@@ -343,6 +344,22 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The request PATH carries the subject host name (and the literal record type).
     sends: ["domain"],
     hosts: ["api.securitytrails.com"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (owner decision 2026-10-17 — the vault credential_pair extension): TR-049 — Censys
+    // exposed assets and certificates. THE CREDENTIAL IS A PAIR (API ID + secret, HTTP Basic per
+    // the source's documented auth): it is stored as ONE vault entry of the credential_pair kind
+    // ("censys") and the CLI builds `Authorization: Basic base64(id:secret)` from it — the
+    // gateway injects that header value; neither part ever travels in the URL (D-031). The IP
+    // subject travels in the REQUEST PATH (the closed template row /v2/hosts/{ip}); the domain
+    // subject travels in the ONLY allowlisted query parameter (`q`) of the certificates search.
+    transform: censysHostsCertificates,
+    module: mod("tr-049-censys.ts"),
+    subjects: { ipv4: ipv4Input, ipv6: ipv6Input, domain: domainInput },
+    // The request PATH carries the subject IP; the request QUERY carries the subject domain.
+    sends: ["ip", "domain"],
+    hosts: ["search.censys.io"],
     pageFetch: false,
   },
   {
