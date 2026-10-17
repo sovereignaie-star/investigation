@@ -21,6 +21,7 @@
  * to run in-process so production wiring cannot accidentally execute untrusted
  * code here.
  */
+import { createHash } from "node:crypto";
 import { CancellationError } from "@ir/engine/cancel";
 import type { HttpTransport, TransportRequest, TransportResponse } from "@ir/engine/transport";
 import { TransformManifest as TransformManifestSchema } from "@ir/schema";
@@ -214,6 +215,7 @@ export function recordingTransport(
   maxBytes: number,
   runSignal: AbortSignal,
   stamp: () => string = () => new Date().toISOString(),
+  restrictedEvidence = false,
 ): HttpTransport {
   let nextRequestId = 0;
   return {
@@ -257,6 +259,20 @@ export function recordingTransport(
         // is never recorded either (evidence carries no request bodies at all).
         if (req.method === "POST") {
           record({ url: req.url, method: req.method, status: res.status });
+        } else if (restrictedEvidence) {
+          // P2-026 (owner decision 2026-10-17 — TR-053): a restricted-evidence manifest keeps the
+          // raw response OUT of the records (Brave's terms forbid storing Search Results). The
+          // evidence body becomes the digest envelope — the sha256 of the exact raw response and
+          // its byte count — so the record still proves WHAT was received without storing it.
+          // The query (the URL), the time, the links (the findings) and the hash are stored;
+          // nothing else. The size check above still ran on the RAW body (fail-closed).
+          record({
+            url: req.url,
+            method: req.method,
+            status: res.status,
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ sha256: createHash("sha256").update(body).digest("hex"), bytes: body.length }),
+          });
         } else {
           record({ url: req.url, method: req.method, status: res.status, headers: res.headers ?? {}, body });
         }
@@ -342,7 +358,16 @@ export async function runTransform<TInput>(
   const evidence: TransformEvidence[] = [];
   const limiter = new RateLimiter(manifest.limits.rps, now, sleep);
   const http = createTransformHttp(
-    recordingTransport(opts.transport, evidence, limiter, manifest.limits.timeoutMs, manifest.limits.maxBytes, signal, opts.fetchedAt),
+    recordingTransport(
+      opts.transport,
+      evidence,
+      limiter,
+      manifest.limits.timeoutMs,
+      manifest.limits.maxBytes,
+      signal,
+      opts.fetchedAt,
+      manifest.restrictedEvidence,
+    ),
     signal,
   );
   const ctx: TransformContext = { http, manifest, input: opts.input, signal };

@@ -20,6 +20,7 @@ export * from "./transforms/tr-047-threatfox.ts";
 export * from "./transforms/tr-048-securitytrails-dns-history.ts";
 export * from "./transforms/tr-051-hunter-emails.ts";
 export * from "./transforms/tr-052-common-crawl.ts";
+export * from "./transforms/tr-053-brave-web-search.ts";
 export * from "./transforms/tr-010-http-scan.ts";
 export * from "./transforms/tr-011-wayback-cdx.ts";
 export * from "./transforms/tr-012-warc-archive.ts";
