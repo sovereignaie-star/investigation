@@ -22,6 +22,7 @@
 | shodan | المفتاح في الرابط حصراً (`api-info?key=`) — سياسة D-031/P2-016 تمنع؛ TR-008 |
 | etherscan | المفتاح في الرابط حصراً (`apikey` استعلام) — TR-017 |
 | whoisxml | المفتاح في الرابط حصراً (`apiKey` استعلام) |
+| whoisfreaks | المفتاح في الرابط حصراً (`apiKey` استعلام على كل نقاطه المفحوصة — live/history/bulk؛ لم يوثّق بديل ترويسة في أي صفحة) — TR-050 [تحقق مصادقة 2026-10-17] |
 | numverify | المفتاح في الرابط حصراً (`access_key` استعلام) |
 | ipgeolocation | المفتاح في الرابط حصراً (`apiKey` استعلام) |
 | abuseipdb | لا نقطة اختبار بلا استعلام: `/api/v2/check` يلزمه `ipAddress` في الاستعلام (T-SEC-SSRF-042 يمنع الاستعلام في طلب يحمل سراً) و`/api/v2/blacklist` بلا استعلام تتجاوز استجابته حد حجم بوابة الاختبار |
@@ -63,6 +64,7 @@ TR-023 (Companies House) وTR-025 (OpenSanctions) وTR-040 (OpenSky) تقرأ م
 |---|---|---|---|---|
 | urlscan | `q` | string | 512 (حدّنا المعلن) | [توثيق urlscan الرسمي](https://urlscan.io/docs/api/) — Search API، GET `/api/v1/search/`: «q — The query term (ElasticSearch Query String Query). Default: `*``. الوثائق لا تعلن حداً أقصى للطول؛ 512 حدّنا المعلن. |
 | abuseipdb | `ipAddress` | string | 45 (حدّنا المعلن) | [توثيق AbuseIPDB الرسمي](https://docs.abuseipdb.com/#check) — GET `/api/v2/check`: «ipAddress — A single IPv4 or IPv6 address» (إلزامي، مرمّز URL لأن IPv6 يحتوي نقطتين محجوزة). الوثائق لا تعلن حداً أقصى للطول؛ 45 حدّنا المعلن (أطول تمثيل نصي لعنوان IPv6 — RFC 4291 §2.2). بارامترا `maxAgeInDays` و`verbose` الموثقان **غير مسموحين** عمداً: TR-044 لا يرسل إلا `ipAddress`، وبلا `verbose` لا تعود تعليقات المبلغين ولا هوياتهم أصلاً (جمع أدنى). |
+| hunter | `domain` | string | 253 (حدّنا المعلن) | [توثيق Hunter الرسمي](https://hunter.io/api-documentation/v2#domain-search) — GET `/v2/domain-search`: «domain — The domain name from which you want to find the email addresses» (إلزامي، أو `company` بدلاً منه — لا نرسل `company`). الوثائق لا تعلن حداً أقصى للطول؛ 253 حدّنا المعلن (الطول الأقصى النصي لاسم مضيف DNS — RFC 1123 §2.1). بارامترات `limit`/`offset`/`type`/`seniority`/`department`/`decision_maker` الموثقة **غير مسموحة** عمداً: TR-051 لا يرسل إلا `domain` (الصفحة الأولى الافتراضية — 10 نتائج)، والقائمة المحصورة أضيق من سطح المزوّد الموثق بقصد (فشل-مغلق). |
 
 ملاحظتان: (1) الوثائق نفسها تذكر `size` و`search_after` لنقطة البحث — **غير مسموحين** عمداً: TR-009 لا يرسل إلا `q`، والقائمة المحصورة أضيق من سطح المزوّد الموثق بقصد (فشل-مغلق). (2) إضافة بارامتر أو مزوّد = تعديل بيانات السجل في `packages/egress/providers/` مع تحديث هذا الجدول بالمصدر.
 

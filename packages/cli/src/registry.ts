@@ -37,6 +37,7 @@ import {
   urlscanSearch,
   threatfoxSearch,
   abuseIpDbCheck,
+  hunterDomainEmails,
   euSanctions,
   companiesHouse,
   opensanctions,
@@ -274,6 +275,21 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The request URL's query carries the subject IP itself.
     sends: ["ip"],
     hosts: ["api.abuseipdb.com"],
+    pageFetch: false,
+  },
+  {
+    // P2-026: TR-051 — Hunter public domain emails. The key (vault entry "hunter") travels in the
+    // X-API-KEY header only (D-031 — the source's documented alternative to the api_key query
+    // parameter), read from the vault per request; the request sends ONLY the domain query (the
+    // per-provider allowlist refuses the source's limit/offset/type parameters — fail-closed).
+    // The subject is a domain (catalog sensitivity normal); the manifest's sensitivity is
+    // natural_person_gate because the RESPONSE carries public emails (E-02).
+    transform: hunterDomainEmails,
+    module: mod("tr-051-hunter-emails.ts"),
+    subjects: { domain: domainInput },
+    // The request URL's query carries the subject domain itself.
+    sends: ["domain"],
+    hosts: ["api.hunter.io"],
     pageFetch: false,
   },
   {
