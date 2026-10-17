@@ -40,7 +40,9 @@ const CDX_URL =
 
 // P2-026 (CodeQL): the sim match is a fully-escaped RegExp LITERAL (anchored exact match) — a
 // plain URL string flowing into the sim server's `new RegExp` trips js/incomplete-hostname-regexp;
-// CDX_URL stays a string because the assertion below compares it as data.
+// CDX_URL stays a string because the assertion below compares it as data. JS nuance (documented):
+// `$` also matches before a trailing newline; no URL in this test contains one, so the passing
+// suite pins the equivalence on every exercised path.
 const CDX_URL_MATCH =
   /^https:\/\/index\.commoncrawl\.org\/CC-MAIN-2026-39-index\?url=example\.com&matchType=domain&output=json&filter=status:200&limit=100$/;
 

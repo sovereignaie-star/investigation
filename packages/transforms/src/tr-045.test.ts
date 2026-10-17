@@ -9,8 +9,10 @@
  * match, every dot/question mark escaped), not plain URL strings — CodeQL's
  * js/incomplete-hostname-regexp flags plain URL strings that flow into the sim server's
  * `new RegExp` (wildcard branch) as unescaped-hostname regexes; an escaped literal is not
- * flagged (precedent: tr-052.test.ts collinfo) and the runtime semantics are identical (the
- * sim's plain-string branch is exact equality).*/
+ * flagged (precedent: tr-052.test.ts collinfo) and the runtime semantics are EQUIVALENT for
+ * these fixed URLs (the sim's plain-string branch is exact equality). One documented JS
+ * nuance: `$` also matches before a trailing newline; no URL in these tests contains one, so
+ * the passing suite pins the equivalence on every exercised path.*/
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
 import { greyNoiseClassification } from "./transforms/tr-045-greynoise.ts";
