@@ -13,8 +13,10 @@
  * NOTE on sim `match` values (P2-026): fully-escaped RegExp LITERALS (anchored exact match,
  * every dot/question mark escaped), not plain URL strings — CodeQL's js/incomplete-hostname-regexp
  * flags plain URL strings flowing into the sim server's `new RegExp`; an escaped literal is not
- * flagged (precedent: tr-052.test.ts collinfo) and the runtime semantics are identical (the
- * sim's plain-string branch is exact equality).
+ * flagged (precedent: tr-052.test.ts collinfo) and the runtime semantics are EQUIVALENT for
+ * these fixed URLs (the sim's plain-string branch is exact equality). One documented JS nuance:
+ * `$` also matches before a trailing newline; no URL in these tests contains one, so the passing
+ * suite pins the equivalence on every exercised path.
  *
  * RED FIRST (the J-1 rule): written before the transform existed — the red round is the module's
  * own absence (the import fails to load), then each behavior below is pinned.
