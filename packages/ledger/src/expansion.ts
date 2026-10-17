@@ -41,6 +41,30 @@ export interface Finding {
    * a finding is never recorded without the evidence that proves it.
    */
   evidenceIds?: string[];
+  /**
+   * P2-031 — capture time from the receiver/source (ISO-8601 UTC). When present and valid it becomes the
+   * observation's observedAt; when absent the processing time is used (the old behavior). Invalid → fail-closed.
+   */
+  observedAt?: string;
+  /** P2-031 — claim validity window (ISO-8601 UTC), passed through to the Claim. `validTo` must not precede `validFrom`. */
+  validFrom?: string;
+  validTo?: string;
+}
+
+/** P2-031 — true when `value` is a valid ISO-8601 UTC timestamp (the shape the ledger stores). */
+function isIsoUtc(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+/** P2-031 — validates a finding's optional time fields; returns the rejection reason or null when they are usable. */
+function timeFieldRejection(finding: Finding): string | null {
+  if (finding.observedAt !== undefined && !isIsoUtc(finding.observedAt)) return "observedAt is not ISO-8601 UTC";
+  if (finding.validFrom !== undefined && !isIsoUtc(finding.validFrom)) return "validFrom is not ISO-8601 UTC";
+  if (finding.validTo !== undefined && !isIsoUtc(finding.validTo)) return "validTo is not ISO-8601 UTC";
+  if (finding.validFrom !== undefined && finding.validTo !== undefined && Date.parse(finding.validTo) < Date.parse(finding.validFrom)) {
+    return `validTo (${finding.validTo}) precedes validFrom (${finding.validFrom})`;
+  }
+  return null;
 }
 
 export interface TransformOutputLike {
@@ -120,6 +144,24 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
   for (const finding of output.findings) {
     const evidenceIds = findingEvidence(finding, opts);
     const claimId = id();
+    // P2-031 — optional time fields are validated fail-closed BEFORE any claim is made: an invalid
+    // ISO-8601 timestamp or a validTo preceding its validFrom is recorded as an error observation.
+    const timeRejection = timeFieldRejection(finding);
+    if (timeRejection !== null) {
+      rejectedCount++;
+      opts.ledger.append("observation.added", {
+        id: id(),
+        entityId: subjectId,
+        transformId: opts.transformId,
+        evidenceId: evidenceIds[0],
+        observedAt: now,
+        kind: "error",
+        note: `finding time fields rejected: ${timeRejection}`,
+      });
+      continue;
+    }
+    // P2-031 — the capture time from the source when the finding provides one, else the processing time.
+    const observedAt = finding.observedAt ?? now;
     if (isIdentifierType(finding.objectType)) {
       // Typed identifier object → entity + edge claim.
       let key: string;
@@ -150,9 +192,11 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
         objectId,
         confidence: finding.confidence,
         explanation: finding.explanation,
+        validFrom: finding.validFrom ?? null,
+        validTo: finding.validTo ?? null,
       });
       claimIds.push(claimId);
-      appendPositive(opts, id, claimId, evidenceIds, now);
+      appendPositive(opts, id, claimId, evidenceIds, observedAt);
     } else {
       // Literal attribute → claim with a value (shows as a node attribute, not an edge).
       attributeCount++;
@@ -163,9 +207,11 @@ export function expandFindings(output: TransformOutputLike, subjectId: string, o
         value: literalValue(finding),
         confidence: finding.confidence,
         explanation: finding.explanation,
+        validFrom: finding.validFrom ?? null,
+        validTo: finding.validTo ?? null,
       });
       claimIds.push(claimId);
-      appendPositive(opts, id, claimId, evidenceIds, now);
+      appendPositive(opts, id, claimId, evidenceIds, observedAt);
     }
   }
   return { objectEntityIds, claimIds, attributeCount, rejectedCount };
@@ -198,14 +244,14 @@ function findingEvidence(finding: Finding, opts: ExpandOptions): string[] {
 }
 
 /** One positive observation per evidence record the claim rests on: each record independently observed it. */
-function appendPositive(opts: ExpandOptions, id: () => string, claimId: string, evidenceIds: readonly string[], now: string): void {
+function appendPositive(opts: ExpandOptions, id: () => string, claimId: string, evidenceIds: readonly string[], observedAt: string): void {
   for (const evidenceId of evidenceIds) {
     opts.ledger.append("observation.added", {
       id: id(),
       claimId,
       transformId: opts.transformId,
       evidenceId,
-      observedAt: now,
+      observedAt,
       kind: "positive",
     });
   }
