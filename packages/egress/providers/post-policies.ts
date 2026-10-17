@@ -15,6 +15,7 @@
  * this table.
  */
 import type { PostBodySchema, PostPolicy } from "../src/post-policy.ts";
+import type { PathParameterPolicy } from "../src/path-template.ts";
 
 /** ADR-27 migrated (2026-10-17): the OpenSky OAuth2 client-credentials token POST. */
 export const openskyTokenPolicy: PostPolicy = {
@@ -101,4 +102,104 @@ export const threatfoxSearchPolicy: PostPolicy = {
 /** The ADR-30 table — the single source of truth for every legal POST. */
 export const POST_POLICIES: readonly PostPolicy[] = [openskyTokenPolicy, opensanctionsMatchPolicy, threatfoxSearchPolicy];
 
-export type { PostBodySchema, PostPolicy };
+/* ---------------------------------------------------------------------------------------------- */
+/* P2-026 (owner decision 2026-10-17 — the adopted path-parameter proposal, ADR-30 style): the
+ * path_parameter rows. One row per provider (its endpoint templates): the provider + host + method
+ * are bound together, every template is a FULL path, and every parameter is validated centrally by
+ * the gateway against a CLOSED type vocabulary with a declared max length (packages/egress/src/
+ * path-template.ts) — not by each transform. All endpoint facts below are verified from the
+ * providers' official documentation (2026-10-17). */
+
+/** P2-026: VirusTotal (TR-043) — GET report lookups with the subject in the path. */
+export const virustotalPathPolicy: PathParameterPolicy = {
+  provider: "virustotal",
+  host: "www.virustotal.com",
+  method: "GET",
+  templates: [
+    { template: "/api/v3/ip_addresses/{ip}", params: [{ name: "ip", type: "ip", maxLength: 45 }] },
+    { template: "/api/v3/domains/{domain}", params: [{ name: "domain", type: "domain", maxLength: 253 }] },
+    { template: "/api/v3/urls/{url_id}", params: [{ name: "url_id", type: "vtUrlId", maxLength: 2048 }] },
+    {
+      template: "/api/v3/files/{hash}",
+      params: [{ name: "hash", type: "hash", lengths: [32, 40, 64], maxLength: 64 }],
+    },
+  ],
+  fieldsSource:
+    "https://docs.virustotal.com/reference/ip-objects (GET /api/v3/ip_addresses/{ip}), /reference/domain-objects (/api/v3/domains/{domain}), /reference/urls (/api/v3/urls/{url_id} — the identifier is unpadded URL-safe base64 of the URL or the 64-hex sha256 of its canonicalized form, verified 2026-10-17), /reference/files (/api/v3/files/{hash} — md5/sha1/sha256). Auth: the x-apikey header (never the URL). Public API: 500 requests/day, 4/minute (the roadmap's verified note).",
+  terms:
+    "VirusTotal terms (https://docs.virustotal.com/terms-and-conditions + the public API docs): the public API is prohibited in commercial products (LC-C/D per the roadmap decision); our use is the user's own key for research/incident response on a documented case. 45 is the longest IPv6 textual form (RFC 4291 §2.2); 253 is the longest DNS name (RFC 1123 §2.1) — OUR declared bounds where the source documents none.",
+};
+
+/** P2-026: GreyNoise (TR-045) — the community IP classification lookup, the subject in the path. */
+export const greynoisePathPolicy: PathParameterPolicy = {
+  provider: "greynoise",
+  host: "api.greynoise.io",
+  method: "GET",
+  templates: [{ template: "/v3/community/{ip}", params: [{ name: "ip", type: "ipv4", maxLength: 15 }] }],
+  fieldsSource:
+    'https://docs.greynoise.io/reference/getcommunityip — GET /v3/community/{ip}: the ip path parameter is an IPv4 address (the source returns 400 "not a valid routable IPv4" otherwise — IPv4-only, verified 2026-10-17). Auth: the `key` header. Free tier: 50 lookups/week.',
+  terms:
+    "GreyNoise terms (https://docs.greynoise.io/docs/using-the-greynoise-community-api): the Community API is free for members; free-email accounts do not get API keys (a business email is required) — LC-C per the roadmap. 15 is the longest IPv4 textual form — OUR declared bound.",
+};
+
+/**
+ * P2-026: AlienVault OTX (TR-046) — the indicator pulses lookup, the indicator in the path.
+ * The URL indicator type is deliberately NOT declared: its segment is a percent-encoded full URL,
+ * which no closed type in the vocabulary accepts (an architectural decision documented for the
+ * owner — not forced through the template mechanism). TR-046 accepts ip/domain/hash indicators.
+ */
+export const otxPathPolicy: PathParameterPolicy = {
+  provider: "otx",
+  host: "otx.alienvault.com",
+  method: "GET",
+  templates: [
+    { template: "/api/v1/indicators/IPv4/{indicator}/general", params: [{ name: "indicator", type: "ipv4", maxLength: 15 }] },
+    { template: "/api/v1/indicators/IPv6/{indicator}/general", params: [{ name: "indicator", type: "ipv6", maxLength: 45 }] },
+    {
+      template: "/api/v1/indicators/domain/{indicator}/general",
+      params: [{ name: "indicator", type: "domain", maxLength: 253 }],
+    },
+    {
+      template: "/api/v1/indicators/hostname/{indicator}/general",
+      params: [{ name: "indicator", type: "domain", maxLength: 253 }],
+    },
+    {
+      template: "/api/v1/indicators/file/{indicator}/general",
+      params: [{ name: "indicator", type: "hash", lengths: [32, 40, 64], maxLength: 64 }],
+    },
+  ],
+  fieldsSource:
+    "https://otx.alienvault.com/assets/static/external_api.html — GET /api/v1/indicators/{type}/{indicator}/{section}: the type segment is one of IPv4/IPv6/domain/hostname/url/file, the section is `general` (the pulse_info carrier), the indicator is the typed value. Auth: the X-OTX-API-KEY header (verified 2026-10-17). 10,000 requests/hour with a key.",
+  terms:
+    "OTX terms (https://otx.alienvault.com/api + the external API docs): the community API is free for research/incident response — LC-C per the roadmap. The `url` indicator type is excluded from this row (its segment is a percent-encoded full URL — no closed type accepts it; documented for the owner, not forced).",
+};
+
+/** P2-026: SecurityTrails (TR-048) — the DNS history lookup, hostname and record type in the path. */
+export const securitytrailsPathPolicy: PathParameterPolicy = {
+  provider: "securitytrails",
+  host: "api.securitytrails.com",
+  method: "GET",
+  templates: [
+    {
+      template: "/v1/history/{hostname}/dns/{type}",
+      params: [
+        { name: "hostname", type: "domain", maxLength: 253 },
+        { name: "type", type: "enum", values: ["a", "aaaa", "mx", "ns", "soa", "txt"], maxLength: 5 },
+      ],
+    },
+  ],
+  fieldsSource:
+    'https://docs.securitytrails.com/reference/dns-history-by-record-type-old-1 — GET /v1/history/{hostname}/dns/{type}: "allowed values: a, aaaa, mx, ns, soa or txt" (lowercase, verified 2026-10-17). Auth: the `apikey` header. The API is read-only; 100 records per page.',
+  terms:
+    "SecurityTrails terms (https://docs.securitytrails.com/docs/overview): the API is read-only, usage-based plans — LC-D per the roadmap. 253 is the longest DNS name (RFC 1123 §2.1) — OUR declared bound where the source documents none.",
+};
+
+/** The P2-026 path_parameter table — the single source of truth for path-template providers. */
+export const PATH_PARAMETER_POLICIES: readonly PathParameterPolicy[] = [
+  virustotalPathPolicy,
+  greynoisePathPolicy,
+  otxPathPolicy,
+  securitytrailsPathPolicy,
+];
+
+export type { PostBodySchema, PostPolicy, PathParameterPolicy };

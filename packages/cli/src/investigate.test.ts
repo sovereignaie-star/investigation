@@ -358,6 +358,13 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       // TR-047 registered (P2-026/ADR-30): its pair is refused fail-closed at setup — this test's
       // vault has no "threatfox" entry (the designed refusal, never a keyless send).
       "TR-047 domain:example.com",
+      // P2-026 (owner decision 2026-10-17 — the path_parameter batch): TR-043/046/048 registered
+      // for the domain subject — same designed fail-closed key refusals (no "virustotal" / "otx" /
+      // "securitytrails" entries in this test's vault; the subject-in-the-path templates are
+      // enforced centrally by the gateway, so the refusal cannot leak a path).
+      "TR-043 domain:example.com",
+      "TR-046 domain:example.com",
+      "TR-048 domain:example.com",
       // TR-051 registered (P2-026): same designed fail-closed key refusal — no "hunter" entry in
       // this test's vault either.
       "TR-051 domain:example.com",
@@ -369,8 +376,17 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       // TR-044 registered (P2-026): same designed fail-closed key refusal — this test's vault has
       // no "abuseipdb" entry either; its queued pair never reached its turn before the stop.
       "TR-044 ipv4:8.8.8.8",
+      // P2-026 (the path_parameter batch): TR-043/045/046 registered for the ipv4 subject and
+      // TR-046/048 for the discovered host names — the same designed fail-closed key refusals.
+      "TR-043 ipv4:8.8.8.8",
+      "TR-045 ipv4:8.8.8.8",
+      "TR-046 ipv4:8.8.8.8",
       "TR-001 hostname:a.iana-servers.net",
+      "TR-046 hostname:a.iana-servers.net",
+      "TR-048 hostname:a.iana-servers.net",
       "TR-001 hostname:b.iana-servers.net",
+      "TR-046 hostname:b.iana-servers.net",
+      "TR-048 hostname:b.iana-servers.net",
     ]);
     // TR-047's queued pair never reached its turn before the stop — it is a plain budget stop
     // like the rest (the fail-closed key refusal would only appear if its turn came).
@@ -663,8 +679,14 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
       // A keyed pair stopped before its turn records the plain budget/depth stop — the fail-closed
       // key refusal appears only when its turn actually came.
       expect(k.reason).toMatch(
-        k.transformId === "TR-047" || k.transformId === "TR-044" || k.transformId === "TR-051"
-          ? /^(setup refused: --network: TR-0(4[47]|51) requires|budget: runs|depth \d+ > maxDepth 1)/
+        k.transformId === "TR-047" ||
+          k.transformId === "TR-044" ||
+          k.transformId === "TR-051" ||
+          k.transformId === "TR-043" ||
+          k.transformId === "TR-045" ||
+          k.transformId === "TR-046" ||
+          k.transformId === "TR-048"
+          ? /^(setup refused: --network: TR-0(4[3-8]|51) requires|budget: runs|depth \d+ > maxDepth 1)/
           : /budget: runs|depth \d+ > maxDepth 1/,
       );
     }

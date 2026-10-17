@@ -66,6 +66,26 @@ TR-023 (Companies House) وTR-025 (OpenSanctions) وTR-040 (OpenSky) تقرأ م
 | abuseipdb | `ipAddress` | string | 45 (حدّنا المعلن) | [توثيق AbuseIPDB الرسمي](https://docs.abuseipdb.com/#check) — GET `/api/v2/check`: «ipAddress — A single IPv4 or IPv6 address» (إلزامي، مرمّز URL لأن IPv6 يحتوي نقطتين محجوزة). الوثائق لا تعلن حداً أقصى للطول؛ 45 حدّنا المعلن (أطول تمثيل نصي لعنوان IPv6 — RFC 4291 §2.2). بارامترا `maxAgeInDays` و`verbose` الموثقان **غير مسموحين** عمداً: TR-044 لا يرسل إلا `ipAddress`، وبلا `verbose` لا تعود تعليقات المبلغين ولا هوياتهم أصلاً (جمع أدنى). |
 | hunter | `domain` | string | 253 (حدّنا المعلن) | [توثيق Hunter الرسمي](https://hunter.io/api-documentation/v2#domain-search) — GET `/v2/domain-search`: «domain — The domain name from which you want to find the email addresses» (إلزامي، أو `company` بدلاً منه — لا نرسل `company`). الوثائق لا تعلن حداً أقصى للطول؛ 253 حدّنا المعلن (الطول الأقصى النصي لاسم مضيف DNS — RFC 1123 §2.1). بارامترات `limit`/`offset`/`type`/`seniority`/`department`/`decision_maker` الموثقة **غير مسموحة** عمداً: TR-051 لا يرسل إلا `domain` (الصفحة الأولى الافتراضية — 10 نتائج)، والقائمة المحصورة أضيق من سطح المزوّد الموثق بقصد (فشل-مغلق). |
 
+## قوالب مسار المزوّدين (قرار المالك 2026-10-17 — البند 2، امتداد L-29)
+
+المزوّد الذي يحمل موضوع الطلب في مسار الطلب يُعلن كصفوف قوالب في `packages/egress/providers/post-policies.ts` (ADR-30 style) — مصدر كل معامل موثق أدناه. البوابة المركزية تفرضها (لا المحوّل): مطابقة المسار الخام قبل فك الترميز، فك كل معامل مرة واحدة، مفردة أنواع مغلقة، طول أقصى معلن. مفردة الأنواع في `packages/egress/src/path-template.ts`.
+
+| المزوّد | القالب | المعاملات (النوع / الطول الأقصى) | المصدر (وثائق المزوّد الرسمية، تحقق 2026-10-17) |
+|---|---|---|---|
+| virustotal | `/api/v3/ip_addresses/{ip}` | ip: **ip** / 45 | [توثيق VT الرسمي](https://docs.virustotal.com/reference/ip-objects) — «Get an IP address report»؛ 45 حدّنا المعلن (أطول تمثيل نصي لـIPv6 — RFC 4291 §2.2) |
+| virustotal | `/api/v3/domains/{domain}` | domain: **domain** / 253 | [توثيق VT الرسمي](https://docs.virustotal.com/reference/domain-objects)؛ 253 حدّنا المعلن (RFC 1123 §2.1) |
+| virustotal | `/api/v3/urls/{url_id}` | url_id: **vtUrlId** / 2048 | [توثيق VT الرسمي](https://docs.virustotal.com/reference/urls) — المعرف base64 بلا حشوة للرابط أو sha256 المعيّن؛ **لا يُرسل رابط خام أبداً**؛ 2048 حدّنا المعلن |
+| virustotal | `/api/v3/files/{hash}` | hash: **hash** (32/40/64) / 64 | [توثيق VT الرسمي](https://docs.virustotal.com/reference/files) — md5/sha1/sha256 |
+| greynoise | `/v3/community/{ip}` | ip: **ipv4** / 15 | [توثيق GreyNoise الرسمي](https://docs.greynoise.io/reference/getcommunityip) — IPv4 فقط (400 لغير القابل للتوجيه)؛ 15 حدّنا المعلن (أطول تمثيل IPv4) |
+| otx | `/api/v1/indicators/IPv4/{indicator}/general` | indicator: **ipv4** / 15 | [واجهة OTX الخارجية الرسمية](https://otx.alienvault.com/assets/static/external_api.html) — القسم `general` حامل pulse_info |
+| otx | `/api/v1/indicators/IPv6/{indicator}/general` | indicator: **ipv6** / 45 | المصدر نفسه |
+| otx | `/api/v1/indicators/domain/{indicator}/general` | indicator: **domain** / 253 | المصدر نفسه |
+| otx | `/api/v1/indicators/hostname/{indicator}/general` | indicator: **domain** / 253 | المصدر نفسه |
+| otx | `/api/v1/indicators/file/{indicator}/general` | indicator: **hash** (32/40/64) / 64 | المصدر نفسه |
+| securitytrails | `/v1/history/{hostname}/dns/{type}` | hostname: **domain** / 253 + type: **enum** (a, aaaa, mx, ns, soa, txt — حالة-حساسة) / 5 | [توثيق SecurityTrails الرسمي](https://docs.securitytrails.com/reference/dns-history-by-record-type-old-1) — «allowed values: a, aaaa, mx, ns, soa or txt» حرفياً |
+
+**استبعاد موثق:** نوع المؤشر `url` في OTX غير معلن عمداً — مقطعه رابط كامل مشفّر ترميزاً مئوياً لا يقبله أي نوع مغلق في المفردة (قرار معماري للمالك، لم يُمرَّر بالقوة عبر الآلية؛ TR-046 يقبل ip/domain/hostname/hash).
+
 ملاحظتان: (1) الوثائق نفسها تذكر `size` و`search_after` لنقطة البحث — **غير مسموحين** عمداً: TR-009 لا يرسل إلا `q`، والقائمة المحصورة أضيق من سطح المزوّد الموثق بقصد (فشل-مغلق). (2) إضافة بارامتر أو مزوّد = تعديل بيانات السجل في `packages/egress/providers/` مع تحديث هذا الجدول بالمصدر.
 
 ## أرصدة المفاتيح وحصصها (P2-024) — مصادر موثقة 2026-10-16

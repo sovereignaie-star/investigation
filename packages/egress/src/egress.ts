@@ -245,6 +245,8 @@ export interface EgressLimits {
  */
 import type { PostPolicy } from "./post-policy.ts";
 import { formSchemaError, jsonSchemaError, POST_POLICY_DEFAULT_MAX_BODY_BYTES } from "./post-policy.ts";
+import type { PathParameterTemplate } from "./path-template.ts";
+import { matchPathTemplate } from "./path-template.ts";
 
 export interface ProviderQueryAllow {
   /** The exact parameter name (URL query parameters are case-sensitive). */
@@ -286,6 +288,17 @@ export interface EgressOptions {
    * missing from the map is refused too. Unset means no path restriction (hosts are still checked).
    */
   readonly providerPaths?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * P2-026 (owner decision 2026-10-17 — the adopted path-parameter proposal, ADR-30 style):
+   * provider name -> the CLOSED path templates a secret of that provider may be sent to. A provider
+   * whose endpoints carry the SUBJECT in the request path (VT, GreyNoise, OTX, SecurityTrails) is
+   * declared as template rows in the policy table (providers/post-policies.ts); the gateway matches
+   * the request path against them and validates every parameter centrally against a CLOSED type
+   * vocabulary with a declared max length (path-template.ts) — not each transform. The templates are
+   * method-bound (GET) and full-path (no prefixes, no wildcards); a mismatch is refused fail-closed
+   * exactly like the literal list. A provider may declare literals, templates, or both.
+   */
+  readonly providerPathTemplates?: Readonly<Record<string, readonly PathParameterTemplate[]>>;
   /**
    * P2-016 continuation (owner decision 2026-10-16): provider name -> the CLOSED list of query
    * parameters a secret-bearing request to that provider may carry (name + value type + declared
@@ -788,15 +801,40 @@ function checkSecretRegistry(req: EgressRequest, opts: EgressOptions): EgressRes
   return checkProviderPath(req, url, opts, 0);
 }
 
-/** T-SEC-SSRF-042: a secret only goes to a registered path of its own provider, on every hop. */
+/** The provider's registered rows in both registries (literal list and templates). */
+function providerPathRows(
+  paths: Readonly<Record<string, readonly string[]>> | undefined,
+  templates: Readonly<Record<string, readonly PathParameterTemplate[]>> | undefined,
+  provider: string,
+): { literals: readonly string[] | undefined; tpls: readonly PathParameterTemplate[] | undefined } {
+  return {
+    literals: paths !== undefined && Object.prototype.hasOwnProperty.call(paths, provider) ? paths[provider] : undefined,
+    tpls: templates !== undefined && Object.prototype.hasOwnProperty.call(templates, provider) ? templates[provider] : undefined,
+  };
+}
+
+/**
+ * P2-026: the path-template half of the provider path check — method-bound (the policy rows are
+ * GET), full-path, every parameter validated centrally against its closed type. Standalone so the
+ * path check itself stays simple: a refusal names the same rule as the literal list.
+ */
+function matchesProviderTemplates(req: EgressRequest, url: URL, tpls: readonly PathParameterTemplate[] | undefined): boolean {
+  if (tpls === undefined || url.hash !== "" || (req.method ?? "GET") !== "GET") return false;
+  return tpls.some((t) => matchPathTemplate(url.pathname, t).ok);
+}
+
+/** T-SEC-SSRF-042: a secret only goes to a registered path (literal or template) of its own provider, on every hop. */
 function checkProviderPath(req: EgressRequest, url: URL, opts: EgressOptions, hop: number): EgressResult | null {
   const paths = opts.providerPaths;
-  if (paths === undefined || req.secret === undefined || !req.secretProvider) return null;
-  const allowed = Object.prototype.hasOwnProperty.call(paths, req.secretProvider) ? paths[req.secretProvider] : undefined;
-  if (!allowed || allowed.length === 0) {
+  const templates = opts.providerPathTemplates;
+  if (paths === undefined && templates === undefined) return null;
+  if (req.secret === undefined || !req.secretProvider) return null;
+  const { literals, tpls } = providerPathRows(paths, templates, req.secretProvider);
+  if ((literals === undefined || literals.length === 0) && (tpls === undefined || tpls.length === 0)) {
     return deny("secret_host_mismatch", hop, "secretProvider has no registered paths");
   }
-  if (url.hash !== "" || !allowed.includes(url.pathname)) {
+  const literalOk = url.hash === "" && literals !== undefined && literals.includes(url.pathname);
+  if (!literalOk && !matchesProviderTemplates(req, url, tpls)) {
     return deny("secret_host_mismatch", hop, "path is not a registered path of secretProvider");
   }
   if (url.search !== "") return checkProviderQuery(req, url, opts, hop);

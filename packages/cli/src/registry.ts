@@ -38,6 +38,10 @@ import {
   threatfoxSearch,
   abuseIpDbCheck,
   hunterDomainEmails,
+  virustotalReputation,
+  greyNoiseClassification,
+  otxPulses,
+  securityTrailsDnsHistory,
   commonCrawlIndex,
   euSanctions,
   companiesHouse,
@@ -106,6 +110,13 @@ const ipv6Input = (ip: string) => {
 const asnInput = (asn: string) => {
   if (!isAsn(asn)) throw new Error(`"${asn}" is not an AS number`);
   return { ip: asn };
+};
+/** P2-026 (TR-043/TR-046): a file hash accepting md5, sha1 AND sha256 (the 32/40/64 hex forms the
+ * VirusTotal/OTX path templates declare) — validated by pattern, then passed through. */
+const tripleHashInput = (raw: string) => {
+  const value = raw.trim().toLowerCase();
+  if (!/^[a-f0-9]{32}$|^[a-f0-9]{40}$|^[a-f0-9]{64}$/.test(value)) throw new Error(`"${raw}" is not an md5, sha1 or sha256 hash`);
+  return { hash: value };
 };
 /** P2-026: a file hash (MD5/SHA256) for TR-047 — validated by pattern, then passed through. */
 const hashInput = (raw: string) => {
@@ -276,6 +287,62 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The request URL's query carries the subject IP itself.
     sends: ["ip"],
     hosts: ["api.abuseipdb.com"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (owner decision 2026-10-17 — the path_parameter batch): TR-043 — VirusTotal
+    // reputation. The key (vault entry "virustotal") travels in the x-apikey header only (D-031),
+    // read from the vault per request. THE SUBJECT TRAVELS IN THE REQUEST PATH — the closed
+    // template rows (the provider registry entry + the policy table, post-policies.ts) are
+    // enforced centrally by the gateway against a closed type vocabulary (path-template.ts): the
+    // transform cannot smuggle an untyped path. URL identifiers are sent as the documented
+    // unpadded base64url form.
+    transform: virustotalReputation,
+    module: mod("tr-043-virustotal.ts"),
+    subjects: { ipv4: ipv4Input, ipv6: ipv6Input, domain: domainInput, url: httpUrlInput, hash: tripleHashInput },
+    // The request PATH carries the subject itself (ip / domain / url id / hash).
+    sends: ["ip", "domain", "url", "hash"],
+    hosts: ["www.virustotal.com"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (owner decision 2026-10-17 — the path_parameter batch): TR-045 — GreyNoise community
+    // classification. The key (vault entry "greynoise") travels in the `key` header only (D-031).
+    // The subject IPv4 travels in the REQUEST PATH — the closed template row (IPv4-only, declared
+    // max length) is enforced centrally by the gateway.
+    transform: greyNoiseClassification,
+    module: mod("tr-045-greynoise.ts"),
+    subjects: { ipv4: ipv4Input },
+    // The request PATH carries the subject IP itself.
+    sends: ["ip"],
+    hosts: ["api.greynoise.io"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (owner decision 2026-10-17 — the path_parameter batch): TR-046 — AlienVault OTX pulses.
+    // The key (vault entry "otx") travels in the X-OTX-API-KEY header only (D-031). The indicator
+    // travels in the REQUEST PATH — the closed template rows (IPv4/IPv6/domain/hostname/file) are
+    // enforced centrally by the gateway; the url indicator type is deliberately not accepted
+    // (a percent-encoded full URL fits no closed type — documented for the owner).
+    transform: otxPulses,
+    module: mod("tr-046-otx-pulses.ts"),
+    subjects: { ipv4: ipv4Input, ipv6: ipv6Input, domain: domainInput, hostname: hostnameInput, hash: tripleHashInput },
+    // The request PATH carries the indicator itself.
+    sends: ["ip", "domain", "hash"],
+    hosts: ["otx.alienvault.com"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (owner decision 2026-10-17 — the path_parameter batch): TR-048 — SecurityTrails DNS
+    // history. The key (vault entry "securitytrails") travels in the apikey header only (D-031).
+    // The host name AND the record type both travel in the REQUEST PATH — the closed template row
+    // (domain type + the a/aaaa/mx/ns/soa/txt enum) is enforced centrally by the gateway.
+    transform: securityTrailsDnsHistory,
+    module: mod("tr-048-securitytrails-dns-history.ts"),
+    subjects: { domain: domainInput, hostname: hostnameInput },
+    // The request PATH carries the subject host name (and the literal record type).
+    sends: ["domain"],
+    hosts: ["api.securitytrails.com"],
     pageFetch: false,
   },
   {

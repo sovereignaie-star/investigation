@@ -65,6 +65,14 @@ export interface ProductionEgressConfig {
    * absent from the map keeps the fail-closed default (every query refused).
    */
   readonly providerQueries?: Readonly<Record<string, readonly ProviderQueryAllow[]>>;
+  /**
+   * P2-026 (owner decision 2026-10-17): provider name -> the closed path templates for
+   * subject-in-the-path providers (the gateway's `providerPathTemplates`). Passed only together
+   * with `providerHosts` + `providerPaths` (the registry config is all-or-nothing); a provider
+   * absent from the map keeps the fail-closed default (every path refused unless a literal or
+   * template row matches).
+   */
+  readonly providerPathTemplates?: Readonly<Record<string, readonly import("./path-template.ts").PathParameterTemplate[]>>;
 }
 
 export type ProductionEgressDecision =
@@ -83,12 +91,14 @@ function providerRegistryConfig(cfg: ProductionEgressConfig): {
   providerHosts?: ProductionEgressConfig["providerHosts"];
   providerPaths?: ProductionEgressConfig["providerPaths"];
   providerQueries?: ProductionEgressConfig["providerQueries"];
+  providerPathTemplates?: ProductionEgressConfig["providerPathTemplates"];
 } {
   if (!cfg.providerHosts || !cfg.providerPaths) return {};
   return {
     providerHosts: cfg.providerHosts,
     providerPaths: cfg.providerPaths,
     ...(cfg.providerQueries ? { providerQueries: cfg.providerQueries } : {}),
+    ...(cfg.providerPathTemplates ? { providerPathTemplates: cfg.providerPathTemplates } : {}),
   };
 }
 

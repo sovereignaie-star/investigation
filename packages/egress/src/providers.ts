@@ -26,7 +26,12 @@ import { urlscan } from "../providers/urlscan.ts";
 import { abusech } from "../providers/abusech.ts";
 import { abuseipdb } from "../providers/abuseipdb.ts";
 import { hunter } from "../providers/hunter.ts";
+import { virustotal } from "../providers/virustotal.ts";
+import { greynoise } from "../providers/greynoise.ts";
+import { otx } from "../providers/otx.ts";
+import { securitytrails } from "../providers/securitytrails.ts";
 import type { ProviderQueryAllow } from "./egress.ts";
+import type { PathParameterTemplate } from "./path-template.ts";
 
 export interface ProviderRegistryEntry {
   readonly name: string;
@@ -35,6 +40,14 @@ export interface ProviderRegistryEntry {
   readonly manifestSecretNames: readonly string[];
   readonly vaultEntry: string;
   readonly requestPaths: readonly string[];
+  /**
+   * P2-026 (owner decision 2026-10-17): the CLOSED path templates for providers whose endpoints
+   * carry the subject in the request path (VT, GreyNoise, OTX, SecurityTrails). The rows live in
+   * the ADR-30-style policy table (providers/post-policies.ts) — one source of truth — and this
+   * field references them; the gateway validates every parameter centrally. A provider may
+   * declare literal requestPaths, templates, or both.
+   */
+  readonly requestPathTemplates?: readonly PathParameterTemplate[];
   /** P2-016 continuation: the closed query-parameter allowlist (absent = every query refused). */
   readonly queryAllowlist?: readonly ProviderQueryAllow[];
 }
@@ -46,7 +59,16 @@ export interface ProviderRegistryEntry {
  * query parameter — policy D-031/P2-016 forbids that, so they have no entry and their keyed
  * network runs are refused (see docs/security/KEY_TESTS.md for the full matrix).
  */
-export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [urlscan, abusech, abuseipdb, hunter];
+export const PROVIDER_REGISTRY: readonly ProviderRegistryEntry[] = [
+  urlscan,
+  abusech,
+  abuseipdb,
+  hunter,
+  virustotal,
+  greynoise,
+  otx,
+  securitytrails,
+];
 
 /** The registry entry a manifest's declared secret name binds to, if any. */
 export function registryEntryForSecret(secretName: string): ProviderRegistryEntry | undefined {
