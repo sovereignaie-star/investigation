@@ -116,6 +116,13 @@ const fakeVault = (entries: Record<string, string>): Vault => ({
   },
   delete: () => false,
   reveal: (name) => entries[name],
+  // P2-026 (credential_pair extension): the fakes serve single secrets only — a pair entry is
+  // never synthesized, and kindOf reports what the fake actually holds.
+  setPair: () => {
+    throw new Error("not used in tests");
+  },
+  revealPair: () => undefined,
+  kindOf: (name) => (name in entries ? "secret" : undefined),
 });
 
 type EdgeReq = Parameters<EgressTransport["fetch"]>[0];
@@ -365,12 +372,19 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       "TR-043 domain:example.com",
       "TR-046 domain:example.com",
       "TR-048 domain:example.com",
+      // TR-049 registered (P2-026 — the vault credential_pair extension): same designed
+      // fail-closed refusal — this test's vault has no "censys" PAIR entry (and a pair kind is
+      // documented in the registry row: a single secret under that name would be refused too).
+      "TR-049 domain:example.com",
       // TR-051 registered (P2-026): same designed fail-closed key refusal — no "hunter" entry in
       // this test's vault either.
       "TR-051 domain:example.com",
       // TR-052 registered (P2-026, keyless): no setup refusal exists to protect it — the runs budget
       // simply stopped the queue before its turn.
       "TR-052 domain:example.com",
+      // TR-053 registered (P2-026 — the restricted-storage provider): same designed fail-closed
+      // key refusal — this test's vault has no "brave" entry.
+      "TR-053 domain:example.com",
       "TR-003 ipv4:8.8.8.8",
       "TR-006 ipv4:8.8.8.8",
       // TR-044 registered (P2-026): same designed fail-closed key refusal — this test's vault has
@@ -381,6 +395,7 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       "TR-043 ipv4:8.8.8.8",
       "TR-045 ipv4:8.8.8.8",
       "TR-046 ipv4:8.8.8.8",
+      "TR-049 ipv4:8.8.8.8",
       "TR-001 hostname:a.iana-servers.net",
       "TR-046 hostname:a.iana-servers.net",
       "TR-048 hostname:a.iana-servers.net",
@@ -685,8 +700,10 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
           k.transformId === "TR-043" ||
           k.transformId === "TR-045" ||
           k.transformId === "TR-046" ||
-          k.transformId === "TR-048"
-          ? /^(setup refused: --network: TR-0(4[3-8]|51) requires|budget: runs|depth \d+ > maxDepth 1)/
+          k.transformId === "TR-048" ||
+          k.transformId === "TR-053" ||
+          k.transformId === "TR-049"
+          ? /^(setup refused: --network: TR-0(4[3-9]|5[13]) requires|budget: runs|depth \d+ > maxDepth 1)/
           : /budget: runs|depth \d+ > maxDepth 1/,
       );
     }

@@ -2,7 +2,7 @@
 
 > كل مزوّد في الخزنة إما له اختبار مفتاح مُعرَّف (`PROVIDER_KEY_TESTS` في `apps/server/src/lib/providers.ts`) أو سبب موثق لعدم إمكانه (`PROVIDER_TEST_BLOCKED`). الاختبار يمر حصراً عبر بوابة الخروج بمضيف ومسار مثبتين، والمفتاح يسافر في ترويسته المعينة فقط — لا في الرابط أبداً (D-031/P2-016)، ولا استعلام في طلب يحمل سراً (T-SEC-SSRF-042). نقاط النهاية وأسماء الترويسات موثقة من الوثائق الرسمية الحالية لكل مزوّد (المصادر أدناه؛ تحقق 2026-10-16).
 
-## القابلون للاختبار (8)
+## القابلون للاختبار (9)
 
 | المزوّد | المضيف والمسار المثبتان | ترويسة المفتاح | ملاحظات |
 |---|---|---|---|
@@ -14,6 +14,8 @@
 | binaryedge | `api.binaryedge.io/v2/user/subscription` | `X-Key` | نقطة الاشتراك تعرض صلاحية المفتاح |
 | hunter | `api.hunter.io/v1/account` | `X-API-KEY` | نقطة الحساب مجانية وتثبت المفتاح |
 | urlscan | `urlscan.io/api/v1/user/searches/` | `API-Key` | نقطة تتطلب مصادقة (401 بلا مفتاح صالح)؛ TR-009 |
+| brave | `api.search.brave.com/res/v1/web/search?q=test` | `X-Subscription-Token` | نقطة البحث نفسها (401 عند مفتاح خاطئ)؛ **TR-053: تخزين مقيّد إلزامي — لا يُخزَّن المحتوى الخام (مظروف sha256 فقط، علم restrictedEvidence في البيان)** [قرار مالك] |
+| censys | `search.censys.io/v2/hosts/8.8.8.8` | `Authorization: Basic` | **زوج اعتماد (API ID + Secret) — credential_pair** (P2-026): نقطة عرض المضيف تقبل الزوج كـBasic وتثبته (200)، ومفتاح خاطئ يُرفض 401؛ لا يُخزن الزوج إلا كمدخل زوج واحد في الخزنة (L-31) |
 
 ## غير قابلين للاختبار (9) — بأسباب موثقة
 
@@ -83,6 +85,7 @@ TR-023 (Companies House) وTR-025 (OpenSanctions) وTR-040 (OpenSky) تقرأ م
 | otx | `/api/v1/indicators/hostname/{indicator}/general` | indicator: **domain** / 253 | المصدر نفسه |
 | otx | `/api/v1/indicators/file/{indicator}/general` | indicator: **hash** (32/40/64) / 64 | المصدر نفسه |
 | securitytrails | `/v1/history/{hostname}/dns/{type}` | hostname: **domain** / 253 + type: **enum** (a, aaaa, mx, ns, soa, txt — حالة-حساسة) / 5 | [توثيق SecurityTrails الرسمي](https://docs.securitytrails.com/reference/dns-history-by-record-type-old-1) — «allowed values: a, aaaa, mx, ns, soa or txt» حرفياً |
+| censys | `/v2/hosts/{ip}` | ip: **ip** / 45 | [مرجع Legacy Search API الرسمي](https://docs.censys.com/docs/ls-api) — «GET /v2/hosts/{ip-address}» عرض المضيف؛ 45 حدّنا المعلن (أطول تمثيل IPv6 — RFC 4291 §2.2) |
 
 **استبعاد موثق:** نوع المؤشر `url` في OTX غير معلن عمداً — مقطعه رابط كامل مشفّر ترميزاً مئوياً لا يقبله أي نوع مغلق في المفردة (قرار معماري للمالك، لم يُمرَّر بالقوة عبر الآلية؛ TR-046 يقبل ip/domain/hostname/hash).
 
