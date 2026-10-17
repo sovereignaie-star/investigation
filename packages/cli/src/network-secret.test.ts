@@ -48,6 +48,13 @@ function fakeVault(entries: Record<string, string | undefined>): Vault {
     },
     delete: () => false,
     reveal: (name) => entries[name],
+    // P2-026 (credential_pair extension): the double serves single secrets only — a pair entry is
+    // never synthesized, and kindOf reports what the double actually holds.
+    setPair: () => {
+      throw new Error("not used in tests");
+    },
+    revealPair: () => undefined,
+    kindOf: (name) => (name in entries ? "secret" : undefined),
   };
 }
 
