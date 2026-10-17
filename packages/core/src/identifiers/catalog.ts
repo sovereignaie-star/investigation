@@ -1043,6 +1043,32 @@ export const IDENTIFIER_SPECS: readonly IdentifierSpecData[] = [
     sensitivity: "normal",
   },
   {
+    id: "mmsi",
+    category: "Device",
+    labels: { en: "Maritime Mobile Service Identity", ar: "معرفة الخدمة البحرية المتنقلة" },
+    description:
+      "AIS/DSC ship-station MMSI (ITU-R M.585, RR Article 19/Appendix 43) — nine digits, first three are the MID (201-775), no checksum",
+    icon: "⚓",
+    color: "blue",
+    patterns: ["^[2-7]\\d{2}\\d{6}$"],
+    validator: "mmsi",
+    examples: { positive: ["366123456", "353123456", "636123456"], negative: ["123456789", "36612345", "3661234560"] },
+    sensitivity: "normal",
+  },
+  {
+    id: "imo_ship_number",
+    category: "Device",
+    labels: { en: "IMO Ship Number", ar: "رقم سفينة IMO" },
+    description:
+      "Permanent seven-digit hull identity (IMO resolution A.1078(28)) — seventh digit is a check digit from weights 7,6,5,4,3,2",
+    icon: "🚢",
+    color: "blue",
+    patterns: ["^\\d{7}$"],
+    validator: "imo_ship_number",
+    examples: { positive: ["1234567", "9074729"], negative: ["1234568", "123456", "12345678"] },
+    sensitivity: "normal",
+  },
+  {
     id: "eu_reference",
     category: "Documents",
     labels: { en: "EU Sanctions Reference Number", ar: "رقم مرجعي عقوبات الاتحاد الأوروبي" },
