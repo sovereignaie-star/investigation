@@ -4,6 +4,7 @@
  * vault (fail-closed) and hands the adapter a per-request reader; the sandboxed transform never
  * sees the key. SIMULATION ONLY: fake resolver/transport/vault; IR_ENABLE_NETWORK injected via deps.
  */
+import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
