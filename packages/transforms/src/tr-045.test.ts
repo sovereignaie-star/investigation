@@ -4,7 +4,15 @@
  * sim stands in for the egress gateway that would inject the `key` header — no real key or
  * connection is used. The path-template enforcement itself is pinned in
  * packages/egress/src/path-template.test.ts; this file pins the transform's own contract.
- */
+ 
+ * NOTE on sim `match` values (P2-026): they are fully-escaped RegExp LITERALS (anchored exact
+ * match, every dot/question mark escaped), not plain URL strings — CodeQL's
+ * js/incomplete-hostname-regexp flags plain URL strings that flow into the sim server's
+ * `new RegExp` (wildcard branch) as unescaped-hostname regexes; an escaped literal is not
+ * flagged (precedent: tr-052.test.ts collinfo) and the runtime semantics are EQUIVALENT for
+ * these fixed URLs (the sim's plain-string branch is exact equality). One documented JS
+ * nuance: `$` also matches before a trailing newline; no URL in these tests contains one, so
+ * the passing suite pins the equivalence on every exercised path.*/
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim/server";
 import { greyNoiseClassification } from "./transforms/tr-045-greynoise.ts";
@@ -27,7 +35,7 @@ function gnResponse(overrides: Record<string, unknown> = {}): string {
 describe("TR-045 greynoise-classification", () => {
   it("emits the mass-scanner claim when the source reports noise", async () => {
     const sim = createSimServer([
-      { match: "https://api.greynoise.io/v3/community/45.83.66.10", response: { status: 200, body: gnResponse() } },
+      { match: /^https:\/\/api\.greynoise\.io\/v3\/community\/45\.83\.66\.10$/, response: { status: 200, body: gnResponse() } },
     ]);
     const result = await runTransform(greyNoiseClassification, { transport: sim.transport, input: { ip: "45.83.66.10" } });
     expect(result.requestCount).toBe(1);
@@ -44,7 +52,7 @@ describe("TR-045 greynoise-classification", () => {
   it("emits the benign classification and the named service for a RIOT address", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.greynoise.io/v3/community/8.8.8.8",
+        match: /^https:\/\/api\.greynoise\.io\/v3\/community\/8\.8\.8\.8$/,
         response: {
           status: 200,
           body: gnResponse({
@@ -72,7 +80,7 @@ describe("TR-045 greynoise-classification", () => {
   it("emits the malicious classification when the source reports one", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.greynoise.io/v3/community/185.220.101.1",
+        match: /^https:\/\/api\.greynoise\.io\/v3\/community\/185\.220\.101\.1$/,
         response: { status: 200, body: gnResponse({ ip: "185.220.101.1", classification: "malicious" }) },
       },
     ]);
@@ -85,7 +93,7 @@ describe("TR-045 greynoise-classification", () => {
   it("an unknown classification emits no classification claim (no invented verdict)", async () => {
     const sim = createSimServer([
       {
-        match: "https://api.greynoise.io/v3/community/1.2.3.4",
+        match: /^https:\/\/api\.greynoise\.io\/v3\/community\/1\.2\.3\.4$/,
         response: { status: 200, body: gnResponse({ ip: "1.2.3.4", noise: false, riot: false, classification: "unknown" }) },
       },
     ]);
@@ -95,7 +103,7 @@ describe("TR-045 greynoise-classification", () => {
 
   it("a response about a DIFFERENT address is refused fail-closed — never attributed", async () => {
     const sim = createSimServer([
-      { match: "https://api.greynoise.io/v3/community/8.8.8.8", response: { status: 200, body: gnResponse() } },
+      { match: /^https:\/\/api\.greynoise\.io\/v3\/community\/8\.8\.8\.8$/, response: { status: 200, body: gnResponse() } },
     ]);
     await expect(runTransform(greyNoiseClassification, { transport: sim.transport, input: { ip: "8.8.8.8" } })).rejects.toThrow(
       /returned a different address/i,
@@ -103,7 +111,9 @@ describe("TR-045 greynoise-classification", () => {
   });
 
   it("fails closed on a non-200 status", async () => {
-    const sim = createSimServer([{ match: "https://api.greynoise.io/v3/community/8.8.8.8", response: { status: 401, body: "{}" } }]);
+    const sim = createSimServer([
+      { match: /^https:\/\/api\.greynoise\.io\/v3\/community\/8\.8\.8\.8$/, response: { status: 401, body: "{}" } },
+    ]);
     await expect(runTransform(greyNoiseClassification, { transport: sim.transport, input: { ip: "8.8.8.8" } })).rejects.toThrow(/401/);
   });
 
