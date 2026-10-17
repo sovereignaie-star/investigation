@@ -11,7 +11,17 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { openCase, type Vault } from "@ir/store";
 import { runTransform, runTransformIsolated, recordingTransport, RateLimiter, type TransformEvidence } from "@ir/transforms";
-import { shodanHost, urlscanSearch, abuseIpDbCheck, hunterDomainEmails, commonCrawlIndex } from "@ir/transforms";
+import {
+  shodanHost,
+  urlscanSearch,
+  abuseIpDbCheck,
+  hunterDomainEmails,
+  commonCrawlIndex,
+  virustotalReputation,
+  greyNoiseClassification,
+  otxPulses,
+  securityTrailsDnsHistory,
+} from "@ir/transforms";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
 import { probeIsolation } from "@ir/transform-sandbox";
@@ -586,5 +596,164 @@ describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform 
     if (!("error" in plan)) throw new Error("expected a refusal");
     expect(plan.error).toMatch(/natural-person|E-01\/E-02|stated purpose/);
     expect(d.calls).toHaveLength(0);
+  });
+});
+
+describe("P2-026 (owner decision 2026-10-17): the path_parameter batch — the network plan wires the central path templates end to end", () => {
+  /** The registry entries for the four transforms (the real transforms; the module path is swapped
+   *  for the composition run). Subjects per the CLI registration. */
+  const vtEntry: RegisteredTransform = {
+    transform: virustotalReputation,
+    module: MODULE,
+    subjects: { ipv4: (v) => ({ ip: v }), domain: (v) => ({ domain: v }) },
+    sends: ["ip", "domain"],
+    hosts: ["www.virustotal.com"],
+    pageFetch: false,
+  };
+  const gnEntry: RegisteredTransform = {
+    transform: greyNoiseClassification,
+    module: MODULE,
+    subjects: { ipv4: (v) => ({ ip: v }) },
+    sends: ["ip"],
+    hosts: ["api.greynoise.io"],
+    pageFetch: false,
+  };
+  const otxEntry: RegisteredTransform = {
+    transform: otxPulses,
+    module: MODULE,
+    subjects: { ipv4: (v) => ({ ip: v }) },
+    sends: ["ip"],
+    hosts: ["otx.alienvault.com"],
+    pageFetch: false,
+  };
+  const stEntry: RegisteredTransform = {
+    transform: securityTrailsDnsHistory,
+    module: MODULE,
+    subjects: { domain: (v) => ({ domain: v }) },
+    sends: ["domain"],
+    hosts: ["api.securitytrails.com"],
+    pageFetch: false,
+  };
+  const VT_MODULE = fileURLToPath(new URL("../../transforms/src/transforms/tr-043-virustotal.ts", import.meta.url));
+
+  /** A wire that answers the VT ip_addresses template path with a valid, well-formed record. */
+  function vtDeps(vault: Vault) {
+    const calls: Array<{ url: string; headers?: Record<string, string> }> = [];
+    return {
+      env: { IR_ENABLE_NETWORK: "1" },
+      resolver: { resolve: async (host: string) => (host === "www.virustotal.com" ? ["93.184.216.34"] : []) },
+      transport: {
+        async fetch(req: { url: string; headers?: Record<string, string> }) {
+          calls.push({ url: req.url, ...(req.headers ? { headers: req.headers } : {}) });
+          return {
+            status: 200,
+            body: JSON.stringify({
+              data: {
+                id: "8.8.8.8",
+                type: "ip_address",
+                attributes: {
+                  reputation: 12,
+                  last_analysis_stats: { harmless: 80, malicious: 8, suspicious: 2, undetected: 10, timeout: 0 },
+                },
+              },
+            }),
+          };
+        },
+      },
+      vault: () => vault,
+      calls,
+    };
+  }
+
+  // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
+  // where isolation is available and skips elsewhere (the TR-009/TR-044 pattern).
+  it.skipIf(!host.full)(
+    "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-043 code runs in the real sandbox, its PATH-CARRYING request passes the central path-template check, the key travels in the provider header only and never reaches any persisted record",
+    { timeout: 60_000 },
+    async () => {
+      const c = newCase();
+      const dir = dirs[dirs.length - 1];
+      if (!dir) throw new Error("no case dir");
+      const d = vtDeps(fakeVault({ virustotal: "n_vt_sandbox_key" }));
+      const entry = { ...vtEntry, module: VT_MODULE };
+      const plan = planNetworkRun(c, entry, "ipv4", ["www.virustotal.com"], d);
+      if ("error" in plan) throw new Error(plan.error);
+      const subjectId = ensureSubject(c, "ipv4:8.8.8.8", "ipv4", systemClock);
+      const result = await runTransformIsolated(VT_MODULE, {
+        transport: plan.transport,
+        input: { ip: "8.8.8.8" },
+        transformId: "TR-043",
+      });
+      // the run SUCCEEDS: the real TR-043 request (the subject in the PATH) is permitted by the
+      // central path-template row — the closed ip type — carried through the sandbox IPC boundary
+      expect(result.requestCount).toBe(1);
+      expect(result.output.findings.length).toBeGreaterThan(0);
+      // the wire saw exactly the real request: the subject in the path, the key in the header only
+      expect(d.calls).toHaveLength(1);
+      expect(d.calls[0]?.url).toBe("https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8");
+      expect(d.calls[0]?.url).not.toContain("n_vt_sandbox_key");
+      expect(d.calls[0]?.headers?.["x-apikey"]).toBe("n_vt_sandbox_key");
+      // persist the successful run into the case exactly as the CLI does
+      recordRunSuccess(c, subjectId, virustotalReputation, { ip: "8.8.8.8" }, result, systemClock, "network");
+      // reopen the case and verify the PERSISTED records: the request URL is recorded as evidence;
+      // the findings are bound to that evidence; the key appears NOWHERE in the case or its audit trail
+      const reopened = openCase(dir, { actor: "verifier", readOnly: true });
+      const persisted = JSON.stringify(reopened.entries());
+      expect(persisted).toContain("/api/v3/ip_addresses/8.8.8.8");
+      expect(persisted).toContain("has_threat_verdict");
+      expect(persisted).not.toContain("n_vt_sandbox_key");
+      const audit = JSON.stringify(reopened.auditTrail());
+      expect(audit).toContain("egress.");
+      expect(audit).not.toContain("n_vt_sandbox_key");
+    },
+  );
+
+  it("COMPOSITION (plan level, no sandbox needed): the plan carries the provider's path templates to the gateway — a template-matching path is permitted and an off-template path is refused before DNS", async () => {
+    const c = newCase();
+    const d = vtDeps(fakeVault({ virustotal: "n_vt_plan_key" }));
+    const plan = planNetworkRun(c, vtEntry, "ipv4", ["www.virustotal.com"], d);
+    if ("error" in plan) throw new Error(plan.error);
+    // the registered template path passes (the composition above proves it end to end); here the
+    // gateway's own decision is pinned directly: an off-template path on the same host is refused
+    // BEFORE any transport call, while the template path is allowed.
+    const signal = new AbortController().signal;
+    // the template path passes and the wire sees exactly it (the key injected in the header)
+    const ok = await plan.transport.fetch({ url: "https://www.virustotal.com/api/v3/ip_addresses/8.8.8.8", method: "GET" }, signal);
+    expect(ok.status).toBe(200);
+    expect(d.calls.filter((x) => x.url.endsWith("/api/v3/ip_addresses/8.8.8.8"))).toHaveLength(1);
+    expect(d.calls[0]?.headers?.["x-apikey"]).toBe("n_vt_plan_key");
+    // the off-template path is refused BEFORE the transport (the adapter throws the gateway's
+    // denial). A SECOND plan: a fresh gateway, so the rps-1 rate budget of the first fetch
+    // cannot mask WHICH rule refused the off-template request (the operational default, ADR-08).
+    const c2 = newCase();
+    const d2 = vtDeps(fakeVault({ virustotal: "n_vt_plan_key" }));
+    const plan2 = planNetworkRun(c2, vtEntry, "ipv4", ["www.virustotal.com"], d2);
+    if ("error" in plan2) throw new Error(plan2.error);
+    await expect(plan2.transport.fetch({ url: "https://www.virustotal.com/api/v3/users/me", method: "GET" }, signal)).rejects.toThrow(
+      /egress denied: secret_host_mismatch/,
+    );
+    expect(d2.calls.filter((x) => x.url.includes("users/me"))).toHaveLength(0);
+  });
+
+  it("the vault entry missing => the TR-043 plan is refused fail-closed with the documented reason, before any request", () => {
+    const c = newCase();
+    const d = vtDeps(fakeVault({}));
+    const plan = planNetworkRun(c, vtEntry, "ipv4", ["www.virustotal.com"], d);
+    expect("error" in plan).toBe(true);
+    expect((plan as { error: string }).error).toMatch(/VIRUSTOTAL_KEY but the vault has no entry "virustotal"/);
+    expect(d.calls).toHaveLength(0);
+  });
+
+  it("the same fail-closed key refusal holds for TR-045 (greynoise), TR-046 (otx) and TR-048 (securitytrails) — each vault entry documented", () => {
+    const c = newCase();
+    const gn = planNetworkRun(c, gnEntry, "ipv4", ["api.greynoise.io"], vtDeps(fakeVault({})));
+    expect("error" in gn).toBe(true);
+    expect((gn as { error: string }).error).toMatch(/GREYNOISE_KEY but the vault has no entry "greynoise"/);
+    const otx = planNetworkRun(c, otxEntry, "ipv4", ["otx.alienvault.com"], vtDeps(fakeVault({})));
+    expect("error" in otx).toBe(true);
+    expect((otx as { error: string }).error).toMatch(/OTX_KEY but the vault has no entry "otx"/);
+    const st = planNetworkRun(c, stEntry, "domain", ["api.securitytrails.com"], vtDeps(fakeVault({})));
+    expect("error" in st).toBe(true);
+    expect((st as { error: string }).error).toMatch(/SECURITYTRAILS_KEY but the vault has no entry "securitytrails"/);
   });
 });

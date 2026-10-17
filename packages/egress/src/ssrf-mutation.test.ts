@@ -405,7 +405,9 @@ const TIMING_MUTATIONS: readonly Mutation[] = [
 
 async function loadMutant(m: Mutation | null): Promise<Factory> {
   const dir = fs.mkdtempSync(path.join(ROOT, "m-"));
-  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts", "byte-budget.ts", "post-policy.ts"]) {
+  // P2-026: path-template.ts is part of the copied set — the gateway's path-template check
+  // imports it, and the mutation harness must copy every file egress.ts imports.
+  for (const f of ["egress.ts", "address-policy.ts", "content-inventory.ts", "byte-budget.ts", "post-policy.ts", "path-template.ts"]) {
     let src = fs.readFileSync(path.join(HERE, f), "utf8");
     if (m && m.file === f) {
       expect(src.includes(m.from), `mutation anchor for "${m.name}" not found in ${f}`).toBe(true);

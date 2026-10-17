@@ -31,3 +31,8 @@ export type { RobotsPolicy } from "./robots";
 // subpath import; the subpath export stays for direct references.
 export { PROVIDER_REGISTRY, registryEntryForSecret } from "./providers";
 export type { ProviderRegistryEntry } from "./providers";
+// P2-026 (owner decision 2026-10-17): the central path-template enforcement — the closed type
+// vocabulary, the standalone matcher, and the policy-table types. Re-exported so trusted callers
+// (the CLI network plan) can carry them to the gateway without a restricted subpath import.
+export { matchPathTemplate, validatePathParam } from "./path-template";
+export type { PathParamType, PathParamSpec, PathParameterTemplate, PathParameterPolicy, PathMatchResult } from "./path-template";

@@ -111,6 +111,7 @@ export function openGateway(
     providerHosts: Record<string, readonly string[]>;
     providerPaths: Record<string, readonly string[]>;
     providerQueries?: Record<string, readonly import("@ir/egress").ProviderQueryAllow[]>;
+    providerPathTemplates?: Record<string, readonly import("@ir/egress").PathParameterTemplate[]>;
   },
 ): NetworkGateway | { error: string } {
   const events: EgressAuditEvent[] = [];
@@ -122,6 +123,7 @@ export function openGateway(
           providerHosts: providers.providerHosts,
           providerPaths: providers.providerPaths,
           ...(providers.providerQueries ? { providerQueries: providers.providerQueries } : {}),
+          ...(providers.providerPathTemplates ? { providerPathTemplates: providers.providerPathTemplates } : {}),
         }
       : {}),
     ...(deps.resolver ? { resolver: deps.resolver } : {}),
@@ -346,6 +348,11 @@ export function resolveSecretBinding(
       // P2-016 continuation (owner decision 2026-10-16): the entry's closed query allowlist, when
       // it declares one; a provider without an allowlist keeps the fail-closed default (no query).
       ...(registryEntry.queryAllowlist ? { providerQueries: { [registryEntry.name]: registryEntry.queryAllowlist } } : {}),
+      // P2-026 (owner decision 2026-10-17): the entry's closed path templates, when it declares
+      // them (the subject-carrying-path providers) — enforced centrally by the gateway.
+      ...(registryEntry.requestPathTemplates
+        ? { providerPathTemplates: { [registryEntry.name]: registryEntry.requestPathTemplates } }
+        : {}),
     },
   };
 }
