@@ -14,6 +14,7 @@
 | binaryedge | `api.binaryedge.io/v2/user/subscription` | `X-Key` | نقطة الاشتراك تعرض صلاحية المفتاح |
 | hunter | `api.hunter.io/v1/account` | `X-API-KEY` | نقطة الحساب مجانية وتثبت المفتاح |
 | urlscan | `urlscan.io/api/v1/user/searches/` | `API-Key` | نقطة تتطلب مصادقة (401 بلا مفتاح صالح)؛ TR-009 |
+| brave | `api.search.brave.com/res/v1/web/search?q=test` | `X-Subscription-Token` | نقطة البحث نفسها (401 عند مفتاح خاطئ)؛ **TR-053: تخزين مقيّد إلزامي — لا يُخزَّن المحتوى الخام (مظروف sha256 فقط، علم restrictedEvidence في البيان)** [قرار مالك] |
 | censys | `search.censys.io/v2/hosts/8.8.8.8` | `Authorization: Basic` | **زوج اعتماد (API ID + Secret) — credential_pair** (P2-026): نقطة عرض المضيف تقبل الزوج كـBasic وتثبته (200)، ومفتاح خاطئ يُرفض 401؛ لا يُخزن الزوج إلا كمدخل زوج واحد في الخزنة (L-31) |
 
 ## غير قابلين للاختبار (9) — بأسباب موثقة

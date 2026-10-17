@@ -281,6 +281,7 @@ function handleIpcMessage(state: IpcState, msg: Record<string, unknown>, stdin: 
           manifest.limits.maxBytes,
           state.signal,
           state.fetchedAt,
+          manifest.restrictedEvidence,
         ),
         state.signal,
       );

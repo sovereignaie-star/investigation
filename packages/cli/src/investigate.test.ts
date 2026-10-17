@@ -382,6 +382,9 @@ describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC ->
       // TR-052 registered (P2-026, keyless): no setup refusal exists to protect it — the runs budget
       // simply stopped the queue before its turn.
       "TR-052 domain:example.com",
+      // TR-053 registered (P2-026 — the restricted-storage provider): same designed fail-closed
+      // key refusal — this test's vault has no "brave" entry.
+      "TR-053 domain:example.com",
       "TR-003 ipv4:8.8.8.8",
       "TR-006 ipv4:8.8.8.8",
       // TR-044 registered (P2-026): same designed fail-closed key refusal — this test's vault has
@@ -698,8 +701,9 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
           k.transformId === "TR-045" ||
           k.transformId === "TR-046" ||
           k.transformId === "TR-048" ||
+          k.transformId === "TR-053" ||
           k.transformId === "TR-049"
-          ? /^(setup refused: --network: TR-0(4[3-9]|51) requires|budget: runs|depth \d+ > maxDepth 1)/
+          ? /^(setup refused: --network: TR-0(4[3-9]|5[13]) requires|budget: runs|depth \d+ > maxDepth 1)/
           : /budget: runs|depth \d+ > maxDepth 1/,
       );
     }

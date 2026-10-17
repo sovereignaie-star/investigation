@@ -43,6 +43,7 @@ import {
   otxPulses,
   securityTrailsDnsHistory,
   commonCrawlIndex,
+  braveWebSearch,
   censysHostsCertificates,
   euSanctions,
   companiesHouse,
@@ -390,6 +391,21 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // (matchType, output, filter, limit) are literals.
     sends: ["domain"],
     hosts: ["index.commoncrawl.org"],
+    pageFetch: false,
+  },
+  {
+    // P2-026 (owner decision 2026-10-17 — the restricted-storage provider): TR-053 — Brave web
+    // search. The key (vault entry "brave") travels in the `X-Subscription-Token` header only
+    // (D-031). Brave's terms FORBID storing Search Results: the manifest declares
+    // restrictedEvidence — the runner keeps the raw response out of the case records (a sha256
+    // digest envelope instead); the query, the time, the links (the findings) and the hash are
+    // stored, nothing else. The natural-person gate applies (web results about people).
+    transform: braveWebSearch,
+    module: mod("tr-053-brave-web-search.ts"),
+    subjects: { person_name: personNameInput, domain: domainInput },
+    // The request QUERY carries the subject itself (the name or the domain).
+    sends: ["person_name", "domain"],
+    hosts: ["api.search.brave.com"],
     pageFetch: false,
   },
   {
