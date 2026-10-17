@@ -5,6 +5,7 @@ import { checkEip55 } from "./eip55.ts";
 import { checkIban } from "./iban.ts";
 import { isIP, isIPv4, isIPv6 } from "./ip.ts";
 import { luhn } from "./luhn.ts";
+import { isImoShipNumber, isShipMmsi, mmsiMid } from "./maritime.ts";
 
 /**
  * Identifier validation (P1-005). `validate(type, normalized)` returns null when the type has no structural check, so
@@ -64,6 +65,17 @@ const VALIDATORS: Record<string, [string, Check]> = {
   amex_card: ["luhn", card(/^3[47]/, [15])],
   imei: ["luhn", card(/^\d/, [15])],
   imei2: ["luhn", card(/^\d/, [15])],
+  // P2-031 — maritime identifiers: MMSI is structural (MID range, no checksum); IMO ship number carries a check digit.
+  mmsi: [
+    "mmsi",
+    (v) => {
+      if (!/^\d{9}$/.test(v)) return bad("length");
+      const mid = mmsiMid(v);
+      if (mid === null) return bad("format");
+      return isShipMmsi(v) ? ok(`mid ${mid}`) : bad("mid_range");
+    },
+  ],
+  imo_ship_number: ["imo", (v) => (isImoShipNumber(v) ? ok() : bad("checksum"))],
   samsung_imei: ["luhn", card(/^\d/, [15])],
   iban: [
     "iban",
