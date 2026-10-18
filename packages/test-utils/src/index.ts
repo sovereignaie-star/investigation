@@ -9,11 +9,12 @@ import { it } from "vitest";
 export const SLOW_MS = 15_000;
 
 /** A slow test: identical to it() but with the @slow timeout (SLOW_MS). */
-export function slowIt(name: string, fn: () => void | Promise<void>): void {
-  it(name, fn, SLOW_MS);
-}
-
-/** Test helper: sleep for the given milliseconds. */
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function slowIt(
+  name: string,
+  fn: () => void | Promise<void>,
+  // The runner is injectable so the contract (timeout = SLOW_MS) is testable
+  // deterministically without registering a real slow test (P6-016).
+  runner: (name: string, fn: () => void | Promise<void>, timeout: number) => void = it,
+): void {
+  runner(name, fn, SLOW_MS);
 }
