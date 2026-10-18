@@ -18,6 +18,11 @@ jobs:
           node-version: 24
       - name: Guard unit tests
         run: node --test scripts/governance/check.test.mjs
+      - name: PR title carries a task id (P6-017)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node --test scripts/governance/check-pr-title.test.mjs && node scripts/governance/check-pr-title.mjs
       - name: ROADMAP <-> STATUS <-> MASTER_PLAN consistency
         run: node scripts/governance/check.mjs --consistency
       - name: D-8 security review gate unit tests (D-8, P2-003)
