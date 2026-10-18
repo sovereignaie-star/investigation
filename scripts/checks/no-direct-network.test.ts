@@ -1,12 +1,15 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { slowIt } from "@ir/test-utils";
 import { analyzeSource, scanRepo } from "./no-direct-network.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 describe("no direct network paths outside @ir/egress (P2-003 / ADR-08 C)", () => {
-  it("the repository has zero direct network paths in executable code", () => {
+  // P6-016: @slow — this guard scans the whole repository; under coverage it
+  // measured 5,234 ms on CI (2026-10-18), over the 5 s default.
+  slowIt("the repository has zero direct network paths in executable code", () => {
     const { executable } = scanRepo(REPO);
     expect(executable, JSON.stringify(executable, null, 2)).toEqual([]);
   });
