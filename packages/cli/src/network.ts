@@ -33,6 +33,7 @@ import {
   type EgressAuditEvent,
   type EgressGateway,
   type EgressLimits,
+  type EgressRouting,
   type EgressTransport,
   type ByteBudget,
   type RequestBudget,
@@ -107,6 +108,92 @@ function runTransport(
   );
 }
 
+/** P2-028 (ADR-31): the case's proxy configuration, as recorded on its audit chain. */
+export interface CaseProxyConfig {
+  readonly route: "proxy-http-connect" | "proxy-socks5" | "tor";
+  readonly host: string;
+  readonly port: number;
+  readonly secretName: string;
+}
+
+/**
+ * P2-028 (ADR-31): the case's CURRENT proxy configuration — the LATEST `proxy.set`/`proxy.clear`
+ * event on the case's audit chain wins (the same latest-wins rule as P2-029's source toggles).
+ * `undefined` means direct (no proxy configured).
+ */
+export function caseProxyConfig(c: Case): CaseProxyConfig | undefined {
+  let config: CaseProxyConfig | undefined;
+  for (const ev of c.auditTrail()) {
+    if (ev.action === "proxy.clear") {
+      config = undefined;
+      continue;
+    }
+    if (ev.action !== "proxy.set") continue;
+    const d = (ev.detail ?? {}) as Record<string, unknown>;
+    const route = d["route"];
+    const host = d["host"];
+    const port = d["port"];
+    const secretName = d["secretName"];
+    if (
+      (route === "proxy-http-connect" || route === "proxy-socks5" || route === "tor") &&
+      typeof host === "string" &&
+      typeof port === "number" &&
+      typeof secretName === "string"
+    ) {
+      config = { route, host, port, secretName };
+    }
+  }
+  return config;
+}
+
+/**
+ * P2-028 (ADR-31): builds the gateway's routing from the case's proxy configuration. Fail-closed,
+ * twice: the proxy's credentials are a VAULT credential_pair entry (username + password) resolved
+ * by name — a missing entry, or one that is not a pair, refuses the run BEFORE the gateway opens;
+ * and `--via-tor` is only honoured when the case's routing IS the tor route (Tor is never implicit —
+ * a tor `proxy.set` is the case's EXPLICIT activation, ADR-31).
+ */
+export function proxyRoutingFor(c: Case, deps: NetworkDeps, viaTor: boolean): { routing?: EgressRouting } | { error: string } {
+  const config = caseProxyConfig(c);
+  if (config === undefined) {
+    return viaTor
+      ? {
+          error:
+            "--via-tor requires a Tor proxy configured for this case (ir proxy set tor --host <socks-host> --port <port> --secret <vault-entry>)",
+        }
+      : {};
+  }
+  if (viaTor && config.route !== "tor") {
+    return {
+      error: `--via-tor requires the case's routing to be the tor route (currently ${config.route}); reconfigure with ir proxy set tor`,
+    };
+  }
+  // The vault entry must be a credential_pair (username + password) — a single-secret shape is not a proxy credential.
+  const openVault = deps.vault ?? (() => vaultFromEnv(process.env, process.env["IR_DATA_DIR"] ?? path.resolve("data")));
+  let vault: Vault;
+  try {
+    vault = openVault();
+  } catch (x) {
+    return { error: `proxy: the vault could not be opened (${(x as Error).message})` };
+  }
+  const pair = vault.revealPair(config.secretName);
+  if (pair === undefined || pair.id.length === 0 || pair.secret.length === 0) {
+    return {
+      error: `proxy: the vault entry "${config.secretName}" is missing or not a credential pair (username + password) — fail-closed`,
+    };
+  }
+  return {
+    routing: {
+      route: config.route,
+      proxy: {
+        host: config.host,
+        port: config.port,
+        credentials: { username: pair.id, password: pair.secret },
+      },
+    },
+  };
+}
+
 export function openGateway(
   c: Case,
   allowHosts: readonly string[],
@@ -121,11 +208,14 @@ export function openGateway(
     providerQueries?: Record<string, readonly import("@ir/egress").ProviderQueryAllow[]>;
     providerPathTemplates?: Record<string, readonly import("@ir/egress").PathParameterTemplate[]>;
   },
+  /** P2-028 (ADR-31): the case's routing (a strict proxy or Tor) — undefined is direct. */
+  routing?: EgressRouting,
 ): NetworkGateway | { error: string } {
   const events: EgressAuditEvent[] = [];
   const decision = createProductionEgress({
     allowedHosts: allowHosts,
     env: deps.env ?? process.env,
+    ...(routing ? { routing } : {}),
     ...(providers
       ? {
           providerHosts: providers.providerHosts,
@@ -144,6 +234,8 @@ export function openGateway(
         c.audit(`egress.${e.kind}`, e.host || e.transform || "egress", {
           transform: e.transform ?? null,
           reason: e.reason ?? null,
+          // P2-028 (ADR-31): the route is mandatory on EVERY network event — no exception.
+          ...(e.route ? { route: e.route } : {}),
           transportCalls: e.transportCalls,
           ...(e.detail ? { detail: e.detail } : {}),
           // P2-014: transport events carry the call's URL, status/error and hop index (every actual
@@ -293,6 +385,8 @@ export function planNetworkRun(
   subjectType: string,
   allowHosts: readonly string[],
   deps: NetworkDeps,
+  /** P2-028 (ADR-31): the case's routing (a strict proxy or Tor) — undefined is direct. */
+  routing?: EgressRouting,
 ): NetworkPlan | { error: string } {
   // E-02 (P2-013): a natural-person subject runs only under a case whose stated purpose is the
   // confirmation (E-01 requires a >= 10-char purpose at case creation; an empty purpose means the
@@ -324,7 +418,7 @@ export function planNetworkRun(
   // never sent without the key.
   const secret = resolveSecretBinding(entry.transform.manifest, deps);
   if (secret.error) return { error: secret.error };
-  const gw = openGateway(c, allowHosts, deps, secret.providers);
+  const gw = openGateway(c, allowHosts, deps, secret.providers, routing);
   if ("error" in gw) return gw;
   return networkRunFor(c, gw, entry, subjectType, deps, undefined, undefined, secret.binding);
 }

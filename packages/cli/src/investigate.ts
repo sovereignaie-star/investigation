@@ -28,7 +28,7 @@
  */
 import { canonicalKey, isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
-import { ByteBudget, RequestBudget } from "@ir/egress";
+import { ByteBudget, RequestBudget, type EgressRouting } from "@ir/egress";
 import type { Case } from "@ir/store";
 import { runTransform, TransformRunError, type RunTransformResult } from "@ir/transforms";
 import { networkRunFor, openGateway, resolveSecretBinding, type NetworkDeps, type NetworkGateway, type NetworkPlan } from "./network.ts";
@@ -113,6 +113,8 @@ export interface InvestigateOptions {
   /** P2-029: exclude these transform ids from this invocation only (each must be registered); the case's disabled sources are excluded on every invocation. */
   readonly exclude?: readonly string[];
   readonly network?: NetworkDeps;
+  /** P2-028 (ADR-31): the case's routing (a strict proxy or Tor) — undefined is direct. Built by the CLI from the case's `proxy.set` chain + `--via-tor`. */
+  readonly routing?: EgressRouting;
   readonly clock?: Clock;
   /** Wall clock (ms) for the time budget and the transforms' rate limiters. */
   readonly now?: () => number;
@@ -487,7 +489,7 @@ export async function investigate(
   const hasProviders = Object.keys(providers.providerHosts).length > 0;
   // the aggregated allowlist rides along with the hosts (an empty map is harmless: a provider
   // with no allowlist entry keeps the fail-closed default — every query refused).
-  const gw = openGateway(c, opts.allowHosts, opts.network ?? {}, hasProviders ? providers : undefined);
+  const gw = openGateway(c, opts.allowHosts, opts.network ?? {}, hasProviders ? providers : undefined, opts.routing);
   if ("error" in gw) return gw;
   c.audit("investigate.started", seedKey, {
     transforms: selected.map((e) => e.transform.manifest.id),
