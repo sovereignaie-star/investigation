@@ -76,11 +76,10 @@ function edge(world: Readonly<Record<string, Resp>> = WORLD) {
 }
 
 /** Runs `ir ...` with the fake network and a fake clock/sleep (no real waiting) and returns the parsed JSON output. */
-async function cli(args: string[], opts: { calls?: string[] } = {}) {
+async function cli(args: string[], opts: { calls?: string[]; world?: Readonly<Record<string, Resp>> } = {}) {
   const out: string[] = [];
   const err: string[] = [];
-  const x = edge();
-  if (opts.calls) opts.calls.push(...x.calls);
+  const x = edge(opts.world);
   let t = 0;
   const code = await main(
     args,
@@ -95,6 +94,8 @@ async function cli(args: string[], opts: { calls?: string[] } = {}) {
       network: { env: ON, resolver: x.resolver, transport: x.transport, limits: { rateLimitBurst: 64 } as EgressLimits },
     },
   );
+  // the calls are copied only AFTER the command ran — the record is the actual requests this invocation made
+  if (opts.calls) opts.calls.push(...x.calls);
   const text = out.join("\n").trim();
   const parsed = text.startsWith("{") || text.startsWith("[") ? (JSON.parse(text) as unknown) : undefined;
   return {
@@ -222,6 +223,7 @@ describe.skipIf(!host.full)("P2-029 ir investigate: disabled and excluded source
 
   it("T-P2029-005: --exclude excludes per invocation without writing a source event", async () => {
     const dir = tempDir();
+    const calls: string[] = [];
     const r = await cli(
       [
         "investigate",
@@ -252,7 +254,7 @@ describe.skipIf(!host.full)("P2-029 ir investigate: disabled and excluded source
         "--max-requests",
         "50",
       ],
-      {},
+      { calls },
     );
     expect(r.code).toBe(0);
     const result = r.json as unknown as InvestigationResult;
@@ -261,6 +263,9 @@ describe.skipIf(!host.full)("P2-029 ir investigate: disabled and excluded source
     expect(t004[0].state).toBe("not_run");
     expect(t004[0].reason).toMatch(/exclude/i);
     expect(result.coverage.filter((x) => x.transformId === "TR-001" && x.state === "found")).toHaveLength(1);
+    // the excluded source was never invoked, while the selected other source was
+    expect(calls.some((u) => u.includes("crt.sh"))).toBe(false);
+    expect(calls.some((u) => u.includes("dns.google"))).toBe(true);
     // the exclusion wrote no source.* event — it is per invocation only
     expect(readAudit(dir).filter((a) => a.action.startsWith("source."))).toHaveLength(0);
   });
@@ -315,11 +320,66 @@ describe.skipIf(!host.full)("P2-029 ir investigate: disabled and excluded source
     expect(t001?.requests).toBeGreaterThanOrEqual(1); // the DoH queries
     expect(t001?.bytes).toBeGreaterThan(0);
     expect(t001?.elapsedMs).toBeGreaterThanOrEqual(0);
-    // the audit chain carries the same per-source stats on investigate.completed
+    // the audit chain carries the SAME per-source stats on investigate.completed — not just a name
     const completed = readAudit(dir).find((a) => a.action === "investigate.completed");
     expect(completed).toBeDefined();
-    expect(JSON.stringify(completed?.detail)).toContain('"TR-001"');
-    expect(JSON.stringify(completed?.detail)).toContain("elapsedMs");
+    expect((completed?.detail as { sources?: unknown }).sources).toEqual(result.sources);
+  });
+
+  it("T-P2029-008: per-source stats aggregate the three outcomes — found, none, and failed — with their cost", async () => {
+    const dir = tempDir();
+    // TR-001 finds (DNS), TR-004 returns an empty certificate set (none), TR-002 fails (its RDAP host is unreachable)
+    const world: Record<string, Resp> = {
+      ...hostAnswers("example.com", "8.8.8.8"),
+      "https://data.iana.org/rdap/dns.json": json(F.IANA_DNS),
+      "https://crt.sh/?q=%25.example.com&output=json": json("[]"),
+    };
+    const r = await cli(
+      [
+        "investigate",
+        dir,
+        "domain",
+        "example.com",
+        "--network",
+        "--allow-host",
+        "dns.google",
+        "--allow-host",
+        "data.iana.org",
+        "--allow-host",
+        "rdap.verisign.com",
+        "--allow-host",
+        "crt.sh",
+        ...CASE_ARGS,
+        "--json",
+        "--transform",
+        "TR-001",
+        "--transform",
+        "TR-002",
+        "--transform",
+        "TR-004",
+        "--max-depth",
+        "0",
+        "--max-runs",
+        "10",
+        "--max-requests",
+        "50",
+      ],
+      { world },
+    );
+    // a run with a failed source exits 1 (documented): the failure is recorded, not hidden
+    expect(r.code).toBe(1);
+    const result = r.json as unknown as InvestigationResult;
+    const sources = result.sources as unknown as Array<Record<string, unknown>>;
+    const t002 = sources.find((x) => x.transformId === "TR-002");
+    const t004 = sources.find((x) => x.transformId === "TR-004");
+    // the failed run is counted as failed (with its reason on the coverage record), not silently dropped
+    expect(t002).toMatchObject({ runs: 1, found: 0, none: 0, failed: 1 });
+    // a source that finds nothing is "none", not "found"
+    expect(t004).toMatchObject({ runs: 1, found: 0, none: 1, failed: 0 });
+    // the failed source still reports its measured cost (the bootstrap request it made before failing)
+    expect(t002?.requests).toBeGreaterThanOrEqual(1);
+    // runs = found + none + failed for every source
+    for (const x of sources) expect(x.runs).toBe((x.found as number) + (x.none as number) + (x.failed as number));
   });
 });
 
