@@ -664,12 +664,10 @@ async function runSourceCommand(
   const usage = sourceUsageError(verb, transformId);
   if (usage !== undefined) return fail(usage);
   try {
-    const c = openCase(dir, {
-      actor: "ir-cli",
-      ...(v["passphrase-file"] !== undefined || process.env["IR_CASE_PASSPHRASE"] !== undefined
-        ? passphraseFrom(v["passphrase-file"])
-        : {}),
-    });
+    // The passphrase is passed as an explicit property (never spread): spreading a password-bearing
+    // object taints the whole options object in static analysis (CodeQL js/insufficient-password-hash).
+    const { passphrase } = passphraseFrom(v["passphrase-file"]);
+    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli", passphrase });
     try {
       if (verb === "list") {
         printSourceList(c, v.json === true, out);
