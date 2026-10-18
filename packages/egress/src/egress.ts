@@ -184,6 +184,23 @@ export interface DnsResolver {
  * is responsible for honouring an `AbortSignal` if the caller passes one.
  */
 export interface EgressTransport {
+  /**
+   * ADR-31 (P2-028, item هـ): the proxy LIVENESS probe — a lightweight check that the configured proxy
+   * is reachable and speaks its protocol (a TCP connect, plus the SOCKS5 method negotiation for socks5).
+   * The gateway calls it before proxied requests (startup / rotation / every interval) and records an
+   * `egress.liveness` event. Optional: a transport without it simply never emits liveness events
+   * (per-request failure detection is unchanged and still fail-closed).
+   */
+  probeProxy?(
+    proxy: {
+      readonly kind: "http-connect" | "socks5";
+      readonly proxyIp: string;
+      readonly proxyPort: number;
+      readonly credentials?: { readonly username: string; readonly password: string };
+    },
+    signal?: AbortSignal,
+  ): Promise<{ readonly alive: boolean; readonly latencyMs?: number; readonly error?: string }>;
+
   fetch(req: {
     url: string;
     host: string;
@@ -224,7 +241,7 @@ export interface EgressAuditSink {
 }
 
 export interface EgressAuditEvent {
-  readonly kind: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit" | "transport";
+  readonly kind: "allowed" | "denied" | "transport_error" | "timeout" | "rate_limited" | "size_limit" | "transport" | "liveness";
   readonly reason?: EgressReason;
   readonly caseId?: string;
   readonly transform?: string;
@@ -242,6 +259,16 @@ export interface EgressAuditEvent {
   readonly error?: string;
   /** Present on `transport` events (P2-014): the 1-based hop index of the attempt. */
   readonly attempt?: number;
+  /** ADR-31 (P2-028, item هـ): present on `liveness` events — the proxy liveness check's outcome. */
+  readonly alive?: boolean;
+  /** ADR-31 (P2-028, item هـ): what triggered the check: startup, rotation, interval, or failure. */
+  readonly trigger?: "startup" | "rotation" | "interval" | "failure";
+  /** ADR-31 (P2-028, item هـ): the proxy the check probed (the host from the case's routing). */
+  readonly proxyHost?: string;
+  /** ADR-31 (P2-028, item هـ): the proxy's port. */
+  readonly proxyPort?: number;
+  /** ADR-31 (P2-028, item هـ): the probe's measured round-trip when alive. */
+  readonly latencyMs?: number;
   /** True when the request was a system-level request (no caseId). */
   readonly systemContext?: boolean;
   /** Placeholder for a redacted secret digest. Never the raw secret. */
@@ -258,6 +285,11 @@ export interface EgressLimits {
   /** ADR-31 (P2-028): Tor's own separate LOWER rate budget — a route of last resort is never as fast as direct. */
   readonly torRateLimitPerHostPerSecond?: number; // default 0.2 (one request per 5s sustained)
   readonly torRateLimitBurst?: number; // default 1
+  /**
+   * ADR-31 (P2-028, item هـ): optional request jitter — a random 0..jitterMs delay before each PROXIED
+   * request (traffic-analysis resistance). Default 0 = OFF; direct requests are never jittered.
+   */
+  readonly jitterMs?: number; // default 0 (off)
 }
 
 /**
@@ -337,6 +369,14 @@ export interface EgressOptions {
   readonly allowedHosts?: readonly string[];
   /** ADR-31 (P2-028): this gateway's routing — undefined = direct (the default); Tor is never implicit. */
   readonly routing?: EgressRouting;
+  /**
+   * ADR-31 (P2-028, item هـ): the proxy liveness configuration — `intervalMs` (default 30000: re-probe at
+   * most once per interval while requests flow) and `rotated` (true when the case's proxy config changed
+   * since the last network run — the first check is labelled `rotation` instead of `startup`).
+   */
+  readonly liveness?: { readonly intervalMs?: number; readonly rotated?: boolean };
+  /** ADR-31 (P2-028, item هـ): the jitter's random source (default Math.random); tests inject determinism. */
+  readonly rng?: () => number;
   /** Private capability used only by the vault path (see vault-capability.ts). */
   readonly capability?: unknown;
   /**
@@ -425,6 +465,7 @@ const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
   // A fractional refill rate is deliberate (one request per 5s sustained); the burst is 1.
   torRateLimitPerHostPerSecond: 0.2,
   torRateLimitBurst: 1,
+  jitterMs: 0,
   rateLimitBurst: 1,
 };
 
@@ -509,6 +550,8 @@ function validateLimits(raw: EgressLimits | undefined): Required<EgressLimits> {
     // ADR-31 (P2-028): Tor's separate LOWER budget.
     "torRateLimitPerHostPerSecond",
     "torRateLimitBurst",
+    // ADR-31 (P2-028, item هـ): the optional request jitter (0 = off).
+    "jitterMs",
   ]);
   if (raw) {
     for (const k of Object.keys(raw)) {
@@ -517,10 +560,16 @@ function validateLimits(raw: EgressLimits | undefined): Required<EgressLimits> {
   }
   // Refill RATES may be fractional (a request every 5s = 0.2/s); everything else is a positive integer.
   const fractionalAllowed = new Set(["rateLimitPerHostPerSecond", "torRateLimitPerHostPerSecond"]);
+  // jitterMs 0 = OFF (the only limit where 0 is meaningful); everything else must be positive.
+  const zeroAllowed = new Set(["jitterMs"]);
   for (const [k, v] of Object.entries(out)) {
-    if (!Number.isFinite(v) || v <= 0 || (!fractionalAllowed.has(k) && !Number.isInteger(v))) {
+    if (
+      !Number.isFinite(v) ||
+      (v <= 0 && !zeroAllowed.has(k)) ||
+      (!fractionalAllowed.has(k) && !zeroAllowed.has(k) && !Number.isInteger(v))
+    ) {
       throw new RangeError(
-        `EgressOptions.limits.${k} must be a positive finite ${fractionalAllowed.has(k) ? "number" : "integer"}, got ${v}`,
+        `EgressOptions.limits.${k} must be a finite ${fractionalAllowed.has(k) ? "number" : "integer"}${zeroAllowed.has(k) ? " (>= 0)" : " (> 0)"}, got ${v}`,
       );
     }
   }
@@ -1030,6 +1079,87 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   const route = (): EgressRoute => routing?.route ?? "direct";
   // The proxy's pinned IP, resolved and policy-checked ONCE per gateway (it is configuration, not a target).
   let proxyIpCache: { readonly ip: string } | { readonly failure: EgressResult } | undefined;
+  // ADR-31 (P2-028, item هـ): the proxy liveness — the last check's time (undefined = not yet checked).
+  let lastLivenessAt: number | undefined;
+
+  /**
+   * ADR-31 (P2-028, item هـ): the proxy LIVENESS check — probes the configured proxy (the transport's
+   * `probeProxy`) and records an `egress.liveness` event. Called before proxied requests: at startup (the
+   * first check — or `rotation` when the CLI says the case's proxy config changed since the last run),
+   * then at most once per `liveness.intervalMs` (default 30s) while requests flow. A dead proxy is
+   * FAIL-CLOSED: the request is denied (proxy_unreachable) — there is NO fallback to direct.
+   * Returns the denial when the check fails, null when the request may proceed.
+   */
+  /** ADR-31 (P2-028, item هـ): which check is due — startup/rotation/interval, or null (within the interval). */
+  function livenessTrigger(): "startup" | "rotation" | "interval" | null {
+    if (lastLivenessAt === undefined) return opts.liveness?.rotated === true ? "rotation" : "startup";
+    if (now() - lastLivenessAt < (opts.liveness?.intervalMs ?? 30_000)) return null; // within the interval
+    return "interval";
+  }
+
+  /** ADR-31 (P2-028, item هـ): runs the transport's proxy probe; a throw is a dead proxy, never a crash. */
+  async function runLivenessProbe(
+    proxyIp: string,
+    proxy: { host: string; port: number; credentials?: { username: string; password: string } },
+  ): Promise<{ alive: boolean; latencyMs?: number; error?: string }> {
+    const probe = (opts.transport as EgressTransport).probeProxy;
+    if (typeof probe !== "function") return { alive: false, error: "transport has no probe capability" };
+    // the proxy kind derives from the route (proxy-http-connect / proxy-socks5)
+    return await probe({
+      kind: route() === "proxy-http-connect" ? "http-connect" : "socks5",
+      proxyIp,
+      proxyPort: proxy.port,
+      credentials: proxy.credentials,
+    }).catch(
+      (e: unknown) =>
+        ({ alive: false, error: e instanceof Error ? e.message : String(e), latencyMs: undefined }) as {
+          alive: false;
+          error?: string;
+          latencyMs?: number;
+        },
+    );
+  }
+
+  async function livenessCheck(req: EgressRequest, secretDigest: string | undefined): Promise<EgressResult | null> {
+    const r = route();
+    if (r === "direct" || routing?.proxy === undefined) return null; // direct: no proxy to check
+    if (typeof (opts.transport as EgressTransport).probeProxy !== "function") return null; // no probe capability: no liveness events (fail-closed per request is unchanged)
+    const trigger = livenessTrigger();
+    if (trigger === null) return null; // within the interval — no check
+    lastLivenessAt = now();
+    // the proxy's pinned IP (the same resolve + policy check the request path uses, cached)
+    const resolved = await resolveProxy(req, 0, secretDigest);
+    if ("ip" in resolved === false) return resolved; // a fail-closed proxy_unreachable denial (already audited)
+    const outcome = await runLivenessProbe(resolved.ip, routing.proxy);
+    audit({
+      kind: "liveness",
+      route: r,
+      trigger,
+      alive: outcome.alive,
+      ...(outcome.latencyMs !== undefined ? { latencyMs: outcome.latencyMs } : {}),
+      ...(outcome.error !== undefined ? { error: outcome.error } : {}),
+      proxyHost: routing.proxy.host,
+      proxyPort: routing.proxy.port,
+      caseId: req.caseId,
+      systemContext: req.systemContext,
+      transform: req.transform,
+      transportCalls: 0,
+      secretDigest,
+    });
+    if (!outcome.alive) {
+      // Fail-closed: the request fails; there is NO fallback to direct.
+      const failure = deny("proxy_unreachable", 0, `proxy liveness check failed: ${outcome.error ?? "proxy not reachable"}`);
+      audit({
+        kind: "denied",
+        reason: "proxy_unreachable",
+        route: r,
+        ...auditCtx(req, routing.proxy.host, 0, secretDigest),
+        detail: `proxy liveness check failed: ${outcome.error ?? "proxy not reachable"}`,
+      });
+      return failure;
+    }
+    return null;
+  }
 
   /**
    * ADR-31 (P2-028): the Tor sensitive-domain blocklist — localhost, *.local, *.internal and every
@@ -1172,6 +1302,41 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     return null;
   }
 
+  /**
+   * ADR-31 (P2-028): Tor's sensitive-domain blocklist — fail-closed BEFORE the URL-shape checks, any
+   * budget or DNS: the exit resolves the name, so only the NAME can be checked on our side.
+   */
+  function torBlocklistDenial(req: EgressRequest, url: URL): EgressResult | null {
+    if (route() !== "tor" || !torBlockedHost(url.hostname)) return null;
+    audit({
+      kind: "denied",
+      reason: "tor_blocklist",
+      caseId: req.caseId,
+      systemContext: req.systemContext,
+      transform: req.transform,
+      host: url.hostname.replace(/^\[|\]$/g, ""),
+      transportCalls: 0,
+    });
+    return deny("tor_blocklist", 0, `host "${url.hostname}" is on the Tor sensitive-domain blocklist`);
+  }
+
+  /** 6: URL normalization — a refusal is audited, never thrown. */
+  function parseRequestUrl(req: EgressRequest): URL | EgressResult {
+    try {
+      return new URL(req.url);
+    } catch {
+      audit({
+        kind: "denied",
+        reason: "invalid_url",
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        transportCalls: 0,
+      });
+      return deny("invalid_url");
+    }
+  }
+
   async function request(req: EgressRequest): Promise<EgressResult> {
     const secretDigest = req.secret !== undefined ? redactSecret(req.secret) : undefined;
 
@@ -1216,38 +1381,16 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     }
 
     // --- 6: URL normalization ---
-    let currentUrl: URL;
-    try {
-      currentUrl = new URL(req.url);
-    } catch {
-      audit({
-        kind: "denied",
-        reason: "invalid_url",
-        caseId: req.caseId,
-        systemContext: req.systemContext,
-        transform: req.transform,
-        transportCalls: 0,
-      });
-      return deny("invalid_url");
-    }
+    const currentUrl = parseRequestUrl(req);
+    if ("ok" in currentUrl) return currentUrl; // a refusal is audited, never thrown
 
     // --- 6b: POST policy (ADR-27 OAuth2 token + ADR-28 OpenSanctions screening) — enforced in
     // preDnsChecks (before the content inventory) so host/path violations surface as
     // invalid_request and the screening waiver is only derived for pinned screening URLs ---
     // --- ADR-31 (P2-028): Tor's sensitive-domain blocklist — fail-closed BEFORE the URL-shape checks,
     // any budget or DNS: the exit resolves the name, so only the NAME can be checked on our side.
-    if (route() === "tor" && torBlockedHost(currentUrl.hostname)) {
-      audit({
-        kind: "denied",
-        reason: "tor_blocklist",
-        caseId: req.caseId,
-        systemContext: req.systemContext,
-        transform: req.transform,
-        host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
-        transportCalls: 0,
-      });
-      return deny("tor_blocklist", 0, `host "${currentUrl.hostname}" is on the Tor sensitive-domain blocklist`);
-    }
+    const torDenial = torBlocklistDenial(req, currentUrl);
+    if (torDenial) return torDenial;
 
     // --- 7: literal address class, then scheme / port / credentials ---
     const shape = literalHostCheck(currentUrl) ?? urlChecks(currentUrl);
@@ -1300,6 +1443,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return registryErr;
     }
 
+    // --- ADR-31 (P2-028, item هـ): the liveness check + the optional jitter (fail-closed; proxied only).
+    const preTransport = await livenessAndJitter(req, secretDigest);
+    if (preTransport) return preTransport;
+
     const deadline = now() + limits.timeoutMs;
     const abort = makeRequestAbort(req);
     try {
@@ -1307,6 +1454,27 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     } finally {
       abort.dispose();
     }
+  }
+
+  /**
+   * ADR-31 (P2-028, item هـ): the pre-transport proxied-request section — the liveness check (startup /
+   * rotation / every interval; a dead proxy is fail-closed) then the optional jitter (a random
+   * 0..jitterMs delay before each PROXIED request; default 0 = off; direct requests are never jittered).
+   * Returns the denial when the check fails, null when the request may proceed.
+   */
+  async function livenessAndJitter(req: EgressRequest, secretDigest: string | undefined): Promise<EgressResult | null> {
+    const denial = await livenessCheck(req, secretDigest);
+    if (denial) return denial;
+    if (route() !== "direct" && limits.jitterMs > 0) {
+      const abort = makeRequestAbort(req);
+      try {
+        await (opts.sleep?.(Math.floor((opts.rng ?? Math.random)() * limits.jitterMs), abort.controller.signal) ??
+          new Promise<void>(() => {}));
+      } finally {
+        abort.dispose();
+      }
+    }
+    return null;
   }
 
   type AbortCtl = ReturnType<typeof makeRequestAbort>;
@@ -1579,6 +1747,24 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     }
     // A typed transport failure keeps its reason; anything else is a transport error, never a policy reason.
     const reason: EgressReason = err instanceof EgressTransportError ? err.reason : "transport_error";
+    // ADR-31 (P2-028, item هـ): on a PROXIED route a transport-level failure is recorded as a liveness
+    // event too (trigger failure, alive false) — the proxy path is dead; fail-closed, no direct fallback.
+    if (route() !== "direct" && routing?.proxy !== undefined) {
+      audit({
+        kind: "liveness",
+        route: route(),
+        trigger: "failure",
+        alive: false,
+        ...(safeDetail ? { error: safeDetail } : {}),
+        proxyHost: routing.proxy.host,
+        proxyPort: routing.proxy.port,
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        transportCalls: hopCount + 1,
+        secretDigest: req.secret !== undefined ? redactSecret(req.secret) : undefined,
+      });
+    }
     audit({
       kind: reason === "size_limit" || reason === "byte_budget" ? "size_limit" : "transport_error",
       reason,

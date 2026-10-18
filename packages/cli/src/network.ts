@@ -153,6 +153,26 @@ export function caseProxyConfig(c: Case): CaseProxyConfig | undefined {
  * and `--via-tor` is only honoured when the case's routing IS the tor route (Tor is never implicit —
  * a tor `proxy.set` is the case's EXPLICIT activation, ADR-31).
  */
+/**
+ * ADR-31 (P2-028, item هـ): did the case's proxy configuration CHANGE since the last network run?
+ * True when the most recent proxy.set/proxy.clear on the chain is NEWER than the last egress event —
+ * the next run's first liveness check is then labelled `rotation` instead of `startup`.
+ */
+function proxyRotatedSinceLastRun(c: Case): boolean {
+  // The trail is in chain (seq) order; the parsed audit events carry no seq, so the POSITION decides.
+  // A ROTATION means: the case has already run through a proxy before (a proxied egress event exists)
+  // AND the proxy config changed since that run. The FIRST-ever proxied run is a startup, not a rotation.
+  const trail = c.auditTrail();
+  let lastProxied = -1;
+  let lastConfig = -1;
+  trail.forEach((ev, i) => {
+    const route = (ev.detail as Record<string, unknown> | undefined)?.["route"];
+    if (ev.action.startsWith("egress.") && typeof route === "string" && route !== "direct") lastProxied = i;
+    if (ev.action === "proxy.set" || ev.action === "proxy.clear") lastConfig = i;
+  });
+  return lastProxied >= 0 && lastConfig > lastProxied;
+}
+
 export function proxyRoutingFor(c: Case, deps: NetworkDeps, viaTor: boolean): { routing?: EgressRouting } | { error: string } {
   const config = caseProxyConfig(c);
   if (config === undefined) {
@@ -194,6 +214,17 @@ export function proxyRoutingFor(c: Case, deps: NetworkDeps, viaTor: boolean): { 
   };
 }
 
+/** ADR-31 (P2-028, item هـ): the liveness check's fields — what triggered it and what it found. */
+function livenessFields(e: EgressAuditEvent): Record<string, unknown> {
+  return {
+    ...(e.alive !== undefined ? { alive: e.alive } : {}),
+    ...(e.trigger ? { trigger: e.trigger } : {}),
+    ...(e.proxyHost ? { proxyHost: e.proxyHost } : {}),
+    ...(e.proxyPort !== undefined ? { proxyPort: e.proxyPort } : {}),
+    ...(e.latencyMs !== undefined ? { latencyMs: e.latencyMs } : {}),
+  };
+}
+
 export function openGateway(
   c: Case,
   allowHosts: readonly string[],
@@ -216,6 +247,8 @@ export function openGateway(
     allowedHosts: allowHosts,
     env: deps.env ?? process.env,
     ...(routing ? { routing } : {}),
+    // P2-028 (ADR-31, item هـ): the proxy liveness — the rotation hint from the case's own chain.
+    ...(routing ? { liveness: { rotated: proxyRotatedSinceLastRun(c) } } : {}),
     ...(providers
       ? {
           providerHosts: providers.providerHosts,
@@ -244,6 +277,7 @@ export function openGateway(
           ...(e.status !== undefined ? { status: e.status } : {}),
           ...(e.error !== undefined ? { error: e.error } : {}),
           ...(e.attempt !== undefined ? { attempt: e.attempt } : {}),
+          ...livenessFields(e),
         });
       },
     },

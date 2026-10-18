@@ -171,6 +171,8 @@ export interface NetworkRequest {
   transform?: string;
   transportCalls: number;
   reason?: string;
+  /** ADR-31 (P2-028): the route the request took (direct / proxy-http-connect / proxy-socks5 / tor). */
+  route?: string;
 }
 export interface NetworkResponse {
   seq: number;
@@ -197,12 +199,30 @@ export interface NetworkTransportCall {
   /** The failure message when the attempt failed. */
   error?: string;
   transform?: string;
+  /** ADR-31 (P2-028): the route the call took. */
+  route?: string;
+}
+/** ADR-31 (P2-028, item هـ): one proxy liveness check — what triggered it and what it found. */
+export interface NetworkLiveness {
+  seq: number;
+  at: string;
+  /** The proxy the check probed. */
+  proxyHost: string;
+  proxyPort?: number;
+  trigger: "startup" | "rotation" | "interval" | "failure";
+  alive: boolean;
+  latencyMs?: number;
+  error?: string;
+  /** ADR-31 (P2-028): the route the checked proxy serves. */
+  route?: string;
 }
 export interface NetworkLog {
   requests: NetworkRequest[];
   /** Every ACTUAL transport call (first hop, redirects, failures) — one row per attempt. */
   transportCalls: NetworkTransportCall[];
   responses: NetworkResponse[];
+  /** ADR-31 (P2-028, item هـ): every proxy liveness check (startup / rotation / interval / failure). */
+  liveness: NetworkLiveness[];
 }
 
 function requestRow(a: Projector["audits"][number]): NetworkRequest | null {
@@ -217,6 +237,7 @@ function requestRow(a: Projector["audits"][number]): NetworkRequest | null {
     ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
     ...(typeof detail?.transportCalls === "number" ? { transportCalls: detail.transportCalls } : { transportCalls: 0 }),
     ...(typeof detail?.reason === "string" ? { reason: detail.reason } : {}),
+    ...(typeof detail?.route === "string" ? { route: detail.route } : {}),
   };
 }
 
@@ -233,6 +254,7 @@ function transportRow(a: Projector["audits"][number]): NetworkTransportCall | nu
     ...(typeof detail?.status === "number" ? { status: detail.status } : {}),
     ...(typeof detail?.error === "string" ? { error: detail.error } : {}),
     ...(typeof detail?.transform === "string" ? { transform: detail.transform } : {}),
+    ...(typeof detail?.route === "string" ? { route: detail.route } : {}),
   };
 }
 
@@ -252,15 +274,39 @@ function responseRow(ev: Projector["evidence"] extends Map<string, infer V> ? V 
   };
 }
 
+/** ADR-31 (P2-028, item هـ): the proxy liveness rows — egress.liveness chain events. */
+function livenessRow(a: Projector["audits"][number]): NetworkLiveness | null {
+  if (a.action !== "egress.liveness") return null;
+  const detail = a.detail as Record<string, unknown> | undefined;
+  const trigger = detail?.trigger;
+  if (typeof detail?.proxyHost !== "string" || typeof trigger !== "string") return null; // malformed: not a liveness row
+  return {
+    seq: a.seq,
+    at: a.at,
+    proxyHost: detail.proxyHost,
+    ...(typeof detail?.proxyPort === "number" ? { proxyPort: detail.proxyPort } : {}),
+    trigger: trigger as NetworkLiveness["trigger"],
+    alive: detail?.alive === true,
+    ...(typeof detail?.latencyMs === "number" ? { latencyMs: detail.latencyMs } : {}),
+    ...(typeof detail?.error === "string" ? { error: detail.error } : {}),
+    ...(typeof detail?.route === "string" ? { route: detail.route } : {}),
+  };
+}
+
 export function networkLogView(p: Projector): NetworkLog {
   const requests: NetworkRequest[] = [];
   const transportCalls: NetworkTransportCall[] = [];
+  const liveness: NetworkLiveness[] = [];
   for (const a of p.audits) {
     const request = requestRow(a);
     if (request) requests.push(request);
     else {
       const call = transportRow(a);
       if (call) transportCalls.push(call);
+      else {
+        const lv = livenessRow(a);
+        if (lv) liveness.push(lv);
+      }
     }
   }
   const responses: NetworkResponse[] = [];
@@ -269,7 +315,7 @@ export function networkLogView(p: Projector): NetworkLog {
     if (row) responses.push(row);
   }
   responses.sort((a, b) => a.seq - b.seq);
-  return { requests, transportCalls, responses };
+  return { requests, transportCalls, responses, liveness };
 }
 
 export interface CoverageCell {

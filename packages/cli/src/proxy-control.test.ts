@@ -123,10 +123,12 @@ function fakeVault(pairs: Readonly<Record<string, { id: string; secret: string }
 /** What the fake transport saw: the URL plus the route and the tunnel of every request. */
 type SeenCall = { url: string; route?: string; pinnedIp: string; proxy?: unknown };
 
-/** The fake edge: a resolver and a transport that serve WORLD and record every call with its route. */
-function edge(world: Readonly<Record<string, Resp>> = WORLD) {
+/** The fake edge: a resolver and a transport that serve WORLD and record every call with its route.
+ *  P2-028: the transport also carries a controllable proxy LIVENESS probe (alive by default). */
+function edge(world: Readonly<Record<string, Resp>> = WORLD, probe: { alive?: boolean; latencyMs?: number; error?: string } = {}) {
   const calls: SeenCall[] = [];
   const resolved: string[] = [];
+  const probes: Array<{ kind: string; proxyIp: string; proxyPort: number }> = [];
   const resolver: DnsResolver = {
     async resolve(host) {
       resolved.push(host);
@@ -140,18 +142,31 @@ function edge(world: Readonly<Record<string, Resp>> = WORLD) {
       if (!hit) throw new EgressTransportError("transport_error", `no fixture for ${r.url}`);
       return hit;
     },
-  };
-  return { calls, resolved, resolver, transport };
+    // P2-028 (ADR-31 هـ): the proxy liveness probe — the gateway calls it before proxied requests.
+    async probeProxy(px: { kind: string; proxyIp: string; proxyPort: number }) {
+      probes.push({ ...px });
+      if (probe.alive === false) return { alive: false, error: probe.error ?? "connect ECONNREFUSED" };
+      return { alive: true, latencyMs: probe.latencyMs ?? 15 };
+    },
+  } as EgressTransport;
+  return { calls, resolved, probes, resolver, transport };
 }
 
 /** Runs `ir ...` with the fake network (resolver/transport/limits/vault) and returns the parsed output. */
 async function cli(
   args: string[],
-  opts: { calls?: SeenCall[]; resolved?: string[]; world?: Readonly<Record<string, Resp>>; vault?: Vault } = {},
+  opts: {
+    calls?: SeenCall[];
+    resolved?: string[];
+    probes?: Array<{ kind: string; proxyIp: string; proxyPort: number }>;
+    world?: Readonly<Record<string, Resp>>;
+    vault?: Vault;
+    probe?: { alive?: boolean; latencyMs?: number; error?: string };
+  } = {},
 ) {
   const out: string[] = [];
   const err: string[] = [];
-  const x = edge(opts.world);
+  const x = edge(opts.world, opts.probe);
   const injectedVault = opts.vault;
   let t = 0;
   const code = await main(
@@ -176,6 +191,7 @@ async function cli(
   // the calls are copied only AFTER the command ran — the record is the actual requests this invocation made
   if (opts.calls) opts.calls.push(...x.calls);
   if (opts.resolved) opts.resolved.push(...x.resolved);
+  if (opts.probes) opts.probes.push(...x.probes);
   const text = out.join("\n").trim();
   const parsed = text.startsWith("{") || text.startsWith("[") ? (JSON.parse(text) as unknown) : undefined;
   return {
@@ -461,6 +477,41 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
     const audit = readAudit(dir);
     const denied = audit.filter((a) => a.action === "egress.denied");
     expect(denied.some((a) => JSON.stringify(a.detail).includes("proxy_unreachable"))).toBe(true);
+  });
+
+  it("T-P2028-C13: a proxied investigate records egress.liveness events ON THE CASE CHAIN (route + trigger startup)", async () => {
+    const dir = tempDir();
+    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case (direct — no liveness: no proxy)
+    await cli(["proxy", dir, "set", "proxy-socks5", "--host", "proxy.example.net", "--port", "1080", "--secret", "ops-proxy"]);
+    const probes: Array<{ kind: string; proxyIp: string; proxyPort: number }> = [];
+    const r = await cli(INVESTIGATE(dir), { vault: VAULT, probes });
+    expect(r.code).toBe(0);
+    // the probe ran and saw the PROXY's pinned address
+    expect(probes.length).toBeGreaterThan(0);
+    for (const p of probes) expect(p).toMatchObject({ kind: "socks5", proxyIp: "8.8.4.4", proxyPort: 1080 });
+    // the events are ON THE CASE CHAIN, with the route and the trigger
+    const audit = readAudit(dir);
+    const liveness = audit.filter((a) => a.action === "egress.liveness");
+    expect(liveness.length).toBeGreaterThan(0);
+    expect(liveness[0].detail).toMatchObject({ route: "proxy-socks5", trigger: "startup", alive: true });
+  });
+
+  it("T-P2028-C14: rotation — a proxy.set AFTER a network run makes the NEXT run's liveness trigger rotation (the config changed)", async () => {
+    const dir = tempDir();
+    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // run 1 creates the case (direct)
+    await cli(["proxy", dir, "set", "proxy-socks5", "--host", "proxy.example.net", "--port", "1080", "--secret", "ops-proxy"]);
+    expect((await cli(INVESTIGATE(dir), { vault: VAULT })).code).toBe(0); // run 2: the FIRST proxied run — startup
+    // rotate: a NEW proxy config after the network runs
+    await cli(["proxy", dir, "set", "proxy-http-connect", "--host", "proxy.example.net", "--port", "8080", "--secret", "ops-proxy"]);
+    const r = await cli(INVESTIGATE(dir), { vault: VAULT });
+    expect(r.code).toBe(0); // run 3: the config ROTATED since the last run
+    const audit = readAudit(dir);
+    const liveness = audit.filter((a) => a.action === "egress.liveness");
+    expect(liveness.length).toBeGreaterThan(0);
+    // the LAST run's liveness events say rotation (the config changed after the previous network run)
+    const last = liveness.filter((a) => a.detail?.proxyPort === 8080);
+    expect(last.length).toBeGreaterThan(0);
+    expect(last[0].detail).toMatchObject({ route: "proxy-http-connect", trigger: "rotation" });
   });
 
   it("T-P2028-C12: `ir run --network` honours the case's proxy config too (the single-run path)", async () => {

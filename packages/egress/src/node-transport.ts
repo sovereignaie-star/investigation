@@ -363,6 +363,45 @@ export function createNodeTransport(opts: NodeTransportOptions = {}): EgressTran
   const maxBodyBytes = opts.maxBodyBytes ?? 5 * 1024 * 1024; // 5 MiB default (ADR-08)
   const maxDecodedBytes = opts.maxDecodedBytes ?? 50 * 1024 * 1024; // 50 MiB absolute cap (ADR-08)
   return {
+    /**
+     * ADR-31 (P2-028, item هـ): the proxy LIVENESS probe — a lightweight check that the configured proxy
+     * is reachable and speaks its protocol. A TCP connect to the proxy's pinned address; for SOCKS5 the
+     * method negotiation follows (no-auth only — a probe never authenticates, and never contacts a
+     * target). For HTTP CONNECT the TCP connect is the check (a CONNECT needs a target). No target is
+     * ever contacted by a probe: it proves the proxy is up and speaking, nothing more.
+     */
+    async probeProxy(proxy, signal) {
+      const started = Date.now();
+      const sock = net.connect({ host: proxy.proxyIp, port: proxy.proxyPort });
+      sock.setTimeout(5_000, () => sock.destroy(new Error("probe timeout (5s)")));
+      const onAbort = () => sock.destroy(new Error("aborted"));
+      signal?.addEventListener("abort", onAbort, { once: true });
+      try {
+        await new Promise<void>((resolve, reject) => {
+          sock.once("error", (e) => reject(e));
+          sock.once("close", () => reject(new Error("proxy closed the connection")));
+          sock.once("connect", () => resolve());
+        });
+        if (proxy.kind === "socks5") {
+          const reader = new SocketReader(sock, signal);
+          try {
+            // the greeting: no-auth only — a PROBE never authenticates and never names a target.
+            sock.write(Buffer.from([0x05, 0x01, 0x00]));
+            const choice = await reader.readExact(2);
+            if (choice[0] !== 0x05) throw new Error(`bad SOCKS version ${choice[0]}`);
+            // 0xff = the proxy requires auth: it is ALIVE and speaking SOCKS5 (the real requests authenticate).
+          } finally {
+            reader.stop();
+          }
+        }
+        return { alive: true, latencyMs: Date.now() - started };
+      } catch (e) {
+        return { alive: false, error: e instanceof Error ? e.message : String(e) };
+      } finally {
+        sock.destroy();
+        signal?.removeEventListener("abort", onAbort);
+      }
+    },
     async fetch(req) {
       const u = new URL(req.url);
       // Only https: is allowed by the gateway (scheme check). The transport

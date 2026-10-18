@@ -105,7 +105,7 @@ describe("network log view (P2-014 / T-ETH-006)", () => {
 
   it("rows are in ledger (seq) order and the log is empty for a chain with no network activity", () => {
     const p = new Projector();
-    expect(networkLogView(p)).toEqual({ requests: [], transportCalls: [], responses: [] });
+    expect(networkLogView(p)).toEqual({ requests: [], transportCalls: [], responses: [], liveness: [] });
     p.apply(auditEntry(0, "egress.timeout", "slow.example", { transform: "TR-010@1.0.0", transportCalls: 1 }));
     p.apply(auditEntry(1, "egress.rate_limited", "busy.example", { transform: "TR-010@1.0.0", transportCalls: 0 }));
     const log = networkLogView(p);
