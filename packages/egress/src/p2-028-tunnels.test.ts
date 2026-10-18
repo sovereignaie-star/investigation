@@ -198,13 +198,14 @@ function socksProxy(
 
 const BASE = { url: "", host: "", pinnedIp: "127.0.0.1", method: "GET" } as const;
 
-function tunnelFetch(port: number, tunnel: EgressProxyTunnel, urlPort: number, ca = good.cert) {
+function tunnelFetch(port: number, tunnel: EgressProxyTunnel, urlPort: number, ca = good.cert, signal?: AbortSignal) {
   const t = createNodeTransport({ tlsOptions: { ca } });
   return t.fetch({
     ...BASE,
     url: `https://${FIXTURE_HOST}:${urlPort}/x`,
     host: `${FIXTURE_HOST}:${urlPort}`,
     proxy: tunnel,
+    ...(signal !== undefined ? { signal } : {}),
   });
 }
 
@@ -364,7 +365,10 @@ describe("P2-028 node-transport proxy tunnels (ADR-31)", () => {
     ).rejects.toThrowError(/proxy auth/i);
   });
 
-  it("T-P2028-T09: TLS is STILL verified over the tunnel — a wrong-name certificate fails", async () => {
+  it("T-P2028-T09: TLS is STILL verified over the tunnel — a trusted cert with the WRONG name is refused by hostname verification", async () => {
+    // BOTH certificates are trusted here — so the ONLY possible failure is the name mismatch,
+    // proving the transport verifies the hostname (not merely chain trust).
+    const bothCerts = `${good.cert}\n${wrong.cert}`;
     const port = await socksProxy({ cert: wrong });
     await expect(
       tunnelFetch(
@@ -376,7 +380,146 @@ describe("P2-028 node-transport proxy tunnels (ADR-31)", () => {
           target: { kind: "host", host: FIXTURE_HOST },
         },
         port,
+        bothCerts,
       ),
-    ).rejects.toThrowError(/proxy handshake|wrong-name|hostname/i);
+    ).rejects.toThrowError(/TLS over the tunnel failed.*(altnames|hostname)/i);
+  });
+
+  it("T-P2028-T10: a proxy reply split across chunks completes the handshake (no busy-wait on partial data)", async () => {
+    // The fake proxy sends the SOCKS5 method reply and the CONNECT success reply in FRAGMENTS —
+    // a reader that only waits on already-buffered bytes would spin the microtask loop forever.
+    const port = await new Promise<number>((resolve) => {
+      const proxy = net.createServer((client) => {
+        const state = { step: 0 as number };
+        client.on("data", () => {
+          if (state.step === 0) {
+            state.step = 1;
+            // first fragment: only the first byte of the method reply, the rest 30ms later
+            client.write(Buffer.from([0x05]));
+            setTimeout(() => client.write(Buffer.from([0x00])), 30);
+            return;
+          }
+          if (state.step !== 1) return; // the relay owns the socket now — ignore further frames
+          state.step = 2;
+          const tlsServer = https.createServer({ cert: good.cert, key: good.key }, (_q, res) => {
+            res.writeHead(200, { "content-type": "text/plain" });
+            res.end("through-socks");
+          });
+          servers.push({ close: () => tlsServer.close() });
+          tlsServer.listen(0, "127.0.0.1", () => {
+            const addr = tlsServer.address();
+            const tlsPort = typeof addr === "object" && addr ? addr.port : 0;
+            const up = net.connect(tlsPort, "127.0.0.1");
+            // the CONNECT success reply in two fragments as well
+            client.write(Buffer.from([0x05, 0x00, 0x00, 0x01]));
+            setTimeout(() => {
+              client.write(Buffer.from([0, 0, 0, 0, 0, 0]));
+              client.pipe(up);
+              up.pipe(client);
+            }, 30);
+          });
+        });
+      });
+      proxy.listen(0, "127.0.0.1", () => {
+        servers.push({ close: () => proxy.close() });
+        const addr = proxy.address();
+        resolve(typeof addr === "object" && addr ? addr.port : 0);
+      });
+    });
+    const r = await tunnelFetch(
+      port,
+      {
+        kind: "socks5",
+        proxyIp: "127.0.0.1",
+        proxyPort: port,
+        target: { kind: "host", host: FIXTURE_HOST },
+      },
+      port,
+    );
+    expect(r.status).toBe(200);
+    expect(r.body).toBe("through-socks");
+  }, 5000);
+
+  it("T-P2028-T11: abort during the SOCKS5 handshake fails the request fast (no hang, socket released)", async () => {
+    const port = await new Promise<number>((resolve) => {
+      const proxy = net.createServer((client) => {
+        // accepts the connection, reads the greeting, then NEVER replies
+        client.on("data", () => {});
+      });
+      proxy.listen(0, "127.0.0.1", () => {
+        servers.push({ close: () => proxy.close() });
+        const addr = proxy.address();
+        resolve(typeof addr === "object" && addr ? addr.port : 0);
+      });
+    });
+    const controller = new AbortController();
+    const started = Date.now();
+    const pending = tunnelFetch(
+      port,
+      {
+        kind: "socks5",
+        proxyIp: "127.0.0.1",
+        proxyPort: port,
+        target: { kind: "host", host: FIXTURE_HOST },
+      },
+      port,
+      good.cert,
+      controller.signal,
+    );
+    setTimeout(() => controller.abort(), 40);
+    await expect(pending).rejects.toThrowError();
+    expect(Date.now() - started).toBeLessThan(2000); // rejected promptly, not via a test timeout
+  });
+
+  it("T-P2028-T12: abort during the TLS handshake fails the request fast (no hang, socket released)", async () => {
+    const port = await new Promise<number>((resolve) => {
+      const proxy = net.createServer((client) => {
+        const state = { step: 0 as number };
+        client.on("data", () => {
+          if (state.step === 0) {
+            state.step = 1;
+            client.write(Buffer.from([0x05, 0x00]));
+            return;
+          }
+          if (state.step !== 1) return; // the relay owns the socket now
+          state.step = 2;
+          // SOCKS5 success, then relay to a server that ACCEPTS but never completes TLS
+          client.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+          const holder = net.createServer((up) => {
+            up.on("data", () => {});
+          });
+          servers.push({ close: () => holder.close() });
+          holder.listen(0, "127.0.0.1", () => {
+            const hAddr = holder.address();
+            const hPort = typeof hAddr === "object" && hAddr ? hAddr.port : 0;
+            const up = net.connect(hPort, "127.0.0.1");
+            client.pipe(up);
+            up.pipe(client);
+          });
+        });
+      });
+      proxy.listen(0, "127.0.0.1", () => {
+        servers.push({ close: () => proxy.close() });
+        const addr = proxy.address();
+        resolve(typeof addr === "object" && addr ? addr.port : 0);
+      });
+    });
+    const controller = new AbortController();
+    const started = Date.now();
+    const pending = tunnelFetch(
+      port,
+      {
+        kind: "socks5",
+        proxyIp: "127.0.0.1",
+        proxyPort: port,
+        target: { kind: "host", host: FIXTURE_HOST },
+      },
+      port,
+      good.cert,
+      controller.signal,
+    );
+    setTimeout(() => controller.abort(), 60);
+    await expect(pending).rejects.toThrowError();
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 });

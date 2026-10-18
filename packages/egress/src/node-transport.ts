@@ -157,8 +157,14 @@ class SocketReader {
     }
   }
 
-  private waitForData(): Promise<void> {
-    if (this.buffer.length > 0 || this.failed) return this.failed ? Promise.reject(this.failed) : Promise.resolve();
+  /**
+   * Resolves ONLY on NEW data (or failure) — never on already-buffered bytes. A wait that resolved
+   * merely because data is buffered would spin the microtask loop while the I/O that completes the
+   * read is stuck behind it (verified: a partial reply chunk deadlocked the read). Callers re-check
+   * the buffer after every wake.
+   */
+  private waitForNewData(): Promise<void> {
+    if (this.failed) return Promise.reject(this.failed);
     return new Promise((resolve, reject) => {
       this.waiter = { resolve, reject };
     });
@@ -166,7 +172,7 @@ class SocketReader {
 
   async readExact(n: number): Promise<Buffer> {
     while (this.buffer.length < n) {
-      await this.waitForData();
+      await this.waitForNewData();
       if (this.failed) throw this.failed;
     }
     const out = this.buffer.subarray(0, n);
@@ -184,7 +190,7 @@ class SocketReader {
         return out;
       }
       if (this.failed) throw this.failed;
-      await this.waitForData();
+      await this.waitForNewData();
     }
   }
 }
@@ -217,8 +223,10 @@ async function establishProxyTunnel(
 ): Promise<tls.TLSSocket> {
   const targetPort = Number(u.port) || 443;
   const sock = net.connect({ host: proxy.proxyIp, port: proxy.proxyPort });
-  const onEarlyAbort = () => sock.destroy(new Error("aborted"));
-  req.signal?.addEventListener("abort", onEarlyAbort, { once: true });
+  // Fail-closed AND leak-free: an abort or a failure at ANY stage (connect, handshake, TLS) destroys
+  // the socket; the abort listener stays bound until the tunnel is fully established.
+  const onAbort = () => sock.destroy(new Error("aborted"));
+  req.signal?.addEventListener("abort", onAbort, { once: true });
   try {
     await new Promise<void>((resolve, reject) => {
       sock.once("error", (e) => reject(new EgressProxyError("connect", e.message)));
@@ -226,12 +234,18 @@ async function establishProxyTunnel(
       sock.once("connect", () => resolve());
     });
     const reader = new SocketReader(sock, req.signal);
-    if (proxy.kind === "http-connect") await httpConnectHandshake(reader, sock, proxy, targetPort);
-    else await socks5Handshake(reader, sock, proxy, targetPort);
-    // hand the socket to TLS with NO reader still attached — the TLS layer owns it now.
-    reader.stop();
+    try {
+      if (proxy.kind === "http-connect") await httpConnectHandshake(reader, sock, proxy, targetPort);
+      else await socks5Handshake(reader, sock, proxy, targetPort);
+    } finally {
+      // hand the socket to TLS with NO reader still attached — the TLS layer owns it now.
+      reader.stop();
+    }
+  } catch (err) {
+    sock.destroy();
+    throw err;
   } finally {
-    req.signal?.removeEventListener("abort", onEarlyAbort);
+    req.signal?.removeEventListener("abort", onAbort);
   }
   const tunnelSock = tls.connect({
     socket: sock,
@@ -239,10 +253,21 @@ async function establishProxyTunnel(
     rejectUnauthorized: true,
     ...pickTunnelTlsOptions(tlsOptions),
   });
-  await new Promise<void>((resolve, reject) => {
-    tunnelSock.once("error", (e) => reject(new EgressProxyError("handshake", `TLS over the tunnel failed: ${e.message}`)));
-    tunnelSock.once("secureConnect", () => resolve());
-  });
+  const onTlsAbort = () => tunnelSock.destroy(new Error("aborted"));
+  req.signal?.addEventListener("abort", onTlsAbort, { once: true });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      tunnelSock.once("error", (e) => reject(new EgressProxyError("handshake", `TLS over the tunnel failed: ${e.message}`)));
+      // an abort destroys the socket — 'close' must settle the wait too, or the handshake would hang.
+      tunnelSock.once("close", () => reject(new EgressProxyError("handshake", "TLS socket closed before the handshake completed")));
+      tunnelSock.once("secureConnect", () => resolve());
+    });
+  } catch (err) {
+    tunnelSock.destroy();
+    throw err;
+  } finally {
+    req.signal?.removeEventListener("abort", onTlsAbort);
+  }
   return tunnelSock;
 }
 
