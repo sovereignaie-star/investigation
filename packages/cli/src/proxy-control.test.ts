@@ -25,6 +25,12 @@ import { EgressTransportError, type DnsResolver, type EgressLimits, type EgressT
 import { openCase, type Vault } from "@ir/store";
 import * as F from "../../transforms/src/fixtures/public-sources.ts";
 import { main } from "./ir.ts";
+import { probeIsolation } from "@ir/transform-sandbox";
+
+// P2-005 (the established pattern, e.g. source-control.test.ts): these tests run REAL transform
+// executions, which need the "full" sandbox isolation; on hosts without bubblewrap/delegated
+// cgroups (e.g. the CI gates job) they SKIP — the CI test job installs bubblewrap and runs them.
+const host = await probeIsolation();
 
 const ON = { IR_ENABLE_NETWORK: "1" };
 const CASE_ARGS = ["--purpose", "تحقيق في بنية تحتية عامة لحادث أمني مصرح به", "--legal-basis", "security_incident"];
@@ -189,7 +195,7 @@ function readAudit(dir: string) {
 
 const VAULT = fakeVault({ "ops-proxy": { id: "opsuser", secret: "opspass" }, "tor-port": { id: "toruser", secret: "torpass" } });
 
-describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", () => {
+describe.skipIf(!host.full)("P2-028 ir proxy: the case's proxy configuration on its audit chain", () => {
   // The FIRST investigate in a vitest worker pays a one-time cost (the transform registration +
   // sandbox warmup, ~6s) that would blow the 5s test timeout; warm it here, outside any test.
   beforeAll(async () => {
