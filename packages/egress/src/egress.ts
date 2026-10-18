@@ -63,7 +63,19 @@ export type EgressReason =
    * P2-041: the shared request budget (`requestBudget`) is exhausted — a hop (first or redirect) was refused
    * before its DNS because the investigation's total request budget has nothing left.
    */
-  | "request_budget";
+  | "request_budget"
+  /**
+   * ADR-31 (P2-028): the configured proxy cannot be used — its host does not resolve, or its address
+   * is refused by the address policy (fail-closed: the request fails, there is NO fallback to direct).
+   */
+  | "proxy_unreachable"
+  /**
+   * ADR-31 (P2-028): the Tor sensitive-domain blocklist refused the host (localhost, *.local,
+   * *.internal, and every private/loopback/link-local address) — fail-closed before any budget or DNS.
+   */
+  | "tor_blocklist"
+  /** ADR-31 (P2-028): the proxy tunnel failed (connect/handshake/auth) — fail-closed, never a direct fallback. */
+  | "proxy";
 
 export const EGRESS_DENY_CODE = "EGRESS_POLICY_DENIED" as const;
 /** @deprecated Use `EGRESS_DENY_CODE` (the const value) or `EgressReason`. */
@@ -175,7 +187,12 @@ export interface EgressTransport {
   fetch(req: {
     url: string;
     host: string;
+    /** Pinned target IP (already address-policy-checked). For a proxy route this is the PROXY's pinned IP. */
     pinnedIp: string;
+    /** ADR-31 (P2-028): the route this request takes — informational for the transport. */
+    route?: EgressRoute;
+    /** ADR-31 (P2-028): the proxy tunnel to use (undefined = direct — the transport connects to the pinned IP itself). */
+    proxy?: EgressProxyTunnel;
     method: string;
     headers?: Record<string, string>;
     /** ADR-27: the OAuth2 token POST body (the only request body that ever exists). */
@@ -215,6 +232,8 @@ export interface EgressAuditEvent {
   readonly method?: string;
   readonly transportCalls: number;
   readonly detail?: string;
+  /** ADR-31 (P2-028): the route this event's request took — injected on every recorded event. */
+  readonly route?: EgressRoute;
   /** Present on `transport` events (P2-014): the URL of the actual transport call, secret-redacted. */
   readonly url?: string;
   /** Present on `transport` events (P2-014): the HTTP status the call returned. */
@@ -236,6 +255,49 @@ export interface EgressLimits {
   readonly connectTimeoutMs?: number; // default 5000 (per hop)
   readonly rateLimitPerHostPerSecond?: number; // default 1 (temporary; ADR-08)
   readonly rateLimitBurst?: number; // default 4
+  /** ADR-31 (P2-028): Tor's own separate LOWER rate budget — a route of last resort is never as fast as direct. */
+  readonly torRateLimitPerHostPerSecond?: number; // default 0.2 (one request per 5s sustained)
+  readonly torRateLimitBurst?: number; // default 1
+}
+
+/**
+ * ADR-31 (P2-028): the network route a request took. Every audit event records it — «كل طلب يسجّل مساره».
+ * `direct` is the ADR-08 default (pinned IP, local DNS); the proxy routes are the strict mode
+ * (the PINNED TARGET IP is sent — the proxy relays bytes and never resolves DNS); `tor` is the ONE
+ * explicit exception (the DOMAIN is sent — the essence of Tor).
+ */
+export type EgressRoute = "direct" | "proxy-http-connect" | "proxy-socks5" | "tor";
+
+/**
+ * ADR-31 (P2-028): the proxy tunnel the transport was asked to use. The gateway resolved and
+ * policy-checked the proxy itself (`proxyIp`); the target is either the PINNED IP (strict mode —
+ * the proxy never resolves it) or the DOMAIN (Tor — the exit resolves it, never us).
+ */
+export interface EgressProxyTunnel {
+  readonly kind: "http-connect" | "socks5";
+  /** The proxy's own pinned IP (resolved locally and policy-checked by the gateway — never the proxy's word). */
+  readonly proxyIp: string;
+  readonly proxyPort: number;
+  readonly credentials?: { readonly username: string; readonly password: string };
+  /**
+   * Strict mode: `{ kind: "ip", ip }` — the pinned target IP. Tor: `{ kind: "host", host }` — the domain.
+   * The proxy is handed ONLY this; it relays bytes.
+   */
+  readonly target: { readonly kind: "ip"; readonly ip: string } | { readonly kind: "host"; readonly host: string };
+}
+
+/**
+ * ADR-31 (P2-028): this gateway's routing — the strict default for HTTP CONNECT and SOCKS5 non-Tor
+ * proxies, and the explicit Tor exception. Credentials travel through the vault, never in events.
+ * `undefined` means `direct` (the ADR-08 default); Tor is NEVER implicit.
+ */
+export interface EgressRouting {
+  readonly route: "proxy-http-connect" | "proxy-socks5" | "tor";
+  readonly proxy: {
+    readonly host: string;
+    readonly port: number;
+    readonly credentials?: { readonly username: string; readonly password: string };
+  };
 }
 
 /**
@@ -273,6 +335,8 @@ export interface EgressOptions {
    * provider hosts can ever be reached (T-SEC-SSRF-045, review log Q4).
    */
   readonly allowedHosts?: readonly string[];
+  /** ADR-31 (P2-028): this gateway's routing — undefined = direct (the default); Tor is never implicit. */
+  readonly routing?: EgressRouting;
   /** Private capability used only by the vault path (see vault-capability.ts). */
   readonly capability?: unknown;
   /**
@@ -325,8 +389,8 @@ export interface EgressOptions {
  * precise reason instead of a generic failure. Any other thrown value maps to `transport_error`.
  */
 export class EgressTransportError extends Error {
-  readonly reason: "size_limit" | "content_encoding" | "transport_error" | "byte_budget";
-  constructor(reason: "size_limit" | "content_encoding" | "transport_error" | "byte_budget", message: string) {
+  readonly reason: "size_limit" | "content_encoding" | "transport_error" | "byte_budget" | "proxy";
+  constructor(reason: "size_limit" | "content_encoding" | "transport_error" | "byte_budget" | "proxy", message: string) {
     super(message);
     this.name = "EgressTransportError";
     this.reason = reason;
@@ -357,6 +421,10 @@ const DEFAULT_LIMITS: Required<Omit<EgressLimits, never>> = {
   // leave per host per second, further requests refused explicitly (rate_limit), the bucket refills
   // at 1/s. Bulk one-shot sources (OFAC/UN/EU) are unaffected; engine concurrency (4) is orthogonal.
   rateLimitPerHostPerSecond: 1,
+  // ADR-31 (P2-028): Tor's own separate LOWER budget — a route of last resort is never as fast as direct.
+  // A fractional refill rate is deliberate (one request per 5s sustained); the burst is 1.
+  torRateLimitPerHostPerSecond: 0.2,
+  torRateLimitBurst: 1,
   rateLimitBurst: 1,
 };
 
@@ -431,15 +499,29 @@ function redactSecret(secret: string): string {
  */
 function validateLimits(raw: EgressLimits | undefined): Required<EgressLimits> {
   const out = { ...DEFAULT_LIMITS, ...(raw ?? {}) };
-  const allowed = new Set(["maxRedirects", "maxSizeBytes", "timeoutMs", "connectTimeoutMs", "rateLimitPerHostPerSecond", "rateLimitBurst"]);
+  const allowed = new Set([
+    "maxRedirects",
+    "maxSizeBytes",
+    "timeoutMs",
+    "connectTimeoutMs",
+    "rateLimitPerHostPerSecond",
+    "rateLimitBurst",
+    // ADR-31 (P2-028): Tor's separate LOWER budget.
+    "torRateLimitPerHostPerSecond",
+    "torRateLimitBurst",
+  ]);
   if (raw) {
     for (const k of Object.keys(raw)) {
       if (!allowed.has(k)) throw new RangeError(`EgressOptions.limits.${k} is not a known limit`);
     }
   }
+  // Refill RATES may be fractional (a request every 5s = 0.2/s); everything else is a positive integer.
+  const fractionalAllowed = new Set(["rateLimitPerHostPerSecond", "torRateLimitPerHostPerSecond"]);
   for (const [k, v] of Object.entries(out)) {
-    if (!Number.isFinite(v) || !Number.isInteger(v) || v <= 0) {
-      throw new RangeError(`EgressOptions.limits.${k} must be a positive finite integer, got ${v}`);
+    if (!Number.isFinite(v) || v <= 0 || (!fractionalAllowed.has(k) && !Number.isInteger(v))) {
+      throw new RangeError(
+        `EgressOptions.limits.${k} must be a positive finite ${fractionalAllowed.has(k) ? "number" : "integer"}, got ${v}`,
+      );
     }
   }
   if (out.connectTimeoutMs > out.timeoutMs) {
@@ -941,6 +1023,67 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   const limits = validateLimits(opts.limits);
   const now = opts.now ?? (() => Date.now());
   const limiter = new RateLimiter(limits.rateLimitPerHostPerSecond, limits.rateLimitBurst, now);
+  // ADR-31 (P2-028): Tor's own separate LOWER rate budget — a route of last resort is never as fast as direct.
+  const torLimiter = new RateLimiter(limits.torRateLimitPerHostPerSecond ?? 0.2, limits.torRateLimitBurst ?? 1, now);
+  // ADR-31 (P2-028): this gateway's routing. undefined = direct (the ADR-08 default); Tor is NEVER implicit.
+  const routing = opts.routing;
+  const route = (): EgressRoute => routing?.route ?? "direct";
+  // The proxy's pinned IP, resolved and policy-checked ONCE per gateway (it is configuration, not a target).
+  let proxyIpCache: { readonly ip: string } | { readonly failure: EgressResult } | undefined;
+
+  /**
+   * ADR-31 (P2-028): the Tor sensitive-domain blocklist — localhost, *.local, *.internal and every
+   * private/loopback/link-local/reserved address. Enforced fail-closed BEFORE any budget or DNS: the
+   * exit resolves the name, so only the NAME can be checked on our side (the residual risk is L-35).
+   */
+  function torBlockedHost(hostname: string): boolean {
+    const h = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    if (
+      h === "localhost" ||
+      h.endsWith(".localhost") ||
+      h.endsWith(".local") ||
+      h.endsWith(".internal") ||
+      h.endsWith(".home") ||
+      h.endsWith(".corp")
+    )
+      return true;
+    // An IP literal: blocked unless it is a public address (the exit must never reach our internal networks).
+    // Hostnames are not classified here — the suffix list above is their only gate (the exit resolves them).
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(h) || h.includes(":")) return classifyAddress(h).kind !== "public";
+    return false;
+  }
+
+  /** Resolves and policy-checks the configured proxy ONCE; a failure is a fail-closed `proxy_unreachable`. */
+  async function resolveProxy(req: EgressRequest, hopCount: number, secretDigest?: string): Promise<{ ip: string } | EgressResult> {
+    if (proxyIpCache !== undefined) return "ip" in proxyIpCache ? proxyIpCache : proxyIpCache.failure;
+    const host = routing?.proxy.host;
+    if (host === undefined) return deny("proxy_unreachable", hopCount, "routing configuration missing a proxy host");
+    let ips: string[];
+    try {
+      ips = await (opts.resolver as DnsResolver).resolve(host);
+    } catch {
+      ips = [];
+    }
+    // A literal IP is used as-is (Tor's 127.0.0.1 SocksPort is the operator's own machine — allowed for the PROXY).
+    const literal = host.replace(/^\[|\]$/g, "");
+    const isLiteral = /^\d+\.\d+\.\d+\.\d+$/.test(literal) || literal.includes(":");
+    const candidate = ips.length > 0 ? ips : isLiteral ? [literal] : [];
+    const okIp = candidate.find((ip) => (host === "127.0.0.1" || host === "localhost" ? true : classifyAddress(ip).kind === "public"));
+    if (okIp === undefined) {
+      // Fail-closed: the request fails; there is NO fallback to direct. Recorded with the route.
+      audit({
+        kind: "denied",
+        reason: "proxy_unreachable",
+        ...auditCtx(req, host, hopCount, secretDigest),
+        detail: `proxy host "${host}" did not resolve to a usable address`,
+      });
+      const failure = deny("proxy_unreachable", 0, `proxy host "${host}" did not resolve to a usable address`);
+      proxyIpCache = { failure };
+      return failure;
+    }
+    proxyIpCache = { ip: okIp };
+    return { ip: okIp };
+  }
   // An explicitly empty allowedHosts list allows nothing (fail-closed); undefined means public mode.
   const allowedSet: ReadonlySet<string> | undefined =
     opts.allowedHosts === undefined ? undefined : new Set(opts.allowedHosts.map(normalizeHost).filter((h) => h !== ""));
@@ -952,7 +1095,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // but cannot record, the request fails closed (the audit trail is security-relevant). When no
     // sink is configured there is nothing to record — that is an explicit absence, not a silent catch.
     if (opts.auditSink === undefined) return;
-    opts.auditSink.record(event);
+    // ADR-31 (P2-028): every recorded event carries its route — injected at the single recording point.
+    opts.auditSink.record({ ...event, route: route() });
   }
 
   /**
@@ -1090,6 +1234,21 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // --- 6b: POST policy (ADR-27 OAuth2 token + ADR-28 OpenSanctions screening) — enforced in
     // preDnsChecks (before the content inventory) so host/path violations surface as
     // invalid_request and the screening waiver is only derived for pinned screening URLs ---
+    // --- ADR-31 (P2-028): Tor's sensitive-domain blocklist — fail-closed BEFORE the URL-shape checks,
+    // any budget or DNS: the exit resolves the name, so only the NAME can be checked on our side.
+    if (route() === "tor" && torBlockedHost(currentUrl.hostname)) {
+      audit({
+        kind: "denied",
+        reason: "tor_blocklist",
+        caseId: req.caseId,
+        systemContext: req.systemContext,
+        transform: req.transform,
+        host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
+        transportCalls: 0,
+      });
+      return deny("tor_blocklist", 0, `host "${currentUrl.hostname}" is on the Tor sensitive-domain blocklist`);
+    }
+
     // --- 7: literal address class, then scheme / port / credentials ---
     const shape = literalHostCheck(currentUrl) ?? urlChecks(currentUrl);
     if (shape) {
@@ -1105,9 +1264,10 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return shape;
     }
 
-    // --- 7b: rate limit (per host, per hop) ---
+    // --- 7b: rate limit (per host, per hop) — Tor uses its own separate LOWER budget (ADR-31) ---
     const host = currentUrl.hostname.replace(/^\[|\]$/g, "");
-    if (!limiter.take(host)) {
+    const activeLimiter = route() === "tor" ? torLimiter : limiter;
+    if (!activeLimiter.take(host)) {
       audit({
         kind: "rate_limited",
         reason: "rate_limit",
@@ -1244,6 +1404,59 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     return null;
   }
 
+  /**
+   * ADR-31 (P2-028): resolves WHAT this hop hands the transport — the pinned target IP (direct and
+   * strict proxy mode; the proxy relays bytes and never resolves DNS) or the DOMAIN (Tor — the exit
+   * resolves it). Strict mode also resolves and policy-checks the PROXY itself, fail-closed.
+   */
+  async function resolveRoute(
+    req: EgressRequest,
+    currentUrl: URL,
+    hopCount: number,
+    deadline: number,
+    abort: AbortCtl,
+    secretDigest?: string,
+  ): Promise<{ tunnel: EgressProxyTunnel | undefined; hopPinnedIp: string } | EgressResult> {
+    if (routing === undefined) {
+      const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
+      if ("code" in resolved && resolved.code !== undefined) {
+        audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+        return resolved;
+      }
+      return { tunnel: undefined, hopPinnedIp: (resolved as ResolvedAddress).pinnedIp };
+    }
+    const proxy = await resolveProxy(req, hopCount, secretDigest);
+    if ("code" in proxy && proxy.code !== undefined) return proxy;
+    const proxyIp = (proxy as { ip: string }).ip;
+    const proxyCommon = {
+      proxyIp,
+      proxyPort: routing.proxy.port,
+      ...(routing.proxy.credentials ? { credentials: routing.proxy.credentials } : {}),
+    };
+    if (routing.route === "tor") {
+      // Tor: the target is NEVER resolved locally — the exit resolves it; the transport connects to the PROXY.
+      const tunnel: EgressProxyTunnel = {
+        kind: "socks5",
+        ...proxyCommon,
+        target: { kind: "host", host: currentUrl.hostname.replace(/^\[|\]$/g, "") },
+      };
+      return { tunnel, hopPinnedIp: proxyIp };
+    }
+    // Strict mode: the target is pinned locally as always (resolveBounded); the transport hands the
+    // PROXY the pinned target IP and relays bytes — DNS never happens at the proxy.
+    const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
+    if ("code" in resolved && resolved.code !== undefined) {
+      audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
+      return resolved;
+    }
+    const tunnel: EgressProxyTunnel = {
+      kind: routing.route === "proxy-http-connect" ? "http-connect" : "socks5",
+      ...proxyCommon,
+      target: { kind: "ip", ip: (resolved as ResolvedAddress).pinnedIp },
+    };
+    return { tunnel, hopPinnedIp: proxyIp };
+  }
+
   async function runHops(
     req: EgressRequest,
     initialUrl: URL,
@@ -1262,22 +1475,13 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       // POST body to an unpinned host+path), cancellation, deadline and budgets.
       const pre = hopPreFlight(req, currentUrl, hopCount, deadline, abort, secretDigest);
       if (pre) return pre;
-      const resolved = await resolveBounded(currentUrl, hopCount, deadline, abort);
-      if ("code" in resolved && resolved.code !== undefined) {
-        audit({ kind: "denied", reason: resolved.reason, ...auditCtx(req, currentUrl.hostname, hopCount, secretDigest) });
-        return resolved;
-      }
+      // ADR-31 (P2-028): the routing decides WHAT is resolved and WHAT the transport is handed —
+      // see resolveRoute (strict mode pins the target and the proxy relays bytes; Tor sends the domain).
+      const routed = await resolveRoute(req, currentUrl, hopCount, deadline, abort, secretDigest);
+      if ("code" in routed && routed.code !== undefined) return routed;
+      const { tunnel, hopPinnedIp } = routed as { tunnel: EgressProxyTunnel | undefined; hopPinnedIp: string };
       const metered = { bytes: 0 };
-      const hop = await transportHopRecorded(
-        req,
-        currentUrl,
-        (resolved as ResolvedAddress).pinnedIp,
-        hopHeaders,
-        hopCount,
-        deadline,
-        abort,
-        metered,
-      );
+      const hop = await transportHopRecorded(req, currentUrl, hopPinnedIp, hopHeaders, hopCount, deadline, abort, metered, tunnel);
       if ("code" in hop && hop.code !== undefined) return hop;
       const resp = hop as TransportResp;
       // A cancelled request is NEVER a success, even if the transport completed late.
@@ -1320,8 +1524,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     deadline: number,
     abort: AbortCtl,
     metered: { bytes: number },
+    tunnel?: EgressProxyTunnel,
   ): Promise<TransportResp | EgressResult> {
-    const outcome = await transportHop(req, currentUrl, pinnedIp, headers, hopCount, deadline, abort, metered);
+    const outcome = await transportHop(req, currentUrl, pinnedIp, headers, hopCount, deadline, abort, metered, tunnel);
     if (!("code" in outcome && outcome.code !== undefined)) {
       // P2-014: the call was actually made — record it at the fetch boundary (success carries its status).
       auditTransportCall(req, currentUrl, hopCount + 1, (outcome as TransportResp).status);
@@ -1348,6 +1553,41 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
    * the request-abort listener are always released, so no listener or timer
    * leaks across hops or requests.
    */
+  /** Maps a transport failure to its deny result (P2-014 rows included) — shared by every hop's catch. */
+  function transportFailureResult(
+    req: EgressRequest,
+    currentUrl: URL,
+    hopCount: number,
+    err: unknown,
+    abort: AbortCtl,
+    deadline: number,
+    fetchInitiated: boolean,
+    hopAborted: boolean,
+  ): EgressResult {
+    const detail = err instanceof Error ? err.message : String(err);
+    const safeDetail = req.secret ? redactInText(detail, req.secret) : detail;
+    // P2-014: a failed attempt is still an attempt — a row with the error, never silently absent.
+    if (fetchInitiated) auditTransportCall(req, currentUrl, hopCount + 1, undefined, safeDetail);
+    if (isCancelled(req, abort)) {
+      audit({ kind: "transport_error", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
+      return deny("cancelled", hopCount + 1, "request cancelled by caller during transport");
+    }
+    if (hopAborted) {
+      const reason = now() >= deadline ? "timeout_total" : "timeout_connect";
+      audit({ kind: "timeout", reason, ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
+      return deny(reason, hopCount + 1);
+    }
+    // A typed transport failure keeps its reason; anything else is a transport error, never a policy reason.
+    const reason: EgressReason = err instanceof EgressTransportError ? err.reason : "transport_error";
+    audit({
+      kind: reason === "size_limit" || reason === "byte_budget" ? "size_limit" : "transport_error",
+      reason,
+      ...auditCtx(req, currentUrl.hostname, hopCount + 1),
+      detail: safeDetail,
+    });
+    return deny(reason, hopCount + 1, safeDetail);
+  }
+
   async function transportHop(
     req: EgressRequest,
     currentUrl: URL,
@@ -1357,6 +1597,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     deadline: number,
     abort: AbortCtl,
     metered: { bytes: number },
+    tunnel?: EgressProxyTunnel,
   ): Promise<TransportResp | EgressResult> {
     const hopDeadline = Math.min(deadline, now() + limits.connectTimeoutMs);
     if (now() >= hopDeadline) {
@@ -1385,6 +1626,9 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
         url: currentUrl.href,
         host: currentUrl.hostname.replace(/^\[|\]$/g, ""),
         pinnedIp,
+        // ADR-31 (P2-028): the route (informational) and the proxy tunnel (undefined = direct).
+        route: route(),
+        ...(tunnel !== undefined ? { proxy: tunnel } : {}),
         method: req.method ?? "GET",
         headers: headers === undefined ? undefined : { ...headers },
         // ADR-27: the OAuth2 token POST body (the only request that ever has one).
@@ -1408,28 +1652,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       aborted.catch(() => {});
       return await Promise.race([fetching, aborted]);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : String(err);
-      const safeDetail = req.secret ? redactInText(detail, req.secret) : detail;
-      // P2-014: a failed attempt is still an attempt — a row with the error, never silently absent.
-      if (fetchInitiated) auditTransportCall(req, currentUrl, hopCount + 1, undefined, safeDetail);
-      if (isCancelled(req, abort)) {
-        audit({ kind: "transport_error", reason: "cancelled", ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
-        return deny("cancelled", hopCount + 1, "request cancelled by caller during transport");
-      }
-      if (hopController.signal.aborted) {
-        const reason = now() >= deadline ? "timeout_total" : "timeout_connect";
-        audit({ kind: "timeout", reason, ...auditCtx(req, currentUrl.hostname, hopCount + 1), detail: safeDetail });
-        return deny(reason, hopCount + 1);
-      }
-      // A typed transport failure keeps its reason; anything else is a transport error, never a policy reason.
-      const reason: EgressReason = err instanceof EgressTransportError ? err.reason : "transport_error";
-      audit({
-        kind: reason === "size_limit" || reason === "byte_budget" ? "size_limit" : "transport_error",
-        reason,
-        ...auditCtx(req, currentUrl.hostname, hopCount + 1),
-        detail: safeDetail,
-      });
-      return deny(reason, hopCount + 1, safeDetail);
+      return transportFailureResult(req, currentUrl, hopCount, err, abort, deadline, fetchInitiated, hopController.signal.aborted);
     } finally {
       clearTimeout(hopTimer);
       abort.controller.signal.removeEventListener("abort", onReqAbort);
@@ -1551,6 +1774,23 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   }
 
   /** Redirect hop: validate the target and either continue or deny. */
+  /**
+   * ADR-31 (P2-028): the Tor redirect gate — the blocklist refusal for a redirect target. The exit
+   * resolves the name, so only the NAME can be checked on our side; `undefined` means not blocked.
+   */
+  function torRedirectRefusal(
+    req: EgressRequest,
+    nextUrl: URL,
+    hopCount: number,
+    secretDigest: string | undefined,
+    nextHostForAudit: string,
+  ): { done: true; result: EgressResult } | undefined {
+    if (route() !== "tor" || !torBlockedHost(nextUrl.hostname.replace(/^\[|\]$/g, ""))) return undefined;
+    const result = deny("tor_blocklist", hopCount, `redirect target "${nextUrl.hostname}" is on the Tor sensitive-domain blocklist`);
+    audit({ kind: "denied", reason: result.reason, ...auditCtx(req, nextHostForAudit, hopCount, secretDigest), detail: result.detail });
+    return { done: true, result };
+  }
+
   async function redirectHop(
     req: EgressRequest,
     currentUrl: URL,
@@ -1577,9 +1817,15 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     };
     const nextShape = literalHostCheck(nextUrl) ?? urlChecks(nextUrl);
     if (nextShape) return refuse({ ...nextShape, transportCalls: hopCount, detail: "redirect target refused" });
+    // ADR-31 (P2-028): a redirect target over Tor is blocklist-checked like a first hop — the exit
+    // resolves it, so only the NAME can be checked on our side.
+    const torRefused = torRedirectRefusal(req, nextUrl, hopCount, secretDigest, nextHostForAudit);
+    if (torRefused !== undefined) return torRefused;
     if (hopCount > limits.maxRedirects) return refuse(deny("redirect_limit", hopCount));
-    // Every hop is charged against its own host's rate limit, like a first request (ADR-08).
-    if (!limiter.take(nextHostForAudit)) {
+    // Every hop is charged against its own host's rate limit, like a first request (ADR-08) —
+    // Tor's hops use Tor's own separate LOWER budget (ADR-31).
+    const redirectLimiter = route() === "tor" ? torLimiter : limiter;
+    if (!redirectLimiter.take(nextHostForAudit)) {
       return refuse(deny("rate_limit", hopCount, `rate limit exceeded for host ${nextHostForAudit}`), "rate_limited");
     }
     // --- ACTUAL-DESTINATION check (T-SEC-SSRF-045 / Q4 condition): the redirect
