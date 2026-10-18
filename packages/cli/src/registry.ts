@@ -67,6 +67,11 @@ export interface RegisteredTransform {
    * Exact host and whole path only (see `isStaticPath` in @ir/egress). Never derived from a source's answer.
    */
   readonly staticPaths?: readonly string[];
+  /**
+   * P2-029: for a keyed transform, the provider-documented page where its key is obtained (a link for
+   * the operator — never a key itself; the key still travels only through the approved secret mechanism).
+   */
+  readonly keyUrl?: string;
   readonly hosts: readonly string[];
   /** Hosts a run may be sent to that are only known from a source's answer (RDAP bootstrap); never auto-allowed. */
   readonly discoveredHosts?: string;
@@ -257,6 +262,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // the registry's api-key header only (D-031), read from the vault per request; the run is
     // refused fail-closed when the vault entry "urlscan" is not set.
     transform: urlscanSearch,
+    keyUrl: "https://urlscan.io/user/profile/",
     module: mod("tr-009-urlscan.ts"),
     subjects: { url: httpUrlInput },
     // the search request URL carries the subject's URL host as the searched domain (q=domain:...)
@@ -271,6 +277,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // Auth-Key header only (injected by the egress adapter from the vault entry "threatfox"),
     // never the URL, never the body; the body and the response never enter evidence or audit.
     transform: threatfoxSearch,
+    keyUrl: "https://auth.abuse.ch/",
     module: mod("tr-047-threatfox.ts"),
     subjects: { ip: hashInput, domain: domainInput, url: httpUrlInput, hash: hashInput },
     sends: ["ip", "domain", "url", "hash"],
@@ -284,6 +291,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // closed list is narrower than the provider's documented surface on purpose, fail-closed). The
     // run is refused fail-closed when the vault entry is not set.
     transform: abuseIpDbCheck,
+    keyUrl: "https://www.abuseipdb.com/account/api",
     module: mod("tr-044-abuseipdb.ts"),
     subjects: { ipv4: ipv4Input, ipv6: ipv6Input },
     // The request URL's query carries the subject IP itself.
@@ -300,6 +308,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // transform cannot smuggle an untyped path. URL identifiers are sent as the documented
     // unpadded base64url form.
     transform: virustotalReputation,
+    keyUrl: "https://www.virustotal.com/gui/my-apikey",
     module: mod("tr-043-virustotal.ts"),
     subjects: { ipv4: ipv4Input, ipv6: ipv6Input, domain: domainInput, url: httpUrlInput, hash: tripleHashInput },
     // The request PATH carries the subject itself (ip / domain / url id / hash).
@@ -313,6 +322,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The subject IPv4 travels in the REQUEST PATH — the closed template row (IPv4-only, declared
     // max length) is enforced centrally by the gateway.
     transform: greyNoiseClassification,
+    keyUrl: "https://viz.greynoise.io/account/api-key",
     module: mod("tr-045-greynoise.ts"),
     subjects: { ipv4: ipv4Input },
     // The request PATH carries the subject IP itself.
@@ -327,6 +337,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // enforced centrally by the gateway; the url indicator type is deliberately not accepted
     // (a percent-encoded full URL fits no closed type — documented for the owner).
     transform: otxPulses,
+    keyUrl: "https://otx.alienvault.com/settings",
     module: mod("tr-046-otx-pulses.ts"),
     subjects: { ipv4: ipv4Input, ipv6: ipv6Input, domain: domainInput, hostname: hostnameInput, hash: tripleHashInput },
     // The request PATH carries the indicator itself.
@@ -340,6 +351,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The host name AND the record type both travel in the REQUEST PATH — the closed template row
     // (domain type + the a/aaaa/mx/ns/soa/txt enum) is enforced centrally by the gateway.
     transform: securityTrailsDnsHistory,
+    keyUrl: "https://securitytrails.com/app/account/credentials",
     module: mod("tr-048-securitytrails-dns-history.ts"),
     subjects: { domain: domainInput, hostname: hostnameInput },
     // The request PATH carries the subject host name (and the literal record type).
@@ -356,6 +368,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // subject travels in the REQUEST PATH (the closed template row /v2/hosts/{ip}); the domain
     // subject travels in the ONLY allowlisted query parameter (`q`) of the certificates search.
     transform: censysHostsCertificates,
+    keyUrl: "https://search.censys.io/account",
     module: mod("tr-049-censys.ts"),
     subjects: { ipv4: ipv4Input, ipv6: ipv6Input, domain: domainInput },
     // The request PATH carries the subject IP; the request QUERY carries the subject domain.
@@ -371,6 +384,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // The subject is a domain (catalog sensitivity normal); the manifest's sensitivity is
     // natural_person_gate because the RESPONSE carries public emails (E-02).
     transform: hunterDomainEmails,
+    keyUrl: "https://hunter.io/api-keys",
     module: mod("tr-051-hunter-emails.ts"),
     subjects: { domain: domainInput },
     // The request URL's query carries the subject domain itself.
@@ -401,6 +415,7 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     // digest envelope instead); the query, the time, the links (the findings) and the hash are
     // stored, nothing else. The natural-person gate applies (web results about people).
     transform: braveWebSearch,
+    keyUrl: "https://api-dashboard.search.brave.com/",
     module: mod("tr-053-brave-web-search.ts"),
     subjects: { person_name: personNameInput, domain: domainInput },
     // The request QUERY carries the subject itself (the name or the domain).

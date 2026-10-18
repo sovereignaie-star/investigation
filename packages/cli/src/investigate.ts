@@ -70,11 +70,33 @@ export interface CoverageRecord {
   readonly reason?: string;
   readonly requests: number;
   readonly findings: number;
+  /** P2-029: the measured wall time of the executed run (ms). */
+  readonly elapsedMs?: number;
+  /** P2-029: the measured byte cost of the executed run (the shared budget's delta). */
+  readonly bytes?: number;
+}
+
+/** P2-029: one source's measured statistics — outcomes, wall time, and the measured cost (requests + bytes). */
+export interface SourceStats {
+  readonly transformId: string;
+  /** Executed runs (found + none + failed). */
+  readonly runs: number;
+  readonly found: number;
+  readonly none: number;
+  readonly failed: number;
+  readonly notRun: number;
+  /** The measured cost: transport requests this source made, and the bytes it consumed. */
+  readonly requests: number;
+  readonly bytes: number;
+  /** The measured wall time of the executed runs (ms). */
+  readonly elapsedMs: number;
 }
 
 export interface InvestigationResult {
   readonly seedKey: string;
   readonly coverage: CoverageRecord[];
+  /** P2-029: per-source statistics (success/failure/time/measured cost), aggregated from the coverage. */
+  readonly sources: SourceStats[];
   /** Entities whose type no selected registered transform accepts (recorded in the graph, not expanded). */
   readonly unexpandable: string[];
   readonly runs: number;
@@ -88,12 +110,28 @@ export interface InvestigateOptions {
   readonly budget?: Partial<InvestigationBudget>;
   /** Restrict selection to these transform ids (each must be registered). Default: every registered transform. */
   readonly transforms?: readonly string[];
+  /** P2-029: exclude these transform ids from this invocation only (each must be registered); the case's disabled sources are excluded on every invocation. */
+  readonly exclude?: readonly string[];
   readonly network?: NetworkDeps;
   readonly clock?: Clock;
   /** Wall clock (ms) for the time budget and the transforms' rate limiters. */
   readonly now?: () => number;
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
   readonly signal?: AbortSignal;
+}
+
+/**
+ * P2-029: the sources disabled on this case, from its audit chain — the latest `source.disable`/
+ * `source.enable` event per transform id wins. An investigation never invokes a disabled source.
+ */
+export function disabledSources(c: Case): Map<string, { disabled: boolean; reason?: string }> {
+  const state = new Map<string, { disabled: boolean; reason?: string }>();
+  for (const ev of c.auditTrail()) {
+    if (ev.action !== "source.disable" && ev.action !== "source.enable") continue;
+    const reason = typeof ev.detail?.reason === "string" ? ev.detail.reason : undefined;
+    state.set(ev.target, { disabled: ev.action === "source.disable", ...(reason ? { reason } : {}) });
+  }
+  return state;
 }
 
 interface Node {
@@ -208,6 +246,11 @@ class Investigation {
     private readonly selected: readonly RegisteredTransform[],
     private readonly opts: InvestigateOptions,
     seed: Node,
+    /** P2-029: the case's disabled sources and this invocation's --exclude set — never invoked. */
+    private readonly blocked2: { disabled: ReadonlyMap<string, { disabled: boolean; reason?: string }>; excluded: ReadonlySet<string> } = {
+      disabled: new Map(),
+      excluded: new Set(),
+    },
   ) {
     this.frontier = [seed];
     this.bytes = new ByteBudget(budget.maxBytes);
@@ -265,7 +308,20 @@ class Investigation {
     }
   }
 
+  /** P2-029: why this source must not run for this investigation, or undefined when it may. */
+  private blockedSource(entry: RegisteredTransform): string | undefined {
+    const id = entry.transform.manifest.id;
+    const dis = this.blocked2.disabled.get(id);
+    if (dis?.disabled) return `disabled: ${dis.reason ?? "no reason recorded"}`;
+    if (this.blocked2.excluded.has(id)) return "excluded by the operator (--exclude)";
+    return undefined;
+  }
+
   private async attempt(node: Node, entry: RegisteredTransform): Promise<void> {
+    // P2-029: a source disabled on the case, or excluded by the operator for this invocation, is never
+    // invoked — recorded as not_run with its reason, before any budget or setup consideration.
+    const sourceBlocked = this.blockedSource(entry);
+    if (sourceBlocked !== undefined) return this.notRun(node, entry, sourceBlocked);
     const blocked = this.blocked(node);
     if (blocked) return this.notRun(node, entry, blocked);
     const prepared = subjectInput(entry, node.type, node.value);
@@ -307,6 +363,8 @@ class Investigation {
       run.abort();
     }, remaining);
     const before = this.requests.usedCount;
+    const bytesBefore = this.bytes.used;
+    const startedAt = this.now();
     const base = { entityKey: node.key, transformId: entry.transform.manifest.id, depth: node.depth };
     try {
       const result = await runTransform(entry.transform, {
@@ -327,6 +385,8 @@ class Investigation {
         state: findings.length > 0 ? "found" : "none",
         requests: this.requests.usedCount - before,
         findings: findings.length,
+        elapsedMs: Math.max(0, this.now() - startedAt),
+        bytes: this.bytes.used - bytesBefore,
       });
       this.enqueue(childrenOf(findings, node.depth + 1));
     } catch (x) {
@@ -339,6 +399,8 @@ class Investigation {
         reason: `[${x.stage}] ${why}`,
         requests: this.requests.usedCount - before,
         findings: 0,
+        elapsedMs: Math.max(0, this.now() - startedAt),
+        bytes: this.bytes.used - bytesBefore,
       });
     } finally {
       clearTimeout(deadline);
@@ -383,6 +445,15 @@ export async function investigate(
   const ready = prepare(seed, opts);
   if ("error" in ready) return ready;
   const { budget, selected, seedKey } = ready;
+  // P2-029: validate the per-invocation exclusion (each id must be registered) and read the case's
+  // disabled sources from its audit chain — an investigation never invokes a disabled source.
+  const excluded = new Set<string>();
+  for (const id of opts.exclude ?? []) {
+    if (!REGISTRY.find((r) => r.transform.manifest.id === id)) return { error: `unknown transform "${id}"` };
+    excluded.add(id);
+  }
+  const disabled = disabledSources(c);
+  const disabledNow = [...disabled.entries()].filter(([, s]) => s.disabled).map(([id]) => id);
   // P2-016: the provider registry config for secret-bearing runs, aggregated from every selected
   // transform's binding (hosts + paths together). A selected transform whose secret cannot be
   // resolved (no registry entry / vault unavailable) does not break the whole investigation — its
@@ -422,17 +493,30 @@ export async function investigate(
     transforms: selected.map((e) => e.transform.manifest.id),
     budget: { ...budget },
     allowedHosts: [...gw.allowedHosts],
+    // P2-029: the exclusion surface of this invocation — the case's disabled sources and the operator's --exclude set.
+    ...(disabledNow.length > 0 || excluded.size > 0 ? { excluded: { disabled: disabledNow, operator: [...excluded] } } : {}),
   });
-  const inv = new Investigation(c, gw, budget, selected, opts, {
-    key: seedKey,
-    type: seed.type,
-    value: seedKey.slice(seed.type.length + 1),
-    depth: 0,
-  });
+  const inv = new Investigation(
+    c,
+    gw,
+    budget,
+    selected,
+    opts,
+    {
+      key: seedKey,
+      type: seed.type,
+      value: seedKey.slice(seed.type.length + 1),
+      depth: 0,
+    },
+    { disabled, excluded },
+  );
   for (let i = 0; i < inv.frontier.length; i++) await inv.expand(inv.frontier[i]);
+  // P2-029: the per-source statistics — outcomes, wall time, and the measured cost (requests + bytes).
+  const sources = sourceStats(inv.coverage);
   const result: InvestigationResult = {
     seedKey,
     coverage: inv.coverage,
+    sources,
     unexpandable: inv.unexpandable,
     runs: inv.runs,
     requests: inv.requests.usedCount,
@@ -450,9 +534,45 @@ export async function investigate(
       state: r.state,
       ...(r.reason ? { reason: r.reason } : {}),
     })),
+    // P2-029: the same per-source statistics land in the audit chain (decision ج).
+    sources: result.sources.map((s) => ({ ...s })),
     unexpandable: result.unexpandable,
   });
   return result;
+}
+
+/** P2-029: aggregates the coverage into per-source statistics (outcomes, time, measured cost). */
+function sourceStats(coverage: readonly CoverageRecord[]): SourceStats[] {
+  type Accumulator = {
+    transformId: string;
+    runs: number;
+    found: number;
+    none: number;
+    failed: number;
+    notRun: number;
+    requests: number;
+    bytes: number;
+    elapsedMs: number;
+  };
+  const byId = new Map<string, Accumulator>();
+  const of = (id: string): Accumulator => {
+    let s = byId.get(id);
+    if (s === undefined)
+      byId.set(id, (s = { transformId: id, runs: 0, found: 0, none: 0, failed: 0, notRun: 0, requests: 0, bytes: 0, elapsedMs: 0 }));
+    return s;
+  };
+  for (const r of coverage) {
+    const s = of(r.transformId);
+    s.requests += r.requests;
+    if (r.elapsedMs !== undefined) s.elapsedMs += r.elapsedMs;
+    if (r.bytes !== undefined) s.bytes += r.bytes;
+    if (r.state === "found") s.found++;
+    else if (r.state === "none") s.none++;
+    else if (r.state === "failed") s.failed++;
+    else s.notRun++;
+  }
+  for (const s of byId.values()) s.runs = s.found + s.none + s.failed;
+  return [...byId.values()];
 }
 
 export interface Corroboration {
