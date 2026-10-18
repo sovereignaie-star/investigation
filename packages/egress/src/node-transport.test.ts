@@ -21,6 +21,7 @@
  */
 import * as fs from "node:fs";
 import * as http from "node:http";
+import * as net from "node:net";
 import * as https from "node:https";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -423,6 +424,74 @@ describe("node-transport (REAL TLS against a local pinned server)", () => {
       await close();
       delete process.env.HTTP_PROXY;
       delete process.env.HTTPS_PROXY;
+    }
+  });
+});
+
+describe("node-transport probeProxy (P2-028 — the REAL liveness probe; local servers, no internet)", () => {
+  // NOTE (J-6 discipline): this round is RETROSPECTIVE — probeProxy was implemented in #218 before
+  // these tests were written (a J-8 deviation, disclosed in WORKLOG). These tests document and lock
+  // the behaviour; they are NOT prior red-first evidence for the implementation.
+
+  /** A free local port (bound then released) to point a probe at a DEAD address. */
+  async function freePort(): Promise<number> {
+    return await new Promise((resolve) => {
+      const srv = net.createServer(() => undefined);
+      srv.listen(0, "127.0.0.1", () => {
+        const { port } = srv.address() as net.AddressInfo;
+        srv.close(() => resolve(port));
+      });
+    });
+  }
+
+  it("T-P2028-N01: a SOCKS5 proxy that answers the method negotiation is ALIVE (latency recorded, no target contacted)", async () => {
+    // a minimal SOCKS5 server: it answers the no-auth greeting [05 01 00] with [05 00].
+    const seenGreetings: Buffer[] = [];
+    const server = net.createServer((sock) => {
+      sock.on("data", (buf) => {
+        seenGreetings.push(Buffer.from(buf));
+        sock.write(Buffer.from([0x05, 0x00])); // no-auth accepted
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as net.AddressInfo;
+    try {
+      const transport = createNodeTransport();
+      const probe = transport.probeProxy;
+      if (typeof probe !== "function") throw new Error("probeProxy missing on the transport");
+      const outcome = await probe({ kind: "socks5", proxyIp: "127.0.0.1", proxyPort: port });
+      expect(outcome.alive).toBe(true);
+      expect(typeof outcome.latencyMs).toBe("number");
+      // the probe greeted with the no-auth method list ONLY — no target, no auth.
+      expect(seenGreetings[0].equals(Buffer.from([0x05, 0x01, 0x00]))).toBe(true);
+    } finally {
+      server.close();
+    }
+  });
+
+  it("T-P2028-N02: a dead address (nothing listening) is NOT alive — the failure is an outcome, never a throw", async () => {
+    const port = await freePort(); // released: nothing listens
+    const transport = createNodeTransport();
+    const probe = transport.probeProxy;
+    if (typeof probe !== "function") throw new Error("probeProxy missing on the transport");
+    const outcome = await probe({ kind: "socks5", proxyIp: "127.0.0.1", proxyPort: port });
+    expect(outcome.alive).toBe(false);
+    expect(typeof outcome.error).toBe("string");
+  });
+
+  it("T-P2028-N03: an HTTP-CONNECT proxy is probed with a TCP connect only (any listener = alive)", async () => {
+    const server = net.createServer(() => undefined); // accepts, says nothing
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as net.AddressInfo;
+    try {
+      const transport = createNodeTransport();
+      const probe = transport.probeProxy;
+      if (typeof probe !== "function") throw new Error("probeProxy missing on the transport");
+      const outcome = await probe({ kind: "http-connect", proxyIp: "127.0.0.1", proxyPort: port });
+      expect(outcome.alive).toBe(true);
+      expect(typeof outcome.latencyMs).toBe("number");
+    } finally {
+      server.close();
     }
   });
 });

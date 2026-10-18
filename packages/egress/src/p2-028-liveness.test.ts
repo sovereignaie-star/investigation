@@ -236,4 +236,20 @@ describe("P2-028 liveness: the gateway probes the configured proxy and records e
     expect((await g.request({ ...BASE })).ok).toBe(true);
     for (const e of s.events) expect(e.route).toBe("proxy-socks5");
   });
+
+  it("T-P2028-L08: jitter without an injected sleep — a REAL delay must still run (never an eternal hang); the request's total timeout covers the delay", async () => {
+    // A production caller may enable jitterMs without injecting a test sleep: the gateway must use a
+    // REAL delay (a default timer), never hang the request forever. rng=() => 0 keeps the delay 0ms
+    // so the test stays fast — the point is the request COMPLETES.
+    const t = probeTransport();
+    const s = sink();
+    const g = createEgressGateway({
+      ...gatewayOpts(t, s, () => 0),
+      limits: { rateLimitPerHostPerSecond: 1000, rateLimitBurst: 100, jitterMs: 1_000 },
+      rng: () => 0, // deterministic: a 0ms delay
+      // NOTE: no `sleep` injected — the default must be a real timer.
+    });
+    const r = await g.request({ ...BASE }); // BASE is proxied in this suite's fixtures
+    expect(r.ok).toBe(true);
+  }, 3_000); // a hang fails fast here (the default vitest timeout would also catch it)
 });

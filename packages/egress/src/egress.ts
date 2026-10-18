@@ -1068,6 +1068,23 @@ export interface EgressGatewayWithLimits extends EgressGateway {
   readonly limits: Readonly<Required<EgressLimits>>;
 }
 
+/**
+ * ADR-31 (P2-028, item هـ): the DEFAULT jitter delay — a real timer. When the caller enables
+ * jitterMs without injecting a test sleep, the gateway still delays (and still aborts with the
+ * request's signal); it must NEVER hang the request forever.
+ */
+function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimits {
   const limits = validateLimits(opts.limits);
   const now = opts.now ?? (() => Date.now());
@@ -1101,16 +1118,20 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
   async function runLivenessProbe(
     proxyIp: string,
     proxy: { host: string; port: number; credentials?: { username: string; password: string } },
+    signal?: AbortSignal,
   ): Promise<{ alive: boolean; latencyMs?: number; error?: string }> {
     const probe = (opts.transport as EgressTransport).probeProxy;
     if (typeof probe !== "function") return { alive: false, error: "transport has no probe capability" };
     // the proxy kind derives from the route (proxy-http-connect / proxy-socks5)
-    return await probe({
-      kind: route() === "proxy-http-connect" ? "http-connect" : "socks5",
-      proxyIp,
-      proxyPort: proxy.port,
-      credentials: proxy.credentials,
-    }).catch(
+    return await probe(
+      {
+        kind: route() === "proxy-http-connect" ? "http-connect" : "socks5",
+        proxyIp,
+        proxyPort: proxy.port,
+        credentials: proxy.credentials,
+      },
+      signal,
+    ).catch(
       (e: unknown) =>
         ({ alive: false, error: e instanceof Error ? e.message : String(e), latencyMs: undefined }) as {
           alive: false;
@@ -1130,7 +1151,7 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     // the proxy's pinned IP (the same resolve + policy check the request path uses, cached)
     const resolved = await resolveProxy(req, 0, secretDigest);
     if ("ip" in resolved === false) return resolved; // a fail-closed proxy_unreachable denial (already audited)
-    const outcome = await runLivenessProbe(resolved.ip, routing.proxy);
+    const outcome = await runLivenessProbe(resolved.ip, routing.proxy, req.signal);
     audit({
       kind: "liveness",
       route: r,
@@ -1443,11 +1464,13 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
       return registryErr;
     }
 
+    // The request's TOTAL budget starts at arrival: the liveness check AND the jitter delay both
+    // count against timeoutMs (L-37: the delay is covered by the request's overall deadline).
+    const deadline = now() + limits.timeoutMs;
+
     // --- ADR-31 (P2-028, item هـ): the liveness check + the optional jitter (fail-closed; proxied only).
     const preTransport = await livenessAndJitter(req, secretDigest);
     if (preTransport) return preTransport;
-
-    const deadline = now() + limits.timeoutMs;
     const abort = makeRequestAbort(req);
     try {
       return await runHops(req, currentUrl, deadline, abort, secretDigest);
@@ -1468,8 +1491,8 @@ export function createEgressGateway(opts: EgressOptions): EgressGatewayWithLimit
     if (route() !== "direct" && limits.jitterMs > 0) {
       const abort = makeRequestAbort(req);
       try {
-        await (opts.sleep?.(Math.floor((opts.rng ?? Math.random)() * limits.jitterMs), abort.controller.signal) ??
-          new Promise<void>(() => {}));
+        const sleep = opts.sleep ?? defaultSleep; // a REAL delay when none is injected — never a hang
+        await sleep(Math.floor((opts.rng ?? Math.random)() * limits.jitterMs), abort.controller.signal);
       } finally {
         abort.dispose();
       }
