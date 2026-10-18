@@ -1,12 +1,14 @@
 name: security-review
-# D-8 (owner decision; tracked under P2-003): a pull request touching a security or egress path needs an APPROVED review from the
-# designated reviewer on its current head. Policy and paths: scripts/gates/security-review-gate.mjs and
-# docs/security/REVIEW_SCOPE.md.
+# P6-018 (owner decision 2026-10-19): the D-8 mandatory human review is ABOLISHED. The automated checks
+# (CI, CodeQL, gitleaks, governance, build, test) are the only merge gate; no human review is required.
+# This job keeps exactly one human brake: an explicit HOLD comment by the designated reviewer fails this
+# check and stops the merge. D-8 paths are reported as an advisory only. Policy and paths:
+# scripts/gates/security-review-gate.mjs and docs/security/REVIEW_SCOPE.md.
 #
-# ADVISORY ONLY. This check must not be made required on main: GitHub attributes it to the github-actions app, and
-# any workflow in a same-repository pull request can request checks: write and publish a result under the same app
-# and name. The tamper-resistant enforcement is native code-owner review (Option 2 in
-# docs/security/D8_ENFORCEMENT_OPTIONS.md); this job stays an advisory signal next to it.
+# ADVISORY for everything except HOLD: this check must not be made required on main (GitHub attributes it to the
+# github-actions app, and any workflow in a same-repository pull request can request checks: write and publish a
+# result under the same app and name — a forged PASS could silently bypass a HOLD). The merging agent enforces
+# HOLD procedurally: no merge while this check reports a HOLD by the designated reviewer.
 #
 # pull_request_target runs this file and the gate script as they are on the default branch, so a pull request cannot
 # change this run. There is deliberately no pull_request_review trigger: that event runs the workflow file from the
