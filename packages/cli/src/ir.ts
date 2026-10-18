@@ -14,6 +14,8 @@ import { LegalBasis, type CaseInit } from "@ir/schema";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
 import { registered, subjectInput, type RegisteredTransform } from "./registry.ts";
 import { ensureSubject, recordRunFailure, recordRunSuccess } from "./run-record.ts";
+import { importAdsbAircraftDump } from "./adsb-import.ts";
+import { importAisVesselDump } from "./ais-import.ts";
 import { corroboration, investigate, type InvestigationBudget, type InvestigationResult } from "./investigate.ts";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
@@ -24,6 +26,7 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
        ir investigate <case-dir> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
               [--transform TR-nnn...] [--max-depth n] [--max-runs n] [--max-requests n] [--max-bytes n]
               [--max-time-ms n] [--purpose text --legal-basis basis] [--json]
+       ir import <case-dir> <adsb|ais> <file> [--purpose text --legal-basis basis] [--json] [--passphrase-file file]
 
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
   project: rebuilds the graph, table, coverage and network-log views from the chain, offline (optionally as of seq --at),
@@ -40,6 +43,11 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
            requests, 10 MB, 120 s). One node per identifier, every edge from every parent kept; a transform runs at
            most once per identifier. Coverage per entity and transform: found, none, failed, not_run (with reason).
            Exit 0 when it completed, 1 when any run failed or the budget/cancellation stopped it, 2 on usage errors.
+  import (P2-031): binds a recorded local receiver dump to the case entities and builds the time-track. adsb
+           reads a readsb/dump1090 aircraft.json snapshot; ais reads the AIS-catcher JSON output (one JSON record
+           per line, or a JSON array). Local transforms only (TR-090/TR-091): no network. A new case needs
+           --purpose and --legal-basis (not training_simulation). Rejected records are counted, never silently
+           dropped. Exit 0 on import, 2 on usage or I/O errors.
   Encrypted cases: the passphrase is read from --passphrase-file or IR_CASE_PASSPHRASE, never from the command line.
   Exit codes: 0 intact, 1 integrity failure, 2 usage or I/O error.`;
 
@@ -136,7 +144,7 @@ function commandFor(
   err: (s: string) => void,
   opts: CliOptions,
 ): (() => number | Promise<number>) | undefined {
-  const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2 };
+  const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2, import: 2 };
   if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
   switch (cmd) {
     case "verify":
@@ -145,6 +153,8 @@ function commandFor(
       return () => runProject(dir, v, out, err);
     case "run":
       return () => runTransformCommand(dir, rest[0], rest[1], rest[2], v, out, err, opts);
+    case "import":
+      return () => runImportCommand(dir, rest[0], rest[1], v, out, err, opts);
     default:
       return () => runInvestigateCommand(dir, rest[0], rest[1], v, out, err, opts);
   }
@@ -288,6 +298,91 @@ function networkCase(v: RunValues): CaseInit | undefined | string {
     return `--network: --legal-basis must be one of ${LegalBasis.options.filter((b) => b !== "training_simulation").join(", ")}`;
   }
   return { title: "ir run --network", purpose, legalBasis: parsed.data };
+}
+
+/** The case record for a new `ir import` case: real recorded receiver data needs a real purpose and basis. */
+function importCase(v: RunValues): CaseInit | undefined | string {
+  const purpose = v.purpose?.trim() ?? "";
+  const basis = v["legal-basis"] ?? "";
+  if (purpose === "" && basis === "") return undefined;
+  if (purpose.length < 10) return "ir import: --purpose must state the purpose (>= 10 characters)";
+  const parsed = LegalBasis.safeParse(basis);
+  if (!parsed.success || parsed.data === "training_simulation") {
+    return `ir import: --legal-basis must be one of ${LegalBasis.options.filter((b) => b !== "training_simulation").join(", ")}`;
+  }
+  return { title: "ir import", purpose, legalBasis: parsed.data };
+}
+
+/** `ir import` (P2-031): binds a recorded local receiver dump (ADS-B / AIS) to the case entities. */
+async function runImportCommand(
+  dir: string,
+  kind: string,
+  file: string,
+  v: RunValues,
+  out: (s: string) => void,
+  err: (s: string) => void,
+  opts: CliOptions,
+): Promise<number> {
+  if (kind !== "adsb" && kind !== "ais") {
+    err(`ir import: unknown kind ${JSON.stringify(kind)} (adsb or ais)\n${USAGE}`);
+    return 2;
+  }
+  let content: string;
+  try {
+    content = readFileSync(file, "utf8");
+  } catch (x) {
+    err(`ir import: cannot read ${file}: ${(x as Error).message}`);
+    return 2;
+  }
+  const create = importCase(v);
+  if (typeof create === "string") {
+    err(create);
+    return 2;
+  }
+  const clock = opts.clock ?? systemClock;
+  const { passphrase } = passphraseFrom(v["passphrase-file"]);
+  const createOpt: { create?: CaseInit } = create ? { create } : {};
+  try {
+    const c =
+      passphrase === undefined
+        ? openCase(dir, { actor: "ir-cli", clock, ...createOpt })
+        : openCase(dir, { actor: "ir-cli", clock, passphrase, ...createOpt });
+    try {
+      const res = kind === "adsb" ? await importAdsbAircraftDump(c, content, clock) : await importAisVesselDump(c, content, clock);
+      const records = "aircraftCount" in res ? res.aircraftCount : res.vesselCount;
+      const p = project(c.entries());
+      const hash = projectionHash(p);
+      const summary = [
+        `ir import: ${kind} ${file}`,
+        `  records ${records}, entities ${res.entityIds.length}, claims ${res.claimCount}, rejected ${res.rejected}`,
+        `  projection at seq ${p.seq}: nodes ${p.counts.nodes}, edges ${p.counts.edges}, observations ${p.counts.observations}, evidence ${p.counts.evidence}`,
+        `  sha256 ${hash}`,
+      ].join("\n");
+      out(
+        v.json
+          ? JSON.stringify(
+              {
+                kind,
+                file,
+                records,
+                entities: res.entityIds.length,
+                claims: res.claimCount,
+                rejected: res.rejected,
+                projection: { ...p, sha256: hash },
+              },
+              null,
+              2,
+            )
+          : summary,
+      );
+      return 0;
+    } finally {
+      c.close();
+    }
+  } catch (x) {
+    err(`ir import: ${(x as Error).message}`);
+    return 2;
+  }
 }
 
 /** Opens (or creates) the case for `ir run`; a `--network` case gets a real purpose and basis (or must exist). */

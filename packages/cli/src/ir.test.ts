@@ -320,3 +320,66 @@ describe("ir run (P2-022)", () => {
     expect(r.text).toContain("refusing to run a transform against an encrypted case");
   });
 });
+
+describe("ir import (P2-031: local receiver dumps)", () => {
+  /** A case with a real purpose (the import binds real recorded data, not the simulation world). */
+  function makeImportCase() {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-import-"));
+    dirs.push(dir);
+    openCase(dir, {
+      actor: "analyst",
+      create: { title: "t", purpose: "مراجعة بنية تحتية", legalBasis: "security_incident" },
+    }).close();
+    return dir;
+  }
+
+  const ADSB = JSON.stringify({
+    now: 1792317600, // 2026-10-18T10:00:00Z
+    aircraft: [{ hex: "3c6444", flight: "UAL123", lat: 52.52, lon: 13.405, alt_baro: 35000 }],
+  });
+  const AIS = [
+    JSON.stringify({ rxtime: "20261018100000", scaled: true, mmsi: 246003000, lon: 4.263965, lat: 52.099342, speed: 12.3, course: 270 }),
+  ].join("\n");
+
+  it("imports an ADS-B dump into an existing case and prints the counts (exit 0)", async () => {
+    const dir = makeImportCase();
+    const file = path.join(dir, "aircraft.json");
+    writeFileSync(file, ADSB);
+    const r = await run(["import", dir, "adsb", file]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("records 1");
+    expect(r.text).toContain("rejected 0");
+    expect(r.text).toContain("sha256 ");
+  });
+
+  it("imports an AIS dump, and --json prints the machine-readable result", async () => {
+    const dir = makeImportCase();
+    const file = path.join(dir, "ais.ndjson");
+    writeFileSync(file, AIS);
+    const r = await run(["import", dir, "ais", file, "--json"]);
+    expect(r.code).toBe(0);
+    const json = JSON.parse(r.text) as { records: number; rejected: number; claims: number };
+    expect(json.records).toBe(1);
+    expect(json.rejected).toBe(0);
+    expect(json.claims).toBeGreaterThan(0);
+  });
+
+  it("a new case is only created with a real --purpose and --legal-basis (E-01)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-import-new-"));
+    dirs.push(dir);
+    const file = path.join(dir, "ais.ndjson");
+    writeFileSync(file, AIS);
+    expect((await run(["import", dir, "ais", file])).code).toBe(2);
+    const r = await run(["import", dir, "ais", file, "--purpose", "مراجعة بنية تحتية مصرح بها", "--legal-basis", "security_incident"]);
+    expect(r.code).toBe(0);
+  });
+
+  it("usage errors: unknown kind, missing file and wrong arity exit 2", async () => {
+    const dir = makeImportCase();
+    const file = path.join(dir, "ais.ndjson");
+    writeFileSync(file, AIS);
+    expect((await run(["import", dir, "nmea", file])).code).toBe(2);
+    expect((await run(["import", dir, "ais", path.join(dir, "missing.ndjson")])).code).toBe(2);
+    expect((await run(["import", dir, "ais"])).code).toBe(2);
+  });
+});

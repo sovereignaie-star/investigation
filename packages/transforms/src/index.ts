@@ -51,6 +51,7 @@ export * from "./transforms/tr-036-phone-analysis.ts";
 export * from "./transforms/tr-039-username-presence.ts";
 export * from "./transforms/tr-089-eml-msg.ts";
 export * from "./transforms/tr-090-adsb-aircraft.ts";
+export * from "./transforms/tr-091-ais-vessel.ts";
 // P2-037: the input checks the transforms themselves apply, exported so the CLI refuses an invalid subject before
 // opening a case or starting the sandbox (the transform checks again before its first request).
 export { normalizeDomain, isIpv4, isIpv6, isAsn } from "./transforms/util.ts";
