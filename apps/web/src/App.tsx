@@ -1,11 +1,21 @@
 import { useMemo } from "react";
-import { Button } from "@ir/ui";
+import { AppShell, Button } from "@ir/ui";
 import { IDENTIFIER_LIST } from "./utils/identifierList";
 
 // P0-006: minimal entry point so the app builds and runs. The real workbench is built in phase 3 (P3-002..P3-020).
+// P3-002: the app renders inside the AppShell (layout, navigation, theme, RTL/LTR).
 // Strings are inline for now; P3-017 moves every string to @ir/i18n (ar/en).
 
 const REPO = "https://github.com/sovereignaie-star/investigation";
+
+// Placeholder navigation: the overview is the only live screen; the workbench
+// screens arrive with P3-003..P3-020 and stay disabled links until then.
+const NAV = [
+  { id: "overview", label: "نظرة عامة", href: "#", active: true },
+  { id: "cases", label: "القضايا", disabled: true },
+  { id: "evidence", label: "سجل الأدلة", disabled: true },
+  { id: "reports", label: "التقارير", disabled: true },
+];
 
 export default function App() {
   const categories = useMemo(() => {
@@ -19,11 +29,10 @@ export default function App() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12 text-start">
+    <AppShell title="غرفة التحقيق" nav={NAV}>
       <header className="mb-10">
-        <p className="text-sm text-slate-500">المرحلة 1 — النواة والسجل</p>
-        <h1 className="mt-2 text-3xl font-bold">غرفة التحقيق</h1>
-        <p className="mt-3 leading-relaxed text-slate-600 dark:text-slate-300">
+        <p className="text-sm text-muted-foreground">المرحلة 3 — محطة العمل</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">
           أداة تحقيق مفتوح المصدر، عربية الأولوية، محلية أولاً، تبني رسماً من الارتباطات فوق سجل أدلة موثَّق. محطة العمل قيد الإنشاء وفق
           خارطة الطريق.
         </p>
@@ -35,9 +44,9 @@ export default function App() {
         </h2>
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {categories.map(([key, { ar, n }]) => (
-            <li key={key} className="flex justify-between rounded-md border border-slate-200 px-3 py-2 dark:border-slate-700">
+            <li key={key} className="flex justify-between rounded-md border border-border px-3 py-2">
               <span>{ar}</span>
-              <span dir="ltr" className="tabular-nums text-slate-500">
+              <span dir="ltr" className="tabular-nums text-muted-foreground">
                 {n}
               </span>
             </li>
@@ -72,6 +81,6 @@ export default function App() {
           </li>
         </ul>
       </section>
-    </main>
+    </AppShell>
   );
 }

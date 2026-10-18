@@ -9,7 +9,11 @@ import { defineConfig } from "vitest/config";
 const CORE = ["packages/core/src", "packages/ledger/src", "packages/engine/src", "packages/egress/src"];
 
 // P0-010 (ADR-13): one root Vitest run for the whole workspace.
+// P3-002: JSX files (e.g. apps/web/src/App.tsx imported by app tests) transform
+// with the automatic runtime regardless of the app tsconfig's `jsx: preserve`
+// (which only governs tsc output, not test execution).
 export default defineConfig({
+  esbuild: { jsx: "automatic" },
   test: {
     include: [
       "lib/**/*.test.ts",
