@@ -2,6 +2,7 @@ name: governance
 # GR-01..GR-05, GR-09, GR-13, GR-15, GR-16: every commit must update docs/STATUS.md + docs/WORKLOG.md and cite a task id.
 on:
   pull_request:
+    types: [opened, edited, synchronize, reopened]
   push:
     branches: [main]
 permissions:
