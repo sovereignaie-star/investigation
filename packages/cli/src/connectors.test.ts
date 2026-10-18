@@ -24,10 +24,16 @@ import { canonicalKey, manualClock } from "@ir/core";
 import { createNodeTransport, type DnsResolver, type EgressLimits, type EgressTransport } from "@ir/egress";
 import { project, projectionHash } from "@ir/ledger/projections";
 import { openCase, verifyCase } from "@ir/store";
-import { probeIsolation } from "@ir/transform-sandbox";
 import * as F from "../../transforms/src/fixtures/public-sources.ts";
 import { main, type CliOptions } from "./ir.ts";
 import { registered } from "./registry.ts";
+
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
 
 const ON = { IR_ENABLE_NETWORK: "1" };
 const CASE_ARGS = ["--purpose", "تحقيق في بنية تحتية عامة لحادث أمني مصرح به", "--legal-basis", "security_incident"];
@@ -304,8 +310,6 @@ function readCase(dir: string): CaseView {
   }
 }
 
-const host = await probeIsolation();
-
 describe("P2-037 connectors: input checks before the sandbox or the network (every host)", () => {
   for (const s of SPECS) {
     it(`${s.id}: an invalid ${s.bad[0]} is refused before any lookup, request or case write`, async () => {
@@ -342,7 +346,7 @@ describe("P2-037 connectors: input checks before the sandbox or the network (eve
   });
 });
 
-describe.skipIf(!host.full)("P2-037 connectors end to end: sandbox -> IPC -> gateway -> case", () => {
+describe("P2-037 connectors end to end: sandbox -> IPC -> gateway -> case", () => {
   for (const s of SPECS) {
     describe(s.id, () => {
       it("runs isolated; evidence per request; each finding bound to its own request; entities, claims and edges correct", async () => {
@@ -708,87 +712,84 @@ function makeCert(names: readonly string[]): { cert: string; key: string } {
 
 const opensslAvailable = spawnSync("openssl", ["version"]).status === 0;
 
-describe.skipIf(!host.full || !opensslAvailable)(
-  "P2-037 connectors over real TLS (pinned connection, hostname-verified certificate)",
-  () => {
-    const ALL = [...new Set(SPECS.flatMap((s) => s.hosts))];
-    const ROUTES: Routes = Object.assign({}, ...SPECS.map((s) => s.routes));
-    let good: { cert: string; key: string };
-    let wrong: { cert: string; key: string };
-    let server: https.Server;
-    let port = 0;
-    let serverCert = "";
+describe.skipIf(!opensslAvailable)("P2-037 connectors over real TLS (pinned connection, hostname-verified certificate)", () => {
+  const ALL = [...new Set(SPECS.flatMap((s) => s.hosts))];
+  const ROUTES: Routes = Object.assign({}, ...SPECS.map((s) => s.routes));
+  let good: { cert: string; key: string };
+  let wrong: { cert: string; key: string };
+  let server: https.Server;
+  let port = 0;
+  let serverCert = "";
 
-    beforeAll(async () => {
-      good = makeCert(ALL);
-      wrong = makeCert(["not-the-source.example"]);
-      server = https.createServer({ cert: good.cert, key: good.key, SNICallback: undefined }, (req, res) => {
-        const hostHeader = String(req.headers.host ?? "").replace(/:\d+$/, "");
-        const r = ROUTES[`https://${hostHeader}${req.url ?? "/"}`] ?? { status: 404, body: "no route" };
-        res.writeHead(r.status, r.headers ?? {});
-        res.end(r.body ?? "");
-      });
-      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
-      const addr = server.address();
-      port = typeof addr === "object" && addr ? addr.port : 0;
-      serverCert = good.cert;
+  beforeAll(async () => {
+    good = makeCert(ALL);
+    wrong = makeCert(["not-the-source.example"]);
+    server = https.createServer({ cert: good.cert, key: good.key, SNICallback: undefined }, (req, res) => {
+      const hostHeader = String(req.headers.host ?? "").replace(/:\d+$/, "");
+      const r = ROUTES[`https://${hostHeader}${req.url ?? "/"}`] ?? { status: 404, body: "no route" };
+      res.writeHead(r.status, r.headers ?? {});
+      res.end(r.body ?? "");
     });
-    afterAll(() => server?.close());
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const addr = server.address();
+    port = typeof addr === "object" && addr ? addr.port : 0;
+    serverCert = good.cert;
+  });
+  afterAll(() => server?.close());
 
-    /** The real pinned node transport, connected to the local server instead of the pinned public address. */
-    function tlsEdge(ca: string) {
-      const node = createNodeTransport({ tlsOptions: { ca } });
-      const pinned: Array<{ host: string; pinnedIp: string }> = [];
+  /** The real pinned node transport, connected to the local server instead of the pinned public address. */
+  function tlsEdge(ca: string) {
+    const node = createNodeTransport({ tlsOptions: { ca } });
+    const pinned: Array<{ host: string; pinnedIp: string }> = [];
+    const transport: EgressTransport = {
+      async fetch(r) {
+        pinned.push({ host: r.host, pinnedIp: r.pinnedIp });
+        const u = new URL(r.url);
+        u.port = String(port);
+        return node.fetch({ ...r, url: u.toString(), host: `${r.host}:${port}`, pinnedIp: "127.0.0.1" });
+      },
+    };
+    const resolver: DnsResolver = { resolve: async (h) => DNS[h] ?? Promise.reject(new Error("NXDOMAIN")) };
+    return { transport, resolver, pinned };
+  }
+
+  for (const s of SPECS) {
+    it(`${s.id}: succeeds over TLS verified for ${s.hosts.join(", ")}; every connection pinned to a classified address`, async () => {
+      const t = tlsEdge(serverCert);
+      const dir = tempDir("tls");
+      const r = await run(argsFor(s, dir), { network: { env: ON, resolver: t.resolver, transport: t.transport, limits: LIMITS } });
+      expect(r.err).toBe("");
+      expect(r.code).toBe(0);
+      expect(t.pinned.length).toBe(Object.keys(s.routes).length);
+      for (const p of t.pinned) expect(DNS[p.host]).toContain(p.pinnedIp);
+      expect(readCase(dir).entries.some((e) => e.kind === "claim.added")).toBe(true);
+    });
+  }
+
+  it("a certificate that is not valid for the source hostname fails the run (recorded, nothing claimed)", async () => {
+    const mismatch = https.createServer({ cert: wrong.cert, key: wrong.key }, (_req, res) => res.end("{}"));
+    await new Promise<void>((resolve) => mismatch.listen(0, "127.0.0.1", () => resolve()));
+    const addr = mismatch.address();
+    const mport = typeof addr === "object" && addr ? addr.port : 0;
+    try {
+      const node = createNodeTransport({ tlsOptions: { ca: wrong.cert } });
       const transport: EgressTransport = {
-        async fetch(r) {
-          pinned.push({ host: r.host, pinnedIp: r.pinnedIp });
+        fetch: (r) => {
           const u = new URL(r.url);
-          u.port = String(port);
-          return node.fetch({ ...r, url: u.toString(), host: `${r.host}:${port}`, pinnedIp: "127.0.0.1" });
+          u.port = String(mport);
+          return node.fetch({ ...r, url: u.toString(), host: `${r.host}:${mport}`, pinnedIp: "127.0.0.1" });
         },
       };
-      const resolver: DnsResolver = { resolve: async (h) => DNS[h] ?? Promise.reject(new Error("NXDOMAIN")) };
-      return { transport, resolver, pinned };
-    }
-
-    for (const s of SPECS) {
-      it(`${s.id}: succeeds over TLS verified for ${s.hosts.join(", ")}; every connection pinned to a classified address`, async () => {
-        const t = tlsEdge(serverCert);
-        const dir = tempDir("tls");
-        const r = await run(argsFor(s, dir), { network: { env: ON, resolver: t.resolver, transport: t.transport, limits: LIMITS } });
-        expect(r.err).toBe("");
-        expect(r.code).toBe(0);
-        expect(t.pinned.length).toBe(Object.keys(s.routes).length);
-        for (const p of t.pinned) expect(DNS[p.host]).toContain(p.pinnedIp);
-        expect(readCase(dir).entries.some((e) => e.kind === "claim.added")).toBe(true);
+      const dir = tempDir("tlsbad");
+      const r = await run(argsFor(SPECS[3], dir), {
+        network: { env: ON, resolver: { resolve: async (h) => DNS[h] ?? [] }, transport, limits: LIMITS },
       });
+      expect(r.code).toBe(1);
+      const k = readCase(dir);
+      expect(k.entries.some((e) => e.kind === "claim.added")).toBe(false);
+      expect(k.observations.filter((o) => o.kind === "error")).toHaveLength(1);
+    } finally {
+      mismatch.close();
     }
-
-    it("a certificate that is not valid for the source hostname fails the run (recorded, nothing claimed)", async () => {
-      const mismatch = https.createServer({ cert: wrong.cert, key: wrong.key }, (_req, res) => res.end("{}"));
-      await new Promise<void>((resolve) => mismatch.listen(0, "127.0.0.1", () => resolve()));
-      const addr = mismatch.address();
-      const mport = typeof addr === "object" && addr ? addr.port : 0;
-      try {
-        const node = createNodeTransport({ tlsOptions: { ca: wrong.cert } });
-        const transport: EgressTransport = {
-          fetch: (r) => {
-            const u = new URL(r.url);
-            u.port = String(mport);
-            return node.fetch({ ...r, url: u.toString(), host: `${r.host}:${mport}`, pinnedIp: "127.0.0.1" });
-          },
-        };
-        const dir = tempDir("tlsbad");
-        const r = await run(argsFor(SPECS[3], dir), {
-          network: { env: ON, resolver: { resolve: async (h) => DNS[h] ?? [] }, transport, limits: LIMITS },
-        });
-        expect(r.code).toBe(1);
-        const k = readCase(dir);
-        expect(k.entries.some((e) => e.kind === "claim.added")).toBe(false);
-        expect(k.observations.filter((o) => o.kind === "error")).toHaveLength(1);
-      } finally {
-        mismatch.close();
-      }
-    });
-  },
-);
+  });
+});

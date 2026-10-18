@@ -48,6 +48,13 @@ function matchRoutes(): Array<{ match: RegExp | string; response: { status: numb
 /** D-018: every emitted object value must satisfy its catalog type's own pattern. */
 import { specById, matchesSpec } from "@ir/core/identifiers";
 
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
+
 function expectCatalogValid(type: string, value: string): void {
   const spec = specById(type);
   if (!spec) throw new Error(`catalog type ${type} exists`);
@@ -204,12 +211,10 @@ describe("TR-025 opensanctions", () => {
  * Skipped where the sandbox cannot provide "full" isolation (the same rule as T-ISO).
  */
 import { fileURLToPath } from "node:url";
-import { probeIsolation } from "@ir/transform-sandbox";
 
 const MODULE = fileURLToPath(new URL("./transforms/tr-025-opensanctions.ts", import.meta.url));
-const isoHost = await probeIsolation();
 
-describe.skipIf(!isoHost.full)("TR-025 isolated (production path: the sandbox does not inherit the parent env)", () => {
+describe("TR-025 isolated (production path: the sandbox does not inherit the parent env)", () => {
   it("the manifest-declared env name reaches the sandboxed child over IPC: the screening POST succeeds and the evidence stays case-data-free", async () => {
     const sim = createSimServer(matchRoutes());
     const result = await runTransform(undefined, {

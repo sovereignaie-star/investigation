@@ -11,6 +11,7 @@
 | L-03 | `RLIMIT_NPROC` غير مطبق عند مستوى network-only | بالتصميم | هناك يُحصي كل عمليات المستخدم الحقيقي وقد يكسر exec؛ مطبق في full داخل نطاق المستخدم (T-SBX-019) | 2026-10-15 |
 | L-04 | bwrap أقدم من 0.9: `tmpfsSize: false` (سقف /tmp غير مفروض منّا) | بيئة (نادر) | فحص الإصدار يقبل >= 0.9؛ مع 0.9+ يفرض `--size` النواة السقف (T-SBX-018) | 2026-10-15 |
 | L-23 | اختبارات العزل (seccomp + namespaces) تُشغَّل محلياً وتتخطى في CI بصدق — العزل الكامل غير متاح على مشغّل CI (رفض الـsandbox التشغيل: isolation_unavailable) | بيئة (CI) | `probeIsolation` عند التحميل + `describe.skipIf(!host.full)` (نمط network.test.ts المعتمد)؛ التخطي معلَن لا حذف ولا تحايل على البوابة — توجيه المالك 2026-10-16 | 2026-10-16 |
+| L-36 | **اختبارات العزل تعمل في test وgates — كلاهما يثبّت bubblewrap** (تعديل حالة L-23 لا حذفها): مهمة test كانت تثبّته أصلاً (P2-005) ومهمة gates لم تكن؛ أُضيفت خطوة التثبيت نفسها إلى gates وأُزيل `skipIf(!host.full)` من كل اختبارات العزل (cli: source-control/connectors/network-secret/network/investigate/proxy-control؛ transforms: isolated/tr-023/tr-025/tr-028/tr-040) — لا تخطي في أي مهمة CI، والاختبار يفشل صراحةً حيث العزل غير متوفر. الباقي المتخطى بلا بديل (موثق): tsbx (linuxWithCompiler — مصفوفة منصة: seccomp/مترجم غير متوفرين على غير Linux) وlive-network (LIVE اختياري — ليست مسألة عزل) | بيئة (CI) — قرار مالك | `.github/workflows/ci.yml` (خطوة bubblewrap في gates)؛ إزالة skipIf الموثقة في إيداع PR؛ الدليل: تشغيل الاختبارات في مهمتي test وgates في CI | 2026-10-18 |
 
 ## 2. الشبكة والخروج (packages/egress، packages/cli)
 

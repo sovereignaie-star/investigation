@@ -60,6 +60,16 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install bubblewrap so the phase-1 suite exercises the "full" isolation level (P2-028, owner decision)
+        # The same step the test job has (P2-005): without it the gates job's vitest run skips every
+        # full-isolation case (or, without skipIf, fails them) — the gates measurement then covers
+        # less than the test job does. This changes only the throwaway CI VM.
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>/dev/null || true
+          bwrap --unshare-all --ro-bind / / true && echo "bwrap: user namespaces available" || echo "bwrap: unavailable here"
       - run: pnpm run build
       - run: pnpm run gates:phase1
   docker:

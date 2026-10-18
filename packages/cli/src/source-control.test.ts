@@ -15,11 +15,17 @@ import { afterEach, describe, expect, it } from "vitest";
 import { manualClock } from "@ir/core";
 import { EgressTransportError, type DnsResolver, type EgressLimits, type EgressTransport } from "@ir/egress";
 import { openCase } from "@ir/store";
-import { probeIsolation } from "@ir/transform-sandbox";
 import * as F from "../../transforms/src/fixtures/public-sources.ts";
 import { REGISTRY } from "./registry.ts";
 import { main } from "./ir.ts";
 import type { InvestigationResult } from "./investigate.ts";
+
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
 
 const ON = { IR_ENABLE_NETWORK: "1" };
 const CASE_ARGS = ["--purpose", "تحقيق في بنية تحتية عامة لحادث أمني مصرح به", "--legal-basis", "security_incident"];
@@ -116,8 +122,6 @@ function readAudit(dir: string) {
   }
 }
 
-const host = await probeIsolation();
-
 describe("P2-029 ir source: disable/enable a source through the case audit chain", () => {
   it("T-P2029-001: `ir source disable` records an audit event with the reason and the list reflects it", async () => {
     const dir = tempDir();
@@ -165,7 +169,7 @@ describe("P2-029 ir source: disable/enable a source through the case audit chain
   });
 });
 
-describe.skipIf(!host.full)("P2-029 ir investigate: disabled and excluded sources never run", () => {
+describe("P2-029 ir investigate: disabled and excluded sources never run", () => {
   it("T-P2029-004: a source disabled on the case is not invoked — not_run with the reason, no request to it", async () => {
     const dir = tempDir();
     const args = [
