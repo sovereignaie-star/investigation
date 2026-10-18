@@ -12,11 +12,11 @@ import type { HttpTransport } from "@ir/engine";
 import type { EgressAuditEvent } from "@ir/egress";
 import { LegalBasis, type CaseInit } from "@ir/schema";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
-import { registered, subjectInput, type RegisteredTransform } from "./registry.ts";
+import { REGISTRY, registered, subjectInput, type RegisteredTransform } from "./registry.ts";
 import { ensureSubject, recordRunFailure, recordRunSuccess } from "./run-record.ts";
 import { importAdsbAircraftDump } from "./adsb-import.ts";
 import { importAisVesselDump } from "./ais-import.ts";
-import { corroboration, investigate, type InvestigationBudget, type InvestigationResult } from "./investigate.ts";
+import { corroboration, disabledSources, investigate, type InvestigationBudget, type InvestigationResult } from "./investigate.ts";
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
        ir project <case-dir> [--at seq] [--expect sha256] [--passphrase-file file] [--json]
@@ -24,8 +24,9 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
        ir run <case-dir> <transform-id> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
               [--purpose text --legal-basis basis] [--json]
        ir investigate <case-dir> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
-              [--transform TR-nnn...] [--max-depth n] [--max-runs n] [--max-requests n] [--max-bytes n]
-              [--max-time-ms n] [--purpose text --legal-basis basis] [--json]
+              [--transform TR-nnn...] [--exclude TR-nnn...] [--max-depth n] [--max-runs n] [--max-requests n]
+              [--max-bytes n] [--max-time-ms n] [--purpose text --legal-basis basis] [--json]
+       ir source <case-dir> <disable|enable|list> [TR-nnn] [--reason text] [--json] [--passphrase-file file]
        ir import <case-dir> <adsb|ais> <file> [--purpose text --legal-basis basis] [--json] [--passphrase-file file]
 
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
@@ -48,6 +49,13 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
            per line, or a JSON array). Local transforms only (TR-090/TR-091): no network. A new case needs
            --purpose and --legal-basis (not training_simulation). Rejected records are counted, never silently
            dropped. Exit 0 on import, 2 on usage or I/O errors.
+  source (P2-029): records — on the case's own audit chain — that a source (a registered transform id) is
+           disabled for this case, or re-enables it (the latest event per source wins); an investigation never
+           invokes a disabled source: its runs are recorded not_run with the reason. disable needs a --reason
+           (one line, recorded with the event); the exclusion is per case, while --exclude is per invocation.
+           list prints every registered source with its state for this case. Exit 0 on success, 2 on usage errors.
+           The investigation also reports per-source statistics (outcomes, wall time, measured cost: requests +
+           bytes) in its output and on the investigate.completed audit event.
   Encrypted cases: the passphrase is read from --passphrase-file or IR_CASE_PASSPHRASE, never from the command line.
   Exit codes: 0 intact, 1 integrity failure, 2 usage or I/O error.`;
 
@@ -109,6 +117,8 @@ export async function main(
         purpose: { type: "string" },
         "legal-basis": { type: "string" },
         transform: { type: "string", multiple: true },
+        exclude: { type: "string", multiple: true },
+        reason: { type: "string" },
         "max-depth": { type: "string" },
         "max-runs": { type: "string" },
         "max-requests": { type: "string" },
@@ -145,6 +155,12 @@ function commandFor(
   opts: CliOptions,
 ): (() => number | Promise<number>) | undefined {
   const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2, import: 2 };
+  // P2-029: `ir source` takes up to 2 positionals after the case dir: the verb, then (for
+  // disable/enable) the transform id.
+  if (cmd === "source") {
+    if (rest.length > 2) return undefined;
+    return () => runSourceCommand(dir, rest[0], rest[1], v, out, err);
+  }
   if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
   switch (cmd) {
     case "verify":
@@ -553,6 +569,7 @@ async function runTransformCommand(
 
 type InvestigateValues = RunValues & {
   transform?: string[] | undefined;
+  exclude?: string[] | undefined;
   "max-depth"?: string | undefined;
   "max-runs"?: string | undefined;
   "max-requests"?: string | undefined;
@@ -584,6 +601,99 @@ function investigateUsage(v: InvestigateValues): Partial<InvestigationBudget> | 
   return budgetFrom(v);
 }
 
+/** P2-029 — `ir source list`: every registered source with its current state for this case. */
+function printSourceList(c: Case, json: boolean, out: (s: string) => void): void {
+  const disabled = disabledSources(c);
+  const rows = REGISTRY.map((e) => {
+    const id = e.transform.manifest.id;
+    const s = disabled.get(id);
+    return {
+      transformId: id,
+      ...(e.transform.manifest.secrets.length > 0 && e.keyUrl ? { keyUrl: e.keyUrl } : {}),
+      state: s?.disabled ? "disabled" : "enabled",
+      ...(s?.disabled ? { reason: s.reason } : {}),
+    };
+  });
+  if (json) {
+    out(JSON.stringify(rows, null, 2));
+    return;
+  }
+  const lines = ["ir source: registered sources for this case:"];
+  for (const r of rows) lines.push(`  ${r.transformId}: ${r.state}${r.state === "disabled" && r.reason ? ` — ${r.reason}` : ""}`);
+  out(lines.join("\n"));
+}
+
+/** P2-029 — `ir source disable|enable`: records the event on the case's audit chain (latest wins). */
+function recordSourceToggle(
+  c: Case,
+  verb: "disable" | "enable",
+  transformId: string,
+  reason: string | undefined,
+  json: boolean,
+  out: (s: string) => void,
+): number {
+  c.audit(verb === "disable" ? "source.disable" : "source.enable", transformId, {
+    ...(reason ? { reason } : {}),
+  });
+  const action = verb === "disable" ? "disabled" : "enabled";
+  out(json ? JSON.stringify({ transformId, action }) : `ir source: ${transformId} ${action}${reason ? ` — ${reason}` : ""}`);
+  return 0;
+}
+
+/** P2-029: the usage rules of `ir source` — the verb, and which verbs take a transform id. */
+function sourceUsageError(verb: string | undefined, transformId: string | undefined): string | undefined {
+  if (verb !== "disable" && verb !== "enable" && verb !== "list") return "verb must be disable, enable, or list";
+  if (verb === "list") return transformId !== undefined ? "list takes no transform id" : undefined;
+  return transformId === undefined ? "missing transform id" : undefined;
+}
+
+/**
+ * P2-029 — `ir source`: records a source's disabled state for this case on its own audit chain
+ * (`source.disable` / `source.enable`, the latest event per source wins), or lists every registered
+ * source with its current state for this case. An investigation never invokes a disabled source.
+ */
+async function runSourceCommand(
+  dir: string,
+  verb: string | undefined,
+  transformId: string | undefined,
+  v: Values & { reason?: string | undefined },
+  out: (s: string) => void,
+  err: (s: string) => void,
+): Promise<number> {
+  const fail = (msg: string) => (err(`ir source: ${msg}`), 2);
+  const usage = sourceUsageError(verb, transformId);
+  if (usage !== undefined) return fail(usage);
+  try {
+    // The passphrase is passed as an explicit property (never spread): spreading a password-bearing
+    // object taints the whole options object in static analysis (CodeQL js/insufficient-password-hash).
+    const { passphrase } = passphraseFrom(v["passphrase-file"]);
+    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli", passphrase });
+    try {
+      if (verb === "list") {
+        printSourceList(c, v.json === true, out);
+        return 0;
+      }
+      if (transformId === undefined || !registered(transformId)) return fail(`unknown transform "${transformId}"`);
+      const reason = v.reason?.trim();
+      if (verb === "disable" && (!reason || reason.includes("\n"))) return fail("--reason is required (one line)");
+      if (verb === "enable" && reason) return fail("--reason belongs to disable");
+      // the usage rules above guarantee verb is "disable" or "enable" here
+      return recordSourceToggle(
+        c,
+        verb as "disable" | "enable",
+        transformId,
+        verb === "disable" ? reason : undefined,
+        v.json === true,
+        out,
+      );
+    } finally {
+      c.close();
+    }
+  } catch (x) {
+    return fail((x as Error).message);
+  }
+}
+
 /** Refusals of the opened case: encrypted, or a simulation case. */
 function investigateCaseRefusal(c: Case): string | undefined {
   if (c.encrypted) return "refusing an encrypted case";
@@ -607,6 +717,12 @@ function printInvestigation(c: Case, r: InvestigationResult, json: boolean, out:
   const lines = [`ir investigate: ${r.seedKey}: ${r.runs} runs, ${r.requests} requests, ${r.bytes} bytes${stop}`];
   for (const k of r.coverage)
     lines.push(`  ${k.transformId} ${k.entityKey} (depth ${k.depth}): ${k.state}${k.reason ? ` — ${k.reason}` : ""}`);
+  // P2-029: the per-source statistics — outcomes, wall time, and the measured cost (requests + bytes).
+  lines.push("  sources:");
+  for (const s of r.sources)
+    lines.push(
+      `    ${s.transformId}: ${s.runs} runs (found ${s.found}, none ${s.none}, failed ${s.failed}, not_run ${s.notRun}) — ${s.requests} requests, ${s.bytes} bytes, ${s.elapsedMs} ms`,
+    );
   if (r.unexpandable.length > 0) lines.push(`  no transform for: ${r.unexpandable.join(", ")}`);
   lines.push(`  projection at seq ${p.seq}: nodes ${p.counts.nodes}, edges ${p.counts.edges}; sha256 ${hash}`);
   out(lines.join("\n"));
@@ -639,6 +755,7 @@ async function runInvestigateCommand(
           allowHosts: v["allow-host"] ?? [],
           budget,
           transforms: v.transform,
+          exclude: v.exclude,
           network: opts.network,
           clock,
           now: opts.now,
