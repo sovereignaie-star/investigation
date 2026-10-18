@@ -11,7 +11,7 @@ import { runTransform, TransformRunError, type RunTransformResult, type Transfor
 import type { HttpTransport } from "@ir/engine";
 import type { EgressAuditEvent } from "@ir/egress";
 import { LegalBasis, type CaseInit } from "@ir/schema";
-import { planNetworkRun, type NetworkDeps } from "./network.ts";
+import { caseProxyConfig, planNetworkRun, proxyRoutingFor, type NetworkDeps } from "./network.ts";
 import { REGISTRY, registered, subjectInput, type RegisteredTransform } from "./registry.ts";
 import { ensureSubject, recordRunFailure, recordRunSuccess } from "./run-record.ts";
 import { importAdsbAircraftDump } from "./adsb-import.ts";
@@ -119,6 +119,10 @@ export async function main(
         transform: { type: "string", multiple: true },
         exclude: { type: "string", multiple: true },
         reason: { type: "string" },
+        "via-tor": { type: "boolean" },
+        host: { type: "string" },
+        port: { type: "string" },
+        secret: { type: "string" },
         "max-depth": { type: "string" },
         "max-runs": { type: "string" },
         "max-requests": { type: "string" },
@@ -145,6 +149,20 @@ export async function main(
 }
 
 /** The sub-command for the positionals, or undefined for a usage error. */
+/** P2-028 (ADR-31): `ir proxy` dispatch — set takes verb + route, clear/show take the verb alone. */
+function proxyCommandFor(
+  dir: string,
+  rest: readonly string[],
+  v: Values & ProxyValues,
+  out: (s: string) => void,
+  err: (s: string) => void,
+): (() => number) | undefined {
+  const verb = rest[0];
+  if (verb !== "set" && verb !== "clear" && verb !== "show") return undefined;
+  if (rest.length > (verb === "set" ? 2 : 1)) return undefined;
+  return () => runProxyCommand(dir, verb, rest[1], v, out, err);
+}
+
 function commandFor(
   cmd: string | undefined,
   dir: string,
@@ -161,6 +179,8 @@ function commandFor(
     if (rest.length > 2) return undefined;
     return () => runSourceCommand(dir, rest[0], rest[1], v, out, err);
   }
+  // P2-028 (ADR-31): `ir proxy` — the case's proxy configuration on its audit chain.
+  if (cmd === "proxy") return proxyCommandFor(dir, rest, v, out, err);
   if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
   switch (cmd) {
     case "verify":
@@ -266,6 +286,14 @@ type RunValues = {
   "legal-basis"?: string | undefined;
   json?: boolean | undefined;
   "passphrase-file"?: string | undefined;
+};
+
+/** P2-028 (ADR-31): the `ir proxy` command's flags (set/clear/show). */
+type ProxyValues = {
+  "via-tor"?: boolean | undefined;
+  host?: string | undefined;
+  port?: string | undefined;
+  secret?: string | undefined;
 };
 
 /** Reuses the subject node when it already exists (D-020: one node per canonical key), else creates it. */
@@ -418,7 +446,7 @@ function runRoute(
   c: Case,
   entry: RegisteredTransform,
   subjectType: string,
-  v: RunValues,
+  v: RunValues & ProxyValues,
   opts: CliOptions,
 ):
   | {
@@ -433,7 +461,12 @@ function runRoute(
   if (c.info().legalBasis === "training_simulation") {
     return { error: "--network: this is a simulation case (legal basis training_simulation); use a case with a real basis" };
   }
-  const plan = planNetworkRun(c, entry, subjectType, v["allow-host"] ?? [], opts.network ?? {});
+  // P2-028 (ADR-31): the case's routing (the proxy.set chain + --via-tor) — a refusal fails the run
+  // BEFORE the gateway opens (fail-closed: no request passes, nothing falls back to direct).
+  const deps = opts.network ?? {};
+  const routing = proxyRoutingFor(c, deps, v["via-tor"] === true);
+  if ("error" in routing) return routing;
+  const plan = planNetworkRun(c, entry, subjectType, v["allow-host"] ?? [], deps, routing.routing);
   if ("error" in plan) return plan;
   return {
     transport: plan.transport,
@@ -567,15 +600,16 @@ async function runTransformCommand(
   }
 }
 
-type InvestigateValues = RunValues & {
-  transform?: string[] | undefined;
-  exclude?: string[] | undefined;
-  "max-depth"?: string | undefined;
-  "max-runs"?: string | undefined;
-  "max-requests"?: string | undefined;
-  "max-bytes"?: string | undefined;
-  "max-time-ms"?: string | undefined;
-};
+type InvestigateValues = RunValues &
+  ProxyValues & {
+    transform?: string[] | undefined;
+    exclude?: string[] | undefined;
+    "max-depth"?: string | undefined;
+    "max-runs"?: string | undefined;
+    "max-requests"?: string | undefined;
+    "max-bytes"?: string | undefined;
+    "max-time-ms"?: string | undefined;
+  };
 
 /** Parses the budget flags; each must be a non-negative integer. */
 function budgetFrom(v: InvestigateValues): Partial<InvestigationBudget> | string {
@@ -694,6 +728,65 @@ async function runSourceCommand(
   }
 }
 
+/** Validates `ir proxy set`'s route + flags; the credentials NEVER appear, only the vault entry NAME. */
+function proxySetArgs(
+  route: string | undefined,
+  v: Values & ProxyValues,
+): { route: string; host: string; port: number; secretName: string } | string {
+  if (route !== "proxy-http-connect" && route !== "proxy-socks5" && route !== "tor") {
+    return `unknown route "${route}" (proxy-http-connect | proxy-socks5 | tor)`;
+  }
+  const host = v.host?.trim() ?? "";
+  const port = Number(v.port ?? "");
+  const secretName = v.secret?.trim() ?? "";
+  if (host === "" || /[\\/:]/.test(host)) return "--host is required (a hostname or IP, no scheme/port/path)";
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return "--port is required (1-65535)";
+  if (secretName === "") return "--secret is required (the vault credential_pair entry holding the proxy username + password)";
+  return { route, host, port, secretName };
+}
+
+/** P2-028 (ADR-31): `ir proxy` — the case's proxy configuration, recorded on its own audit chain. */
+function runProxyCommand(
+  dir: string,
+  verb: "set" | "clear" | "show",
+  route: string | undefined,
+  v: Values & ProxyValues,
+  out: (s: string) => void,
+  err: (s: string) => void,
+): number {
+  const fail = (msg: string) => (err(`ir proxy: ${msg}`), 2);
+  try {
+    const { passphrase } = passphraseFrom(v["passphrase-file"]);
+    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli", passphrase });
+    try {
+      if (verb === "show") {
+        const config = caseProxyConfig(c);
+        out(
+          config === undefined
+            ? JSON.stringify({ route: "direct" }, null, v.json === true ? 2 : 0)
+            : JSON.stringify(config, null, v.json === true ? 2 : 0),
+        );
+        return 0;
+      }
+      if (verb === "clear") {
+        c.audit("proxy.clear", "proxy", {});
+        out("ir proxy: cleared — the case's requests are direct");
+        return 0;
+      }
+      // set: validate the route and the flags — the credentials NEVER appear, only the vault entry NAME.
+      const args = proxySetArgs(route, v);
+      if (typeof args === "string") return fail(args);
+      c.audit("proxy.set", args.route, args);
+      out(`ir proxy: ${args.route} via ${args.host}:${args.port} (credentials from vault entry "${args.secretName}")`);
+      return 0;
+    } finally {
+      c.close();
+    }
+  } catch (x) {
+    return fail((x as Error).message);
+  }
+}
+
 /** Refusals of the opened case: encrypted, or a simulation case. */
 function investigateCaseRefusal(c: Case): string | undefined {
   if (c.encrypted) return "refusing an encrypted case";
@@ -748,6 +841,10 @@ async function runInvestigateCommand(
     try {
       const refused = investigateCaseRefusal(c);
       if (refused) return fail(refused);
+      // P2-028 (ADR-31): the case's routing (the proxy.set chain + --via-tor) — a refusal fails the
+      // run BEFORE any work (fail-closed: no request passes, nothing falls back to direct).
+      const routing = proxyRoutingFor(c, opts.network ?? {}, v["via-tor"] === true);
+      if ("error" in routing) return fail(routing.error);
       const r = await investigate(
         c,
         { type: subjectType, value: subjectValue },
@@ -757,6 +854,7 @@ async function runInvestigateCommand(
           transforms: v.transform,
           exclude: v.exclude,
           network: opts.network,
+          ...(routing.routing ? { routing: routing.routing } : {}),
           clock,
           now: opts.now,
           sleep: opts.sleep,

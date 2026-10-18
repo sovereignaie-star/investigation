@@ -21,6 +21,7 @@ import {
   type EgressAuditSink,
   type EgressGateway,
   type EgressLimits,
+  type EgressRouting,
   type EgressTransport,
 } from "./egress.ts";
 import { createNodeTransport } from "./node-transport.ts";
@@ -73,6 +74,12 @@ export interface ProductionEgressConfig {
    * template row matches).
    */
   readonly providerPathTemplates?: Readonly<Record<string, readonly import("./path-template.ts").PathParameterTemplate[]>>;
+  /**
+   * P2-028 (ADR-31): the case's routing — a strict proxy (HTTP CONNECT or SOCKS5, the pinned target
+   * IP is handed to the proxy) or Tor (the domain is handed to the exit). Unset = direct (ADR-08).
+   * Tor is NEVER implicit: the CLI only sets it from the case's explicit `proxy.set` chain / `--via-tor`.
+   */
+  readonly routing?: EgressRouting;
 }
 
 export type ProductionEgressDecision =
@@ -141,6 +148,8 @@ export function createProductionEgress(cfg: ProductionEgressConfig): ProductionE
     // P2-016: the provider registry for secret-bearing runs — hosts + paths together or neither
     // (dropping one alone is always the fail-closed direction: no secret request passes).
     ...providerRegistryConfig(cfg),
+    // P2-028 (ADR-31): the case's routing — unset is direct; Tor never implicit.
+    ...(cfg.routing ? { routing: cfg.routing } : {}),
   });
   return { enabled: true, gateway, allowedHosts: hosts };
 }
