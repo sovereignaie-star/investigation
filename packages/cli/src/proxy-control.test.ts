@@ -200,7 +200,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C01: usage errors — no verb, unknown verb, bad route, missing flags, bad port", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // the first run creates the case (real basis)
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // the first run creates the case (real basis)
     expect((await cli(["proxy", dir])).code).toBe(2);
     expect((await cli(["proxy", dir, "frobnicate"])).code).toBe(2);
     expect((await cli(["proxy", dir, "set", "bad-route", "--host", "h.example", "--port", "1080", "--secret", "s"])).code).toBe(2);
@@ -213,7 +214,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C02: `ir proxy set` records proxy.set with route/host/port/secretName — NO credential material", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     const r = await cli([
       "proxy",
       dir,
@@ -244,7 +246,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C03: `ir proxy clear` records proxy.clear and the show surface returns to direct", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     await cli(["proxy", dir, "set", "proxy-socks5", "--host", "proxy.example.net", "--port", "1080", "--secret", "ops-proxy"]);
     const r = await cli(["proxy", dir, "clear", "--json"]);
     expect(r.code).toBe(0);
@@ -257,7 +260,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C04: a configured strict proxy routes the case's requests — pinned target IP + vault credentials", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     await cli(["proxy", dir, "set", "proxy-socks5", "--host", "proxy.example.net", "--port", "1080", "--secret", "ops-proxy"]);
     const calls: SeenCall[] = [];
     const r = await cli(INVESTIGATE(dir, []), {
@@ -289,7 +293,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C05: a proxy whose vault entry is MISSING refuses fail-closed BEFORE any transport call", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     await cli(["proxy", dir, "set", "proxy-socks5", "--host", "proxy.example.net", "--port", "1080", "--secret", "no-such-entry"]);
     const calls: SeenCall[] = [];
     const r = await cli(INVESTIGATE(dir, []), {
@@ -304,7 +309,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C06: a vault entry that is NOT a credential pair refuses fail-closed (single-secret shape)", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     await cli(["proxy", dir, "set", "proxy-http-connect", "--host", "proxy.example.net", "--port", "3128", "--secret", "plain-secret"]);
     const singleShape = fakeVault();
     const calls: SeenCall[] = [];
@@ -318,7 +324,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C07: --via-tor without a tor proxy configured for the case is a usage error", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     const r = await cli(INVESTIGATE(dir, ["--via-tor"]), {
       vault: VAULT,
     });
@@ -328,7 +335,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C08: --via-tor with a configured tor proxy routes through Tor — the DOMAIN is sent, never resolved locally", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     // the tor proxy is the operator's local SocksPort — an IP literal, no DNS for the proxy itself
     await cli(["proxy", dir, "set", "tor", "--host", "127.0.0.1", "--port", "9050", "--secret", "tor-port"]);
     const calls: SeenCall[] = [];
@@ -356,7 +364,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C09: a tor config WITHOUT the flag is the case's EXPLICIT activation (ADR-31) — route tor", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     await cli(["proxy", dir, "set", "tor", "--host", "127.0.0.1", "--port", "9050", "--secret", "tor-port"]);
     const calls: SeenCall[] = [];
     const r = await cli(INVESTIGATE(dir, []), {
@@ -370,7 +379,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C10: no proxy config at all — the case's requests are direct (route direct)", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     const calls: SeenCall[] = [];
     const r = await cli(INVESTIGATE(dir, []), {
       calls,
@@ -385,7 +395,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C11: a proxy host that does not resolve fails fail-closed (proxy_unreachable) — NO direct fallback", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     // a host that is NOT in the fake resolver's map — it does not resolve
     await cli(["proxy", dir, "set", "proxy-socks5", "--host", "unreachable-proxy.invalid", "--port", "1080", "--secret", "ops-proxy"]);
     const calls: SeenCall[] = [];
@@ -403,7 +414,8 @@ describe("P2-028 ir proxy: the case's proxy configuration on its audit chain", (
 
   it("T-P2028-C12: `ir run --network` honours the case's proxy config too (the single-run path)", async () => {
     const dir = tempDir();
-    expect((await cli(INVESTIGATE(dir))).code).toBe(0); // create the case with a real basis
+    const inv = await cli(INVESTIGATE(dir));
+    expect(inv.code, `investigate failed: ${inv.err}`).toBe(0); // create the case with a real basis
     await cli(["proxy", dir, "set", "proxy-socks5", "--host", "proxy.example.net", "--port", "1080", "--secret", "ops-proxy"]);
     const calls: SeenCall[] = [];
     const r = await cli(["run", dir, "TR-010", "url", "https://example.com", "--network", "--allow-host", "example.com", ...CASE_ARGS], {
