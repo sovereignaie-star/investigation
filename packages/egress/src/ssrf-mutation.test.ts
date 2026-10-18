@@ -189,7 +189,7 @@ const MUTATIONS: readonly Mutation[] = [
   {
     name: "redirect hops not rate limited",
     file: "egress.ts",
-    from: "if (!limiter.take(nextHostForAudit)) {",
+    from: "if (!redirectLimiter.take(nextHostForAudit)) {",
     to: "if (false) {",
     detectedBy: ["T-SEC-SSRF-024"],
   },
