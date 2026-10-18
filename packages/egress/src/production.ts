@@ -80,6 +80,11 @@ export interface ProductionEgressConfig {
    * Tor is NEVER implicit: the CLI only sets it from the case's explicit `proxy.set` chain / `--via-tor`.
    */
   readonly routing?: EgressRouting;
+  /**
+   * ADR-31 (P2-028, item هـ): the proxy liveness configuration — the interval and the rotation hint
+   * (true when the case's proxy config changed since the last network run).
+   */
+  readonly liveness?: { readonly intervalMs?: number; readonly rotated?: boolean };
 }
 
 export type ProductionEgressDecision =
@@ -150,6 +155,8 @@ export function createProductionEgress(cfg: ProductionEgressConfig): ProductionE
     ...providerRegistryConfig(cfg),
     // P2-028 (ADR-31): the case's routing — unset is direct; Tor never implicit.
     ...(cfg.routing ? { routing: cfg.routing } : {}),
+    // P2-028 (ADR-31, item هـ): the proxy liveness configuration (the interval + the rotation hint).
+    ...(cfg.liveness ? { liveness: cfg.liveness } : {}),
   });
   return { enabled: true, gateway, allowedHosts: hosts };
 }
