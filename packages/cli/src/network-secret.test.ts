@@ -28,10 +28,16 @@ import {
 import { openVault } from "@ir/store";
 import { recordRunSuccess, ensureSubject } from "./run-record.ts";
 import { systemClock } from "@ir/core";
-import { probeIsolation } from "@ir/transform-sandbox";
 import { planNetworkRun, type NetworkDeps } from "./network.ts";
 import { project } from "@ir/ledger/projections";
 import type { RegisteredTransform } from "./registry.ts";
+
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -204,9 +210,8 @@ describe("P2-016: the network plan binds the manifest's secret to the vault (or 
 
 // The full sandbox (seccomp + namespaces) is probed at load time: the composition test runs where
 // isolation is available and skips elsewhere (the same pattern as network.test.ts).
-const host = await probeIsolation();
 
-describe.skipIf(!host.full)("P2-016: real-sandbox composition (skipped where full isolation is unavailable)", () => {
+describe("P2-016: real-sandbox composition (skipped where full isolation is unavailable)", () => {
   it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-009 code runs in the real sandbox, its search query passes the per-provider allowlist (owner decision 2026-10-16), the key travels in the provider header only and never reaches any persisted record",
     { timeout: 60_000 },
@@ -302,7 +307,7 @@ describe("P2-026: TR-044 (AbuseIPDB) — the network plan wires the real transfo
   // where isolation is available and skips elsewhere (the TR-009 pattern: CI runners without
   // bubblewrap/cgroup delegation cannot host the real sandbox; the plan-level refusals below
   // still run everywhere).
-  it.skipIf(!host.full)(
+  it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-044 code runs in the real sandbox, its ipAddress query passes the per-provider allowlist, the key travels in the provider header only and never reaches any persisted record",
     { timeout: 60_000 },
     async () => {
@@ -414,7 +419,7 @@ describe("P2-026: TR-052 (Common Crawl, keyless) — the network plan wires the 
   // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
   // where isolation is available and skips elsewhere (the TR-009 pattern; CI runners without
   // bubblewrap/cgroup delegation cannot host the real sandbox).
-  it.skipIf(!host.full)(
+  it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the keyless TR-052 runs in the real sandbox, sends exactly the two documented requests and never needs a vault",
     { timeout: 60_000 },
     async () => {
@@ -532,7 +537,7 @@ describe("P2-026: TR-051 (Hunter) — the network plan wires the real transform 
   // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
   // where isolation is available and skips elsewhere (the TR-009 pattern; CI runners without
   // bubblewrap/cgroup delegation cannot host the real sandbox).
-  it.skipIf(!host.full)(
+  it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-051 code runs in the real sandbox, its domain query passes the per-provider allowlist, the key travels in the X-API-KEY header only and never reaches any persisted record",
     { timeout: 60_000 },
     async () => {
@@ -678,7 +683,7 @@ describe("P2-026 (owner decision 2026-10-17): the path_parameter batch — the n
 
   // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
   // where isolation is available and skips elsewhere (the TR-009/TR-044 pattern).
-  it.skipIf(!host.full)(
+  it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-043 code runs in the real sandbox, its PATH-CARRYING request passes the central path-template check, the key travels in the provider header only and never reaches any persisted record",
     { timeout: 60_000 },
     async () => {
@@ -857,7 +862,7 @@ describe("P2-026 (owner decision 2026-10-17 — the vault credential_pair extens
 
   // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
   // where isolation is available and skips elsewhere (the TR-009/TR-044/TR-051 pattern).
-  it.skipIf(!host.full)(
+  it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-049 code runs in the real sandbox, its PATH-CARRYING request passes the central path-template check, the PAIR travels as the Basic value in the authorization header only and never reaches any persisted record",
     { timeout: 60_000 },
     async () => {
@@ -981,7 +986,7 @@ describe("P2-026 (owner decision 2026-10-17 — the restricted-storage provider)
 
   // The full sandbox (seccomp + namespaces) is probed at load time — the composition test runs
   // where isolation is available and skips elsewhere (the TR-009/TR-044/TR-051 pattern).
-  it.skipIf(!host.full)(
+  it(
     "COMPOSITION (REAL sandbox + persisted evidence + reopened case): the real TR-053 code runs in the real sandbox, the key travels in the X-Subscription-Token header only, and the RAW RESPONSE never reaches any persisted record — the evidence is the sha256 digest envelope and the links are the findings",
     { timeout: 60_000 },
     async () => {

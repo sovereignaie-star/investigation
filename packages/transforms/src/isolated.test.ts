@@ -15,8 +15,14 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createSimServer } from "@ir/sim";
-import { probeIsolation } from "@ir/transform-sandbox";
 import { runTransform, TransformRunError } from "./runner.ts";
+
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
 
 const MODULE = fileURLToPath(new URL("./transforms/tr-iso-test-transforms.spec.ts", import.meta.url));
 const TR010 = fileURLToPath(new URL("./transforms/tr-010-http-scan.ts", import.meta.url));
@@ -32,10 +38,7 @@ const sim = createSimServer([
   { match: "https://c.example/", response: { status: 200, body: "C" } },
 ]);
 
-const host = await probeIsolation();
-const fullAvailable = host.full;
-
-describe.skipIf(!fullAvailable)("T-ISO: isolated runner against the real sandbox", () => {
+describe("T-ISO: isolated runner against the real sandbox", () => {
   it("T-ISO-001: a transform runs successfully in the sandbox, network via the injected transport", async () => {
     sim.reset();
     const result = await runTransform(undefined, {

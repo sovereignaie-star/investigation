@@ -15,8 +15,14 @@ import type { DnsResolver, EgressTransport } from "@ir/egress";
 import { project, projectionHash } from "@ir/ledger/projections";
 import { replayCase } from "@ir/engine";
 import { openCase } from "@ir/store";
-import { probeIsolation } from "@ir/transform-sandbox";
 import { main, type CliOptions } from "./ir.ts";
+
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -240,10 +246,7 @@ describe("ir run --network: refusals before anything is sent (P2-003)", () => {
   });
 });
 
-const host = await probeIsolation();
-const fullAvailable = host.full;
-
-describe.skipIf(!fullAvailable)("ir run --network end to end: isolated transform -> gateway -> case (P2-003)", () => {
+describe("ir run --network end to end: isolated transform -> gateway -> case (P2-003)", () => {
   it("fetches an authorised source, stores evidence (URL, status, fetchedAt) and links the findings to it", async () => {
     const dir = tempDir("ok");
     const x = fake({ "source.example": [PUBLIC_IP, "2606:2800:220:1:248:1893:25c8:1946"] }, () => ({

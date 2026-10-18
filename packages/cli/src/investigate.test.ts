@@ -15,10 +15,16 @@ import { manualClock } from "@ir/core";
 import { EgressTransportError, type DnsResolver, type EgressLimits, type EgressTransport } from "@ir/egress";
 import { project, projectionHash } from "@ir/ledger/projections";
 import { openCase, type Vault, verifyCase } from "@ir/store";
-import { probeIsolation } from "@ir/transform-sandbox";
 import * as F from "../../transforms/src/fixtures/public-sources.ts";
 import { corroboration, type CoverageRecord, type InvestigationResult } from "./investigate.ts";
 import { main, type CliOptions } from "./ir.ts";
+
+import { probeIsolation } from "@ir/transform-sandbox";
+// The module-load probe doubles as the warmup: it pays the launcher build + probe cost here,
+// OUTSIDE any test's 5s timeout (the first sandboxed test would otherwise pay it and time out).
+// P2-028 (owner decision): no skipIf — the tests RUN wherever this file loads; without full
+// isolation they fail honestly (the CI gates job now installs bubblewrap too).
+await probeIsolation();
 
 const ON = { IR_ENABLE_NETWORK: "1" };
 const CASE_ARGS = ["--purpose", "تحقيق في بنية تحتية عامة لحادث أمني مصرح به", "--legal-basis", "security_incident"];
@@ -194,8 +200,6 @@ function readCase(dir: string) {
   }
 }
 
-const host = await probeIsolation();
-
 describe("P2-038 ir investigate: usage refusals before the network", () => {
   it("requires --network (an investigation runs only isolated, through the gateway)", async () => {
     const x = edge();
@@ -239,7 +243,7 @@ describe("P2-038 ir investigate: usage refusals before the network", () => {
   });
 });
 
-describe.skipIf(!host.full)("P2-038 ir investigate end to end (sandbox -> IPC -> one gateway -> case)", () => {
+describe("P2-038 ir investigate end to end (sandbox -> IPC -> one gateway -> case)", () => {
   it("selects transforms by entity type, expands to depth 1, records coverage for every (entity, transform)", async () => {
     const dir = tempDir();
     const x = edge();
@@ -550,7 +554,7 @@ const evidenceUrls = (entries: ReturnType<typeof readCase>["entries"]) =>
   );
 
 describe("P2-039 TR-001 accepts host names (registry input builder)", () => {
-  it.skipIf(!host.full)("a valid host name is accepted, normalised and resolved by TR-001 through the isolated run", async () => {
+  it("a valid host name is accepted, normalised and resolved by TR-001 through the isolated run", async () => {
     const ok = edge();
     const r = await investigate(tempDir(), ["--transform", "TR-001", "--max-depth", "0"], {
       seed: ["hostname", "WWW.Example.COM."],
@@ -596,7 +600,7 @@ describe("P2-039 TR-001 accepts host names (registry input builder)", () => {
   });
 });
 
-describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and subdomain from one seed", () => {
+describe("P2-039 ir investigate end to end: host name, IP and subdomain from one seed", () => {
   it("type-driven selection, isolation per run, evidence per finding, one node per entity, budgets, no host widening, verifyCase", async () => {
     isolatedRuns.modules.length = 0;
     const dir = tempDir();
@@ -825,7 +829,7 @@ describe.skipIf(!host.full)("P2-039 ir investigate end to end: host name, IP and
   });
 });
 
-describe.skipIf(!host.full)("P2-040: the request budget counts robots.txt fetches (one meter for every entry request)", () => {
+describe("P2-040: the request budget counts robots.txt fetches (one meter for every entry request)", () => {
   // P2-041 regression: a redirect hop inside the gateway is a real transport call (DNS, connect, bytes, rate)
   // and MUST be counted by the investigation's request budget — the budget is taken per hop inside `runHops`,
   // before each hop's DNS, so `result.requests` == actual transport calls and nothing starts after exhaustion.
@@ -891,7 +895,7 @@ describe.skipIf(!host.full)("P2-040: the request budget counts robots.txt fetche
   });
 });
 
-describe.skipIf(!host.full)("P2-016 continuation: the investigate path aggregates the per-provider query allowlist", () => {
+describe("P2-016 continuation: the investigate path aggregates the per-provider query allowlist", () => {
   it("the REGISTERED TR-009 runs through ir investigate and its real search query passes (the advisor-caught gap: the aggregation dropped the allowlist)", async () => {
     // TR-009 is now registered (registry.ts) and declares URLSCAN_KEY; the vault carries the entry.
     // Without the allowlist aggregated into the investigate gateway, the search request would be
