@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Button } from "@ir/ui";
 import { IDENTIFIER_LIST } from "./utils/identifierList";
 
 // P0-006: minimal entry point so the app builds and runs. The real workbench is built in phase 3 (P3-002..P3-020).
@@ -50,24 +51,24 @@ export default function App() {
         </h2>
         <ul className="list-disc space-y-1 ps-6">
           <li>
-            <a className="underline" href={`${REPO}/blob/main/docs/ROADMAP.md`}>
-              خارطة الطريق
-            </a>
+            <Button asChild variant="link" className="h-auto p-0 font-normal underline">
+              <a href={`${REPO}/blob/main/docs/ROADMAP.md`}>خارطة الطريق</a>
+            </Button>
           </li>
           <li>
-            <a className="underline" href={`${REPO}/blob/main/docs/STATUS.md`}>
-              حالة المشروع
-            </a>
+            <Button asChild variant="link" className="h-auto p-0 font-normal underline">
+              <a href={`${REPO}/blob/main/docs/STATUS.md`}>حالة المشروع</a>
+            </Button>
           </li>
           <li>
-            <a className="underline" href={`${REPO}/blob/main/docs/WORKLOG.md`}>
-              سجل العمل
-            </a>
+            <Button asChild variant="link" className="h-auto p-0 font-normal underline">
+              <a href={`${REPO}/blob/main/docs/WORKLOG.md`}>سجل العمل</a>
+            </Button>
           </li>
           <li>
-            <a className="underline" href={`${REPO}/blob/main/GOVERNANCE.md`}>
-              القواعد الحاكمة
-            </a>
+            <Button asChild variant="link" className="h-auto p-0 font-normal underline">
+              <a href={`${REPO}/blob/main/GOVERNANCE.md`}>القواعد الحاكمة</a>
+            </Button>
           </li>
         </ul>
       </section>
