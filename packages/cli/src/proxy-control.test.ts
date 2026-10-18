@@ -129,8 +129,10 @@ type SeenCall = { url: string; route?: string; pinnedIp: string; proxy?: unknown
 /** The fake edge: a resolver and a transport that serve WORLD and record every call with its route. */
 function edge(world: Readonly<Record<string, Resp>> = WORLD) {
   const calls: SeenCall[] = [];
+  const resolved: string[] = [];
   const resolver: DnsResolver = {
     async resolve(host) {
+      resolved.push(host);
       return DNS[host] ?? [];
     },
   };
@@ -142,11 +144,14 @@ function edge(world: Readonly<Record<string, Resp>> = WORLD) {
       return hit;
     },
   };
-  return { calls, resolver, transport };
+  return { calls, resolved, resolver, transport };
 }
 
 /** Runs `ir ...` with the fake network (resolver/transport/limits/vault) and returns the parsed output. */
-async function cli(args: string[], opts: { calls?: SeenCall[]; world?: Readonly<Record<string, Resp>>; vault?: Vault } = {}) {
+async function cli(
+  args: string[],
+  opts: { calls?: SeenCall[]; resolved?: string[]; world?: Readonly<Record<string, Resp>>; vault?: Vault } = {},
+) {
   const out: string[] = [];
   const err: string[] = [];
   const x = edge(opts.world);
@@ -173,6 +178,7 @@ async function cli(args: string[], opts: { calls?: SeenCall[]; world?: Readonly<
   );
   // the calls are copied only AFTER the command ran — the record is the actual requests this invocation made
   if (opts.calls) opts.calls.push(...x.calls);
+  if (opts.resolved) opts.resolved.push(...x.resolved);
   const text = out.join("\n").trim();
   const parsed = text.startsWith("{") || text.startsWith("[") ? (JSON.parse(text) as unknown) : undefined;
   return {
@@ -291,22 +297,26 @@ describe.skipIf(!host.full)("P2-028 ir proxy: the case's proxy configuration on 
     for (const c of calls) {
       expect(c.route).toBe("proxy-socks5");
       // the transport is handed the PROXY's pinned IP, and the tunnel targets the PINNED TARGET IP
-      // (each call its own target: dns.google => 8.8.8.8, data.iana.org => 192.0.47.59, ...)
+      // — the EXACT IP of THIS call's own URL host (not any IP from the run's host list)
       expect(c.pinnedIp).toBe("8.8.4.4");
-      const target = (c.proxy as { target: { kind: string; ip?: string } }).target;
-      expect(target.kind).toBe("ip");
-      expect(target.ip).toMatch(/^(8\.8\.8\.8|192\.0\.47\.59|72\.13\.58\.10|91\.199\.212\.73)$/);
+      const host = new URL(c.url).hostname;
+      expect(DNS[host]).toBeDefined();
       expect(c.proxy).toMatchObject({
         kind: "socks5",
         proxyIp: "8.8.4.4",
         proxyPort: 1080,
+        target: { kind: "ip", ip: DNS[host][0] },
         credentials: { username: "opsuser", password: "opspass" },
       });
     }
-    // the network events on the chain carry the route
+    // the network events on the chain carry the route — EVERY egress event, no exception
     const audit = readAudit(dir);
     const egress = audit.filter((a) => a.action.startsWith("egress."));
     expect(egress.length).toBeGreaterThan(0);
+    // EVERY network event on the chain carries a route (allow/deny/transport — no exception);
+    // the first (direct) investigate's events carry "direct", the proxied run's carry "proxy-socks5"
+    expect(egress.every((a) => typeof a.detail?.route === "string" && (a.detail.route as string) !== "")).toBe(true);
+    expect(egress.some((a) => a.detail?.route === "proxy-socks5")).toBe(true);
   });
 
   it("T-P2028-C05: a proxy whose vault entry is MISSING refuses fail-closed BEFORE any transport call", async () => {
@@ -370,8 +380,10 @@ describe.skipIf(!host.full)("P2-028 ir proxy: the case's proxy configuration on 
     // the tor proxy is the operator's local SocksPort — an IP literal, no DNS for the proxy itself
     await cli(["proxy", dir, "set", "tor", "--host", "127.0.0.1", "--port", "9050", "--secret", "tor-port"]);
     const calls: SeenCall[] = [];
+    const resolved: string[] = [];
     const r = await cli(INVESTIGATE(dir, ["--via-tor"]), {
       calls,
+      resolved, // only THIS invocation's resolutions — the first (direct) investigate resolves its own
       vault: VAULT,
     });
     expect(r.code).toBe(0);
@@ -379,16 +391,19 @@ describe.skipIf(!host.full)("P2-028 ir proxy: the case's proxy configuration on 
     for (const c of calls) {
       expect(c.route).toBe("tor");
       // Tor: the transport connects to the PROXY (the local SocksPort) and hands it the DOMAIN
-      // (each call its own target domain — never an IP, never resolved locally)
+      // — the EXACT host of THIS call's own URL, never an IP, never resolved locally
       expect(c.pinnedIp).toBe("127.0.0.1");
-      const target = (c.proxy as { target: { kind: string; host?: string } }).target;
-      expect(target.kind).toBe("host");
-      expect(target.host).toMatch(/^(dns\.google|data\.iana\.org|rdap\.verisign\.com|crt\.sh)$/);
       expect(c.proxy).toMatchObject({
         kind: "socks5",
         proxyIp: "127.0.0.1",
         proxyPort: 9050,
+        target: { kind: "host", host: new URL(c.url).hostname },
       });
+    }
+    // the target domains are NEVER resolved locally in tor mode — the resolver saw none of them
+    const resolvedHosts = resolved.join(",");
+    for (const d of ["dns.google", "data.iana.org", "rdap.verisign.com", "crt.sh"]) {
+      expect(resolvedHosts).not.toContain(d);
     }
   });
 
