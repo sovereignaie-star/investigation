@@ -115,6 +115,11 @@ function bindFinding(f: TransformFinding, byRequest: ReadonlyMap<number, string>
     explanation: f.explanation,
     ...(f.objectId ? { objectId: f.objectId } : {}),
     evidenceIds,
+    // P2-031 — the optional structured time fields pass through to the ledger Finding
+    // (observedAt = capture time, validFrom/validTo = claim window); absent = processing time (the old behavior).
+    ...(f.observedAt !== undefined ? { observedAt: f.observedAt } : {}),
+    ...(f.validFrom !== undefined ? { validFrom: f.validFrom } : {}),
+    ...(f.validTo !== undefined ? { validTo: f.validTo } : {}),
   };
 }
 
