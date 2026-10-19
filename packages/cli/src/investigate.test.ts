@@ -11,6 +11,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { slowIt } from "@ir/test-utils";
 import { manualClock } from "@ir/core";
 import { EgressTransportError, type DnsResolver, type EgressLimits, type EgressTransport } from "@ir/egress";
 import { project, projectionHash } from "@ir/ledger/projections";
@@ -244,7 +245,9 @@ describe("P2-038 ir investigate: usage refusals before the network", () => {
 });
 
 describe("P2-038 ir investigate end to end (sandbox -> IPC -> one gateway -> case)", () => {
-  it("selects transforms by entity type, expands to depth 1, records coverage for every (entity, transform)", async () => {
+  // P6-016: @slow — full sandbox E2E (P2-038); measured 5,061 ms under coverage
+  // in the local gates run of this PR (2026-10-18), over the 5 s default.
+  slowIt("selects transforms by entity type, expands to depth 1, records coverage for every (entity, transform)", async () => {
     const dir = tempDir();
     const x = edge();
     const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
@@ -289,38 +292,44 @@ describe("P2-038 ir investigate end to end (sandbox -> IPC -> one gateway -> cas
     expect(verifyCase(dir).ok).toBe(true);
   });
 
-  it("P2-026 negative control: a capture URL on a host NOT on the operator's list is refused before any request to it — discovery never grants a network permission", async () => {
-    const dir = tempDir();
-    // The same world, except the CDX answer returns a capture on a host the operator never listed.
-    const x = edge({
-      ...WORLD,
-      "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100": json(
-        JSON.stringify(
-          'com,example)/ 20260812000000 {"url": "https://unlisted.example/page", "mime": "text/html", "status": "200", "digest": "sha1:ccc"}',
-        ),
-      ),
-      // TR-011 asks its own host (web.archive.org, listed) about the capture URL — an empty CDX is a
-      // genuine negative; the refusal under test is TR-010's, isolated to its own failed cell.
-      "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Funlisted.example%2Fpage&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&limit=100":
-        json(""),
-    });
-    const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
-      network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
-    });
-    const cov = covOf(r);
-    // TR-052 itself ran and recorded the capture (the finding is data, not a permission).
-    expect(stateOf(cov, "TR-052", "domain:example.com")).toBe("found");
-    // TR-010 on the capture URL is refused fail-closed on the unlisted host — the reason names the
-    // host_not_allowed rule, and NO request ever reached unlisted.example (the wire proves it).
-    const t010 = cell(cov, "TR-010", "url:https://unlisted.example/page");
-    expect(t010).toHaveLength(1);
-    expect(t010[0]).toMatchObject({ state: "failed" });
-    expect(t010[0].reason).toMatch(/not on the allowedHosts list/);
-    expect(x.calls.every((c) => c.host !== "unlisted.example")).toBe(true);
-    // The refusal is recorded (exit 1 — a failed coverage cell is a designed, audible stop), not dropped.
-    expect(r.code).toBe(1);
-    expect(verifyCase(dir).ok).toBe(true);
-  });
+  // P6-016: @slow — full sandbox E2E (P2-038/P2-026); measured 5,005 ms under
+  // coverage in the local gates run of this PR (2026-10-18), over the 5 s default.
+  slowIt(
+    "P2-026 negative control: a capture URL on a host NOT on the operator's list is refused before any request to it — discovery never grants a network permission",
+    async () => {
+      const dir = tempDir();
+      // The same world, except the CDX answer returns a capture on a host the operator never listed.
+      const x = edge({
+        ...WORLD,
+        "https://index.commoncrawl.org/CC-MAIN-2026-39-index?url=example.com&matchType=domain&output=json&filter=status:200&limit=100":
+          json(
+            JSON.stringify(
+              'com,example)/ 20260812000000 {"url": "https://unlisted.example/page", "mime": "text/html", "status": "200", "digest": "sha1:ccc"}',
+            ),
+          ),
+        // TR-011 asks its own host (web.archive.org, listed) about the capture URL — an empty CDX is a
+        // genuine negative; the refusal under test is TR-010's, isolated to its own failed cell.
+        "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Funlisted.example%2Fpage&output=json&fl=timestamp,original,statuscode&filter=statuscode:200&limit=100":
+          json(""),
+      });
+      const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
+        network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
+      });
+      const cov = covOf(r);
+      // TR-052 itself ran and recorded the capture (the finding is data, not a permission).
+      expect(stateOf(cov, "TR-052", "domain:example.com")).toBe("found");
+      // TR-010 on the capture URL is refused fail-closed on the unlisted host — the reason names the
+      // host_not_allowed rule, and NO request ever reached unlisted.example (the wire proves it).
+      const t010 = cell(cov, "TR-010", "url:https://unlisted.example/page");
+      expect(t010).toHaveLength(1);
+      expect(t010[0]).toMatchObject({ state: "failed" });
+      expect(t010[0].reason).toMatch(/not on the allowedHosts list/);
+      expect(x.calls.every((c) => c.host !== "unlisted.example")).toBe(true);
+      // The refusal is recorded (exit 1 — a failed coverage cell is a designed, audible stop), not dropped.
+      expect(r.code).toBe(1);
+      expect(verifyCase(dir).ok).toBe(true);
+    },
+  );
 
   it("one canonical node per identifier, every edge from every source kept; repeats from one source are not independent", async () => {
     const dir = tempDir();
@@ -601,87 +610,92 @@ describe("P2-039 TR-001 accepts host names (registry input builder)", () => {
 });
 
 describe("P2-039 ir investigate end to end: host name, IP and subdomain from one seed", () => {
-  it("type-driven selection, isolation per run, evidence per finding, one node per entity, budgets, no host widening, verifyCase", async () => {
-    isolatedRuns.modules.length = 0;
-    const dir = tempDir();
-    const x = edge();
-    const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
-      network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
-    });
-    expect(r.err).toBe("");
-    expect(r.code).toBe(0);
-    const cov = covOf(r);
-    const ran = cov.filter((k) => k.state === "found" || k.state === "none" || k.state === "failed");
+  // P6-016: @slow — full sandbox E2E (seccomp, IPC, gateway); under coverage it
+  // measured 5,039 ms on CI (2026-10-18), over the 5 s default.
+  slowIt(
+    "type-driven selection, isolation per run, evidence per finding, one node per entity, budgets, no host widening, verifyCase",
+    async () => {
+      isolatedRuns.modules.length = 0;
+      const dir = tempDir();
+      const x = edge();
+      const r = await investigate(dir, ["--max-depth", "1", "--max-runs", "20", "--max-requests", "100"], {
+        network: { env: ON, resolver: x.resolver, transport: x.transport, limits: LIMITS },
+      });
+      expect(r.err).toBe("");
+      expect(r.code).toBe(0);
+      const cov = covOf(r);
+      const ran = cov.filter((k) => k.state === "found" || k.state === "none" || k.state === "failed");
 
-    // Selection by entity type: domain -> TR-001/002/004/052; ipv4 -> TR-003/006; hostname -> TR-001 only;
-    // url -> TR-010/011 (P2-026: TR-052's capture URL expands into the graph).
-    const byType = (t: string) => [...new Set(ran.filter((k) => k.entityKey.startsWith(`${t}:`)).map((k) => k.transformId))].sort();
-    expect(byType("domain")).toEqual(["TR-001", "TR-002", "TR-004", "TR-052"]);
-    expect(byType("ipv4")).toEqual(["TR-003", "TR-006"]);
-    expect(byType("hostname")).toEqual(["TR-001"]);
-    expect(byType("url")).toEqual(["TR-010", "TR-011"]);
-    // The seed produced a host name (name server), an IP address and a subdomain (certificate name).
-    for (const k of ["hostname:a.iana-servers.net", "ipv4:8.8.8.8", "hostname:www.example.com"]) {
-      expect(
-        ran.some((c) => c.entityKey === k),
-        k,
-      ).toBe(true);
-    }
+      // Selection by entity type: domain -> TR-001/002/004/052; ipv4 -> TR-003/006; hostname -> TR-001 only;
+      // url -> TR-010/011 (P2-026: TR-052's capture URL expands into the graph).
+      const byType = (t: string) => [...new Set(ran.filter((k) => k.entityKey.startsWith(`${t}:`)).map((k) => k.transformId))].sort();
+      expect(byType("domain")).toEqual(["TR-001", "TR-002", "TR-004", "TR-052"]);
+      expect(byType("ipv4")).toEqual(["TR-003", "TR-006"]);
+      expect(byType("hostname")).toEqual(["TR-001"]);
+      expect(byType("url")).toEqual(["TR-010", "TR-011"]);
+      // The seed produced a host name (name server), an IP address and a subdomain (certificate name).
+      for (const k of ["hostname:a.iana-servers.net", "ipv4:8.8.8.8", "hostname:www.example.com"]) {
+        expect(
+          ran.some((c) => c.entityKey === k),
+          k,
+        ).toBe(true);
+      }
 
-    // Every run went through the sandbox (one isolated child per run, the registry module), IPC and the gateway:
-    // the only transport is the gateway's, and each run's request count matches what reached it.
-    expect(isolatedRuns.modules).toHaveLength(r.result?.runs ?? -1);
-    for (const m of isolatedRuns.modules) expect(m).toMatch(/transforms\/src\/transforms\/tr-(00[1-6]|010|011|052)-[a-z-]+\.ts$/);
-    expect(ran.reduce((n, k) => n + k.requests, 0)).toBe(x.calls.length);
+      // Every run went through the sandbox (one isolated child per run, the registry module), IPC and the gateway:
+      // the only transport is the gateway's, and each run's request count matches what reached it.
+      expect(isolatedRuns.modules).toHaveLength(r.result?.runs ?? -1);
+      for (const m of isolatedRuns.modules) expect(m).toMatch(/transforms\/src\/transforms\/tr-(00[1-6]|010|011|052)-[a-z-]+\.ts$/);
+      expect(ran.reduce((n, k) => n + k.requests, 0)).toBe(x.calls.length);
 
-    // found / none / not_run are distinct (failed is covered below and in the budget tests).
-    expect(stateOf(cov, "TR-001", "hostname:api.example.com")).toBe("none");
-    expect(cell(cov, "TR-003", "ipv4:199.43.135.53")[0]).toMatchObject({ state: "not_run", depth: 2 });
+      // found / none / not_run are distinct (failed is covered below and in the budget tests).
+      expect(stateOf(cov, "TR-001", "hostname:api.example.com")).toBe("none");
+      expect(cell(cov, "TR-003", "ipv4:199.43.135.53")[0]).toMatchObject({ state: "not_run", depth: 2 });
 
-    // One canonical node per entity; 8.8.8.8 has two parents (example.com and www.example.com) and ran once.
-    const k = readCase(dir);
-    const p = project(k.entries);
-    const ip = p.graph.nodes.filter((n) => n.canonicalKey === "ipv4:8.8.8.8");
-    expect(ip).toHaveLength(1);
-    const parents = p.graph.edges
-      .filter((e) => e.target === ip[0].id && e.predicate === "resolves_to")
-      .map((e) => p.graph.nodes.find((n) => n.id === e.source)?.canonicalKey)
-      .sort();
-    expect(parents).toEqual(["domain:example.com", "hostname:www.example.com"]);
-    expect(cell(cov, "TR-003", "ipv4:8.8.8.8")).toHaveLength(1);
-    expect(cell(cov, "TR-006", "ipv4:8.8.8.8")).toHaveLength(1);
-    const www = p.graph.nodes.filter((n) => n.canonicalKey === "hostname:www.example.com");
-    expect(www).toHaveLength(1);
+      // One canonical node per entity; 8.8.8.8 has two parents (example.com and www.example.com) and ran once.
+      const k = readCase(dir);
+      const p = project(k.entries);
+      const ip = p.graph.nodes.filter((n) => n.canonicalKey === "ipv4:8.8.8.8");
+      expect(ip).toHaveLength(1);
+      const parents = p.graph.edges
+        .filter((e) => e.target === ip[0].id && e.predicate === "resolves_to")
+        .map((e) => p.graph.nodes.find((n) => n.id === e.source)?.canonicalKey)
+        .sort();
+      expect(parents).toEqual(["domain:example.com", "hostname:www.example.com"]);
+      expect(cell(cov, "TR-003", "ipv4:8.8.8.8")).toHaveLength(1);
+      expect(cell(cov, "TR-006", "ipv4:8.8.8.8")).toHaveLength(1);
+      const www = p.graph.nodes.filter((n) => n.canonicalKey === "hostname:www.example.com");
+      expect(www).toHaveLength(1);
 
-    // Each edge cites the evidence of the request that produced it (the DoH query for its own subject).
-    const urls = evidenceUrls(k.entries);
-    for (const e of p.graph.edges.filter((g) => g.predicate === "resolves_to")) {
-      const src = p.graph.nodes.find((n) => n.id === e.source)?.canonicalKey ?? "";
-      const name = src.slice(src.indexOf(":") + 1);
-      expect(e.evidenceIds.length, src).toBeGreaterThan(0);
-      for (const id of e.evidenceIds) expect(urls.get(id), src).toBe(q(name, 1));
-    }
+      // Each edge cites the evidence of the request that produced it (the DoH query for its own subject).
+      const urls = evidenceUrls(k.entries);
+      for (const e of p.graph.edges.filter((g) => g.predicate === "resolves_to")) {
+        const src = p.graph.nodes.find((n) => n.id === e.source)?.canonicalKey ?? "";
+        const name = src.slice(src.indexOf(":") + 1);
+        expect(e.evidenceIds.length, src).toBeGreaterThan(0);
+        for (const id of e.evidenceIds) expect(urls.get(id), src).toBe(q(name, 1));
+      }
 
-    // Two observations of resolves_to 8.8.8.8 come from ONE source (dns.google via TR-001): not independent.
-    const sup = r.result?.corroboration.filter((g) => g.predicate === "resolves_to" && g.object === "ipv4:8.8.8.8") ?? [];
-    for (const g of sup) expect(g.sources).toHaveLength(1);
+      // Two observations of resolves_to 8.8.8.8 come from ONE source (dns.google via TR-001): not independent.
+      const sup = r.result?.corroboration.filter((g) => g.predicate === "resolves_to" && g.object === "ipv4:8.8.8.8") ?? [];
+      for (const g of sup) expect(g.sources).toHaveLength(1);
 
-    // Discovered names never become network permissions: no request to any discovered host that
-    // is NOT on the operator's list. (www.example.com IS on this test's list — the operator allowed
-    // page fetches there, which is why TR-010 could fetch TR-052's capture URL; discovery of a name
-    // never grants it — only the operator's list does, and the other three stay unrequested.)
-    for (const c of x.calls) expect(HOSTS).toContain(c.host);
-    for (const h of ["a.iana-servers.net", "b.iana-servers.net", "api.example.com"]) {
-      expect(x.calls.some((c) => c.host === h)).toBe(false);
-    }
+      // Discovered names never become network permissions: no request to any discovered host that
+      // is NOT on the operator's list. (www.example.com IS on this test's list — the operator allowed
+      // page fetches there, which is why TR-010 could fetch TR-052's capture URL; discovery of a name
+      // never grants it — only the operator's list does, and the other three stay unrequested.)
+      for (const c of x.calls) expect(HOSTS).toContain(c.host);
+      for (const h of ["a.iana-servers.net", "b.iana-servers.net", "api.example.com"]) {
+        expect(x.calls.some((c) => c.host === h)).toBe(false);
+      }
 
-    // TR-003 ran with sends [ip, asn] only: the bootstrap file names were not a reason to declare "domain".
-    expect(stateOf(cov, "TR-003", "ipv4:8.8.8.8")).toBe("found");
+      // TR-003 ran with sends [ip, asn] only: the bootstrap file names were not a reason to declare "domain".
+      expect(stateOf(cov, "TR-003", "ipv4:8.8.8.8")).toBe("found");
 
-    expect(verifyCase(dir).ok).toBe(true);
-    expect(projectionHash(project(readCase(dir).entries))).toBe(projectionHash(p));
-    expect(p.issues).toEqual([]);
-  });
+      expect(verifyCase(dir).ok).toBe(true);
+      expect(projectionHash(project(readCase(dir).entries))).toBe(projectionHash(p));
+      expect(p.issues).toEqual([]);
+    },
+  );
 
   it("depth and run budgets record not_run for every pair they stop, with the reason", async () => {
     const x = edge();
