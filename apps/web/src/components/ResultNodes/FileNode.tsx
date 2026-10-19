@@ -1,5 +1,5 @@
-import { Handle, Position } from 'reactflow';
-import { File, Download } from 'lucide-react';
+import { Handle, Position } from "@xyflow/react";
+import { File, Download } from "lucide-react";
 
 interface Props {
   data: { label: string; value: string; nodeData: Record<string, unknown> };
@@ -8,10 +8,12 @@ interface Props {
 
 export function FileNode({ data, selected }: Props) {
   const nd = data.nodeData as { name?: string; size?: number; type?: string; url?: string };
-  const sizeStr = nd.size ? `${(nd.size / 1024).toFixed(1)} KB` : '';
+  const sizeStr = nd.size ? `${(nd.size / 1024).toFixed(1)} KB` : "";
 
   return (
-    <div className={`bg-zinc-900 border ${selected ? 'border-amber-500' : 'border-zinc-700'} rounded-lg shadow-xl min-w-[200px] max-w-[280px]`}>
+    <div
+      className={`bg-zinc-900 border ${selected ? "border-amber-500" : "border-zinc-700"} rounded-lg shadow-xl min-w-[200px] max-w-[280px]`}
+    >
       <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-2 !h-2" />
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-800 rounded-t-lg">
         <File size={14} className="text-amber-400" />
@@ -31,8 +33,13 @@ export function FileNode({ data, selected }: Props) {
       </div>
       {nd.url && (
         <div className="border-t border-zinc-800">
-          <a href={nd.url} download className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-amber-400 transition-colors">
-            <Download size={11} /><span className="text-xs">تحميل</span>
+          <a
+            href={nd.url}
+            download
+            className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-amber-400 transition-colors"
+          >
+            <Download size={11} />
+            <span className="text-xs">تحميل</span>
           </a>
         </div>
       )}
