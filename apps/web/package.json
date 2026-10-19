@@ -79,6 +79,7 @@
     "dexie": "^4.4.6",
     "fuse.js": "^7.5.0",
     "graphology": "0.26.0",
+    "graphology-layout-forceatlas2": "0.10.1",
     "libphonenumber-js": "^1.13.14",
     "sigma": "3.0.3",
     "zustand": "^5.0.15"

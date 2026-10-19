@@ -3998,3 +3998,28 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التحقق اللاحق على main [مُقاس]:** CI كله success على `ca21210` (استعلام فعلي لcheck-runs، باستثناء Dependabot)؛ محلياً على main بعد الدمج: `pnpm vitest run apps/web` => 55/55 و`check.mjs --consistency` => exit 0.
 - **الحالة:** P3-006 مغلقة — D-046 معالج (الحزمة المتقادمة غير موجودة في الاعتماديات، يفرضها اختبار).
 - **التالي:** P3-007 — التخطيط في Web Worker وحفظ المواضع (ForceAtlas2)؛ تعتمد على P3-005 (مدموجة التنفيذ) وP1-016 (منجزة).
+
+### 2026-10-19 — [P3-007] التخطيط في Web Worker وحفظ المواضع — أحمر-أولاً وعيب iframe معزول معالج
+
+- **المعيار (ROADMAP 6.4 حرفياً):** «تخطيط حتمي بالبذرة» — التخطيط ForceAtlas2 في Web Worker ومواضع محفوظة في ViewState (يعالج D-026: `position` عشوائي فالتخطيط غير حتمي وغير محفوظ). التبعية: P3-005 (مدموجة التنفيذ).
+- **الأحمر أولاً [مُقاس]:** اختبارات `apps/web/src/layout.test.ts` فشلت قبل التنفيذ للسبب الصحيح: `Cannot find module './pages/workbench/layout'` و`'./store/viewStateStore'` (6 اختبارات، ثم أُضيف سابع لبروتوكول الـWorker بعد عزله في وحدة نقية).
+- **التنفيذ:** `layout.ts` — `computeForceAtlas2Layout` (مواضع أولية حتمية بتجزئة FNV-1a لبذرة+معرف، ثم `forceAtlas2.assign` — الحزمة نفسها حتمية)؛ `layout.worker.ts` قشرة Worker فوق `layoutProtocol.ts` (بروتوكول نقي قابل للاختبار في node: `handleLayoutRequest`)؛ `viewStateStore.ts` — مخزن ViewState (zustand، حالة عرض فقط، بلا حفظ متصفح — D-033) يحفظ المواضع بمفتاح `positionsKey` (تجزئة معرفات الرسم) ويعيدها؛ `InvestigationGraph` — المواضع المحفوظة تُطبق قبل أول إطار، وإلا يُرسل الرسم إلى الـWorker وتُطبق النتيجة حية وتُحفظ، وميزانية التكرارات دالة حتمية من حجم الرسم (≤100→100، ≤1000→60، وإلا 30). تبعية جديدة: `graphology-layout-forceatlas2@0.10.1` (MIT، نظيرة graphology-types موجودة).
+- **عيب حقيقي اكتُشف في المتصفح وعولج [مُتحقَّق]:** البناء الأول أطلق `new Worker` داخل try/catch واحد مع Sigma — في بيئة المعاينة (iframe معزول، أصل `null`) فشل بناء Worker (`cannot be accessed from origin 'null'`) فظهر خطأ WebGL زائف وتعطل التخطيط. **الإصلاح:** بناء الـWorker في try/catch خاصاً به؛ عند فشله (iframe معزول/CSP صارم) يُحسب التخطيط الحتمي نفسه على الخيط الرئيسي مؤجلاً بعد أول رسم — تدهور وظيفي لا انكسار. التحقق بعد الإصلاح: بلا رسالة خطأ، اللوحة حية، والعقد انتشرت بقوى التنافر (7 عقد بمعرفات لاصقة).
+- **حد معلن (أمانة القياس):** مسار الـWorker نفسه لم يُمرَّر في بيئة التحقق — أصلها معزول يمنع بناء Worker أصلاً (هذا ما كشف العيب)؛ تغطية بديلة: البروتوكول (`handleLayoutRequest`) مختبر في node ويعطي نفس ناتج الاستدعاء المباشر، والقشرة قياسية (vite حزمتها جزءاً مستقلاً `layout.worker-*.js`). أول نشر على أصل عادي يمرر المسار كاملاً.
+- **البوابات محلياً [رموز خروج فعلية]:** `pnpm run lint` => صفر أخطاء؛ `pnpm run typecheck` => exit 0؛ `pnpm vitest run apps/web` => 62/62؛ `pnpm test` => exit 0 — **2061 ناجحاً | 6 متخطاة | 0 فاشل**؛ `pnpm run build` => exit 0.
+
+### 2026-10-19 — [P3-007] توثيقي — تصحيح حرف في صف STATUS
+
+- تصحيح حرف خاطئ في صف P3-005؟ لا — في صف P3-007: «FNV-1ا» => «FNV-1a» (تسرب حرف عربي أثناء الكتابة). لا تغيير هندسي.
+
+### 2026-10-19 — [P3-007] أمن — معالجة إنذاري CodeQL (حقن خاصية + تحقق أصل في الـWorker)
+
+- **الإنذاران (على `7b1e75b9`):** (1) عالٍ — «Missing origin verification in postMessage handler» في `layout.worker.ts`؛ (2) متوسط — «Remote property injection» في `layout.ts:47` (معرّفات العقد نصوص من مدخلات المستخدم وقد تلوّث خريطة المواضع عبر مفتاح مصطنع مثل `__proto__`).
+- **الإصلاحان:** (1) تحقق صريح من أصل الرسالة في معالج `self.onmessage` (عامل مخصص يبلّغ أصلاً فارغاً — يقبل الفارغ أو أصل الـWorker فقط)؛ (2) `Object.create(null)` لخرائط المواضع في `seededInitialPositions` و`computeForceAtlas2Layout` — بلا prototype فلا يمكن لمعرّف مصطنع تلويثها.
+- البوابات بعد الإصلاح: lint صفر، typecheck exit 0، ويب 62/62.
+
+### 2026-10-19 — [P3-007] أمن — إنذار CodeQL المتبقي عولج بـMap
+
+- **الإنذار (على `ce3e075`):** «Remote property injection» ما زال على `layout.ts` — حل `Object.create(null)` لم يُقنع محلل CodeQL (لا يعفّيه).
+- **الإصلاح الجذري:** `LayoutPositions` أصبح `Map<string, {x,y}>` بدل كائن مفهرس — الوصول بالمفاتيح عبر `Map.get/set` بلا دلالات prototype إطلاقاً، والرسائل تمر عبر structured clone الذي يدعم Map. عُدلت كل المواضع (layout، المكوّن، المخزن، الاختبارات).
+- البوابات: lint صفر، typecheck exit 0، ويب 62/62.
