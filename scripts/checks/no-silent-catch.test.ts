@@ -1,12 +1,16 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { slowIt } from "@ir/test-utils";
 import { analyzeSource, scanRepo } from "./no-silent-catch.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 describe("no silent catch {} in executable code (P2-006 / D-017)", () => {
-  it("the repository has zero silent catch blocks in executable code", () => {
+  // P6-016 / J-11: @slow — this guard scans the whole repository; the repo walk grew with
+  // the generated client and it timed out at 5,000 ms on CI under the full coverage run
+  // (run 39198518973 on main 4bd05b8, 2026-10-19) while passing in 2.5 s locally unloaded.
+  slowIt("the repository has zero silent catch blocks in executable code", () => {
     const { executable } = scanRepo(REPO);
     expect(executable, JSON.stringify(executable, null, 2)).toEqual([]);
   });
