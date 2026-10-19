@@ -59,6 +59,37 @@ export interface RunPhaseEvent {
 
 export interface Error {
   error: string;
+  /** Present on 413 — the refused evidence's size in bytes. */
+  size?: number;
+}
+
+export type EvidenceContentEncoding = (typeof EvidenceContentEncoding)[keyof typeof EvidenceContentEncoding];
+
+export const EvidenceContentEncoding = {
+  "utf-8": "utf-8",
+  binary: "binary",
+} as const;
+
+/**
+ * The raw evidence record as served to the viewer (P3-010). `encoding` is "utf-8" for textual evidence with the decoded `content`, or "binary" for anything else — the raw viewer refuses to corrupt binary bytes, so `content` is empty and only the metadata travels (declared limit).
+ */
+export interface EvidenceContent {
+  /** Evidence id (ULID). */
+  id: string;
+  mime: string;
+  /** Hex SHA-256 of the stored content — integrity, verifiable by the caller. */
+  sha256: string;
+  /** Blob size in bytes. */
+  size: number;
+  fetchedAt: string;
+  transformId: string;
+  encoding: EvidenceContentEncoding;
+  /** The decoded UTF-8 text for textual evidence; empty for binary. */
+  content: string;
+}
+
+export interface EvidenceContentEnvelope {
+  evidence: EvidenceContent;
 }
 
 export type CaseSummaryStatus = (typeof CaseSummaryStatus)[keyof typeof CaseSummaryStatus];

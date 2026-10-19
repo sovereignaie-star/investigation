@@ -4,6 +4,7 @@ import path from "node:path";
 import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { caseFingerprint, openCase, type CaseFingerprint, type CaseInit } from "@ir/store";
+import { isTextualMime } from "@ir/schema";
 import { CreateCaseBody, UpdateCaseLifecycleBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/admin";
 import { logger } from "../lib/logger";
@@ -29,6 +30,13 @@ import { logger } from "../lib/logger";
 
 /** J-17: the only message a locked case ever yields — no content, no auto-decrypt. */
 export const param = (v: string | string[] | undefined): string => (typeof v === "string" ? v : "");
+
+/**
+ * P3-010: the raw viewer serves evidence up to this size. Anything larger is refused with its
+ * metadata (413) — never partial content. Blobs are already capped at ingestion; this caps the
+ * JSON envelope a single request can produce (local imports can be big).
+ */
+const EVIDENCE_MAX_BYTES = 16 * 1024 * 1024;
 
 /**
  * A case id is a ULID (26 Crockford-base32 chars). The :id path parameter reaches the file
@@ -214,6 +222,76 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
     try {
       const info = c.info() as CaseRecordShape & { retention: unknown; ownerId: string };
       res.json({ ...summaryOf(info, fp), retention: info.retention ?? null, ownerId: info.ownerId, message: null });
+    } finally {
+      c.close();
+    }
+  });
+
+  // GET /cases/:id/evidence/:evidenceId — raw evidence content (P3-010).
+  // The safe raw viewer's data path: the bytes come from the case's content-addressed blobs
+  // (P1-010) through the same admin boundary as every case route (D-037). Every read
+  // re-verifies the blob (T-LED-019), so a missing or corrupt blob is a fail-closed 500 — never
+  // partial content. A locked (encrypted) case fails closed with the J-17 message and no
+  // content. Binary evidence is refused honestly (encoding: "binary", empty content) instead
+  // of being corrupted by a lossy decode — the declared raw-viewer limit.
+  router.get("/cases/:id/evidence/:evidenceId", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    const evidenceId = caseIdParam(req.params["evidenceId"]);
+    if (!id || !evidenceId) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const { dir, fp } = found;
+    if (fp.encrypted) {
+      // J-17: not even a title is readable — evidence content never leaves a locked case.
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const c = openCase(dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const row = c.db.prepare("SELECT id, sha256, mime, size, fetched_at, transform_id FROM evidence WHERE id = ?").get(evidenceId) as
+        { id: string; sha256: string; mime: string; size: number; fetched_at: string; transform_id: string } | undefined;
+      if (!row) {
+        res.status(404).json({ error: "no evidence with this id" });
+        return;
+      }
+      if (row.size > EVIDENCE_MAX_BYTES) {
+        // The raw viewer refuses oversized evidence with its metadata — never partial content.
+        res.status(413).json({ error: "evidence too large for the raw viewer (16 MiB cap)", size: row.size });
+        return;
+      }
+      let bytes: Uint8Array;
+      try {
+        bytes = c.blobs.get(row.sha256); // verifies the content hash (or HMAC) on every read
+      } catch (x) {
+        logger.error({ err: x, caseId: id, evidenceId }, "evidence read failed");
+        res.status(500).json({ error: "evidence read failed — the blob is missing or corrupt" });
+        return;
+      }
+      if (bytes.length !== row.size) {
+        logger.error({ caseId: id, evidenceId, indexed: row.size, actual: bytes.length }, "evidence size mismatch");
+        res.status(500).json({ error: "evidence read failed — the blob is missing or corrupt" });
+        return;
+      }
+      const base = {
+        id: row.id,
+        mime: row.mime,
+        sha256: row.sha256,
+        size: row.size,
+        fetchedAt: row.fetched_at,
+        transformId: row.transform_id,
+      };
+      if (isTextualMime(row.mime)) {
+        // Display-only lossy decode (replacement characters); integrity stays checkable via sha256.
+        res.json({ evidence: { ...base, encoding: "utf-8", content: new TextDecoder().decode(bytes) } });
+      } else {
+        res.json({ evidence: { ...base, encoding: "binary", content: "" } });
+      }
     } finally {
       c.close();
     }

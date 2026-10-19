@@ -13,6 +13,7 @@
     "@ir/core": "workspace:*",
     "@ir/egress": "workspace:*",
     "@ir/engine": "workspace:*",
+    "@ir/schema": "workspace:*",
     "@ir/store": "workspace:*",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",

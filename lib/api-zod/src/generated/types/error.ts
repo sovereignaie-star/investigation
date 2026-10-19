@@ -8,4 +8,6 @@
 
 export interface Error {
   error: string;
+  /** Present on 413 — the refused evidence's size in bytes. */
+  size?: number;
 }

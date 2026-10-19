@@ -21,6 +21,7 @@ import type {
   CaseSummary,
   CreateCaseInput,
   Error,
+  EvidenceContentEnvelope,
   HealthStatus,
   ListCases200,
   ListCasesParams,
@@ -568,3 +569,66 @@ export const useUpdateCaseLifecycle = <TError = ErrorType<Error>, TContext = unk
 > => {
   return useMutation(getUpdateCaseLifecycleMutationOptions(options));
 };
+
+export const getGetCaseEvidenceUrl = (id: string, evidenceId: string) => {
+  return `/api/cases/${id}/evidence/${evidenceId}`;
+};
+
+/**
+ * @summary Raw evidence content (P3-010 — the safe raw viewer's data path from the P1-010 blobs)
+ */
+export const getCaseEvidence = async (id: string, evidenceId: string, options?: RequestInit): Promise<EvidenceContentEnvelope> => {
+  return customFetch<EvidenceContentEnvelope>(getGetCaseEvidenceUrl(id, evidenceId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCaseEvidenceQueryKey = (id: string, evidenceId: string) => {
+  return [`/api/cases/${id}/evidence/${evidenceId}`] as const;
+};
+
+export const getGetCaseEvidenceQueryOptions = <TData = Awaited<ReturnType<typeof getCaseEvidence>>, TError = ErrorType<Error>>(
+  id: string,
+  evidenceId: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseEvidence>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCaseEvidenceQueryKey(id, evidenceId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaseEvidence>>> = ({ signal }) =>
+    getCaseEvidence(id, evidenceId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined && evidenceId !== null && evidenceId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getCaseEvidence>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type GetCaseEvidenceQueryResult = NonNullable<Awaited<ReturnType<typeof getCaseEvidence>>>;
+export type GetCaseEvidenceQueryError = ErrorType<Error>;
+
+/**
+ * @summary Raw evidence content (P3-010 — the safe raw viewer's data path from the P1-010 blobs)
+ */
+
+export function useGetCaseEvidence<TData = Awaited<ReturnType<typeof getCaseEvidence>>, TError = ErrorType<Error>>(
+  id: string,
+  evidenceId: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseEvidence>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCaseEvidenceQueryOptions(id, evidenceId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

@@ -6,6 +6,8 @@ import { IDENTIFIER_LIST } from "./utils/identifierList";
 import { CasesPage } from "./pages/CasesPage";
 // P3-004 (UC-02): the workbench input flow — paste text or read a file, extract identifiers.
 import { WorkbenchPage } from "./pages/WorkbenchPage";
+// P3-010: the raw-evidence screen — sanitized HTML in a sandboxed iframe, text, or honest refusal.
+import { EvidencePage } from "./pages/EvidencePage";
 // P3-005: the large-graph canvas and its NFR-02 measurement harness.
 import { GraphBenchPage } from "./pages/workbench/GraphBenchPage";
 // P3-006: the small editable canvas (@xyflow/react).
@@ -24,7 +26,7 @@ const NAV = [
   { id: "workbench", label: "محطة العمل", href: "#/workbench" },
   { id: "canvas", label: "اللوحة التحريرية", href: "#/canvas" },
   { id: "cases", label: "القضايا", href: "#/cases" },
-  { id: "evidence", label: "سجل الأدلة", disabled: true },
+  { id: "evidence", label: "سجل الأدلة", href: "#/evidence" },
   { id: "reports", label: "التقارير", disabled: true },
 ];
 
@@ -53,6 +55,8 @@ export default function App() {
         {/* P3-003..P3-005: workbench routes — overview, cases, input flow and graph bench. */}
         {path === "/cases" ? (
           <CasesPage />
+        ) : path === "/evidence" ? (
+          <EvidencePage />
         ) : path === "/workbench" ? (
           <WorkbenchPage />
         ) : path === "/graph-bench" ? (
