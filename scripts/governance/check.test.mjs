@@ -107,3 +107,17 @@ test("T-GOV-018 D-8: missing ADR-08 row in ROADMAP is reported", () => {
     JSON.stringify(e),
   );
 });
+
+// P6-019 (defect fix in P6-017's implementation): the PR-title rule (J-12) makes every squash
+// merge commit subject start with the [TASK-ID] prefix — e.g. "[P3-003] docs: blocked — ...".
+// The Conventional Commits check must accept that prefix (the task id also satisfies GR-03's
+// id requirement). This is the reconciliation the P6-017 implementation missed (573b680).
+test("T-GOV-009 subject with a [TASK-ID] prefix before the conventional part is accepted (P6-019)", () => {
+  assert.deepEqual(
+    evaluate({ ...ok, message: "[P0-004] fix: repair list [P0-004]", worklogAdded: ["### 2026-10-10 — [P0-004] repair"] }),
+    [],
+  );
+});
+test("T-GOV-009b a [TASK-ID] prefix with no conventional part after it is still rejected (P6-019)", () => {
+  assert.ok(evaluate({ ...ok, message: "[P0-004] repaired the list" }).some((x) => x.startsWith("GR-03")));
+});
