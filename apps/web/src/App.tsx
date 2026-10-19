@@ -4,6 +4,8 @@ import { AppShell, Button } from "@ir/ui";
 import { IDENTIFIER_LIST } from "./utils/identifierList";
 // P3-003 (طلب ب): the cases screen, wired to the generated SDK over the case lifecycle API.
 import { CasesPage } from "./pages/CasesPage";
+// P3-004 (UC-02): the workbench input flow — paste text or read a file, extract identifiers.
+import { WorkbenchPage } from "./pages/WorkbenchPage";
 
 // P0-006: minimal entry point so the app builds and runs. The real workbench is built in phase 3 (P3-002..P3-020).
 // P3-002: the app renders inside the AppShell (layout, navigation, theme, RTL/LTR).
@@ -15,6 +17,7 @@ const REPO = "https://github.com/sovereignaie-star/investigation";
 // screens arrive with P3-003..P3-020 and stay disabled links until then.
 const NAV = [
   { id: "overview", label: "نظرة عامة", href: "#/" },
+  { id: "workbench", label: "محطة العمل", href: "#/workbench" },
   { id: "cases", label: "القضايا", href: "#/cases" },
   { id: "evidence", label: "سجل الأدلة", disabled: true },
   { id: "reports", label: "التقارير", disabled: true },
@@ -38,11 +41,12 @@ function useHashPath(): string {
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 export default function App() {
+  const path = useHashPath();
   return (
     <QueryClientProvider client={queryClient}>
       <AppShell title="غرفة التحقيق" nav={NAV}>
-        {/* P3-003: the workbench routes — the overview and the cases screen. */}
-        {useHashPath() === "/cases" ? <CasesPage /> : <Overview />}
+        {/* P3-003/P3-004: the workbench routes — overview, cases and the workbench input flow. */}
+        {path === "/cases" ? <CasesPage /> : path === "/workbench" ? <WorkbenchPage /> : <Overview />}
       </AppShell>
     </QueryClientProvider>
   );
