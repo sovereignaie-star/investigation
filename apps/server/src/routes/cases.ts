@@ -227,6 +227,37 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
     }
   });
 
+  // GET /cases/:id/stats — P3-012 («أرقام تطابق الإسقاط"): the case's own projection
+  // counts, taken from ONE projection snapshot — never a parallel recount that could
+  // drift from the ledger. J-17: a locked case fails closed with the identifier-only
+  // message and NO numbers — never zeros that look like real statistics. A read
+  // failure is a 500, not fake numbers. Same admin boundary as every case route.
+  router.get("/cases/:id/stats", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    if (found.fp.encrypted) {
+      // J-17: not even a count is readable from a locked case.
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const { dir } = found;
+    const c = openCase(dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const p = c.projection();
+      res.json({ seq: p.seq, counts: p.counts });
+    } finally {
+      c.close();
+    }
+  });
+
   // GET /cases/:id/evidence/:evidenceId — raw evidence content (P3-010).
   // The safe raw viewer's data path: the bytes come from the case's content-addressed blobs
   // (P1-010) through the same admin boundary as every case route (D-037). Every read

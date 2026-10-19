@@ -142,6 +142,24 @@ export type CaseDetail = CaseSummary & {
   message?: string | null;
 };
 
+export type CaseStatsCounts = {
+  entities: number;
+  /** Graph nodes — after merges, fewer than entities. */
+  nodes: number;
+  claims: number;
+  edges: number;
+  observations: number;
+  evidence: number;
+  merges: number;
+  notes: number;
+};
+
+export interface CaseStats {
+  /** The last ledger seq included in the projection snapshot (-1 for an empty chain). */
+  seq: number;
+  counts: CaseStatsCounts;
+}
+
 export type CreateCaseInputLegalBasis = (typeof CreateCaseInputLegalBasis)[keyof typeof CreateCaseInputLegalBasis];
 
 export const CreateCaseInputLegalBasis = {
