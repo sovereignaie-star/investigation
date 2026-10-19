@@ -315,7 +315,12 @@ export class RunEngine {
   /** The pending queue in pop order (priority asc, then FIFO) as it should be persisted. */
   private pendingRuns(): PersistedRun[] {
     const entries = [...this.queue.entries()]
-      .filter((e) => this.records.has(e.item))
+      // A run with a result is not pending — even if its id still sits in the
+      // in-memory priority queue (a cancelled-while-queued run, P3-011).
+      .filter((e) => {
+        const rec = this.records.get(e.item);
+        return rec !== undefined && rec.result === undefined;
+      })
       .sort((a, b) => a.priority - b.priority || a.seq - b.seq);
     return entries.map((e) => {
       const rec = this.records.get(e.item);
@@ -360,13 +365,47 @@ export class RunEngine {
     };
   }
 
-  /** Cancels a run, queued or running. Returns false if unknown or already finished. */
+  /**
+   * Cancels a run, queued or running. Returns false if unknown or already finished.
+   *
+   * P3-011 ("الإلغاء خلال ثانية"): a QUEUED run is cancelled immediately — its
+   * cancellation is recorded on the spot (zero transport attempts, phase
+   * `cancelled`, result visible to GET /runs/:id and the SSE stream) instead of
+   * waiting for a worker to pop it. The queue shrink is persisted fail-closed
+   * BEFORE the mutation (same contract as the worker's pop); a worker that pops
+   * the id later skips it (its result already exists).
+   */
   cancel(runId: string, reason = "user"): boolean {
     const rec = this.records.get(runId);
     if (!rec || rec.phase === "cancelled" || rec.phase === "failed" || rec.phase === "succeeded") {
       return false;
     }
-    rec.token.cancel(reason);
+    if (rec.phase === "queued") {
+      // Fail-closed: the queue shrink is persisted BEFORE any mutation (the same
+      // contract as submit/pop). A throwing save propagates with nothing mutated —
+      // in particular the run's cancellation token stays live, so a failed cancel
+      // cannot leave a zombie: the run remains fully queued and still executes.
+      if (this.queueStore) {
+        this.queueStore.save(this.pendingRuns().filter((p) => p.runId !== runId));
+      }
+      rec.token.cancel(reason);
+      const result: RunResult = {
+        runId,
+        phase: "cancelled",
+        budget: { nodes: 0, depth: 0, requests: 0, costEstimate: 0, elapsedMs: 0 },
+        processed: 0,
+        transportAttempts: 0,
+        failure: { kind: "cancel", reason },
+      };
+      rec.phase = "cancelled";
+      rec.result = result;
+      this.results.set(runId, result);
+      this.emitPhase(runId, "cancelled");
+    } else {
+      // Running: abort immediately — the signal races the in-flight transport call,
+      // so even a transport that ignores its abort signal cannot hold the run.
+      rec.token.cancel(reason);
+    }
     return true;
   }
 
@@ -377,6 +416,11 @@ export class RunEngine {
   /** True if a run with this id was ever submitted (P2-019: SSE existence check). */
   has(runId: string): boolean {
     return this.records.has(runId);
+  }
+
+  /** The run's current phase (P3-011: SSE snapshot for late subscribers). */
+  phaseOf(runId: string): RunPhase | undefined {
+    return this.records.get(runId)?.phase;
   }
 
   /**

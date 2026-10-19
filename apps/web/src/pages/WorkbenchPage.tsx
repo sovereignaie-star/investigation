@@ -7,6 +7,7 @@ import { IdentifierSelector } from "./workbench/IdentifierSelector";
 import { InvestigationGraph } from "./workbench/InvestigationGraph";
 import { EntityTableContainer } from "./workbench/EntityTable";
 import { NodeDetailPanelContainer } from "./workbench/NodeDetailPanel";
+import { RunPanel } from "./workbench/RunPanel";
 import { SearchBar } from "./workbench/SearchBar";
 import { toIdentifierRows, toggleSelection, type IdentifierRow } from "./workbench/model";
 
@@ -61,6 +62,8 @@ export function WorkbenchPage({ initialText = "" }: { initialText?: string }) {
       {/* P3-009: the entities of the same projection in a virtualized table
           (default sort + filter; 100,000 rows render only the visible window). */}
       <EntityTableContainer nodes={graph.nodes} />
+      {/* P3-011: the run panel — submit a run, watch its phases live (SSE), cancel it. */}
+      <RunPanel />
     </div>
   );
 }

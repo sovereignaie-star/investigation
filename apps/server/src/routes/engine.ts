@@ -3,6 +3,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { RunEngine, type RunInput, type RunPhaseEvent } from "@ir/engine";
 import { requireAdmin } from "../lib/admin";
+import { logger } from "../lib/logger";
 
 /**
  * Engine REST + SSE routes (P2-019). The engine is injected so tests use a deterministic
@@ -59,6 +60,26 @@ export function engineRouter(getEngine: () => RunEngine, opts: { env?: NodeJS.Pr
   const admin = requireAdmin(opts.env ?? process.env);
   const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
 
+  /**
+   * P3-011: the run lifecycle. A submitted run must move on its own — nothing in
+   * production ever called engine.drain() before this, so runs stayed queued
+   * forever. Every submission schedules a drain; drains are SERIALIZED (the
+   * engine rejects overlapping drains) through one promise chain, and a failed
+   * drain is logged and swallowed — it never disables the next submission's
+   * drain (the failed run stays queued per the queue-store contract and is
+   * re-attempted by the next drain).
+   */
+  let drainChain: Promise<void> = Promise.resolve();
+  const scheduleDrain = (): void => {
+    drainChain = drainChain
+      .then(async () => {
+        await getEngine().drain();
+      })
+      .catch((err: unknown) => {
+        logger.error({ err }, "engine drain failed");
+      });
+  };
+
   // Run submission and event streams are not browser-public: parsing, throttling and
   // authentication are applied as one boundary (same posture as the vault routes).
   router.use(["/runs"], express.json({ limit: "8kb" }), limiter, admin);
@@ -74,6 +95,8 @@ export function engineRouter(getEngine: () => RunEngine, opts: { env?: NodeJS.Pr
       return;
     }
     const handle = getEngine().submit(input);
+    // P3-011: the submitted run is executed without waiting for a manual drain.
+    scheduleDrain();
     res.status(202).json({ runId: handle.runId, status: "queued" });
   });
 
@@ -101,6 +124,12 @@ export function engineRouter(getEngine: () => RunEngine, opts: { env?: NodeJS.Pr
    * Server-Sent Events stream of phase transitions for a run (P2-019, P3-011).
    * The stream closes when the run reaches a terminal phase (succeeded/failed/cancelled)
    * or the client disconnects. Events are `event: phase` with a JSON data payload.
+   *
+   * P3-011: two isolation rules. (1) A stream carries ONLY its own run's phases —
+   * another run's terminal phase must neither appear on it nor close it. (2) A
+   * late subscriber sees the run's CURRENT phase first (snapshot), then the live
+   * transitions — a run that started before the browser opened the stream is not
+   * rendered as silent until it finishes.
    */
   router.get("/runs/:id/events", (req, res) => {
     const runId = param(req.params["id"]);
@@ -109,23 +138,26 @@ export function engineRouter(getEngine: () => RunEngine, opts: { env?: NodeJS.Pr
       res.status(404).json({ error: "run not found" });
       return;
     }
-    const result = engine.result(runId);
-    // A finished run has no further transitions: send the terminal event and close.
-    if (result && (result.phase === "succeeded" || result.phase === "failed" || result.phase === "cancelled")) {
-      res.setHeader("content-type", "text/event-stream");
-      res.setHeader("cache-control", "no-cache");
-      res.setHeader("connection", "keep-alive");
-      res.write(`event: phase\ndata: ${JSON.stringify({ runId, phase: result.phase })}\n\n`);
-      res.end();
-      return;
-    }
+    const isTerminal = (phase: string): boolean => phase === "succeeded" || phase === "failed" || phase === "cancelled";
     res.setHeader("content-type", "text/event-stream");
     res.setHeader("cache-control", "no-cache");
     res.setHeader("connection", "keep-alive");
-    res.flushHeaders();
+    const write = (phase: string) => {
+      res.write(`event: phase\ndata: ${JSON.stringify({ runId, phase })}\n\n`);
+    };
+    // Snapshot first: the subscriber sees the phase as of NOW. The listener is
+    // registered in the same synchronous tick, so no transition can fall between
+    // the snapshot and the subscription.
+    const current = engine.phaseOf(runId) ?? "queued";
+    write(current);
+    if (isTerminal(current)) {
+      res.end();
+      return;
+    }
     const send = (e: RunPhaseEvent) => {
-      res.write(`event: phase\ndata: ${JSON.stringify({ runId: e.runId, phase: e.phase })}\n\n`);
-      if (e.phase === "succeeded" || e.phase === "failed" || e.phase === "cancelled") {
+      if (e.runId !== runId) return;
+      write(e.phase);
+      if (isTerminal(e.phase)) {
         res.end();
         off();
       }
