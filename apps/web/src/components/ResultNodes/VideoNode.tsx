@@ -1,4 +1,4 @@
-import { Handle, Position } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { Video, ExternalLink } from "lucide-react";
 import { youtubeId } from "../../utils/youtube";
 

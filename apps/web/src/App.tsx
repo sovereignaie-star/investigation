@@ -8,6 +8,8 @@ import { CasesPage } from "./pages/CasesPage";
 import { WorkbenchPage } from "./pages/WorkbenchPage";
 // P3-005: the large-graph canvas and its NFR-02 measurement harness.
 import { GraphBenchPage } from "./pages/workbench/GraphBenchPage";
+// P3-006: the small editable canvas (@xyflow/react).
+import { InfiniteCanvas } from "./pages/workbench/InfiniteCanvas";
 
 // P0-006: minimal entry point so the app builds and runs. The real workbench is built in phase 3 (P3-002..P3-020).
 // P3-002: the app renders inside the AppShell (layout, navigation, theme, RTL/LTR).
@@ -20,6 +22,7 @@ const REPO = "https://github.com/sovereignaie-star/investigation";
 const NAV = [
   { id: "overview", label: "نظرة عامة", href: "#/" },
   { id: "workbench", label: "محطة العمل", href: "#/workbench" },
+  { id: "canvas", label: "اللوحة التحريرية", href: "#/canvas" },
   { id: "cases", label: "القضايا", href: "#/cases" },
   { id: "evidence", label: "سجل الأدلة", disabled: true },
   { id: "reports", label: "التقارير", disabled: true },
@@ -54,6 +57,10 @@ export default function App() {
           <WorkbenchPage />
         ) : path === "/graph-bench" ? (
           <GraphBenchPage />
+        ) : path === "/canvas" ? (
+          <div className="h-[calc(100vh-4rem)]">
+            <InfiniteCanvas />
+          </div>
         ) : (
           <Overview />
         )}
