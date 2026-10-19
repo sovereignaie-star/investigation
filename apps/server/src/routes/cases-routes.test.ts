@@ -135,6 +135,15 @@ describe("P3-003 cases API (UC-01, J-16/J-17/J-18)", () => {
     expect(res.status).toBe(404);
   });
 
+  it("CodeQL taint fix: a non-ULID id (traversal, dot-dot, encoded) never becomes a path — 404", async () => {
+    const { call, root } = await start();
+    for (const id of ["..%2F..%2Fetc", "%2e%2e%2f", "a".repeat(26), "01M58XF9ZKJT50S8E8JYXF6P3X", "01M58XF9ZKJT50S8E8JYXF6P3"]) {
+      const res = await call(`/cases/${id}`, withAdmin());
+      expect(res.status, id).toBe(404);
+    }
+    expect(readdirSync(root)).toHaveLength(0); // nothing was created or read outside the root
+  });
+
   it("archive hides by default and write-blocks (J-16); includeArchived=true lists it", async () => {
     const { call } = await start();
     const created = (await (await call("/cases", withAdmin(json({}, CREATE)))).body) as { id: string };

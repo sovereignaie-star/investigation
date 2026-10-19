@@ -30,6 +30,17 @@ import { logger } from "../lib/logger";
 /** J-17: the only message a locked case ever yields — no content, no auto-decrypt. */
 export const param = (v: string | string[] | undefined): string => (typeof v === "string" ? v : "");
 
+/**
+ * A case id is a ULID (26 Crockford-base32 chars). The :id path parameter reaches the file
+ * system (the cases root is <root>/<id>), so it is validated against this closed pattern
+ * before any path is built — anything else is an unknown case (404), never a path.
+ */
+const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+const caseIdParam = (v: string | string[] | undefined): string | null => {
+  const id = param(v);
+  return ULID_RE.test(id) ? id : null;
+};
+
 const LOCKED_MESSAGE = "مقفلة — تتطلب فك التشفير";
 
 /** The wire shape of a case as it appears in a listing or after a lifecycle update. */
@@ -180,7 +191,12 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
 
   // GET /cases/:id — detail. J-17: a locked case yields an explicit message and no content.
   router.get("/cases/:id", limiter, admin, (req, res) => {
-    const dir = path.join(getRoot(), param(req.params["id"]));
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const dir = path.join(getRoot(), id);
     const fp = fingerprintOr404(res, dir);
     if (!fp) return;
     if (fp.encrypted) {
@@ -206,7 +222,12 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       return;
     }
     const { action, reason, purposeConfirmation } = parsed.data;
-    const dir = path.join(getRoot(), param(req.params["id"]));
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const dir = path.join(getRoot(), id);
     const fp = fingerprintOr404(res, dir);
     if (!fp) return;
     if (fp.encrypted) {
