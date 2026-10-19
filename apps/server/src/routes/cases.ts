@@ -103,22 +103,16 @@ function lockedSummaryOf(fp: CaseFingerprint): CaseWireSummary {
   };
 }
 
-/** A case directory must exist and hold a complete case, otherwise 404. */
-function fingerprintOr404(res: { status: (code: number) => { json: (b: unknown) => void } }, dir: string): CaseFingerprint | null {
-  const fp = caseFingerprint(dir);
-  if (!fp) {
-    res.status(404).json({ error: "no case with this id" });
-    return null;
-  }
-  return fp;
-}
-
 export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessEnv } = {}): IRouter {
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env ?? process.env);
   const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
 
-  /** Lists case directories, skipping staging dirs (they start with a dot). */
+  /**
+   * Lists case directories, skipping staging dirs (they start with a dot). The directory
+   * names come from readdirSync — never from request input — so every path built from
+   * them is untainted by construction (the CodeQL path-injection flow ends here).
+   */
   const caseDirs = (): Array<{ dir: string; fp: CaseFingerprint }> => {
     const root = getRoot();
     const out: Array<{ dir: string; fp: CaseFingerprint }> = [];
@@ -129,6 +123,16 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       if (fp) out.push({ dir, fp });
     }
     return out;
+  };
+
+  /**
+   * Resolves a case id to its directory by matching the id against the case ids the root
+   * actually contains. The returned path is built from the readdir result, so request
+   * input never becomes a file path (defense in depth on top of the ULID gate).
+   */
+  const findCaseDir = (id: string): { dir: string; fp: CaseFingerprint } | null => {
+    for (const c of caseDirs()) if (c.fp.caseId === id) return c;
+    return null;
   };
 
   // GET /cases — list. J-17: locked cases as identifiers only; J-16: archived hidden by default.
@@ -196,9 +200,12 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       res.status(404).json({ error: "no case with this id" });
       return;
     }
-    const dir = path.join(getRoot(), id);
-    const fp = fingerprintOr404(res, dir);
-    if (!fp) return;
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const { dir, fp } = found;
     if (fp.encrypted) {
       res.json({ ...lockedSummaryOf(fp), retention: null, ownerId: null, message: LOCKED_MESSAGE });
       return;
@@ -227,9 +234,12 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       res.status(404).json({ error: "no case with this id" });
       return;
     }
-    const dir = path.join(getRoot(), id);
-    const fp = fingerprintOr404(res, dir);
-    if (!fp) return;
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const { dir, fp } = found;
     if (fp.encrypted) {
       // A locked case cannot be lifecycle-managed — fail closed (J-17: not even a title is readable).
       res.status(409).json({ error: "القضية مقفلة — لا يمكن تعديل دورة حياتها قبل فك التشفير" });
