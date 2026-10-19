@@ -1,4 +1,5 @@
 export * from "./case.ts";
+export type { CaseInit } from "@ir/schema";
 export * from "./migrations.ts";
 export * from "./sqlite-ledger.ts";
 export * from "./verify-case.ts";

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   Case,
+  CaseInit,
   Claim,
   Entity,
   Evidence,
@@ -80,6 +81,22 @@ describe("@ir/schema round trip (P1-002)", () => {
       expect(twice).toEqual(once);
     });
   }
+});
+
+// P3-003 (طلب أ): J-16 — the archive field is backward compatible with existing chains.
+describe("Case.archivedAt (P3-003, J-16)", () => {
+  it("defaults to null for records written before archival existed", () => {
+    const legacy = JSON.parse(JSON.stringify(valid.Case)) as Record<string, unknown> & { archivedAt?: string | null };
+    delete legacy.archivedAt;
+    expect(Case.parse(legacy).archivedAt).toBeNull();
+  });
+
+  it("carries the archival timestamp and is omitted from the create input", () => {
+    const withArchive = JSON.parse(JSON.stringify(valid.Case)) as Record<string, unknown>;
+    withArchive.archivedAt = "2026-10-19T00:00:00.000Z";
+    expect(Case.parse(withArchive).archivedAt).toBe("2026-10-19T00:00:00.000Z");
+    expect("archivedAt" in CaseInit.parse(valid.Case)).toBe(false);
+  });
 });
 
 describe("@ir/schema rejects invalid data", () => {

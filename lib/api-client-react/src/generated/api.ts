@@ -16,7 +16,20 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { Error, HealthStatus, RunInput, RunPhaseEvent, RunResult, RunSubmitted } from "./api.schemas";
+import type {
+  CaseDetail,
+  CaseSummary,
+  CreateCaseInput,
+  Error,
+  HealthStatus,
+  ListCases200,
+  ListCasesParams,
+  RunInput,
+  RunPhaseEvent,
+  RunResult,
+  RunSubmitted,
+  UpdateCaseLifecycleInput,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType, BodyType } from "../custom-fetch";
@@ -307,3 +320,251 @@ export function useRunEvents<TData = Awaited<ReturnType<typeof runEvents>>, TErr
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export const getListCasesUrl = (params?: ListCasesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cases?${stringifiedParams}` : `/api/cases`;
+};
+
+/**
+ * @summary List cases (J-17 — locked cases appear as identifiers only; archived hidden by default)
+ */
+export const listCases = async (params?: ListCasesParams, options?: RequestInit): Promise<ListCases200> => {
+  return customFetch<ListCases200>(getListCasesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCasesQueryKey = (params?: ListCasesParams) => {
+  return [`/api/cases`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCasesQueryOptions = <TData = Awaited<ReturnType<typeof listCases>>, TError = ErrorType<Error>>(
+  params?: ListCasesParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listCases>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCasesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCases>>> = ({ signal }) => listCases(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listCases>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type ListCasesQueryResult = NonNullable<Awaited<ReturnType<typeof listCases>>>;
+export type ListCasesQueryError = ErrorType<Error>;
+
+/**
+ * @summary List cases (J-17 — locked cases appear as identifiers only; archived hidden by default)
+ */
+
+export function useListCases<TData = Awaited<ReturnType<typeof listCases>>, TError = ErrorType<Error>>(
+  params?: ListCasesParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listCases>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCasesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getCreateCaseUrl = () => {
+  return `/api/cases`;
+};
+
+/**
+ * @summary Create a case (UC-01 — a case without a stated purpose is rejected, E-01)
+ */
+export const createCase = async (createCaseInput: CreateCaseInput, options?: RequestInit): Promise<CaseSummary> => {
+  return customFetch<CaseSummary>(getCreateCaseUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCaseInput),
+  });
+};
+
+export const getCreateCaseMutationOptions = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof createCase>>, TError, { data: BodyType<CreateCaseInput> }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof createCase>>, TError, { data: BodyType<CreateCaseInput> }, TContext> => {
+  const mutationKey = ["createCase"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCase>>, { data: BodyType<CreateCaseInput> }> = (props) => {
+    const { data } = props ?? {};
+
+    return createCase(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCaseMutationResult = NonNullable<Awaited<ReturnType<typeof createCase>>>;
+export type CreateCaseMutationBody = BodyType<CreateCaseInput>;
+export type CreateCaseMutationError = ErrorType<Error>;
+
+/**
+ * @summary Create a case (UC-01 — a case without a stated purpose is rejected, E-01)
+ */
+export const useCreateCase = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof createCase>>, TError, { data: BodyType<CreateCaseInput> }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof createCase>>, TError, { data: BodyType<CreateCaseInput> }, TContext> => {
+  return useMutation(getCreateCaseMutationOptions(options));
+};
+
+export const getGetCaseUrl = (id: string) => {
+  return `/api/cases/${id}`;
+};
+
+/**
+ * @summary Case detail (J-17 — a locked case returns an explicit message, no content)
+ */
+export const getCase = async (id: string, options?: RequestInit): Promise<CaseDetail> => {
+  return customFetch<CaseDetail>(getGetCaseUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCaseQueryKey = (id: string) => {
+  return [`/api/cases/${id}`] as const;
+};
+
+export const getGetCaseQueryOptions = <TData = Awaited<ReturnType<typeof getCase>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getCase>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCaseQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCase>>> = ({ signal }) => getCase(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCase>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCaseQueryResult = NonNullable<Awaited<ReturnType<typeof getCase>>>;
+export type GetCaseQueryError = ErrorType<Error>;
+
+/**
+ * @summary Case detail (J-17 — a locked case returns an explicit message, no content)
+ */
+
+export function useGetCase<TData = Awaited<ReturnType<typeof getCase>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: { query?: UseQueryOptions<Awaited<ReturnType<typeof getCase>>, TError, TData>; request?: SecondParameter<typeof customFetch> },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCaseQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getUpdateCaseLifecycleUrl = (id: string) => {
+  return `/api/cases/${id}`;
+};
+
+/**
+ * Archive sets archivedAt and write-blocks the case (hidden by default). Unarchive is an explicit action that REQUIRES a PurposeConfirmation (E-02 pattern — fail-closed without one). Archiving an archived case or unarchiving an active case is a conflict (409). There is no content modification after archiving, and no delete operation exists.
+ * @summary Lifecycle only — archive / unarchive (J-16). No content modification. No delete.
+ */
+export const updateCaseLifecycle = async (
+  id: string,
+  updateCaseLifecycleInput: UpdateCaseLifecycleInput,
+  options?: RequestInit,
+): Promise<CaseSummary> => {
+  return customFetch<CaseSummary>(getUpdateCaseLifecycleUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCaseLifecycleInput),
+  });
+};
+
+export const getUpdateCaseLifecycleMutationOptions = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCaseLifecycle>>,
+    TError,
+    { id: string; data: BodyType<UpdateCaseLifecycleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCaseLifecycle>>,
+  TError,
+  { id: string; data: BodyType<UpdateCaseLifecycleInput> },
+  TContext
+> => {
+  const mutationKey = ["updateCaseLifecycle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCaseLifecycle>>,
+    { id: string; data: BodyType<UpdateCaseLifecycleInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCaseLifecycle(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCaseLifecycleMutationResult = NonNullable<Awaited<ReturnType<typeof updateCaseLifecycle>>>;
+export type UpdateCaseLifecycleMutationBody = BodyType<UpdateCaseLifecycleInput>;
+export type UpdateCaseLifecycleMutationError = ErrorType<Error>;
+
+/**
+ * @summary Lifecycle only — archive / unarchive (J-16). No content modification. No delete.
+ */
+export const useUpdateCaseLifecycle = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCaseLifecycle>>,
+    TError,
+    { id: string; data: BodyType<UpdateCaseLifecycleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCaseLifecycle>>,
+  TError,
+  { id: string; data: BodyType<UpdateCaseLifecycleInput> },
+  TContext
+> => {
+  return useMutation(getUpdateCaseLifecycleMutationOptions(options));
+};
