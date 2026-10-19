@@ -4187,3 +4187,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 - **الدليل [مُقاس] على رأس main `40a557a`:** كل فحوص check-runs على إيداع الدمج ناجحة (9/9 استعلاماً فعلياً — منها الستة الإلزامية: governance/build/test/gates/gitleaks/analyze)؛ ومحلياً على main بعد الدمج: `pnpm test` => exit 0 (**2155 ناجحاً/6 متخطاة/0 فاشل**)، `check.mjs --consistency` => exit 0، lint=0، typecheck=0.
 - **الحالة:** P3-011 مغلقة (done) — تقدم المرحلة 3: 11 من 26.
+
+### 2026-10-20 — [P3-012] docs: correct the D-003 component inventory — six of the ten components were already delivered
+
+- **الانحراف (وثائق/واقع):** أثناء تجهيز P3-012 وجد أن §2.5.1 وجدول D-003 في ROADMAP يصفان عشرة مكونات بأنها «غير موجودة» بينما ستة منها مدمجة في main منذ مهام سابقة — تصحيح وثائقي قبل أي عمل هندسي وفق التعليمات الحاكمة.
+- **الجرد [مُقاس 2026-10-20]:** `SearchBar`/`FileUploader`/`IdentifierSelector` (P3-004، #244، `b9af5c0`) و`InfiniteCanvas` (P3-006، #249، `ca21210`) و`InvestigationGraph` (P3-005، #247، `ea32ab7`) و`NodeDetailPanel` (P3-008، #253) — الملفات موجودة في `apps/web/src/pages/workbench/` (بعضها باختبارات) ومركّبة في الواجهات. المتبقي غير الموجود فعلاً: `InvestigationStats` (مهمة P3-012 نفسها) و`ApiKeySettings` و`SavedInvestigations` و`ExportMenu`.
+- **التصحيح:** §2.5.1 حُدّث ليعكس الواقع (✅ للستة المدمجة مع إيداعات الدمج، ❌ للأربعة المتبقية)؛ صف D-003 في ROADMAP وSTATUS حُدّث إلى «مُصلح جزئياً» (6/10). لا تغيير شيفرة، لا تغيير معايير قبول، لا إغلاق مهمة — P3-012 ما زالت todo.
