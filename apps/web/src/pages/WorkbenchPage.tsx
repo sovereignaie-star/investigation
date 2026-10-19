@@ -5,6 +5,7 @@ import type { Graph as ProjectionGraph, GraphNode } from "@ir/ledger/projections
 import { FileUploader } from "./workbench/FileUploader";
 import { IdentifierSelector } from "./workbench/IdentifierSelector";
 import { InvestigationGraph } from "./workbench/InvestigationGraph";
+import { NodeDetailPanelContainer } from "./workbench/NodeDetailPanel";
 import { SearchBar } from "./workbench/SearchBar";
 import { toIdentifierRows, toggleSelection, type IdentifierRow } from "./workbench/model";
 
@@ -49,8 +50,12 @@ export function WorkbenchPage({ initialText = "" }: { initialText?: string }) {
       <FileUploader onText={handleText} />
       <IdentifierSelector rows={rows} selected={selected} onToggle={(id) => setSelected((current) => toggleSelection(current, id))} />
       {/* P3-005: the extracted identifiers render as graph nodes (the run wiring adds edges). */}
-      <div className="h-[400px] rounded-md border border-border">
-        <InvestigationGraph graph={graph} />
+      {/* P3-008: the detail panel sits beside the graph; clicking a node opens it. */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="h-[400px] rounded-md border border-border">
+          <InvestigationGraph graph={graph} />
+        </div>
+        <NodeDetailPanelContainer graph={graph} />
       </div>
     </div>
   );

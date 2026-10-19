@@ -5,6 +5,7 @@ import { toGraphologyGraph } from "./graphModel";
 import { positionsKey, type LayoutPositions } from "./layout";
 import type { LayoutRequest, LayoutResult } from "./layoutProtocol";
 import { useViewState } from "../../store/viewStateStore";
+import { useSelection } from "../../store/selectionStore";
 
 /** Minimal structural type for the Sigma instance the effect owns. */
 export interface SigmaHandle {
@@ -87,6 +88,11 @@ export function InvestigationGraph({
           minCameraRatio: 0.02,
           maxCameraRatio: 10,
         });
+        // P3-008: clicking a node opens its detail panel; clicking the empty stage clears it.
+        const selectNode = useSelection.getState().selectNode;
+        const clearSelection = useSelection.getState().clear;
+        sigma.on("clickNode", ({ node }) => selectNode(String(node)));
+        sigma.on("clickStage", () => clearSelection());
         instance = sigma as unknown as SigmaHandle;
         onInstance?.(instance);
 
