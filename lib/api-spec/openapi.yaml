@@ -300,6 +300,68 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /cases/{id}/evidence/{evidenceId}:
+    get:
+      operationId: getCaseEvidence
+      tags: [cases]
+      summary: Raw evidence content (P3-010 — the safe raw viewer's data path from the P1-010 blobs)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Case id (ULID).
+        - name: evidenceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Evidence id (ULID).
+      responses:
+        "200":
+          description: >
+            The evidence envelope. Textual evidence (HTML, JSON, plain text...) arrives decoded as
+            UTF-8 in `content`; binary evidence arrives with `encoding: "binary"` and an empty
+            `content` — the raw viewer refuses to corrupt it (declared limit). Every read
+            re-verifies the blob's content hash (T-LED-019).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvidenceContentEnvelope"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Locked (encrypted) case — fail-closed with the J-17 message, no content.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown case or evidence id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Evidence larger than the raw-viewer cap (16 MiB) — metadata only, never partial content.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Evidence read failed (missing or corrupt blob) — fail-closed, never partial content.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   securitySchemes:
     adminAuth:
@@ -373,11 +435,50 @@ components:
         - phase
     Error:
       type: object
+      required: [error]
       properties:
         error:
           type: string
-      required:
-        - error
+        size:
+          type: number
+          description: Present on 413 — the refused evidence's size in bytes.
+    EvidenceContent:
+      type: object
+      description: >-
+        The raw evidence record as served to the viewer (P3-010). `encoding` is "utf-8" for
+        textual evidence with the decoded `content`, or "binary" for anything else — the
+        raw viewer refuses to corrupt binary bytes, so `content` is empty and only the
+        metadata travels (declared limit).
+      required: [id, mime, sha256, size, fetchedAt, transformId, encoding, content]
+      properties:
+        id:
+          type: string
+          description: Evidence id (ULID).
+        mime:
+          type: string
+        sha256:
+          type: string
+          description: Hex SHA-256 of the stored content — integrity, verifiable by the caller.
+        size:
+          type: number
+          description: Blob size in bytes.
+        fetchedAt:
+          type: string
+          format: date-time
+        transformId:
+          type: string
+        encoding:
+          type: string
+          enum: [utf-8, binary]
+        content:
+          type: string
+          description: The decoded UTF-8 text for textual evidence; empty for binary.
+    EvidenceContentEnvelope:
+      type: object
+      required: [evidence]
+      properties:
+        evidence:
+          $ref: "#/components/schemas/EvidenceContent"
     CaseSummary:
       type: object
       description: >-

@@ -227,3 +227,28 @@ export const UpdateCaseLifecycleResponse = zod
   .describe(
     "A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id, status, encrypted, createdAt and lastActivityAt — its content fields are null.",
   );
+
+/**
+ * @summary Raw evidence content (P3-010 — the safe raw viewer's data path from the P1-010 blobs)
+ */
+export const GetCaseEvidenceParams = zod.object({
+  id: zod.coerce.string().describe("Case id (ULID)."),
+  evidenceId: zod.coerce.string().describe("Evidence id (ULID)."),
+});
+
+export const GetCaseEvidenceResponse = zod.object({
+  evidence: zod
+    .object({
+      id: zod.string().describe("Evidence id (ULID)."),
+      mime: zod.string(),
+      sha256: zod.string().describe("Hex SHA-256 of the stored content — integrity, verifiable by the caller."),
+      size: zod.number().describe("Blob size in bytes."),
+      fetchedAt: zod.coerce.date(),
+      transformId: zod.string(),
+      encoding: zod.enum(["utf-8", "binary"]),
+      content: zod.string().describe("The decoded UTF-8 text for textual evidence; empty for binary."),
+    })
+    .describe(
+      'The raw evidence record as served to the viewer (P3-010). `encoding` is \"utf-8\" for textual evidence with the decoded `content`, or \"binary\" for anything else — the raw viewer refuses to corrupt binary bytes, so `content` is empty and only the metadata travels (declared limit).',
+    ),
+});

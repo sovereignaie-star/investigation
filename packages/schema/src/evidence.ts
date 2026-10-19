@@ -40,6 +40,28 @@ export const Evidence = z
   .refine((e) => e.blobRef === `blobs/${e.sha256.slice(0, 2)}/${e.sha256}`, { message: "blobRef must match sha256", path: ["blobRef"] });
 export type Evidence = z.infer<typeof Evidence>;
 
+/**
+ * P3-010: does this mime carry text that can be decoded and displayed without corrupting it?
+ * The single authority shared by the server (which decides the envelope `encoding`) and the web
+ * viewer (which decides how to render) — implemented once so the two can never diverge.
+ * HTML is textual too; the html/text display split is a viewer concern, not a transport one.
+ */
+const TEXTUAL_APPLICATION_TYPES = new Set([
+  "application/json",
+  "application/xml",
+  "application/yaml",
+  "application/x-yaml",
+  "application/javascript",
+  "application/x-www-form-urlencoded",
+]);
+
+export function isTextualMime(mime: string): boolean {
+  const base = mime.trim().toLowerCase().split(";")[0]?.trim() ?? "";
+  if (base.startsWith("text/")) return true;
+  if (TEXTUAL_APPLICATION_TYPES.has(base)) return true;
+  return /\+(json|xml|yaml)$/.test(base);
+}
+
 export const LedgerKind = z.enum([
   "case.created",
   "entity.added",
