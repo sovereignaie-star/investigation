@@ -321,7 +321,7 @@ grep -rIlE "<أنماط أسرار>" --exclude-dir=node_modules .   # فحص أ�
 | `InvestigationStats` (P3-012، #268) | ✅ مُسلّمة ومدمجة في main [مُقاس 2026-10-20: الملف موجود ومركّب في CasesPage + إيداع الدمج 122f99b] |
 | `ApiKeySettings`, `SavedInvestigations`, `ExportMenu` | ❌ غير موجودة (مهام م3 لاحقة) |
 | `layout.tsx`, `page.tsx`, `globals.css` (Next.js App Router) | ❌ غير موجودة، والمستودع يستعمل Vite بدلاً من Next.js |
-| `main.tsx`, `App.tsx` (بديلها في Vite) | ❌ غير موجودة، ويشير `index.html` إلى `/src/main.tsx` |
+| `main.tsx`, `App.tsx` (بديلها في Vite) | ✅ موجودتان [مُقاس 2026-10-20: `ls apps/web/src` + إيداع الدمج 4e941a3 (P0-006، D-002) — `index.html` يشير إلى `/src/main.tsx`] |
 | عقد النتائج الثماني (Video, Map, Image, File, Link, Location, Text, Default) | ✅ موجودة |
 | `investigationStore`, `identifierList`, `resultFetcher`, `smartInvestigator`, `apiKeyManager`, `investigationDatabase`, `types` | ✅ موجودة (واحد منها معطوب) |
 
