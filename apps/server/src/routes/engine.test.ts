@@ -32,10 +32,10 @@ function fakeTransport(): HttpTransport & { calls: number } {
   return t;
 }
 
-async function start() {
+async function start(transportOverride?: HttpTransport) {
   const transport = fakeTransport();
   const engine = new RunEngine({
-    transport,
+    transport: transportOverride ?? transport,
     caps: { maxNodes: 5, maxDepth: 3, maxRequests: 5, maxCostEstimate: 100, maxElapsedMs: 5_000 },
     retryBaseMs: 1,
   });
@@ -99,33 +99,50 @@ describe("engine routes (P2-019)", () => {
     expect(res.status).toBe(404);
   });
 
-  it("cancels a queued run (202) and reports cancelled after drain", async () => {
-    const { call, engine } = await start();
+  it("cancels a run (202) and reports cancelled immediately (P3-011: no drain wait)", async () => {
+    // A hanging transport keeps the run inside the transport (running) so the
+    // cancel targets a live run deterministically — no race with auto-drain.
+    let release!: () => void;
+    const releasePromise = new Promise<void>((r) => (release = r));
+    const hanging: HttpTransport = {
+      async fetch(_req: TransportRequest, _signal: AbortSignal): Promise<TransportResponse> {
+        await releasePromise;
+        return { status: 200, body: "ok" };
+      },
+    };
+    const { call } = await start(hanging);
     const runId = await submitRun(call);
     const del = await call(`/runs/${runId}`, withAdmin({ method: "DELETE" }));
     expect(del.status).toBe(202);
-    await engine.drain();
+    // The cancellation is visible at once — the engine settles the run through
+    // the cancellation race; no drain() call is needed.
     const res = await call(`/runs/${runId}`, withAdmin());
     expect(JSON.parse(res.text)).toMatchObject({ phase: "cancelled" });
+    release();
   });
 
   it("streams phase events over SSE and closes on the terminal phase", async () => {
-    const { call, engine, base } = await start();
+    // A hanging transport pins the run in `running` while the stream is opened,
+    // so the wire carries running→succeeded deterministically (P3-011: the
+    // snapshot makes a late subscriber see the current phase first).
+    let release!: () => void;
+    const releasePromise = new Promise<void>((r) => (release = r));
+    const hanging: HttpTransport = {
+      async fetch(_req: TransportRequest, _signal: AbortSignal): Promise<TransportResponse> {
+        await releasePromise;
+        return { status: 200, body: "ok" };
+      },
+    };
+    const { call, base } = await start(hanging);
     const runId = await submitRun(call);
-    // Open the SSE stream before draining so the listener is registered.
-    const controller = new AbortController();
-    const streamPromise = (async () => {
-      const res = await fetch(`${base}/runs/${runId}/events`, withAdmin({ signal: controller.signal }));
-      expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toContain("text/event-stream");
-      const text = await res.text();
-      return text;
-    })();
-    // Give the stream a tick to register the listener, then drain.
-    await new Promise((r) => setTimeout(r, 20));
-    await engine.drain();
-    const text = await streamPromise;
-    controller.abort();
+    // Await the connection: the route has written its snapshot (running) and
+    // registered its listener before the run is allowed to finish.
+    const res = await fetch(`${base}/runs/${runId}/events`, withAdmin({ signal: AbortSignal.timeout(4000) }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    const textPromise = res.text();
+    release();
+    const text = await textPromise;
     expect(text).toContain("event: phase");
     expect(text).toContain('"phase":"running"');
     expect(text).toContain('"phase":"succeeded"');

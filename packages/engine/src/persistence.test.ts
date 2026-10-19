@@ -221,9 +221,12 @@ describe("RunEngine queue persistence (T-ENG-012 / NFR-07)", () => {
     const transport = fakeTransport(() => ok);
     const b = new RunEngine({ transport, caps, random: fakeRandom(), retryBaseMs: 1, queueStore: m.store });
     expect(b.cancel(h.runId, "operator")).toBe(true);
-    const [res] = await b.drain();
-    expect(res.phase).toBe("cancelled");
-    expect(res.transportAttempts).toBe(0);
+    // P3-011: the resumed run's cancellation is recorded immediately — visible
+    // without a drain, zero transport attempts, and never re-executed.
+    const res = b.result(h.runId);
+    expect(res?.phase).toBe("cancelled");
+    expect(res?.transportAttempts).toBe(0);
     expect(transport.calls).toBe(0);
+    expect(await b.drain()).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RunEngine } from "./run.ts";
+import { RunEngine, type RunQueueStore } from "./run.ts";
 import { TransportError, type HttpTransport, type TransportRequest, type TransportResponse } from "./transport.ts";
 
 const caps = {
@@ -173,7 +173,7 @@ describe("RunEngine", () => {
     expect(calls).toBe(1);
   });
 
-  it("cancelling a queued run before drain produces cancelled with zero transport attempts (D-022)", async () => {
+  it("cancelling a queued run before drain produces cancelled with zero transport attempts (D-022, P3-011: recorded immediately)", async () => {
     const transport = fakeTransport(() => {
       throw new TransportError("transport:network", "should never be called");
     });
@@ -187,11 +187,14 @@ describe("RunEngine", () => {
     const h = engine.submit({ kind: "domain", canonicalInput: "https://example.test/x" });
     const cancelled = engine.cancel(h.runId, "owner");
     expect(cancelled).toBe(true);
-    const [res] = await engine.drain();
-    expect(res.phase).toBe("cancelled");
-    expect(res.transportAttempts).toBe(0);
+    // P3-011: the cancellation is visible BEFORE any drain — no worker needed.
+    const res = engine.result(h.runId);
+    expect(res?.phase).toBe("cancelled");
+    expect(res?.transportAttempts).toBe(0);
     expect(transport.calls).toBe(0);
-    expect(res.failure).toMatchObject({ kind: "cancel", reason: "owner" });
+    expect(res?.failure).toMatchObject({ kind: "cancel", reason: "owner" });
+    // A later drain neither resurrects nor re-executes the cancelled run.
+    expect(await engine.drain()).toEqual([]);
   });
 
   it("cancelling a running run during backoff aborts the wait and yields cancelled", async () => {
@@ -429,6 +432,8 @@ describe("RunEngine", () => {
   it("a run already cancelled before drain with a signal-ignoring transport: still cancelled, zero attempts", async () => {
     // The token is cancelled BEFORE drain() begins. The engine must never issue a
     // transport attempt for this run even if the transport ignores abort signals.
+    // P3-011: the cancellation is recorded immediately (no worker involved), so a
+    // drain neither hangs on the never-resolving transport nor re-executes the run.
     const transport: HttpTransport = {
       async fetch(): Promise<TransportResponse> {
         return new Promise<TransportResponse>(() => {
@@ -445,10 +450,11 @@ describe("RunEngine", () => {
     });
     const h = engine.submit({ kind: "a", canonicalInput: "https://a.test/" });
     engine.cancel(h.runId, "owner");
-    const [res] = await engine.drain();
-    expect(res.phase).toBe("cancelled");
-    expect(res.transportAttempts).toBe(0);
-    expect(res.failure).toMatchObject({ kind: "cancel" });
+    const res = engine.result(h.runId);
+    expect(res?.phase).toBe("cancelled");
+    expect(res?.transportAttempts).toBe(0);
+    expect(res?.failure).toMatchObject({ kind: "cancel" });
+    expect(await engine.drain()).toEqual([]);
   });
 
   it("cancellation arriving synchronously inside sleep hits pre-aborted signals: user reason preserved verbatim, no budget wait", async () => {
@@ -559,14 +565,97 @@ describe("RunEngine", () => {
     expect(engine.result(h.runId)?.phase).toBe("succeeded");
   });
 
-  it("onPhaseChange reports cancelled for a run cancelled while queued (P2-019 SSE)", async () => {
+  it("onPhaseChange reports cancelled for a run cancelled while queued (P2-019 SSE, P3-011: no running event)", async () => {
     const engine = new RunEngine({ transport: fakeTransport(() => ok), caps, random: fakeRandom(), retryBaseMs: 1 });
     const events: string[] = [];
     engine.onPhaseChange((e) => events.push(`${e.phase}`));
     const h = engine.submit({ kind: "a", canonicalInput: "https://a.test/" });
     h.cancel("user");
-    await engine.drain();
-    expect(events).toEqual(["running", "cancelled"]);
+    // The run never started, so its only phase transition is the immediate
+    // cancellation (P3-011) — there is no "running" event to report.
+    expect(events).toEqual(["cancelled"]);
+    expect(engine.result(h.runId)?.phase).toBe("cancelled");
+  });
+});
+
+describe("RunEngine cancel-while-queued (P3-011)", () => {
+  it("a queued run's cancellation is fail-closed: a throwing queue-store save mutates NOTHING — the run stays fully queued (token untouched) and later succeeds", () => {
+    let failSave = false;
+    const queueStore: RunQueueStore = {
+      load: () => [],
+      save: (_runs) => {
+        if (failSave) throw new Error("disk full");
+      },
+    };
+    const engine = new RunEngine({
+      transport: fakeTransport(() => ok),
+      caps,
+      random: fakeRandom(),
+      retryBaseMs: 1,
+      queueStore,
+    });
+    const handle = engine.submit({ kind: "domain", canonicalInput: "https://c.test/x" });
+    // The shrink-persist fails: cancel() must propagate the failure with nothing mutated.
+    failSave = true;
+    expect(() => engine.cancel(handle.runId)).toThrow("disk full");
+    expect(engine.phaseOf(handle.runId)).toBe("queued");
+    expect(engine.result(handle.runId)).toBeUndefined();
+    // The run's cancellation token must be untouched by the failed cancel: the run
+    // still executes normally once the store works again (not a zombie cancelled run).
+    failSave = false;
+    const drainPromise = engine.drain();
+    return drainPromise.then(([result]) => {
+      expect(result.phase).toBe("succeeded");
+      expect(engine.phaseOf(handle.runId)).toBe("succeeded");
+    });
+  });
+
+  it("transitions a queued run to cancelled immediately while every worker is busy — it never waits for a worker", async () => {
+    // A transport that hangs per request until released: the two workers saturate.
+    const started: string[] = [];
+    let release!: () => void;
+    const releasePromise = new Promise<void>((r) => (release = r));
+    const transport: HttpTransport = {
+      async fetch(req: TransportRequest, _signal: AbortSignal): Promise<TransportResponse> {
+        started.push(req.url);
+        await releasePromise;
+        return ok;
+      },
+    };
+    const engine = new RunEngine({
+      transport,
+      caps,
+      concurrency: 2,
+      random: fakeRandom(),
+      retryBaseMs: 1,
+    });
+    const a = engine.submit({ kind: "domain", canonicalInput: "https://a.test/x" });
+    const b = engine.submit({ kind: "domain", canonicalInput: "https://b.test/x" });
+    const drainPromise = engine.drain();
+    // Deterministic gate: both workers are inside the transport before the queued run exists.
+    await new Promise<void>((resolve) => {
+      const check = () => (started.length >= 2 ? resolve() : queueMicrotask(check));
+      check();
+    });
+    const queued = engine.submit({ kind: "domain", canonicalInput: "https://c.test/x" });
+    const events: string[] = [];
+    engine.onPhaseChange((e) => {
+      if (e.runId === queued.runId) events.push(e.phase);
+    });
+    expect(engine.cancel(queued.runId)).toBe(true);
+    // P3-011 acceptance ("الإلغاء خلال ثانية"): the cancellation is visible immediately —
+    // the queued run must NOT wait for a busy worker to pop it. Zero transport attempts.
+    const result = engine.result(queued.runId);
+    expect(result?.phase).toBe("cancelled");
+    expect(result?.transportAttempts).toBe(0);
+    expect(result?.failure).toMatchObject({ kind: "cancel" });
+    expect(events).toEqual(["cancelled"]);
+    // Release the workers: the cancelled run is never executed, the busy ones succeed.
+    release();
+    await drainPromise;
+    expect(started).toEqual(["https://a.test/x", "https://b.test/x"]);
+    expect(engine.result(a.runId)?.phase).toBe("succeeded");
+    expect(engine.result(b.runId)?.phase).toBe("succeeded");
   });
 });
 
