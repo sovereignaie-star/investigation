@@ -184,6 +184,46 @@ function abandon(db: DatabaseSync, dir: string, createdKeyFile: boolean): void {
   if (createdKeyFile) rmSync(path.join(dir, CASE_KEY), { force: true });
 }
 
+/**
+ * P3-003 (J-17): what a listing may reveal about a case WITHOUT opening its content —
+ * a locked case shows an identifier and status only. Reads the plain meta and audit
+ * index directly (no chain verification, no payload decryption).
+ */
+export interface CaseFingerprint {
+  caseId: string;
+  createdAt: string;
+  encrypted: boolean;
+  /** Last audit-event timestamp from the plain index; null when the case has no events yet. */
+  lastActivityAt: string | null;
+}
+
+/**
+ * P3-003: reads a case directory's identifier and timestamps without opening case content.
+ * Returns null when the directory holds no complete case (e.g. an abandoned staging dir).
+ * The J-17 primitive: for a locked case the caller must not attempt to read more than this.
+ */
+export function caseFingerprint(dir: string): CaseFingerprint | null {
+  let db: DatabaseSync;
+  try {
+    db = new DatabaseSync(path.join(dir, CASE_DB), { readOnly: true });
+  } catch {
+    return null; // no complete case in this directory
+  }
+  try {
+    const meta = db.prepare("SELECT value FROM meta WHERE key = ?");
+    const caseId = (meta.get("case_id") as { value: string } | undefined)?.value;
+    if (!caseId) return null;
+    const createdAt = (meta.get("created_at") as { value: string } | undefined)?.value ?? "";
+    const encrypted = (meta.get("encryption") as { value: string } | undefined)?.value !== "none";
+    const last = db.prepare("SELECT MAX(at) AS last FROM audit_events").get() as { last: string | null } | undefined;
+    return { caseId, createdAt, encrypted, lastActivityAt: last?.last ?? null };
+  } catch {
+    return null;
+  } finally {
+    db.close();
+  }
+}
+
 export function openCase(dir: string, opts: OpenCaseOptions): Case {
   const clock = opts.clock ?? systemClock;
   const db = openDb(dir, opts.readOnly ?? false, clock);

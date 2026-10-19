@@ -30,6 +30,8 @@ export const Case = z.object({
   purpose: z.string().trim().min(10, "E-01: purpose must be stated (>= 10 chars)").max(2000),
   legalBasis: LegalBasis,
   createdAt: Timestamp,
+  /** P3-003 (J-16): archival timestamp — null while the case is active. Write-blocked once set; only unarchive clears it. */
+  archivedAt: Timestamp.nullable().default(null),
   retention: Retention,
   sensitivity: CaseSensitivity,
   ownerId: z.string().min(1),
@@ -38,7 +40,15 @@ export const Case = z.object({
 export type Case = z.infer<typeof Case>;
 
 /** What a caller supplies to open a new case (P1-018); id, createdAt and defaults are filled in by the store. */
-export const CaseInit = Case.omit({ id: true, createdAt: true, ownerId: true, retention: true, sensitivity: true, tags: true }).extend({
+export const CaseInit = Case.omit({
+  id: true,
+  createdAt: true,
+  archivedAt: true,
+  ownerId: true,
+  retention: true,
+  sensitivity: true,
+  tags: true,
+}).extend({
   ownerId: z.string().min(1).optional(),
   retention: Retention.optional(),
   sensitivity: CaseSensitivity.optional(),

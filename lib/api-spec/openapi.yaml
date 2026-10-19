@@ -139,6 +139,167 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  # P3-003 (طلب أ): the case lifecycle — create with a stated purpose (E-01), list with a state
+  # filter (J-17: a locked case shows an identifier only), archive = hide + write-block (J-16),
+  # unarchive requires a PurposeConfirmation (E-02 pattern). No delete, ever.
+  /cases:
+    get:
+      operationId: listCases
+      tags: [cases]
+      summary: List cases (J-17 — locked cases appear as identifiers only; archived hidden by default)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Archived cases are hidden by default (J-16); true lists them too.
+      responses:
+        "200":
+          description: Case summaries. A locked case carries only its identifier, status and timestamps.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cases]
+                properties:
+                  cases:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CaseSummary"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createCase
+      tags: [cases]
+      summary: Create a case (UC-01 — a case without a stated purpose is rejected, E-01)
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCaseInput"
+      responses:
+        "201":
+          description: Created case summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseSummary"
+        "400":
+          description: Invalid input — e.g. a purpose shorter than 10 characters (E-01 fail-closed).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cases/{id}:
+    get:
+      operationId: getCase
+      tags: [cases]
+      summary: Case detail (J-17 — a locked case returns an explicit message, no content)
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Case detail. A locked case carries no content — only the identifier, status and an explicit message.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseDetail"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No case with this id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateCaseLifecycle
+      tags: [cases]
+      summary: Lifecycle only — archive / unarchive (J-16). No content modification. No delete.
+      description: >-
+        Archive sets archivedAt and write-blocks the case (hidden by default). Unarchive is an
+        explicit action that REQUIRES a PurposeConfirmation (E-02 pattern — fail-closed without
+        one). Archiving an archived case or unarchiving an active case is a conflict (409).
+        There is no content modification after archiving, and no delete operation exists.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCaseLifecycleInput"
+      responses:
+        "200":
+          description: Updated case summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseSummary"
+        "400":
+          description: Invalid action or body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No case with this id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Lifecycle conflict — archiving an archived case or unarchiving an active one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Unarchive without an explicit PurposeConfirmation (E-02 fail-closed).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   securitySchemes:
     adminAuth:
@@ -217,3 +378,108 @@ components:
           type: string
       required:
         - error
+    CaseSummary:
+      type: object
+      description: >-
+        A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id,
+        status, encrypted, createdAt and lastActivityAt — its content fields are null.
+      required: [id, title, purpose, legalBasis, createdAt, archivedAt, sensitivity, tags, encrypted, status, lastActivityAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: [string, "null"]
+        purpose:
+          type: [string, "null"]
+        legalBasis:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: [string, "null"]
+          format: date-time
+          description: J-16 — null while the case is active.
+        sensitivity:
+          type: [string, "null"]
+        tags:
+          type: [array, "null"]
+          items:
+            type: string
+        encrypted:
+          type: boolean
+        status:
+          type: string
+          enum: [active, archived, locked-encrypted]
+        lastActivityAt:
+          type: [string, "null"]
+          format: date-time
+    CaseDetail:
+      allOf:
+        - $ref: "#/components/schemas/CaseSummary"
+        - type: object
+          properties:
+            retention:
+              type: [string, "null"]
+              description: The retention policy object; null for a locked case.
+            ownerId:
+              type: [string, "null"]
+            message:
+              type: [string, "null"]
+              description: J-17 — for a locked case, the explicit locked message; null when readable.
+    CreateCaseInput:
+      type: object
+      required: [title, purpose, legalBasis]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        purpose:
+          type: string
+          minLength: 10
+          maxLength: 2000
+          description: E-01 — a case without a stated purpose is rejected.
+        legalBasis:
+          type: string
+          enum:
+            [
+              due_diligence,
+              fraud_investigation,
+              security_incident,
+              threat_intelligence,
+              journalism,
+              litigation_support,
+              compliance_kyc,
+              academic_research,
+              self_assessment,
+              training_simulation,
+            ]
+        passphrase:
+          type: string
+          description: Optional — creates the case encrypted at rest (locked without the passphrase).
+        retention:
+          type: object
+          description: Optional retention policy (defaults to indefinite).
+        sensitivity:
+          type: string
+          enum: [standard, sensitive, restricted]
+        tags:
+          type: array
+          items:
+            type: string
+    UpdateCaseLifecycleInput:
+      type: object
+      required: [action, reason]
+      properties:
+        action:
+          type: string
+          enum: [archive, unarchive]
+        reason:
+          type: string
+          minLength: 3
+          description: Kept in the case chain with the lifecycle update.
+        purposeConfirmation:
+          type: string
+          minLength: 10
+          description: E-02 pattern — REQUIRED for unarchive (fail-closed without it).

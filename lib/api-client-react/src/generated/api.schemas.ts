@@ -60,3 +60,134 @@ export interface RunPhaseEvent {
 export interface Error {
   error: string;
 }
+
+export type CaseSummaryStatus = (typeof CaseSummaryStatus)[keyof typeof CaseSummaryStatus];
+
+export const CaseSummaryStatus = {
+  active: "active",
+  archived: "archived",
+  "locked-encrypted": "locked-encrypted",
+} as const;
+
+/**
+ * A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id, status, encrypted, createdAt and lastActivityAt — its content fields are null.
+ */
+export interface CaseSummary {
+  id: string;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  purpose: string | null;
+  /** @nullable */
+  legalBasis: string | null;
+  createdAt: string;
+  /**
+   * J-16 — null while the case is active.
+   * @nullable
+   */
+  archivedAt: string | null;
+  /** @nullable */
+  sensitivity: string | null;
+  /** @nullable */
+  tags: string[] | null;
+  encrypted: boolean;
+  status: CaseSummaryStatus;
+  /** @nullable */
+  lastActivityAt: string | null;
+}
+
+export type CaseDetail = CaseSummary & {
+  /**
+   * The retention policy object; null for a locked case.
+   * @nullable
+   */
+  retention?: string | null;
+  /** @nullable */
+  ownerId?: string | null;
+  /**
+   * J-17 — for a locked case, the explicit locked message; null when readable.
+   * @nullable
+   */
+  message?: string | null;
+};
+
+export type CreateCaseInputLegalBasis = (typeof CreateCaseInputLegalBasis)[keyof typeof CreateCaseInputLegalBasis];
+
+export const CreateCaseInputLegalBasis = {
+  due_diligence: "due_diligence",
+  fraud_investigation: "fraud_investigation",
+  security_incident: "security_incident",
+  threat_intelligence: "threat_intelligence",
+  journalism: "journalism",
+  litigation_support: "litigation_support",
+  compliance_kyc: "compliance_kyc",
+  academic_research: "academic_research",
+  self_assessment: "self_assessment",
+  training_simulation: "training_simulation",
+} as const;
+
+/**
+ * Optional retention policy (defaults to indefinite).
+ */
+export type CreateCaseInputRetention = { [key: string]: unknown };
+
+export type CreateCaseInputSensitivity = (typeof CreateCaseInputSensitivity)[keyof typeof CreateCaseInputSensitivity];
+
+export const CreateCaseInputSensitivity = {
+  standard: "standard",
+  sensitive: "sensitive",
+  restricted: "restricted",
+} as const;
+
+export interface CreateCaseInput {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  /**
+   * E-01 — a case without a stated purpose is rejected.
+   * @minLength 10
+   * @maxLength 2000
+   */
+  purpose: string;
+  legalBasis: CreateCaseInputLegalBasis;
+  /** Optional — creates the case encrypted at rest (locked without the passphrase). */
+  passphrase?: string;
+  /** Optional retention policy (defaults to indefinite). */
+  retention?: CreateCaseInputRetention;
+  sensitivity?: CreateCaseInputSensitivity;
+  tags?: string[];
+}
+
+export type UpdateCaseLifecycleInputAction = (typeof UpdateCaseLifecycleInputAction)[keyof typeof UpdateCaseLifecycleInputAction];
+
+export const UpdateCaseLifecycleInputAction = {
+  archive: "archive",
+  unarchive: "unarchive",
+} as const;
+
+export interface UpdateCaseLifecycleInput {
+  action: UpdateCaseLifecycleInputAction;
+  /**
+   * Kept in the case chain with the lifecycle update.
+   * @minLength 3
+   */
+  reason: string;
+  /**
+   * E-02 pattern — REQUIRED for unarchive (fail-closed without it).
+   * @minLength 10
+   */
+  purposeConfirmation?: string;
+}
+
+export type ListCasesParams = {
+  /**
+   * Archived cases are hidden by default (J-16); true lists them too.
+   */
+  includeArchived?: boolean;
+};
+
+export type ListCases200 = {
+  cases: CaseSummary[];
+};

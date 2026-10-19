@@ -70,3 +70,160 @@ export const RunEventsParams = zod.object({
 });
 
 export const RunEventsResponse = zod.unknown();
+
+/**
+ * @summary List cases (J-17 — locked cases appear as identifiers only; archived hidden by default)
+ */
+export const listCasesQueryIncludeArchivedDefault = false;
+
+export const ListCasesQueryParams = zod.object({
+  includeArchived: zod.coerce
+    .boolean()
+    .default(listCasesQueryIncludeArchivedDefault)
+    .describe("Archived cases are hidden by default (J-16); true lists them too."),
+});
+
+export const ListCasesResponse = zod.object({
+  cases: zod.array(
+    zod
+      .object({
+        id: zod.string(),
+        title: zod.string().nullable(),
+        purpose: zod.string().nullable(),
+        legalBasis: zod.string().nullable(),
+        createdAt: zod.coerce.date(),
+        archivedAt: zod.coerce.date().nullable().describe("J-16 — null while the case is active."),
+        sensitivity: zod.string().nullable(),
+        tags: zod.array(zod.string()).nullable(),
+        encrypted: zod.boolean(),
+        status: zod.enum(["active", "archived", "locked-encrypted"]),
+        lastActivityAt: zod.coerce.date().nullable(),
+      })
+      .describe(
+        "A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id, status, encrypted, createdAt and lastActivityAt — its content fields are null.",
+      ),
+  ),
+});
+
+/**
+ * @summary Create a case (UC-01 — a case without a stated purpose is rejected, E-01)
+ */
+export const createCaseBodyTitleMax = 200;
+
+export const createCaseBodyPurposeMin = 10;
+export const createCaseBodyPurposeMax = 2000;
+
+export const CreateCaseBody = zod.object({
+  title: zod.string().min(1).max(createCaseBodyTitleMax),
+  purpose: zod
+    .string()
+    .min(createCaseBodyPurposeMin)
+    .max(createCaseBodyPurposeMax)
+    .describe("E-01 — a case without a stated purpose is rejected."),
+  legalBasis: zod.enum([
+    "due_diligence",
+    "fraud_investigation",
+    "security_incident",
+    "threat_intelligence",
+    "journalism",
+    "litigation_support",
+    "compliance_kyc",
+    "academic_research",
+    "self_assessment",
+    "training_simulation",
+  ]),
+  passphrase: zod.string().optional().describe("Optional — creates the case encrypted at rest (locked without the passphrase)."),
+  retention: zod.looseObject({}).optional().describe("Optional retention policy (defaults to indefinite)."),
+  sensitivity: zod.enum(["standard", "sensitive", "restricted"]).optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+export const CreateCaseResponse = zod
+  .object({
+    id: zod.string(),
+    title: zod.string().nullable(),
+    purpose: zod.string().nullable(),
+    legalBasis: zod.string().nullable(),
+    createdAt: zod.coerce.date(),
+    archivedAt: zod.coerce.date().nullable().describe("J-16 — null while the case is active."),
+    sensitivity: zod.string().nullable(),
+    tags: zod.array(zod.string()).nullable(),
+    encrypted: zod.boolean(),
+    status: zod.enum(["active", "archived", "locked-encrypted"]),
+    lastActivityAt: zod.coerce.date().nullable(),
+  })
+  .describe(
+    "A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id, status, encrypted, createdAt and lastActivityAt — its content fields are null.",
+  );
+
+/**
+ * @summary Case detail (J-17 — a locked case returns an explicit message, no content)
+ */
+export const GetCaseParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetCaseResponse = zod
+  .object({
+    id: zod.string(),
+    title: zod.string().nullable(),
+    purpose: zod.string().nullable(),
+    legalBasis: zod.string().nullable(),
+    createdAt: zod.coerce.date(),
+    archivedAt: zod.coerce.date().nullable().describe("J-16 — null while the case is active."),
+    sensitivity: zod.string().nullable(),
+    tags: zod.array(zod.string()).nullable(),
+    encrypted: zod.boolean(),
+    status: zod.enum(["active", "archived", "locked-encrypted"]),
+    lastActivityAt: zod.coerce.date().nullable(),
+  })
+  .describe(
+    "A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id, status, encrypted, createdAt and lastActivityAt — its content fields are null.",
+  )
+  .and(
+    zod.object({
+      retention: zod.string().nullish().describe("The retention policy object; null for a locked case."),
+      ownerId: zod.string().nullish(),
+      message: zod.string().nullish().describe("J-17 — for a locked case, the explicit locked message; null when readable."),
+    }),
+  );
+
+/**
+ * Archive sets archivedAt and write-blocks the case (hidden by default). Unarchive is an explicit action that REQUIRES a PurposeConfirmation (E-02 pattern — fail-closed without one). Archiving an archived case or unarchiving an active case is a conflict (409). There is no content modification after archiving, and no delete operation exists.
+ * @summary Lifecycle only — archive / unarchive (J-16). No content modification. No delete.
+ */
+export const UpdateCaseLifecycleParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const updateCaseLifecycleBodyReasonMin = 3;
+
+export const updateCaseLifecycleBodyPurposeConfirmationMin = 10;
+
+export const UpdateCaseLifecycleBody = zod.object({
+  action: zod.enum(["archive", "unarchive"]),
+  reason: zod.string().min(updateCaseLifecycleBodyReasonMin).describe("Kept in the case chain with the lifecycle update."),
+  purposeConfirmation: zod
+    .string()
+    .min(updateCaseLifecycleBodyPurposeConfirmationMin)
+    .optional()
+    .describe("E-02 pattern — REQUIRED for unarchive (fail-closed without it)."),
+});
+
+export const UpdateCaseLifecycleResponse = zod
+  .object({
+    id: zod.string(),
+    title: zod.string().nullable(),
+    purpose: zod.string().nullable(),
+    legalBasis: zod.string().nullable(),
+    createdAt: zod.coerce.date(),
+    archivedAt: zod.coerce.date().nullable().describe("J-16 — null while the case is active."),
+    sensitivity: zod.string().nullable(),
+    tags: zod.array(zod.string()).nullable(),
+    encrypted: zod.boolean(),
+    status: zod.enum(["active", "archived", "locked-encrypted"]),
+    lastActivityAt: zod.coerce.date().nullable(),
+  })
+  .describe(
+    "A case as it appears in a listing. J-17: a locked-encrypted case carries ONLY id, status, encrypted, createdAt and lastActivityAt — its content fields are null.",
+  );

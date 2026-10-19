@@ -5,7 +5,17 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { manualClock, seededRandom, ulidFactory } from "@ir/core";
 import { verify, verifyEvidence } from "@ir/ledger";
-import { CASE_DB, LATEST_VERSION, migrate, MigrationError, MIGRATIONS, openCase, userVersion, type Migration } from "./index.ts";
+import {
+  CASE_DB,
+  LATEST_VERSION,
+  migrate,
+  MigrationError,
+  MIGRATIONS,
+  openCase,
+  caseFingerprint,
+  userVersion,
+  type Migration,
+} from "./index.ts";
 
 const dirs: string[] = [];
 const tmp = () => {
@@ -127,5 +137,40 @@ describe("case directory (P1-013)", () => {
     raw.exec(`UPDATE ledger SET payload = '{"text":"forged"}' WHERE seq = 2`);
     raw.close();
     expect(() => openCase(dir, { actor: "analyst", clock: c })).toThrow(/corrupt/);
+  });
+});
+
+// P3-003 (طلب أ): the J-17 listing primitive and the J-16 archive field at the store level.
+describe("caseFingerprint (P3-003, J-17)", () => {
+  it("reads identifier and timestamps from a locked case without a passphrase — and nothing more", () => {
+    const dir = tmp();
+    const c = openCase(dir, { actor: "analyst", clock: clock(), create: CREATE, passphrase: "سر-قوي-جدا" });
+    c.close();
+    const fp = caseFingerprint(dir);
+    expect(fp?.caseId).toBeTruthy();
+    expect(fp?.createdAt).toBe("2026-10-10T12:00:00.000Z");
+    expect(fp?.encrypted).toBe(true);
+    expect(fp?.lastActivityAt).toBeTruthy(); // the audit index is plain — the timestamp is readable
+  });
+
+  it("returns null for a directory with no complete case (an abandoned staging dir)", () => {
+    const dir = tmp();
+    expect(caseFingerprint(dir)).toBeNull();
+    expect(caseFingerprint(path.join(dir, "nope"))).toBeNull();
+  });
+
+  it("J-16: archivedAt is null on create, set by update, and the chain keeps the reason", () => {
+    const dir = tmp();
+    const c = openCase(dir, { actor: "analyst", create: CREATE });
+    expect(c.info().archivedAt).toBeNull();
+    const archived = c.update({ archivedAt: "2026-10-19T00:00:00.000Z" }, "اكتمل التحقيق");
+    expect(archived.archivedAt).toBe("2026-10-19T00:00:00.000Z");
+    const reopened = c.update({ archivedAt: null }, "إعادة فتح — تأكيد غرض موثق");
+    expect(reopened.archivedAt).toBeNull();
+    c.close();
+    // reopened read-only: the record round-trips through the chain
+    const ro = openCase(dir, { actor: "verifier", readOnly: true });
+    expect(ro.info().archivedAt).toBeNull();
+    ro.close();
   });
 });

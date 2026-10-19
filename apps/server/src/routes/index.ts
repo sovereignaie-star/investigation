@@ -5,6 +5,7 @@ import { vaultFromEnv, type Vault } from "@ir/store";
 import healthRouter from "./health";
 import { vaultRouter } from "./vault";
 import { engineRouter } from "./engine";
+import { casesRouter } from "./cases";
 import { FAIL_CLOSED_TRANSPORT } from "../lib/engine-transport";
 
 const router: IRouter = Router();
@@ -28,5 +29,11 @@ const getEngine = (): RunEngine => (engine ??= new RunEngine({ transport: FAIL_C
 router.use(healthRouter);
 router.use(vaultRouter(getVault));
 router.use(engineRouter(getEngine));
+
+// P3-003 (J-18): the cases root — SOVEREIGN_DATA_ROOT, falling back to the vault's data dir
+// pattern (IR_DATA_DIR, default ./data), plus /cases. No custom path.
+const casesRoot = (): string =>
+  path.join(process.env["SOVEREIGN_DATA_ROOT"] ?? process.env["IR_DATA_DIR"] ?? path.resolve("data"), "cases");
+router.use(casesRouter(casesRoot));
 
 export default router;
