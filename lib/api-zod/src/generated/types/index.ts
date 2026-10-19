@@ -7,6 +7,8 @@
  */
 
 export * from "./caseDetail";
+export * from "./caseStats";
+export * from "./caseStatsCounts";
 export * from "./caseSummary";
 export * from "./caseSummaryStatus";
 export * from "./createCaseInput";

@@ -18,6 +18,7 @@ import type {
 
 import type {
   CaseDetail,
+  CaseStats,
   CaseSummary,
   CreateCaseInput,
   Error,
@@ -569,6 +570,66 @@ export const useUpdateCaseLifecycle = <TError = ErrorType<Error>, TContext = unk
 > => {
   return useMutation(getUpdateCaseLifecycleMutationOptions(options));
 };
+
+export const getGetCaseStatsUrl = (id: string) => {
+  return `/api/cases/${id}/stats`;
+};
+
+/**
+ * The eight projection counts plus the projection seq, taken from ONE snapshot of the case's own projection — never a parallel recount. J-17: a locked case fails closed with 403 and the locked message — never zeros that look like statistics.
+ * @summary Case statistics (P3-012 — the numbers always match the case's own projection)
+ */
+export const getCaseStats = async (id: string, options?: RequestInit): Promise<CaseStats> => {
+  return customFetch<CaseStats>(getGetCaseStatsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCaseStatsQueryKey = (id: string) => {
+  return [`/api/cases/${id}/stats`] as const;
+};
+
+export const getGetCaseStatsQueryOptions = <TData = Awaited<ReturnType<typeof getCaseStats>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseStats>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCaseStatsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaseStats>>> = ({ signal }) => getCaseStats(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCaseStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCaseStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getCaseStats>>>;
+export type GetCaseStatsQueryError = ErrorType<Error>;
+
+/**
+ * @summary Case statistics (P3-012 — the numbers always match the case's own projection)
+ */
+
+export function useGetCaseStats<TData = Awaited<ReturnType<typeof getCaseStats>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseStats>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCaseStatsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export const getGetCaseEvidenceUrl = (id: string, evidenceId: string) => {
   return `/api/cases/${id}/evidence/${evidenceId}`;

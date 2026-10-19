@@ -300,6 +300,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /cases/{id}/stats:
+    get:
+      operationId: getCaseStats
+      tags: [cases]
+      summary: Case statistics (P3-012 — the numbers always match the case's own projection)
+      description: >-
+        The eight projection counts plus the projection seq, taken from ONE snapshot of
+        the case's own projection — never a parallel recount. J-17: a locked case fails
+        closed with 403 and the locked message — never zeros that look like statistics.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The case's projection seq and counts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseStats"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: J-17 — the case is locked-encrypted; not even a count is readable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No case with this id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /cases/{id}/evidence/{evidenceId}:
     get:
       operationId: getCaseEvidence
@@ -528,6 +571,34 @@ components:
             message:
               type: [string, "null"]
               description: J-17 — for a locked case, the explicit locked message; null when readable.
+    CaseStats:
+      type: object
+      required: [seq, counts]
+      properties:
+        seq:
+          type: integer
+          description: The last ledger seq included in the projection snapshot (-1 for an empty chain).
+        counts:
+          type: object
+          required: [entities, nodes, claims, edges, observations, evidence, merges, notes]
+          properties:
+            entities:
+              type: integer
+            nodes:
+              type: integer
+              description: Graph nodes — after merges, fewer than entities.
+            claims:
+              type: integer
+            edges:
+              type: integer
+            observations:
+              type: integer
+            evidence:
+              type: integer
+            merges:
+              type: integer
+            notes:
+              type: integer
     CreateCaseInput:
       type: object
       required: [title, purpose, legalBasis]

@@ -18,11 +18,13 @@ export function CasesTable({
   includeArchived,
   onArchive,
   onReopen,
+  onStats,
 }: {
   cases: CaseSummary[];
   includeArchived: boolean;
   onArchive?: (id: string) => void;
   onReopen?: (id: string) => void;
+  onStats?: (id: string) => void;
 }) {
   const visible = cases.filter((c) => includeArchived || c.status !== "archived");
   return (
@@ -62,6 +64,11 @@ export function CasesTable({
               {c.lastActivityAt ?? "—"}
             </td>
             <td className="py-2">
+              {c.status !== "locked-encrypted" && onStats && (
+                <Button variant="outline" size="sm" data-action="stats" onClick={() => onStats(c.id)}>
+                  الإحصاءات
+                </Button>
+              )}
               {c.status === "active" && onArchive && (
                 <Button variant="outline" size="sm" data-action="archive" onClick={() => onArchive(c.id)}>
                   أرشفة

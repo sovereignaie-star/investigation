@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { setAuthTokenGetter, useCreateCase, useListCases, useUpdateCaseLifecycle, type CreateCaseInput } from "@workspace/api-client-react";
 import { Badge, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea } from "@ir/ui";
 import { CasesTable } from "./cases/CasesTable";
+import { InvestigationStats } from "./cases/InvestigationStats";
 
 /**
  * P3-003 (طلب ب): the cases screen, wired to the generated SDK. The workbench speaks to
@@ -65,6 +66,9 @@ export function CasesPage() {
   // J-16: archiving asks for a reason; reopening is explicit and needs the E-02 confirmation.
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [archiveReason, setArchiveReason] = useState("");
+
+  // P3-012: the case whose stats panel is open (null = closed).
+  const [statsFor, setStatsFor] = useState<string | null>(null);
   const [reopening, setReopening] = useState<{ id: string; reason: string; purposeConfirmation: string } | null>(null);
 
   const submit = async (e: FormEvent): Promise<void> => {
@@ -223,8 +227,12 @@ export function CasesPage() {
               setArchiveReason("");
             }}
             onReopen={(id) => setReopening({ id, reason: "", purposeConfirmation: "" })}
+            onStats={(id) => setStatsFor((prev) => (prev === id ? null : id))}
           />
         )}
+        {/* P3-012: keyed by case id — switching cases never shows the previous
+            case's numbers (the panel restarts in its loading state). */}
+        {statsFor && <InvestigationStats key={statsFor} caseId={statsFor} onClose={() => setStatsFor(null)} />}
         {archivingId && (
           <form
             className="mt-3 flex items-end gap-2"

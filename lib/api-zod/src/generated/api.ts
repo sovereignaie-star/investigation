@@ -229,6 +229,28 @@ export const UpdateCaseLifecycleResponse = zod
   );
 
 /**
+ * The eight projection counts plus the projection seq, taken from ONE snapshot of the case's own projection — never a parallel recount. J-17: a locked case fails closed with 403 and the locked message — never zeros that look like statistics.
+ * @summary Case statistics (P3-012 — the numbers always match the case's own projection)
+ */
+export const GetCaseStatsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetCaseStatsResponse = zod.object({
+  seq: zod.number().describe("The last ledger seq included in the projection snapshot (-1 for an empty chain)."),
+  counts: zod.object({
+    entities: zod.number(),
+    nodes: zod.number().describe("Graph nodes — after merges, fewer than entities."),
+    claims: zod.number(),
+    edges: zod.number(),
+    observations: zod.number(),
+    evidence: zod.number(),
+    merges: zod.number(),
+    notes: zod.number(),
+  }),
+});
+
+/**
  * @summary Raw evidence content (P3-010 — the safe raw viewer's data path from the P1-010 blobs)
  */
 export const GetCaseEvidenceParams = zod.object({
