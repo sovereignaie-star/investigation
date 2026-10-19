@@ -71,6 +71,24 @@ describe("projections (P1-016)", () => {
     expect(p.coverage).toEqual({ cells: [], transforms: [], untouched: [] });
   });
 
+  // P3-008 red-first: every field shown in the node detail panel must link to its
+  // evidence, so an attribute (value claim) carries the evidence ids of the
+  // observations recorded against that claim.
+  it("an attribute claim carries the evidence ids of its observations (P3-008)", () => {
+    const f = fixture();
+    const domain = f.entity("domain", "attr.example.com");
+    const registrar = f.claim(domain, "whois.registrar", { value: "Attr Registrar" });
+    const f1 = f.evidence("tr-whois");
+    const f2 = f.evidence("tr-whois");
+    f.observe({ claimId: registrar }, "positive", f1, "tr-whois");
+    f.observe({ claimId: registrar }, "positive", f2, "tr-whois");
+    const p = project(f.ledger.entries());
+    const d = p.graph.nodes.find((n) => n.id === domain);
+    expect(d?.attributes).toEqual([
+      expect.objectContaining({ claimId: registrar, predicate: "whois.registrar", value: "Attr Registrar", evidenceIds: [f1, f2] }),
+    ]);
+  });
+
   it("graph, table and coverage from entities, claims, evidence and observations", () => {
     const f = fixture();
     f.add("case.created", { note: "ignored by projections" });

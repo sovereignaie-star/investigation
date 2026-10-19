@@ -14,8 +14,9 @@ export interface GraphNode {
   props: Record<string, unknown>;
   /** Other entity ids shown as this node: same canonical key, or merged into it. */
   aliases: string[];
-  /** Claims whose object is a literal value. */
-  attributes: { claimId: string; predicate: string; value: string | number | boolean; confidence: number }[];
+  /** Claims whose object is a literal value. `evidenceIds` per claim: every field shown
+   *  to the investigator must link to its evidence (P3-008). */
+  attributes: { claimId: string; predicate: string; value: string | number | boolean; confidence: number; evidenceIds: string[] }[];
   observations: Counts;
   evidenceIds: string[];
 }
@@ -82,9 +83,13 @@ export function graphView(p: Projector): Graph {
     if (!known(p, c)) continue;
     const source = p.resolve(c.subjectId);
     if (c.objectId === undefined) {
-      nodes
-        .get(source)
-        ?.attributes.push({ claimId: c.id, predicate: c.predicate, value: c.value as string | number | boolean, confidence: c.confidence });
+      nodes.get(source)?.attributes.push({
+        claimId: c.id,
+        predicate: c.predicate,
+        value: c.value as string | number | boolean,
+        confidence: c.confidence,
+        evidenceIds: sorted((byClaim.get(c.id) ?? []).map((o) => o.evidenceId)),
+      });
       continue;
     }
     const target = p.resolve(c.objectId);
