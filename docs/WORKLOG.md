@@ -4017,3 +4017,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الإنذاران (على `7b1e75b9`):** (1) عالٍ — «Missing origin verification in postMessage handler» في `layout.worker.ts`؛ (2) متوسط — «Remote property injection» في `layout.ts:47` (معرّفات العقد نصوص من مدخلات المستخدم وقد تلوّث خريطة المواضع عبر مفتاح مصطنع مثل `__proto__`).
 - **الإصلاحان:** (1) تحقق صريح من أصل الرسالة في معالج `self.onmessage` (عامل مخصص يبلّغ أصلاً فارغاً — يقبل الفارغ أو أصل الـWorker فقط)؛ (2) `Object.create(null)` لخرائط المواضع في `seededInitialPositions` و`computeForceAtlas2Layout` — بلا prototype فلا يمكن لمعرّف مصطنع تلويثها.
 - البوابات بعد الإصلاح: lint صفر، typecheck exit 0، ويب 62/62.
+
+### 2026-10-19 — [P3-007] أمن — إنذار CodeQL المتبقي عولج بـMap
+
+- **الإنذار (على `ce3e075`):** «Remote property injection» ما زال على `layout.ts` — حل `Object.create(null)` لم يُقنع محلل CodeQL (لا يعفّيه).
+- **الإصلاح الجذري:** `LayoutPositions` أصبح `Map<string, {x,y}>` بدل كائن مفهرس — الوصول بالمفاتيح عبر `Map.get/set` بلا دلالات prototype إطلاقاً، والرسائل تمر عبر structured clone الذي يدعم Map. عُدلت كل المواضع (layout، المكوّن، المخزن، الاختبارات).
+- البوابات: lint صفر، typecheck exit 0، ويب 62/62.

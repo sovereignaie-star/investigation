@@ -11,7 +11,7 @@ import type { LayoutPositions } from "../pages/workbench/layout";
 
 interface ViewSelection {
   /** Saved layouts keyed by the graph's identity (positionsKey). */
-  layouts: Record<string, LayoutPositions>;
+  layouts: Record<string, LayoutPositions>; // values are Maps (structured-clone safe)
   saveLayout: (key: string, positions: LayoutPositions) => void;
   getLayout: (key: string) => LayoutPositions | null;
   clear: () => void;

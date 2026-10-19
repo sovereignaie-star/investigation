@@ -14,9 +14,10 @@ import type { Graph as ProjectionGraph, GraphNode } from "@ir/ledger/projections
  * this file stays pure and node-testable.
  */
 
-export interface LayoutPositions {
-  [nodeId: string]: { x: number; y: number };
-}
+/** Positions as a Map — keyed access with no prototype semantics, so untrusted node ids
+ * cannot inject properties (CodeQL: remote property injection).
+ */
+export type LayoutPositions = Map<string, { x: number; y: number }>;
 
 /** FNV-1a — small deterministic string hash. */
 function fnv1a(text: string, seed: number): number {
@@ -38,15 +39,13 @@ function seededUnit(id: string, seed: number): number {
  * angle and radius so the layout is reproducible and differs across seeds.
  */
 export function seededInitialPositions(ids: readonly string[], seed: number): LayoutPositions {
-  // Object.create(null): node ids are extracted from user input, so the map must have no
-  // prototype — a crafted id (e.g. "__proto__") cannot pollute it (CodeQL: property injection).
-  const out: LayoutPositions = Object.create(null);
+  const out: LayoutPositions = new Map();
   const n = ids.length;
   for (let i = 0; i < n; i += 1) {
     const id = ids[i];
     const angle = (2 * Math.PI * (i + seededUnit(id, seed))) / Math.max(1, n);
     const radius = 0.5 + 0.5 * seededUnit(`${id}:r`, seed);
-    out[id] = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+    out.set(id, { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
   }
   return out;
 }
@@ -64,7 +63,7 @@ export function computeForceAtlas2Layout(graph: ProjectionGraph, options: { seed
 
   const g = new Graph({ multi: true });
   for (const node of graph.nodes) {
-    const p = initial[node.id] ?? { x: 0, y: 0 };
+    const p = initial.get(node.id) ?? { x: 0, y: 0 };
     g.addNode(node.id, { x: p.x, y: p.y, size: 5 });
   }
   for (const e of graph.edges) {
@@ -82,9 +81,9 @@ export function computeForceAtlas2Layout(graph: ProjectionGraph, options: { seed
     },
   });
 
-  const out: LayoutPositions = Object.create(null);
+  const out: LayoutPositions = new Map();
   g.forEachNode((id, attrs) => {
-    out[id] = { x: attrs.x, y: attrs.y };
+    out.set(id, { x: attrs.x, y: attrs.y });
   });
   return out;
 }

@@ -108,7 +108,7 @@ describe("P3-007 deterministic layout (ForceAtlas2, seeded — fixes D-026)", ()
       42,
     );
     expect(a).toEqual(b);
-    const xs = new Set(FIXTURE.nodes.map((n) => a[n.id]?.x));
+    const xs = new Set(FIXTURE.nodes.map((n) => a.get(n.id)?.x));
     expect(xs.size).toBe(FIXTURE.nodes.length);
   });
 });

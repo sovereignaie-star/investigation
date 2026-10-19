@@ -70,7 +70,7 @@ export function InvestigationGraph({
         const saved = useViewState.getState().getLayout(graphKey);
         if (saved !== null) {
           g.forEachNode((id) => {
-            const p = saved[id];
+            const p = saved.get(id);
             if (p) {
               g.setNodeAttribute(id, "x", p.x);
               g.setNodeAttribute(id, "y", p.y);
@@ -106,7 +106,7 @@ export function InvestigationGraph({
           }
           const applyPositions = (positions: LayoutPositions) => {
             g.forEachNode((id) => {
-              const p = positions[id];
+              const p = positions.get(id);
               if (p) {
                 g.setNodeAttribute(id, "x", p.x);
                 g.setNodeAttribute(id, "y", p.y);
