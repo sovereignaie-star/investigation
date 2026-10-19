@@ -38,7 +38,9 @@ function seededUnit(id: string, seed: number): number {
  * angle and radius so the layout is reproducible and differs across seeds.
  */
 export function seededInitialPositions(ids: readonly string[], seed: number): LayoutPositions {
-  const out: LayoutPositions = {};
+  // Object.create(null): node ids are extracted from user input, so the map must have no
+  // prototype — a crafted id (e.g. "__proto__") cannot pollute it (CodeQL: property injection).
+  const out: LayoutPositions = Object.create(null);
   const n = ids.length;
   for (let i = 0; i < n; i += 1) {
     const id = ids[i];
@@ -80,7 +82,7 @@ export function computeForceAtlas2Layout(graph: ProjectionGraph, options: { seed
     },
   });
 
-  const out: LayoutPositions = {};
+  const out: LayoutPositions = Object.create(null);
   g.forEachNode((id, attrs) => {
     out[id] = { x: attrs.x, y: attrs.y };
   });

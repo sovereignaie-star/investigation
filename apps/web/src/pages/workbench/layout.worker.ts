@@ -6,6 +6,9 @@ import { handleLayoutRequest, type LayoutRequest } from "./layoutProtocol";
  */
 
 self.onmessage = (event: MessageEvent<LayoutRequest>) => {
+  // A dedicated worker receives messages only from its spawner, but verify the sender
+  // anyway (CodeQL: origin verification): dedicated workers report an empty origin.
+  if (event.origin !== "" && event.origin !== self.origin) return;
   if (event.data?.type !== "layout") return;
   try {
     (self as unknown as Worker).postMessage(handleLayoutRequest(event.data));

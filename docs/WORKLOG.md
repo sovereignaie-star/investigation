@@ -4011,3 +4011,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 ### 2026-10-19 — [P3-007] توثيقي — تصحيح حرف في صف STATUS
 
 - تصحيح حرف خاطئ في صف P3-005؟ لا — في صف P3-007: «FNV-1ا» => «FNV-1a» (تسرب حرف عربي أثناء الكتابة). لا تغيير هندسي.
+
+### 2026-10-19 — [P3-007] أمن — معالجة إنذاري CodeQL (حقن خاصية + تحقق أصل في الـWorker)
+
+- **الإنذاران (على `7b1e75b9`):** (1) عالٍ — «Missing origin verification in postMessage handler» في `layout.worker.ts`؛ (2) متوسط — «Remote property injection» في `layout.ts:47` (معرّفات العقد نصوص من مدخلات المستخدم وقد تلوّث خريطة المواضع عبر مفتاح مصطنع مثل `__proto__`).
+- **الإصلاحان:** (1) تحقق صريح من أصل الرسالة في معالج `self.onmessage` (عامل مخصص يبلّغ أصلاً فارغاً — يقبل الفارغ أو أصل الـWorker فقط)؛ (2) `Object.create(null)` لخرائط المواضع في `seededInitialPositions` و`computeForceAtlas2Layout` — بلا prototype فلا يمكن لمعرّف مصطنع تلويثها.
+- البوابات بعد الإصلاح: lint صفر، typecheck exit 0، ويب 62/62.
