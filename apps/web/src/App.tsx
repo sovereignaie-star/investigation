@@ -6,6 +6,8 @@ import { IDENTIFIER_LIST } from "./utils/identifierList";
 import { CasesPage } from "./pages/CasesPage";
 // P3-004 (UC-02): the workbench input flow — paste text or read a file, extract identifiers.
 import { WorkbenchPage } from "./pages/WorkbenchPage";
+// P3-005: the large-graph canvas and its NFR-02 measurement harness.
+import { GraphBenchPage } from "./pages/workbench/GraphBenchPage";
 
 // P0-006: minimal entry point so the app builds and runs. The real workbench is built in phase 3 (P3-002..P3-020).
 // P3-002: the app renders inside the AppShell (layout, navigation, theme, RTL/LTR).
@@ -45,8 +47,16 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppShell title="غرفة التحقيق" nav={NAV}>
-        {/* P3-003/P3-004: the workbench routes — overview, cases and the workbench input flow. */}
-        {path === "/cases" ? <CasesPage /> : path === "/workbench" ? <WorkbenchPage /> : <Overview />}
+        {/* P3-003..P3-005: workbench routes — overview, cases, input flow and graph bench. */}
+        {path === "/cases" ? (
+          <CasesPage />
+        ) : path === "/workbench" ? (
+          <WorkbenchPage />
+        ) : path === "/graph-bench" ? (
+          <GraphBenchPage />
+        ) : (
+          <Overview />
+        )}
       </AppShell>
     </QueryClientProvider>
   );

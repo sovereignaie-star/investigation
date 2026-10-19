@@ -69,7 +69,9 @@
     "vaul": "^1.1.2",
     "vite": "catalog:",
     "wouter": "^3.13.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@ir/ledger": "workspace:*",
+    "graphology-types": "0.24.8"
   },
   "dependencies": {
     "@ir/core": "workspace:*",
@@ -77,6 +79,8 @@
     "fuse.js": "^7.5.0",
     "libphonenumber-js": "^1.13.14",
     "reactflow": "^11.11.4",
-    "zustand": "^5.0.15"
+    "zustand": "^5.0.15",
+    "sigma": "3.0.3",
+    "graphology": "0.26.0"
   }
 }
