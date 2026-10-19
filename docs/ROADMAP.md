@@ -318,7 +318,7 @@ grep -rIlE "<أنماط أسرار>" --exclude-dir=node_modules .   # فحص أ�
 | العنصر المطلوب | الحالة |
 |---|---|
 | `SearchBar`, `FileUploader`, `IdentifierSelector` (P3-004، #244) و`InfiniteCanvas` (P3-006، #249) و`InvestigationGraph` (P3-005، #247) و`NodeDetailPanel` (P3-008، #253) | ✅ مُسلّمة ومدمجة في main [مُقاس 2026-10-20: جرد الملفات + إيداعات الدمج] |
-| `InvestigationStats` | ❌ غير موجودة — مهمة P3-012 |
+| `InvestigationStats` (P3-012، #268) | ✅ مُسلّمة ومدمجة في main [مُقاس 2026-10-20: الملف موجود ومركّب في CasesPage + إيداع الدمج 122f99b] |
 | `ApiKeySettings`, `SavedInvestigations`, `ExportMenu` | ❌ غير موجودة (مهام م3 لاحقة) |
 | `layout.tsx`, `page.tsx`, `globals.css` (Next.js App Router) | ❌ غير موجودة، والمستودع يستعمل Vite بدلاً من Next.js |
 | `main.tsx`, `App.tsx` (بديلها في Vite) | ❌ غير موجودة، ويشير `index.html` إلى `/src/main.tsx` |
@@ -335,7 +335,7 @@ grep -rIlE "<أنماط أسرار>" --exclude-dir=node_modules .   # فحص أ�
 |---|---|---|---|---|
 | D-001 | حاجز | `identifierList.ts` مقطوع بعد 370 مدخلاً: مثال `onion_v3` سطر واحد بحجم نحو 79.8KB من الحرف `w` وينتهي الملف دون إغلاق | `TS1002` عند (421,79809)؛ ملف 195,740 بايت؛ موجود في `HEAD` | م0 |
 | D-002 | حاجز | لا نقطة دخول للواجهة (`main.tsx`/`App.tsx`) | `vite build` يفشل | م0، م3 |
-| D-003 | حاجز | عشرة مكونات واجهة مطلوبة كانت غير موجودة عند الجرد الأول؛ ستة منها دُمجت منذئذ (انظر 2.5.1) وبقي أربعة: `InvestigationStats` (مهمة P3-012) و`ApiKeySettings` و`SavedInvestigations` و`ExportMenu` | جرد الملفات 2026-10-20: `find apps/web/src` + إيداعات الدمج #244/#247/#249/#253 | م3 |
+| D-003 | حاجز | عشرة مكونات واجهة مطلوبة كانت غير موجودة عند الجرد الأول؛ سبعة منها دُمجت منذئذ (انظر 2.5.1) وبقي ثلاثة: `ApiKeySettings` و`SavedInvestigations` و`ExportMenu` | جرد الملفات 2026-10-20: `find apps/web/src` + إيداعات الدمج #244/#247/#249/#253/#268 | م3 |
 | D-004 | حرج | `existing.id as number` يحوّل نصاً إلى رقم؛ المفتاح الأساسي للكاش هو `node.id` النصي، فتتعارض القيود عند تكرار العقدة بمفتاح كاش مختلف | `TS2352` عند (77,33) | م1 |
 | D-005 | عالٍ | تصنيف «أول تطابق» يعيد النوع المعلن في 14 فقط من 376 مثالاً (3.7%) | `analyze2.mjs` | م1 |
 | D-006 | عالٍ | 74 من 376 مثالاً معلناً (19.7%) لا يطابق regex نوعه نفسه | `analyze2.mjs` | م1 |
