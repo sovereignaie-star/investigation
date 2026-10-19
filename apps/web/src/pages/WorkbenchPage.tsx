@@ -5,6 +5,7 @@ import type { Graph as ProjectionGraph, GraphNode } from "@ir/ledger/projections
 import { FileUploader } from "./workbench/FileUploader";
 import { IdentifierSelector } from "./workbench/IdentifierSelector";
 import { InvestigationGraph } from "./workbench/InvestigationGraph";
+import { EntityTableContainer } from "./workbench/EntityTable";
 import { NodeDetailPanelContainer } from "./workbench/NodeDetailPanel";
 import { SearchBar } from "./workbench/SearchBar";
 import { toIdentifierRows, toggleSelection, type IdentifierRow } from "./workbench/model";
@@ -57,6 +58,9 @@ export function WorkbenchPage({ initialText = "" }: { initialText?: string }) {
         </div>
         <NodeDetailPanelContainer graph={graph} />
       </div>
+      {/* P3-009: the entities of the same projection in a virtualized table
+          (default sort + filter; 100,000 rows render only the visible window). */}
+      <EntityTableContainer nodes={graph.nodes} />
     </div>
   );
 }
