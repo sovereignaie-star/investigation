@@ -43,7 +43,14 @@ export function statusRows(text) {
 }
 
 // ADR-22: subject line follows Conventional Commits, e.g. "fix(web): repair list [P0-004]".
+// P6-019: the PR-title rule (J-12) makes every squash merge commit subject start with the
+// [TASK-ID] prefix — "[P3-003] docs: blocked ...". The prefix is accepted before the
+// conventional part (the task id still satisfies GR-03's id requirement).
 export const CONVENTIONAL_RE = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: \S/;
+export const TASK_PREFIX_RE = /^(\[(P[0-9]-\d{3})\]\s*)+/;
+export function subjectWithoutTaskPrefix(subject) {
+  return subject.replace(TASK_PREFIX_RE, "");
+}
 
 export function taskIdsInMessage(msg) {
   return [...new Set([...msg.matchAll(TASK_RE)].map((m) => m[1]))];
@@ -58,7 +65,7 @@ export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmap
   const ids = taskIdsInMessage(message);
   if (ids.length === 0) errors.push("GR-03: commit message must reference at least one task id, e.g. [P0-004].");
   const subject = message.split("\n").find((l) => l.trim()) ?? "";
-  if (!CONVENTIONAL_RE.test(subject))
+  if (!CONVENTIONAL_RE.test(subjectWithoutTaskPrefix(subject)))
     errors.push(`GR-03: subject must follow Conventional Commits "type(scope): summary" (ADR-22); got "${subject.slice(0, 60)}".`);
   for (const id of ids) if (!roadmapIds.has(id)) errors.push(`GR-03: task ${id} does not exist in ${ROADMAP}.`);
   if (changed.has(WORKLOG)) {
