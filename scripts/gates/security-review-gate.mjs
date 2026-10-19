@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// D-8 (owner decision; tracked under P2-003): a pull request that touches a security or egress path needs an APPROVED review from
-// the designated human reviewer on its current head commit. Everything else passes without that review.
+// P6-018 (owner decision 2026-10-19): the D-8 mandatory human review is ABOLISHED. The automated checks
+// (CI, CodeQL, gitleaks, governance, build, test) are the only merge gate; no human review is required.
+// This gate keeps exactly one human brake: an explicit HOLD comment by the designated reviewer stops the
+// merge ("أبقِ آلية HOLD فقط"). D-8 paths are still detected and reported, as an advisory only.
 //
 // The decision is a pure function (`decide`) over data read from the GitHub API, so it is unit-tested without a
 // network (security-review-gate.test.mjs). `main` reads the pull request, every page of its files and reviews, and
@@ -30,8 +32,6 @@ export const D8_PATHS = Object.freeze([
 
 /** A review from someone without repository access does not count, even from the right account. */
 const TRUSTED_ASSOCIATION = new Set(["COLLABORATOR", "MEMBER", "OWNER"]);
-/** States that change the decision. COMMENTED and PENDING leave an earlier decision in force. */
-const DECISIVE = new Set(["APPROVED", "CHANGES_REQUESTED", "DISMISSED"]);
 
 export function isD8Path(file) {
   return D8_PATHS.some((p) => (p.endsWith("/") ? file.startsWith(p) : file === p));
@@ -44,6 +44,14 @@ export function isD8Path(file) {
  *                      commit_id: string | null, author_association: string, submitted_at?: string | null }[] }} pr
  * @returns {{ pass: boolean, reason: string, touched: string[] }}
  */
+/**
+ * @param {{ headSha: string, changedFiles: number,
+ *           files: { filename: string, previous_filename?: string }[],
+ *           reviews: { id: number, user: { login: string, id: number } | null, state: string,
+ *                      commit_id: string | null, author_association: string, body?: string | null,
+ *                      submitted_at?: string | null }[] }} pr
+ * @returns {{ pass: boolean, reason: string, touched: string[] }}
+ */
 export function decide({ headSha, changedFiles, files, reviews }) {
   if (!/^[0-9a-f]{40}$/.test(headSha ?? "")) return { pass: false, reason: "head commit unknown", touched: [] };
   if (!Number.isInteger(changedFiles) || files.length !== changedFiles)
@@ -52,31 +60,25 @@ export function decide({ headSha, changedFiles, files, reviews }) {
       reason: `file list incomplete: ${files.length} listed of ${changedFiles} changed`,
       touched: [],
     };
-  // a rename out of a D-8 path touches it as much as an edit inside it
+  // a rename out of a D-8 path touches it as much as an edit inside it (advisory report)
   const touched = [...new Set(files.flatMap((f) => [f.filename, f.previous_filename]).filter((f) => f && isD8Path(f)))].sort();
-  if (touched.length === 0) return { pass: true, reason: "no D-8 path touched; D-8 review not required", touched };
-
-  const decisive = reviews
-    .filter((r) => r.user?.id === REVIEWER.id && DECISIVE.has(r.state))
-    // review ids increase with submission order; ties are impossible
-    .sort((a, b) => a.id - b.id);
-  const last = decisive.at(-1);
   const who = `@${REVIEWER.login}`;
-  if (!last) return { pass: false, reason: `D-8 paths touched; no review by ${who}`, touched };
-  if (last.state !== "APPROVED") return { pass: false, reason: `D-8 paths touched; latest review by ${who} is ${last.state}`, touched };
-  if (last.commit_id !== headSha)
-    return {
-      pass: false,
-      reason: `D-8 paths touched; ${who} approved ${String(last.commit_id).slice(0, 7)}, not the current head ${headSha.slice(0, 7)}`,
-      touched,
-    };
-  if (!TRUSTED_ASSOCIATION.has(last.author_association))
-    return {
-      pass: false,
-      reason: `D-8 paths touched; ${who} approved but has no repository access (${last.author_association})`,
-      touched,
-    };
-  return { pass: true, reason: `D-8 paths touched; approved by ${who} on the current head`, touched };
+  // HOLD (P6-018): the designated reviewer's LATEST review decides. An explicit HOLD token in its body stops
+  // the merge; a later review without one clears it. No waiting period, no other human gate.
+  const byReviewer = reviews
+    .filter((r) => r.user?.id === REVIEWER.id && TRUSTED_ASSOCIATION.has(r.author_association))
+    .sort((a, b) => a.id - b.id);
+  const last = byReviewer.at(-1);
+  if (last && /\bHOLD\b/i.test(last.body ?? ""))
+    return { pass: false, reason: `HOLD by ${who}: merging stops until the reviewer lifts it`, touched };
+  return {
+    pass: true,
+    reason:
+      touched.length > 0
+        ? `D-8 paths touched (advisory only — mandatory D-8 review abolished by owner decision 2026-10-19); no HOLD by ${who}`
+        : `no D-8 path touched; no HOLD by ${who}`,
+    touched,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
