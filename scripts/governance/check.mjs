@@ -57,7 +57,31 @@ export function taskIdsInMessage(msg) {
 }
 
 /** Core rule evaluation, pure so it can be unit-tested. */
-export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmapIds }) {
+/**
+ * GR-09 (owner decision 2026-10-19, P6-020): append-only is checked on CONTENT, not
+ * diff hunks — the old WORKLOG bytes must remain a byte-prefix of the new one. The
+ * single tolerated repair: when the old file lacked its trailing newline, the new
+ * file may add exactly that newline after the old bytes (a hunk diff then shows the
+ * last old line as removed+re-added — a false positive the hunk-based check could
+ * not distinguish from real deletion). Deletion, modification, mid-insertion and
+ * reordering are still rejected: every old byte must still be present, in order,
+ * at the start of the file.
+ */
+export function appendOnlyOk(worklogOld, worklogNew) {
+  if (worklogNew.startsWith(worklogOld)) return true;
+  return !worklogOld.endsWith("\n") && worklogNew.startsWith(worklogOld + "\n");
+}
+
+function gr09Errors(worklogRemoved, worklogOld, worklogNew) {
+  if (worklogOld !== undefined && worklogNew !== undefined) {
+    return appendOnlyOk(worklogOld, worklogNew) ? [] : [`GR-09: ${WORKLOG} is append-only; existing entries were removed or modified.`];
+  }
+  // Fallback (unit tests / callers without contents): hunk-based check.
+  const removedNonBlank = worklogRemoved.filter((l) => l.trim() !== "" && !/^(<{7}|={7}|>{7})/.test(l.trim()));
+  return removedNonBlank.length ? [`GR-09: ${WORKLOG} is append-only; ${removedNonBlank.length} line(s) removed.`] : [];
+}
+
+export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmapIds, worklogOld, worklogNew }) {
   const errors = [];
   const changed = new Set(files);
   if (!changed.has(STATUS)) errors.push(`GR-01: ${STATUS} must be updated in the same commit.`);
@@ -72,8 +96,7 @@ export function evaluate({ files, message, worklogAdded, worklogRemoved, roadmap
     const added = worklogAdded.join("\n");
     if (!added.trim()) errors.push(`GR-04: ${WORKLOG} has no added lines.`);
     for (const id of ids) if (!added.includes(id)) errors.push(`GR-04: new ${WORKLOG} entry must mention ${id}.`);
-    const removedNonBlank = worklogRemoved.filter((l) => l.trim() !== "" && !/^(<{7}|={7}|>{7})/.test(l.trim()));
-    if (removedNonBlank.length) errors.push(`GR-09: ${WORKLOG} is append-only; ${removedNonBlank.length} line(s) removed.`);
+    errors.push(...gr09Errors(worklogRemoved, worklogOld, worklogNew));
   }
   return errors;
 }
@@ -102,8 +125,19 @@ function checkStaged(msgFile) {
   if (/^(Merge|Revert) /.test(message)) return [];
   const files = git(["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
   const { added, removed } = diffLines(git(["diff", "--cached", "-U0", "--", WORKLOG]));
+  let worklogOld, worklogNew;
+  try {
+    worklogOld = git(["show", `HEAD:${WORKLOG}`]);
+  } catch {
+    worklogOld = ""; // file not in HEAD yet: everything is an addition
+  }
+  try {
+    worklogNew = git(["show", `:${WORKLOG}`]); // the staged version
+  } catch {
+    worklogNew = undefined; // leave the hunk-based fallback
+  }
   const roadmapIds = existsSync(path.join(ROOT, ROADMAP)) ? readRoadmapIds(null) : new Set();
-  return evaluate({ files, message, worklogAdded: added, worklogRemoved: removed, roadmapIds });
+  return evaluate({ files, message, worklogAdded: added, worklogRemoved: removed, roadmapIds, worklogOld, worklogNew });
 }
 
 function checkCommit(sha) {
@@ -115,13 +149,25 @@ function checkCommit(sha) {
   const base = parents[0] || "4b825dc642cb6eb9a060e54bf8d69288fbee4904"; // empty tree for root commit
   const files = git(["diff", "--name-only", base, sha]).split("\n").filter(Boolean);
   const { added, removed } = diffLines(git(["diff", "-U0", base, sha, "--", WORKLOG]));
+  let worklogOld = "",
+    worklogNew = undefined;
+  try {
+    worklogOld = git(["show", `${base}:${WORKLOG}`]);
+  } catch {
+    worklogOld = ""; // file not in the base yet: everything is an addition
+  }
+  try {
+    worklogNew = git(["show", `${sha}:${WORKLOG}`]);
+  } catch {
+    worklogNew = undefined; // leave the hunk-based fallback
+  }
   let roadmapIds;
   try {
     roadmapIds = readRoadmapIds(sha);
   } catch {
     roadmapIds = new Set();
   }
-  return { errors: evaluate({ files, message, worklogAdded: added, worklogRemoved: removed, roadmapIds }) };
+  return { errors: evaluate({ files, message, worklogAdded: added, worklogRemoved: removed, roadmapIds, worklogOld, worklogNew }) };
 }
 
 function checkRange(range) {
