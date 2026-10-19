@@ -38,6 +38,37 @@ test("T-GOV-007 WORKLOG is append-only", () => {
   assert.ok(evaluate({ ...ok, worklogRemoved: ["old entry"] }).some((x) => x.startsWith("GR-09")));
   assert.deepEqual(evaluate({ ...ok, worklogRemoved: [""] }), []);
 });
+// T-GOV-012..T-GOV-018 — GR-09 content-based append-only check (owner decision 2026-10-19).
+// The old WORKLOG bytes must remain a byte-prefix of the new one; the single tolerated
+// repair is adding the missing trailing newline (a hunk diff shows that as the last old
+// line removed+re-added, a false positive the hunk-based check could not distinguish
+// from real deletion). Deletion, modification, mid-insertion and reordering stay rejected.
+const base = { ...ok, worklogRemoved: ["- old last line"] };
+
+test("T-GOV-012 pure append passes (content check)", () => {
+  assert.deepEqual(evaluate({ ...base, worklogOld: "a\nb\n", worklogNew: "a\nb\nc\n" }), []);
+});
+test("T-GOV-013 EOL repair passes: old lacked trailing newline, new adds it then appends", () => {
+  assert.deepEqual(evaluate({ ...base, worklogOld: "a\nb", worklogNew: "a\nb\nc\n" }), []);
+});
+test("T-GOV-014 deletion is rejected (content check)", () => {
+  assert.ok(evaluate({ ...base, worklogOld: "a\nb\n", worklogNew: "a\n" }).some((x) => x.startsWith("GR-09")));
+});
+test("T-GOV-015 modification is rejected (content check)", () => {
+  assert.ok(evaluate({ ...base, worklogOld: "a\nb\n", worklogNew: "a\nX\n" }).some((x) => x.startsWith("GR-09")));
+});
+test("T-GOV-016 mid-insertion is rejected (content check)", () => {
+  assert.ok(evaluate({ ...base, worklogOld: "a\nb\n", worklogNew: "a\nx\nb\n" }).some((x) => x.startsWith("GR-09")));
+});
+test("T-GOV-017 reordering is rejected (content check)", () => {
+  assert.ok(evaluate({ ...base, worklogOld: "a\nb\n", worklogNew: "b\na\n" }).some((x) => x.startsWith("GR-09")));
+});
+test("T-GOV-018 hunk-based removed lines are ignored when contents are provided", () => {
+  // the EOL-repair diff reports the last old line as removed; with contents present
+  // the content check alone decides, so no GR-09 despite the hunk
+  assert.deepEqual(evaluate({ ...base, worklogOld: "a\nb", worklogNew: "a\nb\nc\n" }), []);
+});
+
 test("T-GOV-008 task ids parsed once", () => {
   assert.deepEqual(taskIdsInMessage("a [P0-004] b [P0-004] [P1-010]"), ["P0-004", "P1-010"]);
 });
