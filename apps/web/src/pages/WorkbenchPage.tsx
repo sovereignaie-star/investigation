@@ -1,10 +1,12 @@
 import * as React from "react";
 import { extract } from "@ir/core/identifiers";
+import type { Graph as ProjectionGraph, GraphNode } from "@ir/ledger/projections";
 
 import { FileUploader } from "./workbench/FileUploader";
 import { IdentifierSelector } from "./workbench/IdentifierSelector";
+import { InvestigationGraph } from "./workbench/InvestigationGraph";
 import { SearchBar } from "./workbench/SearchBar";
-import { toIdentifierRows, toggleSelection } from "./workbench/model";
+import { toIdentifierRows, toggleSelection, type IdentifierRow } from "./workbench/model";
 
 /**
  * P3-004 (UC-02): the workbench input flow — paste free text or read a text file, extract
@@ -15,6 +17,25 @@ import { toIdentifierRows, toggleSelection } from "./workbench/model";
 export function WorkbenchPage({ initialText = "" }: { initialText?: string }) {
   const [rows, setRows] = React.useState(() => toIdentifierRows(extract(initialText)));
   const [selected, setSelected] = React.useState<ReadonlySet<string>>(() => new Set());
+
+  // P3-005: the extracted identifiers become the graph's first nodes (view state only).
+  const graph = React.useMemo<ProjectionGraph>(
+    () => ({
+      nodes: rows.map((row: IdentifierRow): GraphNode => ({
+        id: row.id,
+        type: row.typeId,
+        canonicalKey: row.value,
+        labels: { ar: row.typeLabelAr },
+        props: {},
+        aliases: [],
+        attributes: [],
+        observations: { positive: 0, negative: 0, error: 0 },
+        evidenceIds: [],
+      })),
+      edges: [],
+    }),
+    [rows],
+  );
 
   const handleText = React.useCallback((text: string) => {
     setRows(toIdentifierRows(extract(text)));
@@ -27,6 +48,10 @@ export function WorkbenchPage({ initialText = "" }: { initialText?: string }) {
       <SearchBar onText={handleText} />
       <FileUploader onText={handleText} />
       <IdentifierSelector rows={rows} selected={selected} onToggle={(id) => setSelected((current) => toggleSelection(current, id))} />
+      {/* P3-005: the extracted identifiers render as graph nodes (the run wiring adds edges). */}
+      <div className="h-[400px] rounded-md border border-border">
+        <InvestigationGraph graph={graph} />
+      </div>
     </div>
   );
 }
