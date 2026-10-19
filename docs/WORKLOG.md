@@ -4109,3 +4109,33 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 - **إغلاق P3-026:** دُمج PR #258 بإيداع `e048f21` (squash) على main. كل فحوص `main` بعد الدمج خضراء (governance/ci/secrets/zap/codeql)؛ التحقق المحلي على رأس main: **2101 ناجحاً/6 متخطاة/0 فاشل** (exit 0) وconsistency أخضر.
 - **الحالة:** P3-026 مغلقة — مسار 100,000 معرّف عبر المحرك الحقيقي يعمل بـDOM ثابت وصفحة مستجيبة. التالي حسب الخارطة: P3-010 (عارض الأدلة) ثم P3-011 (وصل بيانات التشغيل الحي).
+
+### 2026-10-19 — [P6-016] docs: close P6-016 — merge evidence e97c30c, post-merge verification
+
+- **السياق:** صف المهمة بقي `in_progress` («بانتظار المراجعة وCI») بعد دمج #233 — مصالحة وثائقية بلا أي تغيير شيفرة.
+- **الدليل [مُقاس] على رأس main `dd4c553`:** `pnpm test` => exit 0 (**2101 ناجحاً/6 متخطاة/0 فاشل**) — آلية `@ir/test-utils` (`SLOW_MS=15_000` + `slowIt` بعقد قابل للحقن) موجودة والاختبارات الموسومة تعمل ضمن السلسلة؛ lint=0، typecheck=0، build=0، `check.mjs --consistency` => exit 0؛ كل فحوص main الستة المطلوبة ناجحة على `dd4c553` (استعلام فعلي لcheck-runs).
+- **إفصاح صادق:** فحص `governance` على تشغيل الدفع إلى main للإيداع `e97c30c` نفسه فشل تاريخياً — وهو عين العيب الذي أصلحه P6-019 لاحقاً (بادئة `[TASK-ID]` كانت تُرفض قبل إصلاح `subjectWithoutTaskPrefix`)؛ أخضر على كل الرؤوس اللاحقة.
+- **الحالة:** P6-016 مغلقة (done) بمعايير القبول مستوفاة على main.
+
+### 2026-10-19 — [P6-017] docs: close P6-017 — merge evidence 24bd6a0, post-merge verification
+
+- **الدليل [مُقاس] على رأس main `dd4c553`:** `node --test scripts/governance/check-pr-title.test.mjs` => 4/4 (exit 0)؛ الحارس في CI (`governance.yml` يشغل `check-pr-title.mjs` على أحداث opened/edited/synchronize/reopened)؛ lint/typecheck/build/test (2101/6/0)/consistency كلها exit 0؛ فحوص main الستة ناجحة على `dd4c553`.
+- **إفصاح صادق:** فحص `governance` على تشغيل الدفع إلى main للإيداع `24bd6a0` فشل تاريخياً لنفس عيب البادئة (أصلحه P6-019)؛ أخضر على كل الرؤوس اللاحقة.
+- **الحالة:** P6-017 مغلقة (done).
+
+### 2026-10-19 — [P6-018] docs: close P6-018 — merge evidence 9001484, post-merge verification
+
+- **الدليل [مُقاس] على رأس main `dd4c553`:** `node --test scripts/gates/security-review-gate.test.mjs` => 9/9 (exit 0) على المنطق الجديد (HOLD فقط، لا مسار D-8 يحجب)؛ فحوص main الستة ناجحة على `dd4c553`.
+- **حسم الملاحظة التنفيذية المعروضة على المالك [مُتحقَّق]:** قياس حماية `main` بتاريخ 2026-10-19 يظهر `required_approving_review_count=0` و`require_code_owner_reviews=false` و`enforce_admins=true` — إزالة اشتراط المراجعة من الحماية نُفّذت فعلاً؛ البوابات الآلية الست هي الحاجزة الوحيدة.
+- **إفصاح صادق:** فحص `gates` على تشغيل الدفع إلى main للإيداع `9001484` فشل مرة لأسباب بيئية (سجل الوظيفة: `ENOTEMPTY /tmp/ir-gate-chrome-*` — سباق تنظيف مجلد Chromium مؤقت) لا لعيب في المهمة؛ أخضر على كل الرؤوس اللاحقة.
+- **الحالة:** P6-018 مغلقة (done).
+
+### 2026-10-19 — [P6-019] docs: close P6-019 — merge evidence acc01b2, post-merge verification
+
+- **الدليل [مُقاس] على رأس main `dd4c553`:** `node --test scripts/governance/check.test.mjs` => 28/28 (exit 0، تشمل T-GOV-009)؛ معيار القبول الحرفي «فحص governance على main أخضر» مستوفى: CI `governance` على `dd4c553` => success، ومحلياً `--consistency` => exit 0؛ فحوص main الستة ناجحة على `dd4c553` (وكلها ناجحة على `acc01b2` نفسه).
+- **الحالة:** P6-019 مغلقة (done).
+
+### 2026-10-19 — [P6-020] docs: close P6-020 — merge evidence 5a5aa9d, post-merge verification
+
+- **الدليل [مُقاس] على رأس main `dd4c553`:** اختبارات الحارس 28/28 (تشمل T-GOV-012..T-GOV-018)؛ سيناريو القبول «الإلحاق فوق رأس بلا فاصل سطر أخير يُقبل» مثبت حياً بهذا الإيداع نفسه — الإلحاق على `docs/WORKLOG.md` فوق `dd4c553` عبر `checkStaged` أخضر في هذا الـPR؛ الحذف والتعديل والإدراج في الوسط وإعادة الترتيب تُرفض (مغطاة بالاختبارات). كل فحوص main الستة ناجحة على `dd4c553` و`5a5aa9d`.
+- **الحالة:** P6-020 مغلقة (done).
