@@ -1,12 +1,12 @@
-// D-8 (tracked under P2-003): unit tests for the D-8 security review gate. Run: node --test scripts/gates/security-review-gate.test.mjs
-import { readFileSync } from "node:fs";
-import path from "node:path";
+// P6-018 (owner decision 2026-10-19): the D-8 mandatory human review is ABOLISHED.
+// The gate is now HOLD-only: the designated reviewer can stop a merge with an
+// explicit HOLD comment; everything else passes (D-8 paths are reported as an
+// advisory only). Run: node --test scripts/gates/security-review-gate.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { D8_PATHS, REVIEWER, decide, isD8Path } from "./security-review-gate.mjs";
+import { REVIEWER, decide, isD8Path } from "./security-review-gate.mjs";
 
 const HEAD = "a".repeat(40);
-const OLD = "b".repeat(40);
 const me = { login: REVIEWER.login, id: REVIEWER.id };
 let next = 1;
 const review = (state, commit = HEAD, extra = {}) => ({
@@ -15,6 +15,7 @@ const review = (state, commit = HEAD, extra = {}) => ({
   state,
   commit_id: commit,
   author_association: "COLLABORATOR",
+  body: "",
   ...extra,
 });
 const pr = (files, reviews = [], extra = {}) => ({
@@ -56,121 +57,57 @@ test("paths: directories by prefix, files exactly, nothing else", () => {
     assert.equal(isD8Path(f), false, f);
 });
 
-test("a pull request outside D-8 passes without any review", () => {
-  const r = decide(pr(["docs/STATUS.md", "apps/web/src/App.tsx"]));
+test("fail closed: head commit unknown or an incomplete file list never passes", () => {
+  assert.equal(decide(pr(["docs/STATUS.md"], [], { headSha: "" })).pass, false);
+  assert.equal(decide(pr(["docs/STATUS.md"], [], { headSha: "zz" })).pass, false);
+  assert.equal(decide(pr(["docs/STATUS.md"], [], { changedFiles: 2 })).pass, false);
+});
+
+test("P6-018: a pull request touching D-8 paths passes without any review (D-8 abolished, advisory only)", () => {
+  const r = decide(pr(["apps/server/src/app.ts", "packages/egress/src/index.ts"]));
   assert.equal(r.pass, true);
-  assert.deepEqual(r.touched, []);
+  assert.deepEqual(r.touched, ["apps/server/src/app.ts", "packages/egress/src/index.ts"]);
+  assert.match(r.reason, /advisory only/);
 });
 
-test("a D-8 change without a review fails", () => {
-  const r = decide(pr(["docs/STATUS.md", "apps/server/src/app.ts"]));
+test("P6-018: an explicit HOLD comment by the designated reviewer stops the merge", () => {
+  const r = decide(pr(["apps/server/src/app.ts"], [review("COMMENTED", HEAD, { body: "HOLD — need to discuss the egress change" })]));
   assert.equal(r.pass, false);
-  assert.deepEqual(r.touched, ["apps/server/src/app.ts"]);
+  assert.match(r.reason, /HOLD/);
 });
 
-test("approval by the reviewer on the current head passes", () => {
-  assert.equal(decide(pr(["packages/store/src/case.ts"], [review("APPROVED")])).pass, true);
-});
-
-test("approval on an earlier commit does not count", () => {
-  const r = decide(pr(["packages/store/src/case.ts"], [review("APPROVED", OLD)]));
+test("P6-018: a HOLD blocks even a pull request outside D-8 paths", () => {
+  const r = decide(pr(["docs/STATUS.md"], [review("COMMENTED", HEAD, { body: "HOLD: doc wording needs the owner" })]));
   assert.equal(r.pass, false);
-  assert.match(r.reason, /not the current head/);
+  assert.match(r.reason, /HOLD/);
 });
 
-test("the latest decisive review wins; comments do not cancel an approval", () => {
-  const files = ["apps/server/src/app.ts"];
-  assert.equal(decide(pr(files, [review("APPROVED"), review("CHANGES_REQUESTED")])).pass, false);
-  assert.equal(decide(pr(files, [review("CHANGES_REQUESTED"), review("APPROVED")])).pass, true);
-  assert.equal(decide(pr(files, [review("APPROVED"), review("COMMENTED")])).pass, true);
-  // a dismissed approval keeps its id and turns into DISMISSED
-  assert.equal(decide(pr(files, [review("DISMISSED")])).pass, false);
+test("P6-018: a HOLD from anyone but the designated reviewer does not block", () => {
+  const other = { login: "someone-else", id: 1 };
+  const r = decide(pr(["apps/server/src/app.ts"], [{ ...review("COMMENTED", HEAD, { body: "HOLD" }), user: other }]));
+  assert.equal(r.pass, true);
 });
 
-test("approval from anyone else, or the same login with another id, does not count", () => {
-  const files = [".github/workflows/ci.yml"];
-  assert.equal(decide(pr(files, [review("APPROVED", HEAD, { user: { login: "someone", id: 1 } })])).pass, false);
-  assert.equal(decide(pr(files, [review("APPROVED", HEAD, { user: { login: REVIEWER.login, id: 42 } })])).pass, false);
-  assert.equal(decide(pr(files, [review("APPROVED", HEAD, { user: null })])).pass, false);
+test("P6-018: the designated reviewer's latest review decides — a later review without HOLD clears it", () => {
+  // chronological: HOLD first, then a clean review => the latest (clean) wins => pass
+  const held = review("COMMENTED", HEAD, { body: "HOLD for now" });
+  const cleared = review("APPROVED", HEAD, { body: "addressed; good to merge" });
+  const r = decide(pr(["apps/server/src/app.ts"], [held, cleared]));
+  assert.equal(r.pass, true);
+  // chronological: clean first, then a HOLD => the latest (HOLD) wins => blocked
+  const cleared2 = review("APPROVED", HEAD, { body: "good to merge" });
+  const held2 = review("COMMENTED", HEAD, { body: "HOLD: new information arrived" });
+  const r2 = decide(pr(["apps/server/src/app.ts"], [cleared2, held2]));
+  assert.equal(r2.pass, false);
 });
 
-test("approval without repository access does not count", () => {
-  const r = decide(pr(["apps/server/x.ts"], [review("APPROVED", HEAD, { author_association: "CONTRIBUTOR" })]));
-  assert.equal(r.pass, false);
-  assert.match(r.reason, /no repository access/);
+test("P6-018: CHANGES_REQUESTED without an explicit HOLD does not block (advisory signal only)", () => {
+  const r = decide(pr(["apps/server/src/app.ts"], [review("CHANGES_REQUESTED", HEAD, { body: "please reconsider the timeout" })]));
+  assert.equal(r.pass, true);
+  assert.match(r.reason, /advisory/);
 });
 
-test("a rename out of a D-8 path counts as touching it", () => {
-  const r = decide(pr([{ filename: "docs/old/case.ts", previous_filename: "packages/store/src/case.ts" }]));
-  assert.equal(r.pass, false);
-  assert.deepEqual(r.touched, ["packages/store/src/case.ts"]);
-});
-
-test("fails closed on an incomplete file list or an unknown head", () => {
-  const p = pr(["docs/STATUS.md"]);
-  assert.equal(decide({ ...p, changedFiles: 2 }).pass, false);
-  assert.equal(decide({ ...p, changedFiles: undefined }).pass, false);
-  assert.equal(decide({ ...p, headSha: "" }).pass, false);
-  assert.equal(decide({ ...p, headSha: "abc" }).pass, false);
-});
-
-test("CODEOWNERS names the reviewer for every D-8 path, after any broader pattern", () => {
-  const root = path.resolve(import.meta.dirname, "..", "..");
-  const lines = readFileSync(path.join(root, ".github", "CODEOWNERS"), "utf8")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"))
-    .map((l) => l.split(/\s+/));
-  for (const p of D8_PATHS) {
-    // CODEOWNERS: the last matching pattern wins; find the last line that matches this path
-    const probe = p.endsWith("/") ? `${p}x` : p;
-    const matches = lines.filter(([pat]) => {
-      if (pat === "*") return true;
-      const anchored = pat.replace(/^\//, "");
-      return anchored.endsWith("/") ? probe.startsWith(anchored) : probe === anchored;
-    });
-    const owners = matches.at(-1)?.slice(1) ?? [];
-    assert.ok(owners.includes(`@${REVIEWER.login}`), `${p}: last matching CODEOWNERS line is ${matches.at(-1)?.join(" ")}`);
-  }
-});
-
-test("CODEOWNERS gives the reviewer nothing beyond the D-8 paths", () => {
-  const root = path.resolve(import.meta.dirname, "..", "..");
-  const owned = readFileSync(path.join(root, ".github", "CODEOWNERS"), "utf8")
-    .split("\n")
-    .map((l) => l.trim().split(/\s+/))
-    .filter((parts) => parts[0] && !parts[0].startsWith("#") && parts.includes(`@${REVIEWER.login}`))
-    .map(([pat]) => pat.replace(/^\//, ""));
-  assert.deepEqual([...owned].sort(), [...D8_PATHS].sort());
-});
-
-test("CODEOWNERS has no catch-all and lists the reviewer ALONE on every line (Option 2: native code-owner review)", () => {
-  const root = path.resolve(import.meta.dirname, "..", "..");
-  const lines = readFileSync(path.join(root, ".github", "CODEOWNERS"), "utf8")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"))
-    .map((l) => l.split(/\s+/));
-  assert.ok(lines.length > 0);
-  for (const [pat, ...owners] of lines) {
-    assert.notEqual(pat, "*", "a catch-all line would make every pull request need an owner approval (deadlock)");
-    assert.deepEqual(owners, [`@${REVIEWER.login}`], `${pat}: owners must be exactly the D-8 reviewer`);
-  }
-});
-
-test("negative control: the CODEOWNERS checks above reject the previous file shape", () => {
-  const old = ["*  @sovereignaie-star", "/packages/egress/  @xuuux-voox @sovereignaie-star"].map((l) => l.split(/\s+/));
-  assert.ok(old.some(([pat]) => pat === "*"));
-  assert.ok(old.some(([, ...o]) => o.length !== 1 || o[0] !== `@${REVIEWER.login}`));
-});
-
-test("the Actions check stays advisory: no trigger that runs the workflow file from the pull request", () => {
-  const root = path.resolve(import.meta.dirname, "..", "..");
-  const wf = readFileSync(path.join(root, ".github", "workflows", "security-review.yml"), "utf8");
-  const on = wf.slice(wf.indexOf("\non:"), wf.indexOf("\npermissions:"));
-  // pull_request, pull_request_review and pull_request_review_comment run the workflow file from the pull request,
-  // which can rewrite it (docs/security/D8_ENFORCEMENT_OPTIONS.md).
-  assert.doesNotMatch(on, /^\s{2}pull_request(_review(_comment)?)?:/m);
-  assert.match(on, /^\s{2}pull_request_target:/m);
-  assert.match(wf, /^\s{2}security-review-advisory:/m, "the job must not take the name a required check would use");
+test("P6-018: a HOLD from the designated reviewer without repository access does not block", () => {
+  const r = decide(pr(["apps/server/src/app.ts"], [review("COMMENTED", HEAD, { body: "HOLD", author_association: "NONE" })]));
+  assert.equal(r.pass, true);
 });
