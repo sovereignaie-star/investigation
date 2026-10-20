@@ -74,6 +74,7 @@ const renderView = (props: Partial<Parameters<typeof SavedInvestigationsView>[0]
   renderToStaticMarkup(
     React.createElement(SavedInvestigationsView, {
       cases: [ACTIVE, LOCKED],
+      listStatus: "success",
       state: { kind: "idle" },
       token: "",
       onTokenChange: () => {},
@@ -83,13 +84,27 @@ const renderView = (props: Partial<Parameters<typeof SavedInvestigationsView>[0]
     } as Parameters<typeof SavedInvestigationsView>[0]),
   );
 
-function withQueryClient(element: React.ReactElement): string {
+/** P3-015 hardening: the list query key carries the token (the cold-session flow). */
+function withQueryClient(element: React.ReactElement, token = ""): string {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(getListCasesQueryKey(), { cases: [ACTIVE, LOCKED] });
+  client.setQueryData([...getListCasesQueryKey(), token], { cases: [ACTIVE, LOCKED] });
   return renderToStaticMarkup(React.createElement(QueryClientProvider, { client }, element));
 }
 
 describe("SavedInvestigationsView (P3-015 — فتح قضية بعد إعادة التشغيل)", () => {
+  it("an unauthorized/failed list is an honest error state — never «no saved cases» dressed as empty", () => {
+    const html = renderView({ listStatus: "error" });
+    expect(html).toContain('data-testid="saved-list-error"');
+    expect(html).toContain("تعذر جلب القضايا");
+    expect(html).not.toContain("لا قضايا محفوظة بعد");
+  });
+
+  it("a loading list shows the loading state, not an empty one", () => {
+    const html = renderView({ listStatus: "loading" });
+    expect(html).toContain("جارٍ تحميل القضايا");
+    expect(html).not.toContain("لا قضايا محفوظة بعد");
+  });
+
   it("lists the saved cases with an open action for the active one — the workbench re-opens from the server", () => {
     const html = renderView();
     expect(html).toContain('data-testid="open-case-01M58XF9ZKJT50S8E8JYXF6P3X"');
