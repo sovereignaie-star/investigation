@@ -1,0 +1,66 @@
+[
+  {
+    "match": "https://dns.google/resolve?name=example.com&type=1",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[{\"name\":\"example.com.\",\"type\":1,\"TTL\":300,\"data\":\"93.184.216.34\"}]}"
+    }
+  },
+  {
+    "match": "https://dns.google/resolve?name=example.com&type=28",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[{\"name\":\"example.com.\",\"type\":28,\"TTL\":300,\"data\":\"2606:2800:220:1:248:1893:25c8:1946\"}]}"
+    }
+  },
+  {
+    "match": "https://dns.google/resolve?name=example.com&type=15",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[{\"name\":\"example.com.\",\"type\":15,\"TTL\":300,\"data\":\"10 mail.example.com\"}]}"
+    }
+  },
+  {
+    "match": "https://dns.google/resolve?name=example.com&type=2",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[{\"name\":\"example.com.\",\"type\":2,\"TTL\":300,\"data\":\"a.iana-servers.net\"}]}"
+    }
+  },
+  {
+    "match": "https://dns.google/resolve?name=example.com&type=16",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[{\"name\":\"example.com.\",\"type\":16,\"TTL\":300,\"data\":\"\\\"v=spf1 -all\\\"\"}]}"
+    }
+  },
+  {
+    "match": "https://dns.google/resolve?name=example.com&type=5",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[]}"
+    }
+  },
+  {
+    "match": "https://crt.sh/?q=%25.example.com&output=json",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/json" },
+      "body": "[{\"issuer_ca_id\":16418,\"issuer_name\":\"Let's Encrypt\",\"common_name\":\"example.com\",\"name_value\":\"example.com\\nwww.example.com\",\"id\":123456,\"not_before\":\"2026-01-01T00:00:00\",\"not_after\":\"2027-01-01T00:00:00\",\"serial\":\"0a1b2c3d\"}]"
+    }
+  },
+  {
+    "match": "https://dns.google/resolve?name=34.216.184.93.origin.asn.cymru.com&type=16",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/dns-json" },
+      "body": "{\"Status\":0,\"Answer\":[{\"name\":\"34.216.184.93.origin.asn.cymru.com.\",\"type\":16,\"TTL\":300,\"data\":\"\\\"15133 | 93.184.216.0/24 | US | arin |\\\"\"}]}"
+    }
+  }
+]

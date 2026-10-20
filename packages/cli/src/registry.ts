@@ -17,6 +17,7 @@
  *   connection, including an RDAP server discovered in an IANA bootstrap file.
  * - `pageFetch`: the transform fetches pages and obeys robots.txt (ADR-08 decision C).
  */
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { canonicalKey } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
@@ -32,6 +33,8 @@ import {
   rdapDomain,
   rdapIp,
   waybackCdx,
+  warcArchive,
+  bitcoinAddress,
   ofacSdn,
   unScConsolidated,
   urlscanSearch,
@@ -140,6 +143,39 @@ const httpUrlInput = (url: string) => {
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error(`only http(s) URLs are accepted ("${url}")`);
   return { url };
+};
+
+/**
+ * P3-020 / UC-05: a Bitcoin address — the Base58Check checksum is verified HERE, before the case is
+ * even opened (a well-shaped address with a wrong checksum is a typo, not a subject). The
+ * transform verifies it again before its first request (defense in depth, and the only check on
+ * engine paths that do not go through this gate).
+ */
+const bitcoinInput = (raw: string) => {
+  const address = raw.trim();
+  if (!/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address)) throw new Error(`"${raw}" is not a Bitcoin address`);
+  // Base58Check: the last four bytes must equal the first four of SHA-256(SHA-256(version‖payload)).
+  // Leading '1' characters are leading zero bytes (the P2PKH version byte) and must be restored.
+  const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let num = 0n;
+  for (const ch of address) num = num * 58n + BigInt(ALPHABET.indexOf(ch));
+  const minimal: number[] = [];
+  for (let rest = num; rest > 0n; rest /= 256n) minimal.unshift(Number(rest % 256n));
+  const zeros = /^1+/.exec(address)?.[0].length ?? 0;
+  const bytes = [...new Array(zeros).fill(0), ...minimal];
+  const digest = createHash("sha256")
+    .update(
+      createHash("sha256")
+        .update(new Uint8Array(bytes.slice(0, bytes.length - 4)))
+        .digest(),
+    )
+    .digest();
+  const expected = digest.subarray(0, 4);
+  const provided = bytes.slice(bytes.length - 4);
+  if (!expected.every((b, i) => b === provided[i])) {
+    throw new Error(`"${raw}" is not a Bitcoin address (Base58Check checksum)`);
+  }
+  return { address };
 };
 
 const leiInput = (lei: string) => {
@@ -254,6 +290,31 @@ export const REGISTRY: readonly RegisteredTransform[] = [
     subjects: { url: httpUrlInput },
     sends: ["url", "domain"],
     hosts: ["web.archive.org"],
+    pageFetch: false,
+  },
+  {
+    // P3-020 (UC-06): TR-012 — the local WARC archive. Registered so the archive journey is
+    // runnable from `ir run` (simulation and network): the transform fetches the target page itself
+    // (pageFetch like TR-010) and hashes it; the WARC container serialization is the CLI's
+    // documented post-step after the run (see warc.ts — the transform never writes files, per
+    // the SDK contract). No keyed secret, no declared host beyond the subject's own URL.
+    transform: warcArchive,
+    module: mod("tr-012-warc-archive.ts"),
+    subjects: { url: httpUrlInput },
+    sends: ["url", "domain"],
+    hosts: [],
+    pageFetch: true,
+  },
+  {
+    // P3-020 (UC-05): TR-016 — Bitcoin address lookup on mempool.space (public, no key). The
+    // subject gate verifies the Base58Check checksum before the case is opened; the transform
+    // verifies it again before its first request. Sends only the subject's own kind — the txs
+    // response is read as data, never re-sent.
+    transform: bitcoinAddress,
+    module: mod("tr-016-bitcoin.ts"),
+    subjects: { bitcoin_address: bitcoinInput },
+    sends: ["bitcoin_address"],
+    hosts: ["mempool.space"],
     pageFetch: false,
   },
   {

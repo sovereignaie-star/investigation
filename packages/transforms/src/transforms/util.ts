@@ -76,6 +76,40 @@ export function isBitcoinAddress(raw: string): boolean {
   return /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(raw.trim());
 }
 
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+/**
+ * P3-020 / UC-05: verify the Base58Check checksum of a Bitcoin address — the last four bytes
+ * must equal the first four bytes of SHA-256(SHA-256(version ‖ payload)). Shape alone is not
+ * a valid address (a one-character typo produces a well-shaped but wrong address), so the
+ * checksum is verified BEFORE any request. Uses Web Crypto (the same API the sandbox exposes
+ * to transforms — node:crypto is not available there), hence async.
+ */
+export async function verifyBase58Check(raw: string): Promise<boolean> {
+  const address = raw.trim();
+  if (!isBitcoinAddress(address)) return false;
+  let num = 0n;
+  for (const ch of address) {
+    const digit = BASE58_ALPHABET.indexOf(ch);
+    if (digit < 0) return false;
+    num = num * 58n + BigInt(digit);
+  }
+  // minimal big-endian bytes of the decoded number; leading '1' characters are base58 zero
+  // bytes (the P2PKH version byte 0x00) and must be restored before hashing
+  const minimal: number[] = [];
+  for (let rest = num; rest > 0n; rest /= 256n) minimal.unshift(Number(rest % 256n));
+  const leadingZeros = /^1+/.exec(address)?.[0].length ?? 0;
+  const bytes = [...new Array(leadingZeros).fill(0), ...minimal];
+  if (bytes.length < 5) return false;
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) return false;
+  const first = await subtle.digest("SHA-256", new Uint8Array(bytes.slice(0, bytes.length - 4)));
+  const second = await subtle.digest("SHA-256", first);
+  const expected = new Uint8Array(second).subarray(0, 4);
+  const provided = bytes.slice(bytes.length - 4);
+  return expected.every((b, i) => b === provided[i]);
+}
+
 /** Validate an Ethereum address (matches crypto.yaml ethereum_address). */
 export function isEthereumAddress(raw: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(raw.trim());

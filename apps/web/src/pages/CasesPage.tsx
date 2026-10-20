@@ -1,5 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { useCreateCase, useListCases, useUpdateCaseLifecycle, type CreateCaseInput } from "@workspace/api-client-react";
+import {
+  getListCasesQueryKey,
+  useCreateCase,
+  useListCases,
+  useUpdateCaseLifecycle,
+  type CreateCaseInput,
+} from "@workspace/api-client-react";
 import { Badge, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea } from "@ir/ui";
 // P3-017: every UI string comes from @ir/i18n.
 import { t } from "@ir/i18n";
@@ -66,7 +72,12 @@ export function CasesPage() {
   const [token, saveToken] = useAdminToken();
 
   const [includeArchived, setIncludeArchived] = useState(false);
-  const list = useListCases(includeArchived ? { includeArchived: true } : undefined);
+  // P3-015: the token is part of the query key — entering it refetches the list (the
+  // cold-browser flow: the first fetch without a token is an honest 401, and the token
+  // turns it into the saved list). The same contract SavedInvestigations holds.
+  const list = useListCases(includeArchived ? { includeArchived: true } : undefined, {
+    query: { queryKey: [...getListCasesQueryKey(), includeArchived, token] },
+  });
 
   const createCase = useCreateCase({ mutation: { onSuccess: () => void list.refetch() } });
   const lifecycle = useUpdateCaseLifecycle({ mutation: { onSuccess: () => void list.refetch() } });
@@ -205,11 +216,19 @@ export function CasesPage() {
             />
           </div>
           <div>
-            <Button type="submit" disabled={createCase.isPending}>
+            <Button type="submit" data-testid="create-case-submit" disabled={createCase.isPending}>
               {createCase.isPending ? t("cases.create.submitting") : t("cases.create.submit")}
             </Button>
-            {created && <Badge className="ms-3">{t("cases.create.created", { title: created })}</Badge>}
-            {error && <p className="mt-2 text-sm text-destructive-text">{error}</p>}
+            {created && (
+              <Badge data-testid="create-case-status" className="ms-3">
+                {t("cases.create.created", { title: created })}
+              </Badge>
+            )}
+            {error && (
+              <p data-testid="create-case-error" className="mt-2 text-sm text-destructive-text">
+                {error}
+              </p>
+            )}
           </div>
         </form>
       </section>

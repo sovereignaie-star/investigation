@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -318,6 +318,131 @@ describe("ir run (P2-022)", () => {
     const r = await run(["run", dir, "TR-010", "url", "https://example.com"]);
     expect(r.code).toBe(2);
     expect(r.text).toContain("refusing to run a transform against an encrypted case");
+  });
+});
+
+describe("ir run (P3-020)", () => {
+  /**
+   * P3-020 / UC-05: TR-016 must be runnable from the CLI on the simulation world — the
+   * roadmap row promises «عنوان/معاملة ← معاملات، أرصدة», and the wallet journey's output
+   * is transactions and related addresses. This test was written BEFORE the registration
+   * and failed red with exit 2 (unknown transform).
+   */
+  it("runs TR-016 on a bitcoin_address subject in the simulation world and expands transactions and counterparties", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-run-btc-"));
+    dirs.push(dir);
+    const rules = path.join(dir, "..", `${path.basename(dir)}.rules.json`);
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        {
+          match: "https://mempool.space/api/address/1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+          response: {
+            status: 200,
+            body: JSON.stringify({
+              address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+              chain_stats: { funded_txo_sum: 100000, spent_txo_sum: 20000, tx_count: 2 },
+            }),
+          },
+        },
+        {
+          match: "https://mempool.space/api/address/1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa/txs",
+          response: {
+            status: 200,
+            body: JSON.stringify([
+              {
+                txid: "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+                vin: [{ prevout: { scriptpubkey_address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa" } }],
+                vout: [{ scriptpubkey_address: "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2" }],
+              },
+            ]),
+          },
+        },
+      ]),
+    );
+    dirs.push(rules);
+    const r = await run(["run", dir, "TR-016", "bitcoin_address", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "--sim", rules]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("ir run: TR-016 on bitcoin_address:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+    expect(r.text).toContain("has_balance");
+    expect(r.text).toContain("has_transaction");
+    expect(r.text).toContain("transacted_with");
+    // the ledger holds the subject, the counterparty and the transaction hash as nodes
+    const p = await run(["project", dir]);
+    expect(p.code).toBe(0);
+    expect(p.text).toContain("nodes 3"); // subject + counterparty + tx hash
+  });
+
+  /**
+   * P3-020 / UC-05 acceptance: a well-formed address with a wrong Base58Check checksum is
+   * refused at the CLI subject gate — BEFORE the case is even opened, before any request.
+   * Written BEFORE the builder's checksum check existed: it failed red with exit 0 (the run
+   * reached the transform, which rejected it as a run error, after opening the case).
+   */
+  it("refuses a well-formed bitcoin_address with a bad checksum before opening the case", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-run-badck-"));
+    dirs.push(dir);
+    const r = await run(["run", dir, "TR-016", "bitcoin_address", "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb"]);
+    expect(r.code).toBe(2);
+    expect(r.text).toContain("checksum");
+    // fail-closed: the refusal happened before the case was touched — no case was created
+    expect(existsSync(path.join(dir, CASE_DB))).toBe(false);
+  });
+
+  /**
+   * P3-020 / UC-06: TR-012 must be runnable from the CLI, and the run's documented post-step
+   * (the transform's own header: «تسلسل WARC خطوة معالجة لاحقة خارج المحوّل») must store the
+   * WARC container as case evidence alongside the raw response — with its own sha256 and
+   * fetch time, and a WARC-Payload-Digest equal to the raw body's hash. Written BEFORE both
+   * existed: it failed red with exit 2 (unknown transform).
+   */
+  it("runs TR-012 on a url subject and stores the WARC archive as evidence beside the raw response", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-run-warc-"));
+    dirs.push(dir);
+    const rules = path.join(dir, "..", `${path.basename(dir)}.rules.json`);
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        {
+          match: "https://example.com/",
+          response: { status: 200, headers: { "content-type": "text/html" }, body: "<html><body>warc page</body></html>" },
+        },
+      ]),
+    );
+    dirs.push(rules);
+    const r = await run(["run", dir, "TR-012", "url", "https://example.com/", "--sim", rules]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("ir run: TR-012 on url:https://example.com/");
+    expect(r.text).toContain("has_content_hash");
+    expect(r.text).toContain("has_archive_snapshot");
+    // the case holds BOTH evidences: the raw response and the WARC container of it
+    const c = openCase(dir, { readOnly: true, skipChainCheck: true, actor: "test" });
+    try {
+      const stored = c.ledger
+        .entries()
+        .filter((e) => e.kind === "evidence.stored")
+        .map((e) => e.payload as { mime: string; sha256: string; request: { url: string } });
+      expect(stored).toHaveLength(2);
+      const raw = stored.find((e) => e.mime === "text/html");
+      const warc = stored.find((e) => e.mime === "application/warc");
+      expect(raw?.request.url).toBe("https://example.com/");
+      expect(warc?.request.url).toBe("https://example.com/");
+      // the WARC container is a real WARC/1.0 response record for the target, and its
+      // payload digest equals the raw body's own hash
+      expect(warc).toBeDefined();
+      expect(raw).toBeDefined();
+      const warcSha = warc?.sha256 ?? "";
+      const bytes = c.blobs.get(warcSha);
+      const text = new TextDecoder().decode(bytes);
+      expect(text).toContain("WARC/1.0");
+      expect(text).toContain("WARC-Type: response");
+      expect(text).toContain("WARC-Target-URI: https://example.com/");
+      expect(text).toContain(`WARC-Payload-Digest: sha256:${raw?.sha256 ?? ""}`);
+      // and the archived page itself is inside the container
+      expect(text).toContain("warc page");
+    } finally {
+      c.close();
+    }
   });
 });
 

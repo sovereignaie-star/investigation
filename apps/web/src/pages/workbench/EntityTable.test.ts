@@ -51,6 +51,22 @@ describe("EntityTable (P3-009)", () => {
     expect(html).toMatch(/data-sort-key="claims"[^>]*aria-sort="descending"/);
   });
 
+  it("P3-020/UC-03: a row is selectable — every row carries its node id for the detail panel", () => {
+    const html = table(buildEntityRows([node("a", 0), node("b", 1)]), {
+      onSelectRow: () => undefined,
+    });
+    // the row is the affordance: its node id is on the row, and it reads as clickable
+    expect(html).toContain('data-testid="entity-row" data-node-id="a"');
+    expect(html).toContain('data-testid="entity-row" data-node-id="b"');
+    expect(html).toMatch(/entity-row[^>]*cursor-pointer/);
+  });
+
+  it("without onSelectRow the rows are inert (no affordance)", () => {
+    const html = table(buildEntityRows([node("a", 0)]));
+    expect(html).toContain('data-testid="entity-row"');
+    expect(html).not.toContain("data-node-id");
+  });
+
   it("shows an honest empty state when there are no rows", () => {
     const html = table([]);
     expect(html).toContain("لا كيانات");

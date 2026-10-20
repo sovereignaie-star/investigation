@@ -123,4 +123,30 @@ describe("NodeDetailPanel (P3-008)", () => {
     const html = panel(GRAPH, null);
     expect(html).toBe("");
   });
+
+  /**
+   * P3-020 / UC-03 acceptance: «كل حافة لها ملاحظة مصدرية» — every edge has a source note.
+   * The relation row must RENDER the edge's explanation (the source note), not just carry it
+   * in the model. Written red-first: the panel dropped the explanation before P3-020.
+   */
+  it("renders each relation's source note — الملاحظة المصدرية (P3-020)", () => {
+    const graph: Graph = {
+      nodes: [node("n1"), node("n2")],
+      edges: [
+        {
+          id: "e-resolves",
+          source: "n1",
+          target: "n2",
+          predicate: "dns.a",
+          confidence: 0.9,
+          validFrom: null,
+          validTo: null,
+          explanation: "dns.google: A record of example.com",
+          evidenceIds: ["ev-edge"],
+        },
+      ],
+    };
+    const html = panel(graph, "n2");
+    expect(html).toContain("dns.google: A record of example.com");
+  });
 });

@@ -1,0 +1,18 @@
+[
+  {
+    "match": "https://api.gleif.org/api/v1/lei-records/529900T8BM49AURSDO55",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/json" },
+      "body": "{\"data\":{\"attributes\":{\"entity\":{\"legalName\":{\"name\":\"Example Industries LLC\"},\"status\":\"ISSUED\",\"legalAddress\":{\"country\":\"US\"}}}}}"
+    }
+  },
+  {
+    "match": "https://api.opensanctions.org/match/default",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/json" },
+      "body": "{\"responses\":{\"q\":{\"results\":[{\"id\":\"NK-EX-01\",\"schema\":\"Company\",\"caption\":\"Example Industries Limited\",\"score\":0.87,\"datasets\":[\"us_ofac_sdn\"]}]}}}"
+    }
+  }
+]

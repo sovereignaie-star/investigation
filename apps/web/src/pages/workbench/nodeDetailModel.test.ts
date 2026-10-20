@@ -164,4 +164,15 @@ describe("buildNodeDetail (P3-008)", () => {
   it("returns null for an unknown node id", () => {
     expect(buildNodeDetail(fixture(["ev-a"]), "missing")).toBeNull();
   });
+
+  /**
+   * P3-020 / UC-03 acceptance: «كل حافة لها ملاحظة مصدرية» — every edge has a source note.
+   * The projection edge carries its explanation; the detail model must carry it through to
+   * the relation (it was dropped before P3-020 — this test was written red-first).
+   */
+  it("carries the edge's explanation (the source note) on each relation (P3-020)", () => {
+    const out = must(buildNodeDetail(fixture(["ev-whois-1"]), N1));
+    expect(out.relations).toHaveLength(1);
+    expect(out.relations[0].explanation).toBe("test"); // the edge's explanation, verbatim
+  });
 });

@@ -40,15 +40,18 @@ interface GleifRecord {
 }
 
 /**
- * A finding for a legal entity. The object value is the LEI (a catalog type `lei_code`), and the legal name goes
- * in the explanation: the catalog has no free-text company-name type, and a name must never become an entity id
- * by guess (D-018).
+ * A finding for a legal entity. The finding's OBJECT is the legal name as a `company_name`
+ * entity (the same catalog type TR-025 mints from OpenSanctions captions — the ledger
+ * normalizes it through the catalog validator, D-018 held: no guessed ids). The name is
+ * what the registry links the LEI record to, so it is the edge's target; the LEI stays
+ * the subject. (The old shape — objectType `lei_code`, objectValue the LEI itself —
+ * self-looped on the subject and rendered nowhere: no edge, no attribute.)
  */
 function leiFinding(lei: string, name: string, confidence: number, explanation: string): TransformFinding {
   return {
     predicate: "has_legal_name",
-    objectType: "lei_code",
-    objectValue: lei,
+    objectType: "company_name",
+    objectValue: name,
     confidence,
     explanation: `${explanation}: "${name}" (LEI ${lei})`,
   };
@@ -57,7 +60,7 @@ function leiFinding(lei: string, name: string, confidence: number, explanation: 
 export const gleifEntity = defineTransform<{ lei?: string; name?: string }>(
   {
     id: "TR-021",
-    version: "1.0.0",
+    version: "1.1.0",
     inputs: ["lei_code"],
     outputs: ["company"],
     network: { mode: "public", allow: [] },

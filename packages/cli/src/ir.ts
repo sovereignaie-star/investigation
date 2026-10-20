@@ -14,6 +14,7 @@ import { LegalBasis, type CaseInit } from "@ir/schema";
 import { caseProxyConfig, planNetworkRun, proxyRoutingFor, type NetworkDeps } from "./network.ts";
 import { REGISTRY, registered, subjectInput, type RegisteredTransform } from "./registry.ts";
 import { ensureSubject, recordRunFailure, recordRunSuccess } from "./run-record.ts";
+import { storeWarcForRun } from "./warc.ts";
 import { importAdsbAircraftDump } from "./adsb-import.ts";
 import { importAisVesselDump } from "./ais-import.ts";
 import { corroboration, disabledSources, investigate, type InvestigationBudget, type InvestigationResult } from "./investigate.ts";
@@ -488,6 +489,22 @@ function hostRefusalHint(entry: RegisteredTransform, events: readonly EgressAudi
   return `; refused before connecting: ${refused.join(", ")} not on --allow-host${discovered} — add it with --allow-host only if that source is authorised`;
 }
 
+/** The validated run prelude: the registered transform and its catalog-valid subject input. */
+function runTransformPrelude(
+  transformId: string,
+  subjectType: string,
+  subjectValue: string,
+): { entry: RegisteredTransform; input: Record<string, unknown>; key: string } | { error: string } {
+  // P2-037: only registered transforms run, and the subject is checked against the transform's
+  // declared subjects and the catalog format before any case is opened or any request is made.
+  const entry = registered(transformId);
+  if (!entry) return { error: `unknown transform "${transformId}"` };
+  if (!specById(subjectType)) return { error: `subject type "${subjectType}" is not a catalog identifier type` };
+  const prepared = subjectInput(entry, subjectType, subjectValue);
+  if ("error" in prepared) return { error: prepared.error };
+  return { entry, input: prepared.input, key: prepared.key };
+}
+
 /**
  * `ir run` (P2-022): runs a transform against a subject in the deterministic simulation world, stores the response
  * as evidence, and expands the findings into the ledger. The subject is a catalog identifier type; the transform's
@@ -505,24 +522,14 @@ async function runTransformCommand(
   opts: CliOptions,
 ): Promise<number> {
   try {
-    // P2-037: only registered transforms run, and the subject is checked against the transform's declared
-    // subjects and the catalog format before any case is opened or any request is made.
-    const entry = registered(transformId);
-    if (!entry) {
-      err(`ir run: unknown transform "${transformId}"`);
+    const prelude = runTransformPrelude(transformId, subjectType, subjectValue);
+    if ("error" in prelude) {
+      err(`ir run: ${prelude.error}`);
       return 2;
     }
-    const transform = entry.transform;
-    if (!specById(subjectType)) {
-      err(`ir run: subject type "${subjectType}" is not a catalog identifier type`);
-      return 2;
-    }
-    const prepared = subjectInput(entry, subjectType, subjectValue);
-    if ("error" in prepared) {
-      err(`ir run: ${prepared.error}`);
-      return 2;
-    }
-    const { input, key: subjectKey } = prepared;
+    const transform = prelude.entry.transform;
+    const input = prelude.input;
+    const subjectKey = prelude.key;
     const clock = opts.clock ?? systemClock;
     const c = openRunCase(dir, v, clock);
     if (typeof c === "string") {
@@ -534,7 +541,7 @@ async function runTransformCommand(
         err("ir run: refusing to run a transform against an encrypted case (P2-022)");
         return 2;
       }
-      const route = runRoute(c, entry, subjectType, v, opts);
+      const route = runRoute(c, prelude.entry, subjectType, v, opts);
       if ("error" in route) {
         err(`ir run: ${route.error}`);
         return 2;
@@ -559,13 +566,18 @@ async function runTransformCommand(
           // P2-036: the error observation cites the failed request's own evidence (or a run record naming the
           // stage, message and every response received) — never the last response, never an empty success.
           recordRunFailure(c, subjectId, transform, input, x, clock, route.origin);
-          err(`ir run: ${x.message}${hostRefusalHint(entry, route.events)}`);
+          err(`ir run: ${x.message}${hostRefusalHint(prelude.entry, route.events)}`);
           return 1;
         }
         throw x;
       }
       // P2-036: every finding is bound to the evidence of the request(s) it cites (TransformFinding.evidence).
       const recorded = recordRunSuccess(c, subjectId, transform, input, result, clock, route.origin);
+      // P3-020 / UC-06: TR-012's documented post-step — the WARC container of every archived
+      // response is serialized and stored as case evidence beside the raw response. The
+      // transform itself never writes files (SDK contract); this is the local post-processing
+      // its header prescribes, on both the simulation and the network route.
+      if (transform.manifest.id === "TR-012") storeWarcForRun(c, recorded.requests, route.origin);
       const { expand, negative } = recorded;
       const p = project(c.entries());
       const hash = projectionHash(p);

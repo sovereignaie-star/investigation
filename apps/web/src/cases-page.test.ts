@@ -48,8 +48,10 @@ const LOCKED: CaseSummary = {
 
 function withQueryClient(element: React.ReactElement): string {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  // Pre-populate the cache the generated hook reads — no network in the render.
-  client.setQueryData(getListCasesQueryKey(), { cases: [ACTIVE, ARCHIVED, LOCKED] });
+  // Pre-populate the cache the generated hook reads — no network in the render. The key
+  // carries the P3-015 additions (includeArchived + the in-memory token: entering the
+  // token refetches the list — the cold-browser flow of the cases screen).
+  client.setQueryData([...getListCasesQueryKey(), false, ""], { cases: [ACTIVE, ARCHIVED, LOCKED] });
   return renderToStaticMarkup(React.createElement(QueryClientProvider, { client }, element));
 }
 

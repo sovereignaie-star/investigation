@@ -1,0 +1,18 @@
+[
+  {
+    "match": "https://mempool.space/api/address/1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/json" },
+      "body": "{\"address\":\"1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa\",\"chain_stats\":{\"funded_txo_sum\":100000,\"spent_txo_sum\":20000,\"tx_count\":2}}"
+    }
+  },
+  {
+    "match": "https://mempool.space/api/address/1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa/txs",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "application/json" },
+      "body": "[{\"txid\":\"f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16\",\"vin\":[{\"prevout\":{\"scriptpubkey_address\":\"1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa\"}}],\"vout\":[{\"scriptpubkey_address\":\"1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2\"}]},{\"txid\":\"1e6ea2007e1f650040436e11d1f942be52a1fb47f55d055d1f1be65c15663f8e\",\"vin\":[{\"prevout\":{\"scriptpubkey_address\":\"1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2\"}}],\"vout\":[{\"scriptpubkey_address\":\"1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa\"}]}]"
+    }
+  }
+]

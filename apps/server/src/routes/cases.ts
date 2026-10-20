@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { Router, type IRouter } from "express";
@@ -125,6 +125,9 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
   const caseDirs = (): Array<{ dir: string; fp: CaseFingerprint }> => {
     const root = getRoot();
     const out: Array<{ dir: string; fp: CaseFingerprint }> = [];
+    // P3-020: a fresh deployment's root may not exist yet (no case was ever created) —
+    // that is an honest empty list, never an ENOENT 500 (UC-01's cold journey).
+    if (!existsSync(root)) return out;
     for (const entry of readdirSync(root, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
       const dir = path.join(root, entry.name);

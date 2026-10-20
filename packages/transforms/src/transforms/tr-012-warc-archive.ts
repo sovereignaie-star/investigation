@@ -21,7 +21,7 @@ const MAX_BYTES = 5_000_000;
 export const warcArchive = defineTransform<{ url: string }>(
   {
     id: "TR-012",
-    version: "1.0.0",
+    version: "1.1.0",
     inputs: ["url"],
     outputs: ["sha256_hash", "url"],
     network: { mode: "public", allow: [] },
@@ -59,8 +59,13 @@ export const warcArchive = defineTransform<{ url: string }>(
       {
         predicate: "has_archive_snapshot",
         evidence: [res.requestId],
-        objectType: "url",
-        objectValue: target,
+        // P3-020/UC-06: the snapshot claim carries the capture TIMESTAMP as a literal
+        // attribute (iso_datetime is not a catalog identifier type, so the ledger renders
+        // it as the URL node's attribute — never an edge). The old shape (objectType url,
+        // objectValue the target itself) self-looped on the subject and rendered nowhere.
+        objectType: "iso_datetime",
+        objectValue: new Date().toISOString(),
+        observedAt: new Date().toISOString(),
         confidence: 1,
         explanation: `WARC: fetched ${target} (${body.length} bytes)`,
       },
