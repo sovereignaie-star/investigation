@@ -19,9 +19,11 @@ import type {
 import type {
   CaseDetail,
   CaseExport,
+  CaseNote,
   CaseStats,
   CaseSummary,
   CreateCaseInput,
+  CreateNoteInput,
   Error,
   EvidenceContentEnvelope,
   HealthStatus,
@@ -570,6 +572,59 @@ export const useUpdateCaseLifecycle = <TError = ErrorType<Error>, TContext = unk
   TContext
 > => {
   return useMutation(getUpdateCaseLifecycleMutationOptions(options));
+};
+
+export const getAddCaseNoteUrl = (id: string) => {
+  return `/api/cases/${id}/notes`;
+};
+
+/**
+ * The context-menu note action's data path. The note is durable case data: a `note.added` entry appended to the case's own hash-chained ledger (the kind already exists in the schema and is counted by every projection), targeting the node by its permanent entity id — stable across merges. The route validates the payload, refuses locked (403) and archived (409 — J-16 write-block) cases, and verifies the target node exists in the case's own projection before appending (422 — never a silently orphaned event). The response is the created note as the next projection will carry it.
+ * @summary Append an analyst note about one node (P3-021 — a real note.added ledger event)
+ */
+export const addCaseNote = async (id: string, createNoteInput: CreateNoteInput, options?: RequestInit): Promise<CaseNote> => {
+  return customFetch<CaseNote>(getAddCaseNoteUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createNoteInput),
+  });
+};
+
+export const getAddCaseNoteMutationOptions = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof addCaseNote>>, TError, { id: string; data: BodyType<CreateNoteInput> }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof addCaseNote>>, TError, { id: string; data: BodyType<CreateNoteInput> }, TContext> => {
+  const mutationKey = ["addCaseNote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof addCaseNote>>, { id: string; data: BodyType<CreateNoteInput> }> = (
+    props,
+  ) => {
+    const { id, data } = props ?? {};
+
+    return addCaseNote(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddCaseNoteMutationResult = NonNullable<Awaited<ReturnType<typeof addCaseNote>>>;
+export type AddCaseNoteMutationBody = BodyType<CreateNoteInput>;
+export type AddCaseNoteMutationError = ErrorType<Error>;
+
+/**
+ * @summary Append an analyst note about one node (P3-021 — a real note.added ledger event)
+ */
+export const useAddCaseNote = <TError = ErrorType<Error>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof addCaseNote>>, TError, { id: string; data: BodyType<CreateNoteInput> }, TContext>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<Awaited<ReturnType<typeof addCaseNote>>, TError, { id: string; data: BodyType<CreateNoteInput> }, TContext> => {
+  return useMutation(getAddCaseNoteMutationOptions(options));
 };
 
 export const getGetCaseStatsUrl = (id: string) => {

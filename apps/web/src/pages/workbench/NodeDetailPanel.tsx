@@ -3,6 +3,7 @@ import type { Graph } from "@ir/ledger/projections";
 
 import { useSelection } from "../../store/selectionStore";
 import { buildEvidenceDetail, buildNodeDetail, type EvidenceDetail, type NodeDetail } from "./nodeDetailModel";
+import type { StoredNote } from "./savedInvestigationsModel";
 
 /**
  * P3-008 — NodeDetailPanel: the selected node's claims (attributes and relations),
@@ -39,11 +40,14 @@ function EvidenceLinks({ evidenceIds, onSelectEvidence }: { evidenceIds: string[
 export function NodeDetailPanel({
   detail,
   evidenceDetail,
+  notes,
   onSelectEvidence,
   onCloseEvidence,
 }: {
   detail: NodeDetail | null;
   evidenceDetail: EvidenceDetail | null;
+  /** P3-021: the case's notes targeting THIS node (ledger order). */
+  notes?: readonly StoredNote[];
   onSelectEvidence: (id: string) => void;
   onCloseEvidence: () => void;
 }) {
@@ -75,6 +79,24 @@ export function NodeDetailPanel({
           +{detail.observations.positive} −{detail.observations.negative} !{detail.observations.error}
         </span>
       </div>
+
+      {/* P3-021: the node's notes — durable case data (note.added entries), shown with
+          their author and time; a node without notes says so honestly. */}
+      <section className="mt-3" data-testid="node-notes">
+        <h4 className="font-medium">{t("workbench.nodeDetail.notesHeading")}</h4>
+        {(notes ?? []).length === 0 ? (
+          <p className="text-[12px] text-muted-foreground">{t("workbench.nodeDetail.noNotes")}</p>
+        ) : (
+          <ul className="mt-1 flex flex-col gap-1">
+            {(notes ?? []).map((note) => (
+              <li key={note.seq} data-testid={`node-note-${note.seq}`} className="rounded border bg-muted/40 p-2 text-[12px]">
+                <p>{note.text}</p>
+                <p className="text-[11px] text-muted-foreground">{t("workbench.nodeDetail.noteBy", { actor: note.actor, at: note.at })}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {evidenceDetail ? (
         <div className="mt-3 rounded border bg-muted/40 p-3" data-testid="evidence-detail">
@@ -172,16 +194,19 @@ export function NodeDetailPanel({
  * The container: connects the presentational panel to the selection store.
  * Thin by design — all rendering logic lives in the presentational component.
  */
-export function NodeDetailPanelContainer({ graph }: { graph: Graph }) {
+export function NodeDetailPanelContainer({ graph, notes }: { graph: Graph; notes?: readonly StoredNote[] }) {
   const selectedNodeId = useSelection((s) => s.selectedNodeId);
   const selectedEvidenceId = useSelection((s) => s.selectedEvidenceId);
   const selectEvidence = useSelection((s) => s.selectEvidence);
   const detail = selectedNodeId ? buildNodeDetail(graph, selectedNodeId) : null;
   const evidenceDetail = selectedEvidenceId ? buildEvidenceDetail(graph, selectedEvidenceId) : null;
+  // P3-021: the node's notes — the case's own note.added entries targeting this node.
+  const nodeNotes = selectedNodeId ? (notes ?? []).filter((n) => n.nodeId === selectedNodeId) : [];
   return (
     <NodeDetailPanel
       detail={detail}
       evidenceDetail={evidenceDetail}
+      notes={nodeNotes}
       onSelectEvidence={selectEvidence}
       onCloseEvidence={() => selectEvidence(null)}
     />

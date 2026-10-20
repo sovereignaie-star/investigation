@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 import { caseFingerprint, openCase, type CaseFingerprint, type CaseInit } from "@ir/store";
 import { projectionHash } from "@ir/ledger/projections";
 import { isTextualMime } from "@ir/schema";
-import { CreateCaseBody, UpdateCaseLifecycleBody } from "@workspace/api-zod";
+import { AddCaseNoteBody, CreateCaseBody, UpdateCaseLifecycleBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/admin";
 import { logger } from "../lib/logger";
 
@@ -402,6 +402,62 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       } else {
         res.json({ evidence: { ...base, encoding: "binary", content: "" } });
       }
+    } finally {
+      c.close();
+    }
+  });
+
+  // POST /cases/:id/notes — P3-021 («ملاحظة»): the context-menu note action's data path.
+  // The note is durable case data — a `note.added` entry appended to the case's own
+  // hash-chained ledger (the kind already exists in the schema; every projection counts
+  // it), targeting the node by its permanent entity id (stable across merges). The same
+  // posture as every case write: admin boundary, rate limit, locked case fails closed
+  // (J-17), archived case is write-blocked (J-16), and the target node must exist in the
+  // case's OWN projection — a note about a node the case does not contain is a 422,
+  // never a silently orphaned event. The write itself is the case store's append (the
+  // same path the lifecycle audit events use), inside a transaction the store owns.
+  router.post("/cases/:id/notes", limiter, admin, (req, res) => {
+    const parsed = AddCaseNoteBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid note input", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) });
+      return;
+    }
+    const { nodeId, text } = parsed.data;
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const { dir, fp } = found;
+    if (fp.encrypted) {
+      // J-17: no content is written to a locked case — not even a note.
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const c = openCase(dir, { actor: "web" });
+    try {
+      const info = c.info() as CaseRecordShape;
+      if (info.archivedAt) {
+        // J-16: archived = write-blocked — a note is a content write, and unarchiving is
+        // the only path back to writing (with a PurposeConfirmation).
+        res.status(409).json({ error: "القضية مؤرشفة — لا كتابة على المؤرشف (J-16)" });
+        return;
+      }
+      // The target must be part of the case's own projection — its graph's node ids are
+      // the permanent entity ids (the survivor's after merges).
+      const p = c.projection();
+      if (!p.graph.nodes.some((n) => n.id === nodeId)) {
+        res.status(422).json({ error: "no node with this id in this case" });
+        return;
+      }
+      const entry = c.append("note.added", { nodeId, text });
+      c.audit("note.added", id, { nodeId, seq: entry.seq });
+      res.status(201).json({ seq: entry.seq, nodeId, text, at: entry.at, actor: entry.actor });
     } finally {
       c.close();
     }

@@ -90,6 +90,21 @@ export const LedgerEntry = z
   .refine((l) => (l.seq === 0) === (l.prevHash === null), { message: "only seq 0 has prevHash null", path: ["prevHash"] });
 export type LedgerEntry = z.infer<typeof LedgerEntry>;
 
+/**
+ * P3-021: the payload of a `note.added` ledger entry — an analyst's note about ONE
+ * node of the case's graph. The target is the node's permanent entity id (stable across
+ * merges: a merge maps later ids onto the survivor, and the survivor id persists), never
+ * a view-scoped identifier. The text is bounded (2000 chars) and non-empty — a note that
+ * says nothing is not a note. The write path validates with this schema; the projection
+ * tolerates unreadable payloads (legacy chains still count) but the view lists only
+ * entries this schema accepts.
+ */
+export const NoteAdded = z.object({
+  nodeId: Ulid,
+  text: z.string().min(1).max(2000),
+});
+export type NoteAdded = z.infer<typeof NoteAdded>;
+
 /** E-10: immutable audit trail for every sensitive action. */
 export const AuditEvent = z.object({
   id: Ulid,

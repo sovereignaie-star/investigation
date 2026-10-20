@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import { Case } from "./case.ts";
 import { Claim, Entity, Identifier, MergeDecision, Observation } from "./graph.ts";
-import { AuditEvent, Evidence, LedgerEntry, TransformManifest, ViewState } from "./evidence.ts";
+import { AuditEvent, Evidence, LedgerEntry, NoteAdded, TransformManifest, ViewState } from "./evidence.ts";
 
 /** The data model of ROADMAP 5.4, by name. */
 export const SCHEMAS = {
@@ -13,6 +13,7 @@ export const SCHEMAS = {
   Evidence,
   LedgerEntry,
   MergeDecision,
+  NoteAdded,
   AuditEvent,
   TransformManifest,
   ViewState,

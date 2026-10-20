@@ -9,6 +9,7 @@ import {
   Evidence,
   LedgerEntry,
   MergeDecision,
+  NoteAdded,
   Observation,
   SCHEMAS,
   TransformManifest,
@@ -51,6 +52,7 @@ const valid: Record<keyof typeof SCHEMAS, unknown> = {
     version: "1.0.0",
   },
   LedgerEntry: { seq: 0, prevHash: null, entryHash: H, kind: "case.created", payload: { id: U(1) }, at: T, actor: "local" },
+  NoteAdded: { nodeId: U(2), text: "ملاحظة المحلل على هذه العقدة" },
   MergeDecision: {
     id: U(7),
     entityIds: [U(2), U(8)],
@@ -133,6 +135,12 @@ describe("@ir/schema rejects invalid data", () => {
   it("D9: merge survivor is one of the merged entities", () => {
     bad(MergeDecision, { ...base.MergeDecision, survivorId: U(99) });
     bad(MergeDecision, { ...base.MergeDecision, entityIds: [U(2), U(2)] });
+  });
+  it("P3-021: a note targets a node by its permanent id and carries non-empty text", () => {
+    expect(SCHEMAS).toHaveProperty("NoteAdded");
+    bad(NoteAdded, { ...base.NoteAdded, nodeId: "not-a-ulid" });
+    bad(NoteAdded, { ...base.NoteAdded, text: "" });
+    bad(NoteAdded, { ...base.NoteAdded, text: "x".repeat(2001) });
   });
   it("P2-004: a transform manifest without a network mode is invalid (fail-closed)", () => {
     bad(TransformManifest, { ...base.TransformManifest, network: { allow: ["dns.google"] } });

@@ -19,6 +19,13 @@ export interface SigmaHandle {
     ratio: number;
   };
   refresh: () => void;
+  /**
+   * P3-021 («التركيز»): centers the camera on a node using its own coordinates. The
+   * sigma camera's x/y ARE graph coordinates — the node's stored position is the
+   * center, and ratio 1 is a comfortable zoom. Returns false when the node is not in
+   * the graph (honesty: no camera move, the caller reports it).
+   */
+  focusNode: (nodeId: string) => boolean;
 }
 
 /**
@@ -44,17 +51,26 @@ function iterationsOf(order: number): number {
 export function InvestigationGraph({
   graph,
   onInstance,
+  onRightClickNode,
+  onRightClickStage,
   ariaLabel = t("workbench.graph.ariaLabel"),
   layoutSeed = 42,
 }: {
   graph: ProjectionGraph;
   onInstance?: (instance: SigmaHandle | null) => void;
+  /** P3-021: right-clicking a node reports it — the context menu targets it explicitly. */
+  onRightClickNode?: (nodeId: string) => void;
+  /** P3-021: right-clicking the empty stage clears the pending target (no stale node). */
+  onRightClickStage?: () => void;
   ariaLabel?: string;
   /** The deterministic layout seed (acceptance: «تخطيط حتمي بالبذرة»). */
   layoutSeed?: number;
 }) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // P3-021: the camera state mirrors onto the DOM so the focus behavior is observable
+  // (E2E asserts the camera centers on the focused node) without exposing internals.
+  const [camera, setCamera] = React.useState<{ x: number; y: number; ratio: number } | null>(null);
 
   React.useEffect(() => {
     let disposed = false;
@@ -94,8 +110,36 @@ export function InvestigationGraph({
         const clearSelection = useSelection.getState().clear;
         sigma.on("clickNode", ({ node }) => selectNode(String(node)));
         sigma.on("clickStage", () => clearSelection());
-        instance = sigma as unknown as SigmaHandle;
+        instance = {
+          ...(sigma as unknown as SigmaHandle),
+          // P3-021: the node's own coordinates center the camera (the camera's x/y are
+          // graph coordinates); ratio 1 keeps the node's neighborhood visible around it.
+          focusNode: (nodeId: string) => {
+            const pos = g.getNodeAttributes(nodeId) as { x?: number; y?: number } | undefined;
+            if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return false;
+            sigma.getCamera().setState({ x: pos.x, y: pos.y, ratio: 1 });
+            return true;
+          },
+        };
         onInstance?.(instance);
+
+        // P3-021: the camera state is mirrored for observability (see the state above).
+        // The camera itself emits "updated" — the focus command's effect is assertable.
+        const syncCamera = () => {
+          const cam = sigma.getCamera();
+          setCamera({ x: cam.x, y: cam.y, ratio: cam.ratio });
+        };
+        sigma.getCamera().on("updated", syncCamera);
+        syncCamera();
+
+        // P3-021: right-clicking a node opens the context menu FOR THAT NODE — the
+        // event carries the node id, so the menu never targets a stale selection.
+        if (onRightClickNode) {
+          sigma.on("rightClickNode", ({ node }) => onRightClickNode(String(node)));
+        }
+        if (onRightClickStage) {
+          sigma.on("rightClickStage", () => onRightClickStage());
+        }
 
         // P3-007: no saved layout yet — compute the deterministic ForceAtlas2 layout off the
         // main thread in a Web Worker, apply it live, then save it (D-026). Worker construction
@@ -171,11 +215,21 @@ export function InvestigationGraph({
       }
       onInstance?.(null);
     };
-  }, [graph, onInstance, layoutSeed]);
+  }, [graph, onInstance, onRightClickNode, onRightClickStage, layoutSeed]);
 
   return (
     <div data-testid="investigation-graph" className="relative h-full min-h-[300px] w-full">
       <div ref={containerRef} className="absolute inset-0" aria-label={ariaLabel} role="img" />
+      {camera !== null && (
+        <div
+          data-testid="graph-camera"
+          data-x={camera.x}
+          data-y={camera.y}
+          data-ratio={camera.ratio}
+          aria-hidden="true"
+          className="hidden"
+        />
+      )}
       {graph.nodes.length === 0 && (
         <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{t("workbench.graph.empty")}</p>
       )}

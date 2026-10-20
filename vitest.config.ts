@@ -27,6 +27,9 @@ export default defineConfig({
     ],
     exclude: ["**/node_modules/**", "**/dist/**", "apps/sandbox/**"],
     environment: "node",
+    // P3-021: jsdom shims (matchMedia/ResizeObserver/scrollIntoView) for browser-UI
+    // tests; the setup file guards on window so node-env tests are untouched.
+    setupFiles: ["test/jsdom-setup.ts"],
     coverage: {
       // P1-027: `pnpm run test:coverage` measures and enforces the core ceiling; nothing is uploaded (ADR-23)
       provider: "v8",

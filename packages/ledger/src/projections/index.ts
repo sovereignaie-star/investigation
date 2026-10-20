@@ -1,10 +1,11 @@
 import { canonicalize } from "../jcs.ts";
 import type { Entry } from "../ledger.ts";
 import { sha256Hex } from "../ledger.ts";
-import { type Issue, Projector } from "./state.ts";
+import { type Issue, Projector, type StoredNote } from "./state.ts";
 import { type Coverage, coverageView, type Graph, graphView, type NetworkLog, networkLogView, type TableRow, tableView } from "./views.ts";
 
 export { Projector, type Issue } from "./state.ts";
+export type { StoredNote } from "./state.ts";
 export * from "./views.ts";
 
 /** All views of a case at one point of its chain (P1-016). */
@@ -16,6 +17,8 @@ export interface Projection {
   coverage: Coverage;
   /** P2-014 (E-06/T-ETH-006): every external request the case made — gateway decisions and stored responses. */
   networkLog: NetworkLog;
+  /** P3-021: readable analyst notes in ledger order (unreadable payloads count but do not list). */
+  notes: StoredNote[];
   issues: Issue[];
   counts: {
     entities: number;
@@ -37,6 +40,7 @@ export function view(p: Projector): Projection {
     table: tableView(p, graph),
     coverage: coverageView(p, graph),
     networkLog: networkLogView(p),
+    notes: [...p.noteViews],
     issues: [...p.issues],
     counts: {
       entities: p.entities.size,

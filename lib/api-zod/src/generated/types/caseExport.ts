@@ -10,6 +10,7 @@ import type { CaseExportCoverage } from "./caseExportCoverage";
 import type { CaseExportGraph } from "./caseExportGraph";
 import type { CaseExportNetworkLog } from "./caseExportNetworkLog";
 import type { CaseExportTableItem } from "./caseExportTableItem";
+import type { CaseNote } from "./caseNote";
 
 /**
  * The case's projection snapshot — the same shape `ir project --json` emits. The precise shape of each view is owned by @ir/ledger's projections (the source of truth); this contract pins the top level.
@@ -25,6 +26,8 @@ export interface CaseExport {
   coverage: CaseExportCoverage;
   /** The network log view as produced by @ir/ledger's networkLogView. */
   networkLog?: CaseExportNetworkLog;
+  /** The readable analyst notes (P3-021) in ledger order — every note.added entry whose payload parses. Unreadable legacy payloads are counted in counts.notes but do not appear here. */
+  notes: CaseNote[];
   counts: CaseExportCounts;
   /** The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint. */
   sha256: string;

@@ -23,6 +23,22 @@ import { WorkbenchPage } from "../WorkbenchPage";
 /** The shared memory-only token module under test — its getter reads this ref. */
 import { useAdminToken } from "../../utils/adminToken";
 
+// jsdom lacks matchMedia (sonner's Toaster reads the theme); React 19's act needs the flag.
+(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList;
+}
+
 const ACTIVE_CASE = {
   id: "01M58XF9ZKJT50S8E8JYXF6P3X",
   title: "شبكة تجارة إلكترونية مشبوهة",

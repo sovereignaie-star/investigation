@@ -189,6 +189,18 @@ export type CaseExportCounts = {
 };
 
 /**
+ * A readable `note.added` entry as the case's projection carries it.
+ */
+export interface CaseNote {
+  /** The ledger seq of the note.added entry. */
+  seq: number;
+  nodeId: string;
+  text: string;
+  at: string;
+  actor: string;
+}
+
+/**
  * The case's projection snapshot — the same shape `ir project --json` emits. The precise shape of each view is owned by @ir/ledger's projections (the source of truth); this contract pins the top level.
  */
 export interface CaseExport {
@@ -202,9 +214,26 @@ export interface CaseExport {
   coverage: CaseExportCoverage;
   /** The network log view as produced by @ir/ledger's networkLogView. */
   networkLog?: CaseExportNetworkLog;
+  /** The readable analyst notes (P3-021) in ledger order — every note.added entry whose payload parses. Unreadable legacy payloads are counted in counts.notes but do not appear here. */
+  notes: CaseNote[];
   counts: CaseExportCounts;
   /** The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint. */
   sha256: string;
+}
+
+export interface CreateNoteInput {
+  /**
+   * The target node's permanent entity id (ULID) — stable across merges.
+   * @minLength 26
+   * @maxLength 26
+   */
+  nodeId: string;
+  /**
+   * The analyst's note about the node. Non-empty, bounded.
+   * @minLength 1
+   * @maxLength 2000
+   */
+  text: string;
 }
 
 export type CreateCaseInputLegalBasis = (typeof CreateCaseInputLegalBasis)[keyof typeof CreateCaseInputLegalBasis];

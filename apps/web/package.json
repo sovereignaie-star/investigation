@@ -88,6 +88,7 @@
     "graphology-layout-forceatlas2": "0.10.1",
     "libphonenumber-js": "^1.13.14",
     "sigma": "3.0.3",
+    "sonner": "2.0.8",
     "zustand": "^5.0.15"
   }
 }
