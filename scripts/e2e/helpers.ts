@@ -79,12 +79,24 @@ export async function enterAdminToken(page: Page): Promise<void> {
 /**
  * Opens a saved case in the workbench (SavedInvestigations → the case's own projection).
  * The token field saves on change and refetches the list (the token is part of the query
- * key) — P3-015's cold-browser flow.
+ * key) — P3-015's cold-browser flow. The click is retried until the banner appears: a list
+ * refetch re-render can replace the button between mousedown and mouseup, and the browser
+ * then fires the click on the common ancestor — the handler never runs (a re-render race,
+ * not an app bug; wider with a longer suite because the case list grows).
  */
 export async function openCase(page: Page, caseId: string): Promise<void> {
   await page.goto("/#/workbench");
   await page.getByTestId("saved-token").fill(adminToken);
   await page.getByTestId(`saved-case-${caseId}`).waitFor();
-  await page.getByTestId(`open-case-${caseId}`).click();
-  await page.getByTestId("opened-case-banner").waitFor();
+  const banner = page.getByTestId("opened-case-banner");
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (await banner.isVisible()) return;
+    await page.getByTestId(`open-case-${caseId}`).click();
+    // a swallowed click shows nothing — wait a beat before judging, then retry
+    await banner.waitFor({ timeout: 5_000 }).then(
+      () => undefined,
+      () => undefined,
+    );
+  }
+  await banner.waitFor();
 }

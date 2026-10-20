@@ -76,6 +76,9 @@ export function InvestigationGraph({
     let disposed = false;
     let instance: SigmaHandle | null = null;
     let cleanupWorker: (() => void) | null = null;
+    // P3-022: the drag listener's removal is hoisted to the effect's scope (the
+    // listener itself is registered inside the async mount block).
+    let removeDragListener: (() => void) | null = null;
     onInstance?.(null);
     (async () => {
       try {
@@ -117,7 +120,25 @@ export function InvestigationGraph({
           focusNode: (nodeId: string) => {
             const pos = g.getNodeAttributes(nodeId) as { x?: number; y?: number } | undefined;
             if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") return false;
-            sigma.getCamera().setState({ x: pos.x, y: pos.y, ratio: 1 });
+            // P3-022 fix: the camera lives in the graph's NORMALIZED space, not raw
+            // coordinates — centering on a node is a PAN DELTA in framed-graph space,
+            // computed exactly the way sigma's own panning does it (the raw-coords
+            // shortcut landed the camera off-graph: the node never reached the center).
+            const camera = sigma.getCamera();
+            const container = containerRef.current;
+            if (container === null) return false;
+            const center = sigma.viewportToFramedGraph({ x: container.clientWidth / 2, y: container.clientHeight / 2 });
+            const nodeAt = sigma.graphToViewport({ x: pos.x, y: pos.y });
+            const nodeFramed = sigma.viewportToFramedGraph(nodeAt);
+            // The camera position IS the framed point rendered at the viewport's
+            // center — so centering the node means setting the camera TO the node's
+            // framed position (a pan delta of nodeFramed - center, the mirror of
+            // sigma's own drag-pan formula).
+            camera.setState({
+              x: camera.x + (nodeFramed.x - center.x),
+              y: camera.y + (nodeFramed.y - center.y),
+              ratio: 1,
+            });
             return true;
           },
         };
@@ -140,6 +161,41 @@ export function InvestigationGraph({
         if (onRightClickStage) {
           sigma.on("rightClickStage", () => onRightClickStage());
         }
+
+        // P3-022: node dragging (تحريك) — the move operation the view's undo history
+        // records. A drag is a MOVE only after the pointer actually travels (a plain
+        // click is a selection, not an edit); on release the whole graph's positions
+        // are saved as the new layout — a prior layout existed, so saveLayout records
+        // the change for undo (the FIRST layout of a fresh graph is the baseline).
+        let dragNodeId: string | null = null;
+        let dragMoved = false;
+
+        sigma.on("downNode", ({ node }) => {
+          dragNodeId = String(node);
+          dragMoved = false;
+        });
+        sigma.on("moveBody", (coords) => {
+          if (dragNodeId === null) return;
+          const pos = sigma.viewportToGraph({ x: coords.event.x, y: coords.event.y });
+          g.setNodeAttribute(dragNodeId, "x", pos.x);
+          g.setNodeAttribute(dragNodeId, "y", pos.y);
+          dragMoved = true;
+          sigma.refresh();
+        });
+        const endDrag = () => {
+          if (dragNodeId === null) return;
+          const moved = dragMoved;
+          dragNodeId = null;
+          dragMoved = false;
+          if (!moved) return;
+          const positions = new Map<string, { x: number; y: number }>();
+          g.forEachNode((id, attrs) => {
+            positions.set(id, { x: attrs.x, y: attrs.y });
+          });
+          useViewState.getState().saveLayout(graphKey, positions);
+        };
+        window.addEventListener("mouseup", endDrag);
+        removeDragListener = () => window.removeEventListener("mouseup", endDrag);
 
         // P3-007: no saved layout yet — compute the deterministic ForceAtlas2 layout off the
         // main thread in a Web Worker, apply it live, then save it (D-026). Worker construction
@@ -213,6 +269,7 @@ export function InvestigationGraph({
       } catch {
         // kill() after a failed constructor is harmless to ignore
       }
+      removeDragListener?.();
       onInstance?.(null);
     };
   }, [graph, onInstance, onRightClickNode, onRightClickStage, layoutSeed]);

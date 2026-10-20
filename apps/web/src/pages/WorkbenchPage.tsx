@@ -52,6 +52,10 @@ export function WorkbenchPage({
   initialOpenedCase?: OpenedCase | null;
 }) {
   const [rows, setRows] = React.useState(() => toIdentifierRows(extract(initialText)));
+  // P3-022: the view's edit history, mirrored for observability (E2E asserts the
+  // undo/redo availability honestly — the same pattern as the graph camera).
+  const canUndo = useViewState((s) => s.undoStack.length > 0);
+  const canRedo = useViewState((s) => s.redoStack.length > 0);
   const [selected, setSelected] = React.useState<ReadonlySet<string>>(() => new Set());
   // P3-015: the opened saved case (its own projection snapshot) — view state only.
   const [openedCase, setOpenedCase] = React.useState<OpenedCase | null>(initialOpenedCase);
@@ -174,7 +178,14 @@ export function WorkbenchPage({
           y: rect ? rect.top + rect.height / 2 : window.innerHeight / 2,
         });
       } else if (action === "node.removeView") {
+        event.preventDefault();
         void runCommand("node.removeView", commandContext);
+      } else if (action === "history.undo") {
+        event.preventDefault();
+        void runCommand("view.undo", commandContext);
+      } else if (action === "history.redo") {
+        event.preventDefault();
+        void runCommand("view.redo", commandContext);
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -183,6 +194,13 @@ export function WorkbenchPage({
 
   return (
     <div data-testid="workbench-page" className="flex flex-col gap-6 p-4 md:p-6">
+      <div
+        data-testid="view-history"
+        data-undo={canUndo ? "1" : "0"}
+        data-redo={canRedo ? "1" : "0"}
+        aria-hidden="true"
+        className="hidden"
+      />
       <h1 className="text-xl font-semibold">{t("nav.workbench")}</h1>
       {/* P3-015: re-open a saved case from the server — «فتح قضية بعد إعادة التشغيل». */}
       <SavedInvestigations onOpen={setOpenedCase} activeCaseId={openedCase?.id ?? null} />

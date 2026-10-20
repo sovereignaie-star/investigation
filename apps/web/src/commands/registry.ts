@@ -214,6 +214,31 @@ export const COMMANDS: readonly WorkbenchCommand[] = [
     },
   },
   {
+    // P3-022: undo/redo the last VIEW edit (a move, a hide, a show-all) — the history
+    // is view state only; case data (notes, projections, the ledger) is never in it:
+    // a case deletion is an opposite ledger event (D1), never a view undo.
+    id: "view.undo",
+    labelKey: "commands.view.undo",
+    groupKey: "commands.group.view",
+    shortcut: "Ctrl+Z",
+    available: () => useViewState.getState().canUndo(),
+    run: (ctx) => {
+      useViewState.getState().undo();
+      ctx.toast(t("commands.undone"));
+    },
+  },
+  {
+    id: "view.redo",
+    labelKey: "commands.view.redo",
+    groupKey: "commands.group.view",
+    shortcut: "Ctrl+Shift+Z",
+    available: () => useViewState.getState().canRedo(),
+    run: (ctx) => {
+      useViewState.getState().redo();
+      ctx.toast(t("commands.redone"));
+    },
+  },
+  {
     // «تحديث بيانات القضية» — the independent refresh command (the same data path,
     // named for what it does: re-reads the case's own projection snapshot).
     id: "case.refresh",
