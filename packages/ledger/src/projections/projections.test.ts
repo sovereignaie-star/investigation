@@ -63,6 +63,32 @@ function fixture(seed = 1) {
 }
 
 describe("projections (P1-016)", () => {
+  it("P3-021: note.added entries project into the notes view with their payload", () => {
+    const f = fixture();
+    const node = f.entity("domain", "example.com");
+    f.add("note.added", { nodeId: node, text: "ملاحظة أولى" });
+    f.add("note.added", { nodeId: node, text: "ملاحظة ثانية" });
+    const p = project(f.ledger.entries());
+    expect(p.notes).toHaveLength(2);
+    expect(p.notes[0]).toMatchObject({ nodeId: node, text: "ملاحظة أولى" });
+    expect(p.notes[1]).toMatchObject({ nodeId: node, text: "ملاحظة ثانية" });
+    expect(typeof p.notes[0]?.at).toBe("string");
+    expect(p.counts.notes).toBe(2);
+  });
+
+  it("P3-021: a note.added with an unreadable payload still counts, never breaks replay", () => {
+    const f = fixture();
+    const node = f.entity("domain", "example.com");
+    // Legacy tolerance: the count has always counted every note.added; the new
+    // view lists only parseable payloads — an unparseable one is skipped, not an exception.
+    f.add("note.added", { forged: true });
+    f.add("note.added", { nodeId: node, text: "صالحة" });
+    const p = project(f.ledger.entries());
+    expect(p.counts.notes).toBe(2);
+    expect(p.notes).toHaveLength(1);
+    expect(p.notes[0]).toMatchObject({ text: "صالحة" });
+  });
+
   it("an empty chain projects to empty views", () => {
     const p = project([]);
     expect(p.seq).toBe(-1);

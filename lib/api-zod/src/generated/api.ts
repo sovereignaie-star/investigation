@@ -229,6 +229,38 @@ export const UpdateCaseLifecycleResponse = zod
   );
 
 /**
+ * The context-menu note action's data path. The note is durable case data: a `note.added` entry appended to the case's own hash-chained ledger (the kind already exists in the schema and is counted by every projection), targeting the node by its permanent entity id — stable across merges. The route validates the payload, refuses locked (403) and archived (409 — J-16 write-block) cases, and verifies the target node exists in the case's own projection before appending (422 — never a silently orphaned event). The response is the created note as the next projection will carry it.
+ * @summary Append an analyst note about one node (P3-021 — a real note.added ledger event)
+ */
+export const AddCaseNoteParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const addCaseNoteBodyNodeIdMin = 26;
+export const addCaseNoteBodyNodeIdMax = 26;
+
+export const addCaseNoteBodyTextMax = 2000;
+
+export const AddCaseNoteBody = zod.object({
+  nodeId: zod
+    .string()
+    .min(addCaseNoteBodyNodeIdMin)
+    .max(addCaseNoteBodyNodeIdMax)
+    .describe("The target node's permanent entity id (ULID) — stable across merges."),
+  text: zod.string().min(1).max(addCaseNoteBodyTextMax).describe("The analyst's note about the node. Non-empty, bounded."),
+});
+
+export const AddCaseNoteResponse = zod
+  .object({
+    seq: zod.number().describe("The ledger seq of the note.added entry."),
+    nodeId: zod.string(),
+    text: zod.string(),
+    at: zod.coerce.date(),
+    actor: zod.string(),
+  })
+  .describe("A readable `note.added` entry as the case's projection carries it.");
+
+/**
  * The eight projection counts plus the projection seq, taken from ONE snapshot of the case's own projection — never a parallel recount. J-17: a locked case fails closed with 403 and the locked message — never zeros that look like statistics.
  * @summary Case statistics (P3-012 — the numbers always match the case's own projection)
  */
@@ -268,6 +300,21 @@ export const GetCaseProjectionResponse = zod
       .record(zod.string(), zod.unknown())
       .optional()
       .describe("The network log view as produced by @ir\/ledger's networkLogView."),
+    notes: zod
+      .array(
+        zod
+          .object({
+            seq: zod.number().describe("The ledger seq of the note.added entry."),
+            nodeId: zod.string(),
+            text: zod.string(),
+            at: zod.coerce.date(),
+            actor: zod.string(),
+          })
+          .describe("A readable `note.added` entry as the case's projection carries it."),
+      )
+      .describe(
+        "The readable analyst notes (P3-021) in ledger order — every note.added entry whose payload parses. Unreadable legacy payloads are counted in counts.notes but do not appear here.",
+      ),
     counts: zod.object({
       entities: zod.number(),
       nodes: zod.number(),
@@ -305,6 +352,21 @@ export const GetCaseExportResponse = zod
       .record(zod.string(), zod.unknown())
       .optional()
       .describe("The network log view as produced by @ir\/ledger's networkLogView."),
+    notes: zod
+      .array(
+        zod
+          .object({
+            seq: zod.number().describe("The ledger seq of the note.added entry."),
+            nodeId: zod.string(),
+            text: zod.string(),
+            at: zod.coerce.date(),
+            actor: zod.string(),
+          })
+          .describe("A readable `note.added` entry as the case's projection carries it."),
+      )
+      .describe(
+        "The readable analyst notes (P3-021) in ledger order — every note.added entry whose payload parses. Unreadable legacy payloads are counted in counts.notes but do not appear here.",
+      ),
     counts: zod.object({
       entities: zod.number(),
       nodes: zod.number(),

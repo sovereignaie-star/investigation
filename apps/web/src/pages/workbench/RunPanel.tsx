@@ -3,6 +3,7 @@ import * as React from "react";
 import { ApiError, cancelRun, submitRun } from "@workspace/api-client-react";
 
 import { useAdminToken } from "../../utils/adminToken";
+import { useRunBridge } from "../../store/runStore";
 import { openRunEvents, readSseStream } from "./runEventsModel";
 import { initialRunPanelState, runPanelReducer, type RunPanelState } from "./runPanelModel";
 
@@ -169,6 +170,20 @@ export function RunPanel() {
   const [state, dispatch] = React.useReducer(runPanelReducer, initialRunPanelState);
   const tokenRef = React.useRef(token);
   const abortRef = React.useRef<AbortController | null>(null);
+  const handleCancelRef = React.useRef<() => void>(() => undefined);
+  // P3-021: the live run (and its cancel intent) is registered on the run bridge —
+  // the palette's «إلغاء التشغيل الجاري» runs the same cancel, not a copy of it.
+  const liveRunId = state.kind === "live" ? state.runId : null;
+
+  React.useEffect(() => {
+    const bridge = useRunBridge.getState();
+    if (liveRunId !== null) {
+      bridge.register(liveRunId, () => handleCancelRef.current());
+      return () => bridge.register(null, null);
+    }
+    bridge.register(null, null);
+    return undefined;
+  }, [liveRunId]);
 
   React.useEffect(() => {
     tokenRef.current = token;
@@ -234,6 +249,10 @@ export function RunPanel() {
       dispatch({ type: "cancel-rejected", status, message });
     }
   }, [state]);
+  // The bridge's cancel intent always points at the LATEST cancel handler.
+  React.useEffect(() => {
+    handleCancelRef.current = () => void handleCancel();
+  });
 
   return (
     <RunPanelView

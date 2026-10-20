@@ -15,6 +15,8 @@ export interface ProjectionSnapshot {
   seq: number;
   sha256: string;
   graph: ProjectionGraph;
+  /** P3-021: the readable analyst notes carried by the projection (ledger order). */
+  notes: StoredNote[];
 }
 
 /** A case opened into the workbench: its identity plus its own graph. */
@@ -24,6 +26,16 @@ export interface OpenedCase {
   seq: number;
   sha256: string;
   graph: ProjectionGraph;
+  notes: StoredNote[];
+}
+
+/** P3-021: a readable note as the case's projection carries it (see @ir/ledger). */
+export interface StoredNote {
+  seq: number;
+  nodeId: string;
+  text: string;
+  at: string;
+  actor: string;
 }
 
 /**
@@ -52,10 +64,23 @@ export function parseProjection(body: unknown): ProjectionSnapshot | null {
   if (typeof g !== "object" || g === null) return null;
   const graph = g as Record<string, unknown>;
   if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) return null;
+  // P3-021: the projection now carries the readable analyst notes; a body without
+  // them (an older server) reads as zero notes — the notes feature degrades to
+  // "unavailable", never to a broken workbench.
+  const notes = Array.isArray(b.notes)
+    ? (b.notes as unknown[]).filter(
+        (n): n is { seq: number; nodeId: string; text: string; at: string; actor: string } =>
+          typeof n === "object" &&
+          n !== null &&
+          typeof (n as { nodeId?: unknown }).nodeId === "string" &&
+          typeof (n as { text?: unknown }).text === "string",
+      )
+    : [];
   return {
     seq: b.seq,
     sha256: b.sha256,
     graph: { nodes: graph.nodes as ProjectionGraph["nodes"], edges: graph.edges as ProjectionGraph["edges"] },
+    notes,
   };
 }
 

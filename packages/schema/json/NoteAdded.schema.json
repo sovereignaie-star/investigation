@@ -1,0 +1,18 @@
+{
+  "$id": "https://github.com/sovereignaie-star/investigation/schema/NoteAdded.schema.json",
+  "title": "NoteAdded",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "nodeId": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "required": ["nodeId", "text"]
+}

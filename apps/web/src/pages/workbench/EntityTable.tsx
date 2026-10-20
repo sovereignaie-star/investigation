@@ -50,9 +50,23 @@ export interface EntityTableProps {
    * of the same graph the canvas shows, so its rows carry the same selection.
    */
   onSelectRow?: (nodeId: string) => void;
+  /**
+   * P3-021: right-clicking a row opens the node's context menu targeting THAT row's
+   * node — the table is a view of the same graph the canvas shows.
+   */
+  onContextMenuRow?: (nodeId: string, event: React.MouseEvent) => void;
 }
 
-export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, totalRows, onSelectRow }: EntityTableProps) {
+export function EntityTable({
+  rows,
+  sort,
+  onSortChange,
+  filter,
+  onFilterChange,
+  totalRows,
+  onSelectRow,
+  onContextMenuRow,
+}: EntityTableProps) {
   const [scrollTop, setScrollTop] = React.useState(0);
 
   const win = visibleWindow({
@@ -120,8 +134,13 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
               <tr
                 key={r.id}
                 data-testid="entity-row"
-                {...(onSelectRow
-                  ? { "data-node-id": r.id, className: "cursor-pointer border-t", onClick: () => onSelectRow(r.id) }
+                {...(onSelectRow || onContextMenuRow
+                  ? {
+                      "data-node-id": r.id,
+                      className: "cursor-pointer border-t",
+                      onClick: onSelectRow ? () => onSelectRow(r.id) : undefined,
+                      onContextMenu: onContextMenuRow ? (event) => onContextMenuRow(r.id, event) : undefined,
+                    }
                   : { className: "border-t" })}
                 style={{ height: ROW_HEIGHT }}
               >
@@ -155,7 +174,13 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
  * Container: turns the projection's nodes into rows and owns the filter/sort
  * view state (D-033). The presentational table above stays testable statically.
  */
-export function EntityTableContainer({ nodes }: { nodes: readonly GraphNode[] }) {
+export function EntityTableContainer({
+  nodes,
+  onContextMenuRow,
+}: {
+  nodes: readonly GraphNode[];
+  onContextMenuRow?: (nodeId: string, event: React.MouseEvent) => void;
+}) {
   const [filter, setFilter] = React.useState("");
   const [sort, setSort] = React.useState<SortSpec>({ key: "type", dir: "asc" });
   const selectNode = useSelection((s) => s.selectNode);
@@ -173,6 +198,7 @@ export function EntityTableContainer({ nodes }: { nodes: readonly GraphNode[] })
       onFilterChange={setFilter}
       totalRows={allRows.length}
       onSelectRow={selectNode}
+      onContextMenuRow={onContextMenuRow}
     />
   );
 }

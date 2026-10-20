@@ -1,4 +1,4 @@
-import { AuditEvent, Claim, Entity, Evidence, MergeDecision, Observation } from "@ir/schema";
+import { AuditEvent, Claim, Entity, Evidence, MergeDecision, NoteAdded, Observation } from "@ir/schema";
 import { z } from "zod/v4";
 import type { Entry } from "../ledger.ts";
 
@@ -25,6 +25,20 @@ export interface StoredObservation extends Observation {
   seq: number;
 }
 
+/**
+ * P3-021: a projected note — the readable form of a `note.added` entry. Only entries whose
+ * payload parses against the NoteAdded schema appear here; unreadable payloads (legacy
+ * chains forged before the write path existed) still count in `counts.notes` but list no
+ * view entry — the counter's meaning never changed, and replay never breaks.
+ */
+export interface StoredNote {
+  seq: number;
+  nodeId: string;
+  text: string;
+  at: string;
+  actor: string;
+}
+
 const MergeReverted = z.object({ mergeId: z.string().min(1) });
 
 export class Projector {
@@ -44,6 +58,8 @@ export class Projector {
   readonly merges = new Map<string, MergeDecision & { seq: number }>();
   readonly issues: Issue[] = [];
   notes = 0;
+  /** P3-021: readable notes in ledger order (see StoredNote). */
+  readonly noteViews: StoredNote[] = [];
   /**
    * Merge index (P1-022, D-034, D-051): union-find over node ids with path compression, kept in step with the chain.
    * `merge.decided` is a union and `resolve` a find, amortised O(log n) each (near constant in practice). It is rebuilt from `merges` in seq order only when
@@ -187,7 +203,13 @@ const HANDLERS: Partial<Record<Entry["kind"], Handler>> = {
     m.reverted = true;
     p.invalidateMerges();
   },
-  "note.added": (p) => {
+  "note.added": (p, e) => {
     p.notes++;
+    // Tolerant parse: the count keeps counting every note.added; only readable payloads
+    // reach the view. A malformed payload is skipped, never an exception (replay safety).
+    const parsedNote = NoteAdded.safeParse(e.payload);
+    if (parsedNote.success) {
+      p.noteViews.push({ seq: e.seq, nodeId: parsedNote.data.nodeId, text: parsedNote.data.text, at: e.at, actor: e.actor });
+    }
   },
 };

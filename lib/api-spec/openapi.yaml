@@ -300,6 +300,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /cases/{id}/notes:
+    post:
+      operationId: addCaseNote
+      tags: [cases]
+      summary: Append an analyst note about one node (P3-021 — a real note.added ledger event)
+      description: >-
+        The context-menu note action's data path. The note is durable case data: a
+        `note.added` entry appended to the case's own hash-chained ledger (the kind already
+        exists in the schema and is counted by every projection), targeting the node by its
+        permanent entity id — stable across merges. The route validates the payload, refuses
+        locked (403) and archived (409 — J-16 write-block) cases, and verifies the target node
+        exists in the case's own projection before appending (422 — never a silently
+        orphaned event). The response is the created note as the next projection will carry it.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteInput"
+      responses:
+        "201":
+          description: The appended note (seq, nodeId, text, at, actor) as the projection will carry it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseNote"
+        "400":
+          description: Invalid input — empty text or a malformed body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: The case is locked-encrypted (J-17) — no content is written to a locked case.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No case with this id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The case is archived (J-16 write-block) — no content modification after archiving.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The target node is not part of this case's projection.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cases/{id}/stats:
     get:
       operationId: getCaseStats
@@ -707,7 +777,7 @@ components:
               type: integer
     CaseExport:
       type: object
-      required: [seq, graph, table, coverage, counts, sha256]
+      required: [seq, graph, table, coverage, counts, notes, sha256]
       description: >-
         The case's projection snapshot — the same shape `ir project --json` emits. The
         precise shape of each view is owned by @ir/ledger's projections (the source of
@@ -734,6 +804,14 @@ components:
           type: object
           description: The network log view as produced by @ir/ledger's networkLogView.
           additionalProperties: true
+        notes:
+          type: array
+          description: >-
+            The readable analyst notes (P3-021) in ledger order — every note.added entry
+            whose payload parses. Unreadable legacy payloads are counted in counts.notes
+            but do not appear here.
+          items:
+            $ref: "#/components/schemas/CaseNote"
         counts:
           type: object
           required: [entities, nodes, claims, edges, observations, evidence, merges, notes]
@@ -757,6 +835,37 @@ components:
         sha256:
           type: string
           description: The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint.
+    CreateNoteInput:
+      type: object
+      required: [nodeId, text]
+      properties:
+        nodeId:
+          type: string
+          minLength: 26
+          maxLength: 26
+          description: The target node's permanent entity id (ULID) — stable across merges.
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: The analyst's note about the node. Non-empty, bounded.
+    CaseNote:
+      type: object
+      required: [seq, nodeId, text, at, actor]
+      description: A readable `note.added` entry as the case's projection carries it.
+      properties:
+        seq:
+          type: integer
+          description: The ledger seq of the note.added entry.
+        nodeId:
+          type: string
+        text:
+          type: string
+        at:
+          type: string
+          format: date-time
+        actor:
+          type: string
     CreateCaseInput:
       type: object
       required: [title, purpose, legalBasis]
