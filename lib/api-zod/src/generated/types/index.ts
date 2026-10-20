@@ -7,6 +7,12 @@
  */
 
 export * from "./caseDetail";
+export * from "./caseExport";
+export * from "./caseExportCounts";
+export * from "./caseExportCoverage";
+export * from "./caseExportGraph";
+export * from "./caseExportNetworkLog";
+export * from "./caseExportTableItem";
 export * from "./caseStats";
 export * from "./caseStatsCounts";
 export * from "./caseSummary";

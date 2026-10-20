@@ -4,6 +4,7 @@ import path from "node:path";
 import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { caseFingerprint, openCase, type CaseFingerprint, type CaseInit } from "@ir/store";
+import { projectionHash } from "@ir/ledger/projections";
 import { isTextualMime } from "@ir/schema";
 import { CreateCaseBody, UpdateCaseLifecycleBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/admin";
@@ -253,6 +254,46 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
     try {
       const p = c.projection();
       res.json({ seq: p.seq, counts: p.counts });
+    } finally {
+      c.close();
+    }
+  });
+
+  // GET /cases/:id/export — P3-014 (يصدر الصيغ المتاحة في المرحلة): the phase's export
+  // format is the projection snapshot JSON — the exact shape `ir project --json` emits
+  // ({...projection, sha256}) — served as a download from ONE projection snapshot of the
+  // case itself, never a parallel rebuild. The file is named what it is: a projection
+  // snapshot, NOT a full copy of the case and its evidence. J-17: a locked case fails
+  // closed. An unsupported format is an explicit 400 naming the supported formats — never
+  // a silent fallback. Exporting opens the case readOnly and never mutates it.
+  router.get("/cases/:id/export/:format", limiter, admin, (req, res) => {
+    const format = req.params["format"];
+    if (format !== "projection") {
+      res.status(400).json({ error: "unsupported export format — supported: projection" });
+      return;
+    }
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    if (found.fp.encrypted) {
+      // J-17: nothing is exported from a locked case.
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const { dir } = found;
+    const c = openCase(dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const p = c.projection();
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="case-${id}-projection.json"`);
+      res.json({ ...p, sha256: projectionHash(p) });
     } finally {
       c.close();
     }

@@ -1,5 +1,6 @@
 import type { CaseSummary } from "@workspace/api-client-react";
 import { Badge, Button } from "@ir/ui";
+import { ExportMenu } from "./ExportMenu";
 
 /**
  * P3-003 (طلب ب): the case list table. The owner's decisions are the rendering rules:
@@ -16,12 +17,15 @@ const LOCKED_MESSAGE = "مقفلة — تتطلب فك التشفير";
 export function CasesTable({
   cases,
   includeArchived,
+  exportToken,
   onArchive,
   onReopen,
   onStats,
 }: {
   cases: CaseSummary[];
   includeArchived: boolean;
+  /** The admin token for the export download — the menu appears only once it is provided. */
+  exportToken?: string;
   onArchive?: (id: string) => void;
   onReopen?: (id: string) => void;
   onStats?: (id: string) => void;
@@ -79,6 +83,7 @@ export function CasesTable({
                   إعادة فتح
                 </Button>
               )}
+              {exportToken !== undefined && <ExportMenu caseId={c.id} canExport={c.status !== "locked-encrypted"} token={exportToken} />}
               {c.status === "locked-encrypted" && <span className="text-xs text-muted-foreground">لا إجراء قبل فك التشفير</span>}
             </td>
           </tr>

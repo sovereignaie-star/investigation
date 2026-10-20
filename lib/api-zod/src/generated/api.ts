@@ -251,6 +251,43 @@ export const GetCaseStatsResponse = zod.object({
 });
 
 /**
+ * The phase's export format: the case's projection snapshot JSON — the exact shape `ir project --json` emits ({...projection, sha256}), taken from ONE snapshot of the case's own projection. The file is a projection snapshot, NOT a full copy of the case and its evidence. J-17: a locked case fails closed with 403. An unsupported format is an explicit 400 naming the supported formats — never a silent fallback.
+ * @summary Case export (P3-014 — the projection snapshot JSON, the format available in this phase)
+ */
+export const GetCaseExportParams = zod.object({
+  id: zod.coerce.string().describe("Case id (ULID)."),
+  format: zod.enum(["projection"]).describe("The export format — only the phase's available format is supported."),
+});
+
+export const GetCaseExportResponse = zod
+  .object({
+    seq: zod.number().describe("The last ledger seq included in the snapshot (-1 for an empty chain)."),
+    graph: zod.record(zod.string(), zod.unknown()).describe("The graph view (nodes and edges) as produced by @ir\/ledger's graphView."),
+    table: zod.array(zod.record(zod.string(), zod.unknown())).describe("The table view rows as produced by @ir\/ledger's tableView."),
+    coverage: zod.record(zod.string(), zod.unknown()).describe("The coverage view as produced by @ir\/ledger's coverageView."),
+    networkLog: zod
+      .record(zod.string(), zod.unknown())
+      .optional()
+      .describe("The network log view as produced by @ir\/ledger's networkLogView."),
+    counts: zod.object({
+      entities: zod.number(),
+      nodes: zod.number(),
+      claims: zod.number(),
+      edges: zod.number(),
+      observations: zod.number(),
+      evidence: zod.number(),
+      merges: zod.number(),
+      notes: zod.number(),
+    }),
+    sha256: zod
+      .string()
+      .describe("The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint."),
+  })
+  .describe(
+    "The case's projection snapshot — the same shape `ir project --json` emits. The precise shape of each view is owned by @ir\/ledger's projections (the source of truth); this contract pins the top level.",
+  );
+
+/**
  * @summary Raw evidence content (P3-010 — the safe raw viewer's data path from the P1-010 blobs)
  */
 export const GetCaseEvidenceParams = zod.object({

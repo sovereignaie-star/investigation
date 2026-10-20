@@ -160,6 +160,53 @@ export interface CaseStats {
   counts: CaseStatsCounts;
 }
 
+/**
+ * The graph view (nodes and edges) as produced by @ir/ledger's graphView.
+ */
+export type CaseExportGraph = { [key: string]: unknown };
+
+export type CaseExportTableItem = { [key: string]: unknown };
+
+/**
+ * The coverage view as produced by @ir/ledger's coverageView.
+ */
+export type CaseExportCoverage = { [key: string]: unknown };
+
+/**
+ * The network log view as produced by @ir/ledger's networkLogView.
+ */
+export type CaseExportNetworkLog = { [key: string]: unknown };
+
+export type CaseExportCounts = {
+  entities: number;
+  nodes: number;
+  claims: number;
+  edges: number;
+  observations: number;
+  evidence: number;
+  merges: number;
+  notes: number;
+};
+
+/**
+ * The case's projection snapshot — the same shape `ir project --json` emits. The precise shape of each view is owned by @ir/ledger's projections (the source of truth); this contract pins the top level.
+ */
+export interface CaseExport {
+  /** The last ledger seq included in the snapshot (-1 for an empty chain). */
+  seq: number;
+  /** The graph view (nodes and edges) as produced by @ir/ledger's graphView. */
+  graph: CaseExportGraph;
+  /** The table view rows as produced by @ir/ledger's tableView. */
+  table: CaseExportTableItem[];
+  /** The coverage view as produced by @ir/ledger's coverageView. */
+  coverage: CaseExportCoverage;
+  /** The network log view as produced by @ir/ledger's networkLogView. */
+  networkLog?: CaseExportNetworkLog;
+  counts: CaseExportCounts;
+  /** The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint. */
+  sha256: string;
+}
+
 export type CreateCaseInputLegalBasis = (typeof CreateCaseInputLegalBasis)[keyof typeof CreateCaseInputLegalBasis];
 
 export const CreateCaseInputLegalBasis = {

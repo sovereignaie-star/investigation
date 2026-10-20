@@ -343,6 +343,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /cases/{id}/export/{format}:
+    get:
+      operationId: getCaseExport
+      tags: [cases]
+      summary: Case export (P3-014 — the projection snapshot JSON, the format available in this phase)
+      description: >-
+        The phase's export format: the case's projection snapshot JSON — the exact shape
+        `ir project --json` emits ({...projection, sha256}), taken from ONE snapshot of the
+        case's own projection. The file is a projection snapshot, NOT a full copy of the case
+        and its evidence. J-17: a locked case fails closed with 403. An unsupported format is
+        an explicit 400 naming the supported formats — never a silent fallback.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Case id (ULID).
+        - name: format
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [projection]
+          description: The export format — only the phase's available format is supported.
+      responses:
+        "200":
+          description: The projection snapshot JSON as a download (attachment).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseExport"
+        "400":
+          description: Unsupported format — the error names the supported formats.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: J-17 — the case is locked-encrypted; nothing is exported.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No case with this id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /cases/{id}/evidence/{evidenceId}:
     get:
       operationId: getCaseEvidence
@@ -599,6 +658,58 @@ components:
               type: integer
             notes:
               type: integer
+    CaseExport:
+      type: object
+      required: [seq, graph, table, coverage, counts, sha256]
+      description: >-
+        The case's projection snapshot — the same shape `ir project --json` emits. The
+        precise shape of each view is owned by @ir/ledger's projections (the source of
+        truth); this contract pins the top level.
+      properties:
+        seq:
+          type: integer
+          description: The last ledger seq included in the snapshot (-1 for an empty chain).
+        graph:
+          type: object
+          description: The graph view (nodes and edges) as produced by @ir/ledger's graphView.
+          additionalProperties: true
+        table:
+          type: array
+          description: The table view rows as produced by @ir/ledger's tableView.
+          items:
+            type: object
+            additionalProperties: true
+        coverage:
+          type: object
+          description: The coverage view as produced by @ir/ledger's coverageView.
+          additionalProperties: true
+        networkLog:
+          type: object
+          description: The network log view as produced by @ir/ledger's networkLogView.
+          additionalProperties: true
+        counts:
+          type: object
+          required: [entities, nodes, claims, edges, observations, evidence, merges, notes]
+          properties:
+            entities:
+              type: integer
+            nodes:
+              type: integer
+            claims:
+              type: integer
+            edges:
+              type: integer
+            observations:
+              type: integer
+            evidence:
+              type: integer
+            merges:
+              type: integer
+            notes:
+              type: integer
+        sha256:
+          type: string
+          description: The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint.
     CreateCaseInput:
       type: object
       required: [title, purpose, legalBasis]
