@@ -61,5 +61,8 @@
   },
   "dependencies": {
     "@ir/i18n": "workspace:*"
-  }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }
