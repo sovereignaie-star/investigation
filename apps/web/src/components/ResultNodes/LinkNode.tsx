@@ -1,40 +1,42 @@
-import { Handle, Position } from "@xyflow/react";
-import { Link, ExternalLink } from "lucide-react";
+import { ExternalLink, Link } from "lucide-react";
+import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { parseNodeData, type LinkNodeData } from "./contract";
 
+/**
+ * P3-016: the link result node on the new view model — typed data, the token
+ * palette, and the evidence rule of P3-008. The URL renders dir="ltr".
+ */
 interface Props {
-  data: { label: string; value: string; nodeData: Record<string, unknown> };
+  data: LinkNodeData;
   selected: boolean;
 }
 
 export function LinkNode({ data, selected }: Props) {
-  const url = data.value;
+  const node = parseNodeData("link", data);
+  if (!node) return <InvalidNode />;
   return (
-    <div
-      className={`bg-zinc-900 border ${selected ? "border-cyan-500" : "border-zinc-700"} rounded-lg shadow-xl min-w-[220px] max-w-[300px]`}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-cyan-500 !w-2 !h-2" />
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-800 rounded-t-lg">
-        <Link size={14} className="text-cyan-400" />
-        <span className="text-xs font-medium text-zinc-300">رابط</span>
-      </div>
-      <div className="p-3">
-        <p className="text-xs text-cyan-400 font-mono break-all">{url}</p>
-        {(data.nodeData as { domain?: string }).domain && (
-          <p className="text-xs text-zinc-500 mt-1">النطاق: {(data.nodeData as { domain?: string }).domain}</p>
-        )}
-      </div>
-      <div className="border-t border-zinc-800">
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-cyan-400 transition-colors"
-        >
+    <NodeFrame
+      selected={selected}
+      header={
+        <NodeHeader icon={<Link size={14} />} label="رابط">
+          {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
+        </NodeHeader>
+      }
+      footer={
+        <NodeAction href={node.url}>
           <ExternalLink size={11} />
           <span className="text-xs">فتح</span>
-        </a>
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-cyan-500 !w-2 !h-2" />
-    </div>
+        </NodeAction>
+      }
+    >
+      <p className="text-xs font-mono break-all text-primary" dir="ltr">
+        {node.url}
+      </p>
+      {node.domain && (
+        <p className="text-xs text-muted-foreground mt-1" dir="ltr">
+          {node.domain}
+        </p>
+      )}
+    </NodeFrame>
   );
 }

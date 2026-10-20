@@ -1,49 +1,58 @@
-import { Handle, Position } from "@xyflow/react";
-import { File, Download } from "lucide-react";
+import { Download, File } from "lucide-react";
+import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { parseNodeData, type FileNodeData } from "./contract";
 
+/**
+ * P3-016: the file result node on the new view model — typed data, the token
+ * palette, and the evidence rule of P3-008. The size renders only when known.
+ */
 interface Props {
-  data: { label: string; value: string; nodeData: Record<string, unknown> };
+  data: FileNodeData;
   selected: boolean;
 }
 
-export function FileNode({ data, selected }: Props) {
-  const nd = data.nodeData as { name?: string; size?: number; type?: string; url?: string };
-  const sizeStr = nd.size ? `${(nd.size / 1024).toFixed(1)} KB` : "";
+const humanSize = (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`;
 
+export function FileNode({ data, selected }: Props) {
+  const node = parseNodeData("file", data);
+  if (!node) return <InvalidNode />;
   return (
-    <div
-      className={`bg-zinc-900 border ${selected ? "border-amber-500" : "border-zinc-700"} rounded-lg shadow-xl min-w-[200px] max-w-[280px]`}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-2 !h-2" />
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-800 rounded-t-lg">
-        <File size={14} className="text-amber-400" />
-        <span className="text-xs font-medium text-zinc-300">ملف</span>
-      </div>
-      <div className="p-3">
-        <div className="flex items-start gap-2">
-          <div className="w-10 h-12 bg-zinc-800 rounded flex items-center justify-center shrink-0">
-            <File size={20} className="text-amber-400" />
-          </div>
-          <div>
-            <p className="text-sm text-white font-medium truncate">{nd.name || data.label}</p>
-            {nd.type && <p className="text-xs text-zinc-500">{nd.type}</p>}
-            {sizeStr && <p className="text-xs text-zinc-500">{sizeStr}</p>}
-          </div>
-        </div>
-      </div>
-      {nd.url && (
-        <div className="border-t border-zinc-800">
-          <a
-            href={nd.url}
-            download
-            className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-amber-400 transition-colors"
-          >
+    <NodeFrame
+      selected={selected}
+      header={
+        <NodeHeader icon={<File size={14} />} label="ملف">
+          {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
+        </NodeHeader>
+      }
+      footer={
+        node.url ? (
+          <NodeAction href={node.url}>
             <Download size={11} />
             <span className="text-xs">تحميل</span>
-          </a>
+          </NodeAction>
+        ) : undefined
+      }
+    >
+      <div className="flex items-start gap-2">
+        <div className="w-10 h-12 bg-muted rounded flex items-center justify-center shrink-0">
+          <File size={20} className="text-primary" />
         </div>
-      )}
-      <Handle type="source" position={Position.Bottom} className="!bg-amber-500 !w-2 !h-2" />
-    </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate" dir="ltr">
+            {node.name || node.label}
+          </p>
+          {node.mime && (
+            <p className="text-xs text-muted-foreground" dir="ltr">
+              {node.mime}
+            </p>
+          )}
+          {node.size !== undefined && (
+            <p className="text-xs text-muted-foreground" dir="ltr">
+              {humanSize(node.size)}
+            </p>
+          )}
+        </div>
+      </div>
+    </NodeFrame>
   );
 }
