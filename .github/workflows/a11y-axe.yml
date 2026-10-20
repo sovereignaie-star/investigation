@@ -1,0 +1,28 @@
+name: a11y-axe
+# P3-018 / G-23: the REAL-BROWSER axe run — «axe بلا حرج» where contrast can
+# actually be measured. The jsdom suite (a11y.test.ts, part of vitest) covers
+# the structural rules on every PR; this workflow runs axe-core in Playwright's
+# default Chromium against the built app, in BOTH themes (light and dark), on
+# the five main routes, and fails on any critical/serious violation.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  axe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build all packages
+        run: pnpm -r --if-present run build
+      - name: Install Playwright's default Chromium
+        run: npx playwright install --with-deps chromium
+      - name: axe on the five routes, both themes
+        run: node scripts/a11y/axe-pages.mjs

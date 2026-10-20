@@ -180,7 +180,7 @@ export function InvestigationGraph({
         <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{t("workbench.graph.empty")}</p>
       )}
       {error !== null && (
-        <p role="alert" className="absolute inset-x-0 bottom-0 bg-destructive/10 p-2 text-sm text-destructive">
+        <p role="alert" className="absolute inset-x-0 bottom-0 bg-destructive/10 p-2 text-sm text-destructive-text">
           {t("workbench.graph.noWebgl", { error })}
         </p>
       )}

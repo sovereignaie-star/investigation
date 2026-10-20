@@ -136,7 +136,9 @@ export function CasesPage() {
       </header>
 
       <section aria-labelledby="token" className="rounded-md border border-border p-4">
-        <Label htmlFor="admin-token">{t("cases.adminToken.label")}</Label>
+        <Label id="token" htmlFor="admin-token">
+          {t("cases.adminToken.label")}
+        </Label>
         <p className="mb-2 mt-1 text-xs text-muted-foreground">{t("cases.adminToken.hint")}</p>
         <Input
           id="admin-token"
@@ -207,7 +209,7 @@ export function CasesPage() {
               {createCase.isPending ? t("cases.create.submitting") : t("cases.create.submit")}
             </Button>
             {created && <Badge className="ms-3">{t("cases.create.created", { title: created })}</Badge>}
-            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            {error && <p className="mt-2 text-sm text-destructive-text">{error}</p>}
           </div>
         </form>
       </section>
@@ -225,7 +227,7 @@ export function CasesPage() {
         {list.isPending ? (
           <p className="text-sm text-muted-foreground">{t("cases.list.loading")}</p>
         ) : list.isError ? (
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-destructive-text">
             {t("cases.list.error")} ({list.error instanceof Error ? list.error.message : t("cases.list.errorGeneric")})
           </p>
         ) : (

@@ -37,7 +37,7 @@ export function FileUploader({ onText }: { onText: (text: string, name: string) 
         }}
       />
       {error !== null && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-text">
           {error}
         </p>
       )}

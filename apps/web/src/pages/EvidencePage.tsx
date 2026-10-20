@@ -69,7 +69,7 @@ function EvidenceResult(props: {
 }) {
   return (
     <>
-      {props.isError ? <p className="text-sm text-destructive">{props.errorMessage}</p> : null}
+      {props.isError ? <p className="text-sm text-destructive-text">{props.errorMessage}</p> : null}
       {props.evidence && props.view && displayOn(props.isError, props.evidence !== null) ? (
         <section aria-labelledby="evidence-view" className="rounded-md border border-border p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -125,7 +125,9 @@ export function EvidencePage() {
       </header>
 
       <section aria-labelledby="token" className="rounded-md border border-border p-4">
-        <Label htmlFor="evidence-admin-token">{t("cases.adminToken.label")}</Label>
+        <Label id="token" htmlFor="evidence-admin-token">
+          {t("cases.adminToken.label")}
+        </Label>
         <p className="mb-2 mt-1 text-xs text-muted-foreground">{t("evidence.adminToken.hint")}</p>
         <Input
           id="evidence-admin-token"
