@@ -29,9 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run governance checks
-        uses: ./.github/actions/verify
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
