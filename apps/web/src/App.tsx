@@ -8,6 +8,8 @@ import { CasesPage } from "./pages/CasesPage";
 import { WorkbenchPage } from "./pages/WorkbenchPage";
 // P3-010: the raw-evidence screen — sanitized HTML in a sandboxed iframe, text, or honest refusal.
 import { EvidencePage } from "./pages/EvidencePage";
+// P3-013: the settings screen — the key-management surface (UC-20).
+import { SettingsPage } from "./pages/SettingsPage";
 // P3-005: the large-graph canvas and its NFR-02 measurement harness.
 import { GraphBenchPage } from "./pages/workbench/GraphBenchPage";
 // P3-006: the small editable canvas (@xyflow/react).
@@ -27,6 +29,7 @@ const NAV = [
   { id: "canvas", label: "اللوحة التحريرية", href: "#/canvas" },
   { id: "cases", label: "القضايا", href: "#/cases" },
   { id: "evidence", label: "سجل الأدلة", href: "#/evidence" },
+  { id: "settings", label: "الإعدادات", href: "#/settings" },
   { id: "reports", label: "التقارير", disabled: true },
 ];
 
@@ -57,6 +60,8 @@ export default function App() {
           <CasesPage />
         ) : path === "/evidence" ? (
           <EvidencePage />
+        ) : path === "/settings" ? (
+          <SettingsPage />
         ) : path === "/workbench" ? (
           <WorkbenchPage />
         ) : path === "/graph-bench" ? (
