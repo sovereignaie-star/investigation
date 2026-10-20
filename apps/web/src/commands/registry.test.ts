@@ -88,6 +88,54 @@ describe("P3-021 command registry — structure", () => {
   });
 });
 
+describe("P3-022 command registry — undo/redo commands", () => {
+  it("view.undo and view.redo exist and their availability follows the history honestly", () => {
+    const undo = commandById("view.undo");
+    const redo = commandById("view.redo");
+    expect(undo).toBeDefined();
+    expect(redo).toBeDefined();
+
+    useViewState.getState().clear();
+    const ctx: CommandContext = {
+      graph: GRAPH,
+      openedCase: null,
+      refreshCase: () => {},
+      sigma: null,
+      graphKey: () => "k",
+      toast: () => {},
+      openNoteDialog: () => {},
+    };
+    // an empty history: both unavailable — no dead buttons that look alive
+    expect(undo?.available(ctx, null)).toBe(false);
+    expect(redo?.available(ctx, null)).toBe(false);
+
+    useViewState.getState().hideNodes("k", ["a"]);
+    expect(undo?.available(ctx, null)).toBe(true);
+    expect(redo?.available(ctx, null)).toBe(false);
+    void runCommand("view.undo", ctx, null);
+    expect(useViewState.getState().getHidden("k")).toEqual([]);
+    expect(redo?.available(ctx, null)).toBe(true);
+    void runCommand("view.redo", ctx, null);
+    expect(useViewState.getState().getHidden("k")).toEqual(["a"]);
+  });
+
+  it("undo/redo NEVER touch the case data: a note stays after an undo", () => {
+    useViewState.getState().clear();
+    const ctx: CommandContext = {
+      graph: GRAPH,
+      openedCase: { id: "c1", notes: [{ seq: 1, nodeId: "a", text: "ملاحظة", at: "", actor: "web" }] } as never,
+      refreshCase: () => {},
+      sigma: null,
+      graphKey: () => "k",
+      toast: () => {},
+      openNoteDialog: () => {},
+    };
+    useViewState.getState().hideNodes("k", ["a"]);
+    void runCommand("view.undo", ctx, null);
+    expect((ctx.openedCase as { notes: unknown[] }).notes).toHaveLength(1);
+  });
+});
+
 describe("P3-021 command registry — behavior", () => {
   it("node.details selects the TARGET node (the panel opens with the selection), not a previously selected one", () => {
     useSelection.getState().selectNode(NODE_A);

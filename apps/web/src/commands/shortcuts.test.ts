@@ -34,6 +34,23 @@ describe("P3-021 shortcut matching", () => {
     expect(matchShortcut(keydown({ key: "Delete" }))).toBe("node.removeView");
   });
 
+  it("P3-022: Ctrl+Z / Cmd+Z undo the last view edit (the OS-appropriate modifier)", () => {
+    expect(matchShortcut(keydown({ key: "z", ctrlKey: true }))).toBe("history.undo");
+    expect(matchShortcut(keydown({ key: "z", metaKey: true }))).toBe("history.undo");
+  });
+
+  it("P3-022: Ctrl+Shift+Z and Ctrl+Y redo (both documented spellings)", () => {
+    expect(matchShortcut(keydown({ key: "z", ctrlKey: true, shiftKey: true }))).toBe("history.redo");
+    expect(matchShortcut(keydown({ key: "z", metaKey: true, shiftKey: true }))).toBe("history.redo");
+    expect(matchShortcut(keydown({ key: "y", ctrlKey: true }))).toBe("history.redo");
+  });
+
+  it("P3-022: plain Z and Y without a modifier match nothing (typing is never an undo)", () => {
+    expect(matchShortcut(keydown({ key: "z" }))).toBeNull();
+    expect(matchShortcut(keydown({ key: "y" }))).toBeNull();
+    expect(matchShortcut(keydown({ key: "Z", shiftKey: true }))).toBeNull();
+  });
+
   it("no match: plain keys, other modifiers, other keys with the same modifiers", () => {
     expect(matchShortcut(keydown({ key: "k" }))).toBeNull();
     expect(matchShortcut(keydown({ key: "j", ctrlKey: true }))).toBeNull();

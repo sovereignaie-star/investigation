@@ -7,7 +7,7 @@
  * Text-entry surfaces (inputs, textareas, contenteditables) swallow shortcuts: the
  * Delete key inside the note dialog is text, not a command.
  */
-export type ShortcutAction = "palette.toggle" | "contextmenu.open" | "node.removeView";
+export type ShortcutAction = "palette.toggle" | "contextmenu.open" | "node.removeView" | "history.undo" | "history.redo";
 
 export function matchShortcut(event: KeyboardEvent): ShortcutAction | null {
   // Ctrl/Cmd+K toggles the palette (the OS-appropriate modifier).
@@ -16,7 +16,20 @@ export function matchShortcut(event: KeyboardEvent): ShortcutAction | null {
   if (isContextMenuOpen(event)) return "contextmenu.open";
   // Delete removes the selected node from the view (outside text fields).
   if (isRemoveView(event)) return "node.removeView";
+  // P3-022: undo/redo the last view edit (outside text fields — typing is never an undo).
+  if (isUndo(event)) return "history.undo";
+  if (isRedo(event)) return "history.redo";
   return null;
+}
+
+function isUndo(event: KeyboardEvent): boolean {
+  return (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z";
+}
+
+function isRedo(event: KeyboardEvent): boolean {
+  const mod = event.ctrlKey || event.metaKey;
+  const key = event.key.toLowerCase();
+  return mod && !event.altKey && ((event.shiftKey && key === "z") || (!event.shiftKey && key === "y"));
 }
 
 function isPaletteToggle(event: KeyboardEvent): boolean {
