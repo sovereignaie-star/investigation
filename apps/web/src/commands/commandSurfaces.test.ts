@@ -278,8 +278,14 @@ describe("P3-021 node context menu", () => {
     const copy = [...menu.querySelectorAll('[role="menuitem"]')].find((el) => el.textContent?.includes("نسخ"));
     await act(async () => {
       (copy as HTMLElement).click();
-      await new Promise((r) => setTimeout(r, 10));
     });
+    // the toast is async feedback — a fixed sleep races on slow CI runners; poll for it
+    // (bounded: 100 × 10ms) so the assertion waits for the feedback, not for luck
+    for (let i = 0; i < 100 && !container.textContent?.includes("تم النسخ"); i += 1) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
+    }
     expect(writeText).toHaveBeenCalledWith("domain:a.example.com");
     expect(container.textContent).toContain("تم النسخ");
   });
