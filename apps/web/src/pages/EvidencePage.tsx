@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import { useEffect, useState, type FormEvent } from "react";
 import DOMPurify from "dompurify";
 import { getGetCaseEvidenceQueryKey, setAuthTokenGetter, useGetCaseEvidence } from "@workspace/api-client-react";
@@ -31,29 +32,29 @@ function EvidenceForm({ onTarget }: { onTarget: (pair: SubmitTarget) => void }) 
   return (
     <form onSubmit={submit} className="grid gap-3 sm:max-w-xl">
       <div className="grid gap-1">
-        <Label htmlFor="evidence-case-id">معرّف القضية (ULID)</Label>
+        <Label htmlFor="evidence-case-id">{t("evidence.caseIdLabel")}</Label>
         <Input
           id="evidence-case-id"
           dir="ltr"
           value={form.caseId}
           onChange={(e) => setForm({ ...form, caseId: e.target.value })}
-          placeholder="01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          placeholder={t("evidence.caseIdExample")}
           required
         />
       </div>
       <div className="grid gap-1">
-        <Label htmlFor="evidence-evidence-id">معرّف الدليل (ULID)</Label>
+        <Label htmlFor="evidence-evidence-id">{t("evidence.evidenceIdLabel")}</Label>
         <Input
           id="evidence-evidence-id"
           dir="ltr"
           value={form.evidenceId}
           onChange={(e) => setForm({ ...form, evidenceId: e.target.value })}
-          placeholder="01HXXXXXXXXXXXXXXXXXXXXXXX"
+          placeholder={t("evidence.evidenceIdExample")}
           required
         />
       </div>
       <div>
-        <Button type="submit">عرض الدليل</Button>
+        <Button type="submit">{t("evidence.view")}</Button>
       </div>
     </form>
   );
@@ -73,10 +74,12 @@ function EvidenceResult(props: {
         <section aria-labelledby="evidence-view" className="rounded-md border border-border p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <h2 id="evidence-view" className="font-semibold">
-              العرض الخام
+              {t("evidence.rawView")}
             </h2>
             <Badge dir="ltr">{props.evidence.mime}</Badge>
-            <Badge dir="ltr">sha256: {props.evidence.sha256.slice(0, 12)}…</Badge>
+            <Badge dir="ltr">
+              {t("evidence.sha256")} {props.evidence.sha256.slice(0, 12)}…
+            </Badge>
             <Badge dir="ltr">{props.evidence.size} B</Badge>
           </div>
           <EvidenceViewer view={props.view} evidenceId={props.evidence.id} fetchedAt={props.evidence.fetchedAt} />
@@ -117,36 +120,34 @@ export function EvidencePage() {
   return (
     <div className="space-y-8">
       <header>
-        <p className="text-sm text-muted-foreground">الأدلة</p>
-        <h1 className="mt-1 text-xl font-semibold">عارض الأدلة الخام — عرض آمن لا تغيير</h1>
+        <p className="text-sm text-muted-foreground">{t("evidence.kicker")}</p>
+        <h1 className="mt-1 text-xl font-semibold">{t("evidence.title")}</h1>
       </header>
 
       <section aria-labelledby="token" className="rounded-md border border-border p-4">
-        <Label htmlFor="evidence-admin-token">رمز الإدارة</Label>
-        <p className="mb-2 mt-1 text-xs text-muted-foreground">
-          قراءة الأدلة خلف حدود الأدمن — أدخل رمز الإدارة (يبقى في الذاكرة لهذه الجلسة فقط، بلا أي تخزين متصفح).
-        </p>
+        <Label htmlFor="evidence-admin-token">{t("cases.adminToken.label")}</Label>
+        <p className="mb-2 mt-1 text-xs text-muted-foreground">{t("evidence.adminToken.hint")}</p>
         <Input
           id="evidence-admin-token"
           type="password"
           dir="ltr"
           value={token}
           onChange={(e) => saveToken(e.target.value)}
-          placeholder="IR_ADMIN_TOKEN"
+          placeholder={t("cases.adminToken.placeholder")}
           className="max-w-xs"
         />
       </section>
 
       <section aria-labelledby="fetch-evidence" className="rounded-md border border-border p-4">
         <h2 id="fetch-evidence" className="mb-3 font-semibold">
-          جلب دليل
+          {t("evidence.fetch")}
         </h2>
         <EvidenceForm onTarget={onTarget} />
       </section>
 
       <EvidenceResult
         isError={query.isError}
-        errorMessage={`تعذر جلب الدليل — تحقق من الرمز والمعرّفات ومن أن القضية غير مقفلة. (${query.error instanceof Error ? query.error.message : "خطأ"})`}
+        errorMessage={`${t("evidence.error")} (${query.error instanceof Error ? query.error.message : t("cases.list.errorGeneric")})`}
         evidence={evidence}
         view={view}
       />

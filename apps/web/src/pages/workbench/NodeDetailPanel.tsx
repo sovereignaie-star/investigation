@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import type { Graph } from "@ir/ledger/projections";
 
 import { useSelection } from "../../store/selectionStore";
@@ -16,7 +17,7 @@ import { buildEvidenceDetail, buildNodeDetail, type EvidenceDetail, type NodeDet
  */
 
 function EvidenceLinks({ evidenceIds, onSelectEvidence }: { evidenceIds: string[]; onSelectEvidence: (id: string) => void }) {
-  if (evidenceIds.length === 0) return <span className="text-muted-foreground">لا دليل مسجل</span>;
+  if (evidenceIds.length === 0) return <span className="text-muted-foreground">{t("workbench.nodeDetail.noEvidence")}</span>;
   return (
     <span className="flex flex-wrap gap-1">
       {evidenceIds.map((id) => (
@@ -25,7 +26,7 @@ function EvidenceLinks({ evidenceIds, onSelectEvidence }: { evidenceIds: string[
           type="button"
           data-testid="evidence-link"
           className="rounded border px-1 font-mono text-[11px] hover:bg-accent"
-          title={`الدليل ${id}`}
+          title={t("workbench.nodeDetail.evidenceTitle", { id })}
           onClick={() => onSelectEvidence(id)}
         >
           {id}
@@ -49,19 +50,27 @@ export function NodeDetailPanel({
   if (!detail) return null;
 
   return (
-    <aside data-testid="node-detail-panel" className="rounded-lg border bg-card p-4 text-sm" aria-label="تفاصيل العقدة">
+    <aside
+      data-testid="node-detail-panel"
+      className="rounded-lg border bg-card p-4 text-sm"
+      aria-label={t("workbench.nodeDetail.ariaLabel")}
+    >
       <div className="flex items-start justify-between gap-2">
         <div>
           <h3 className="font-semibold">{detail.label}</h3>
           <p className="font-mono text-[11px] text-muted-foreground" data-testid="node-detail-type">
             {detail.type} · {detail.canonicalKey}
           </p>
-          {detail.aliases.length > 0 && <p className="text-[11px] text-muted-foreground">كيانات مدمجة: {detail.aliases.join("، ")}</p>}
+          {detail.aliases.length > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              {t("workbench.nodeDetail.mergedEntities", { aliases: detail.aliases.join("، ") })}
+            </p>
+          )}
         </div>
         <span
           className="rounded-full border px-2 py-0.5 text-[11px]"
           data-testid="node-detail-observations"
-          title="ملاحظات موجبة / سالبة / أخطاء"
+          title={t("workbench.nodeDetail.notesTitle")}
         >
           +{detail.observations.positive} −{detail.observations.negative} !{detail.observations.error}
         </span>
@@ -70,17 +79,17 @@ export function NodeDetailPanel({
       {evidenceDetail ? (
         <div className="mt-3 rounded border bg-muted/40 p-3" data-testid="evidence-detail">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium">الدليل {evidenceDetail.evidenceId}</h4>
+            <h4 className="font-medium">{t("workbench.nodeDetail.evidenceHeading", { id: evidenceDetail.evidenceId })}</h4>
             <button
               type="button"
               data-testid="evidence-detail-close"
               className="text-[11px] text-muted-foreground hover:underline"
               onClick={onCloseEvidence}
             >
-              إغلاق
+              {t("common.close")}
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">يُستشهد به في:</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("workbench.nodeDetail.citedIn")}</p>
           <ul className="mt-1 list-inside list-disc text-[12px]">
             {evidenceDetail.citedBy.map((c, i) => (
               <li key={i}>
@@ -92,17 +101,17 @@ export function NodeDetailPanel({
       ) : null}
 
       <div className="mt-3">
-        <h4 className="mb-1 font-medium">الخصائص (ادعاءات قيمية)</h4>
+        <h4 className="mb-1 font-medium">{t("workbench.nodeDetail.attributes")}</h4>
         {detail.attributes.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">لا ادعاءات مسجلة</p>
+          <p className="text-[12px] text-muted-foreground">{t("workbench.nodeDetail.noAttributes")}</p>
         ) : (
           <table className="w-full text-[12px]">
             <thead>
               <tr className="text-start text-muted-foreground">
-                <th className="text-start font-normal">الخاصية</th>
-                <th className="text-start font-normal">القيمة</th>
-                <th className="text-start font-normal">الثقة</th>
-                <th className="text-start font-normal">الدليل</th>
+                <th className="text-start font-normal">{t("workbench.nodeDetail.attribute")}</th>
+                <th className="text-start font-normal">{t("workbench.nodeDetail.value")}</th>
+                <th className="text-start font-normal">{t("workbench.nodeDetail.confidence")}</th>
+                <th className="text-start font-normal">{t("workbench.nodeDetail.evidence")}</th>
               </tr>
             </thead>
             <tbody>
@@ -126,9 +135,9 @@ export function NodeDetailPanel({
       </div>
 
       <div className="mt-3">
-        <h4 className="mb-1 font-medium">العلاقات</h4>
+        <h4 className="mb-1 font-medium">{t("workbench.nodeDetail.relations")}</h4>
         {detail.relations.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">لا علاقات مسجلة</p>
+          <p className="text-[12px] text-muted-foreground">{t("workbench.nodeDetail.noRelations")}</p>
         ) : (
           <ul className="space-y-1 text-[12px]">
             {detail.relations.map((r) => (

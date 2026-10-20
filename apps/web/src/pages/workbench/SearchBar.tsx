@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { Button, Textarea } from "@ir/ui";
 
@@ -18,19 +19,19 @@ export function SearchBar({ onText }: { onText: (text: string) => void }) {
       }}
     >
       <label htmlFor="search-text" className="text-sm font-medium">
-        الصق نصاً حراً
+        {t("workbench.search.label")}
       </label>
       <Textarea
         id="search-text"
         name="search-text"
         dir="auto"
         rows={4}
-        placeholder="الصق النص هنا — نطاقات، عناوين IP، بريد، هواتف، محافظ…"
+        placeholder={t("workbench.search.placeholder")}
         value={value}
         onChange={(event) => setValue(event.target.value)}
       />
       <Button type="submit" className="self-end">
-        استخراج المعرّفات
+        {t("workbench.search.extract")}
       </Button>
     </form>
   );

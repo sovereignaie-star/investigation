@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import { describe, expect, it } from "vitest";
 
 import { EXPORT_FORMATS, exportUrl, filenameFromDisposition, isExportFormat } from "./exportMenu";
@@ -15,8 +16,9 @@ describe("EXPORT_FORMATS (P3-014 — الصيغ المتاحة في المرحل
     expect(EXPORT_FORMATS).toHaveLength(1);
     expect(EXPORT_FORMATS[0].id).toBe("projection");
     // The label says what the file IS: a projection snapshot, not a full case copy.
-    expect(EXPORT_FORMATS[0].label).toContain("لقطة الإسقاط");
-    expect(EXPORT_FORMATS[0].label).toContain("JSON");
+    // P3-017: the label is a dictionary key resolved through t() (default ar).
+    expect(t(EXPORT_FORMATS[0].labelKey)).toContain("لقطة الإسقاط");
+    expect(t(EXPORT_FORMATS[0].labelKey)).toContain("JSON");
   });
 
   it("isExportFormat accepts the phase's format and rejects invented ones — no silent fallback", () => {

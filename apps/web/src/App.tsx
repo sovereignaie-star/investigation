@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppShell, Button } from "@ir/ui";
+// P3-017: every UI string comes from @ir/i18n — the app subscribes to the
+// locale store so a language switch re-renders the whole tree.
+import { t, useI18n } from "@ir/i18n";
 import { IDENTIFIER_LIST } from "./utils/identifierList";
 // P3-003 (طلب ب): the cases screen, wired to the generated SDK over the case lifecycle API.
 import { CasesPage } from "./pages/CasesPage";
@@ -24,13 +27,13 @@ const REPO = "https://github.com/sovereignaie-star/investigation";
 // Placeholder navigation: the overview is the only live screen; the workbench
 // screens arrive with P3-003..P3-020 and stay disabled links until then.
 const NAV = [
-  { id: "overview", label: "نظرة عامة", href: "#/" },
-  { id: "workbench", label: "محطة العمل", href: "#/workbench" },
-  { id: "canvas", label: "اللوحة التحريرية", href: "#/canvas" },
-  { id: "cases", label: "القضايا", href: "#/cases" },
-  { id: "evidence", label: "سجل الأدلة", href: "#/evidence" },
-  { id: "settings", label: "الإعدادات", href: "#/settings" },
-  { id: "reports", label: "التقارير", disabled: true },
+  { id: "overview", label: t("nav.overview"), href: "#/" },
+  { id: "workbench", label: t("nav.workbench"), href: "#/workbench" },
+  { id: "canvas", label: t("nav.canvas"), href: "#/canvas" },
+  { id: "cases", label: t("nav.cases"), href: "#/cases" },
+  { id: "evidence", label: t("nav.evidence"), href: "#/evidence" },
+  { id: "settings", label: t("nav.settings"), href: "#/settings" },
+  { id: "reports", label: t("nav.reports"), disabled: true },
 ];
 
 /**
@@ -52,9 +55,12 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false 
 
 export default function App() {
   const path = useHashPath();
+  // P3-017: subscribing here re-renders the tree on a locale switch (the NAV
+  // labels and every page's t() strings follow the new locale).
+  useI18n();
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell title="غرفة التحقيق" nav={NAV}>
+      <AppShell title={t("app.title")} nav={NAV}>
         {/* P3-003..P3-005: workbench routes — overview, cases, input flow and graph bench. */}
         {path === "/cases" ? (
           <CasesPage />
@@ -92,16 +98,13 @@ function Overview(): React.ReactElement {
   return (
     <div>
       <header className="mb-10">
-        <p className="text-sm text-muted-foreground">المرحلة 3 — محطة العمل</p>
-        <p className="mt-3 leading-relaxed text-muted-foreground">
-          أداة تحقيق مفتوح المصدر، عربية الأولوية، محلية أولاً، تبني رسماً من الارتباطات فوق سجل أدلة موثَّق. محطة العمل قيد الإنشاء وفق
-          خارطة الطريق.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("overview.phase")}</p>
+        <p className="mt-3 leading-relaxed text-muted-foreground">{t("overview.intro")}</p>
       </header>
 
       <section aria-labelledby="ids" className="mb-10">
         <h2 id="ids" className="mb-3 text-xl font-semibold">
-          أنواع المعرّفات المعرّفة حالياً: <span dir="ltr">{IDENTIFIER_LIST.length}</span>
+          {t("overview.identifierTypes")} <span dir="ltr">{IDENTIFIER_LIST.length}</span>
         </h2>
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {categories.map(([key, { ar, n }]) => (
@@ -117,27 +120,27 @@ function Overview(): React.ReactElement {
 
       <section aria-labelledby="docs">
         <h2 id="docs" className="mb-3 text-xl font-semibold">
-          وثائق المشروع الحاكمة
+          {t("overview.governingDocs")}
         </h2>
         <ul className="list-disc space-y-1 ps-6">
           <li>
             <Button asChild variant="link" className="h-auto p-0 font-normal underline">
-              <a href={`${REPO}/blob/main/docs/ROADMAP.md`}>خارطة الطريق</a>
+              <a href={`${REPO}/blob/main/docs/ROADMAP.md`}>{t("overview.roadmap")}</a>
             </Button>
           </li>
           <li>
             <Button asChild variant="link" className="h-auto p-0 font-normal underline">
-              <a href={`${REPO}/blob/main/docs/STATUS.md`}>حالة المشروع</a>
+              <a href={`${REPO}/blob/main/docs/STATUS.md`}>{t("overview.status")}</a>
             </Button>
           </li>
           <li>
             <Button asChild variant="link" className="h-auto p-0 font-normal underline">
-              <a href={`${REPO}/blob/main/docs/WORKLOG.md`}>سجل العمل</a>
+              <a href={`${REPO}/blob/main/docs/WORKLOG.md`}>{t("overview.worklog")}</a>
             </Button>
           </li>
           <li>
             <Button asChild variant="link" className="h-auto p-0 font-normal underline">
-              <a href={`${REPO}/blob/main/GOVERNANCE.md`}>القواعد الحاكمة</a>
+              <a href={`${REPO}/blob/main/GOVERNANCE.md`}>{t("overview.governance")}</a>
             </Button>
           </li>
         </ul>

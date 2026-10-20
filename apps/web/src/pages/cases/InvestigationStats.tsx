@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { useGetCaseStats } from "@workspace/api-client-react";
 import { Button } from "@ir/ui";
@@ -17,7 +18,7 @@ export function InvestigationStatsView({ state }: { state: InvestigationStatsSta
     return (
       <section data-testid="stats-panel" className="rounded-lg border border-border bg-card p-4">
         <p data-testid="stats-loading" className="text-sm text-muted-foreground">
-          جارٍ جلب إحصاءات القضية…
+          {t("cases.stats.loading")}
         </p>
       </section>
     );
@@ -26,7 +27,7 @@ export function InvestigationStatsView({ state }: { state: InvestigationStatsSta
     return (
       <section data-testid="stats-panel" className="rounded-lg border border-border bg-card p-4">
         <p data-testid="stats-error" className="text-sm text-destructive">
-          تعذر جلب الإحصاءات: {state.message}
+          {t("cases.stats.error")} {state.message}
         </p>
       </section>
     );
@@ -36,9 +37,9 @@ export function InvestigationStatsView({ state }: { state: InvestigationStatsSta
   return (
     <section data-testid="stats-panel" className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold">إحصاءات القضية</h3>
+        <h3 className="text-base font-semibold">{t("cases.stats.title")}</h3>
         <span dir="ltr" data-testid="stats-seq" className="text-xs tabular-nums text-muted-foreground">
-          seq {stats.seq}
+          {t("cases.stats.seq")} {stats.seq}
         </span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -53,7 +54,7 @@ export function InvestigationStatsView({ state }: { state: InvestigationStatsSta
       </dl>
       {isBlankSnapshot(stats) && (
         <p data-testid="stats-blank" className="mt-3 text-xs text-muted-foreground">
-          لا محتوى مسجل في السلسلة بعد — هذه أصفار القضية الفارغة، لا أرقاماً مفقودة.
+          {t("cases.stats.blank")}
         </p>
       )}
     </section>
@@ -76,7 +77,7 @@ export function InvestigationStats({ caseId, onClose }: { caseId: string; onClos
     <div className="space-y-2">
       <InvestigationStatsView state={state} />
       <Button variant="outline" size="sm" data-testid="stats-close" onClick={onClose}>
-        إغلاق الإحصاءات
+        {t("cases.stats.close")}
       </Button>
     </div>
   );

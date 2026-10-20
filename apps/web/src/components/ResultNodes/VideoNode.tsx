@@ -1,6 +1,7 @@
 import { ExternalLink, Play } from "lucide-react";
 import { youtubeId } from "../../utils/youtube";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type VideoNodeData } from "./contract";
 
 /**
@@ -22,14 +23,14 @@ export function VideoNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<Play size={14} />} label="فيديو">
+        <NodeHeader icon={<Play size={14} />} label={t("resultNodes.kind.video")}>
           {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
         </NodeHeader>
       }
       footer={
         <NodeAction href={node.url}>
           <ExternalLink size={11} />
-          <span className="text-xs">فتح</span>
+          <span className="text-xs">{t("common.open")}</span>
         </NodeAction>
       }
     >

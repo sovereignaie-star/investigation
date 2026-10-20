@@ -3,6 +3,9 @@ import js from "@eslint/js";
 import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+// P3-017: the zero-inline-text rule — no Arabic/English UI text embedded in
+// JSX; every string comes from @ir/i18n (t()).
+import noInlineUiText from "./scripts/eslint-rules/no-inline-ui-text.mjs";
 
 export default tseslint.config(
   {
@@ -33,6 +36,16 @@ export default tseslint.config(
     files: ["**/*.tsx", "**/*.jsx"],
     plugins: { "react-hooks": reactHooks },
     rules: { ...reactHooks.configs.recommended.rules },
+  },
+  {
+    // P3-017: zero inline UI text — Arabic or English words embedded directly
+    // in JSX (text nodes, children literals, text-carrying attributes) are
+    // banned; use t() from @ir/i18n. Tests assert rendered strings and are
+    // excluded; generated and vendored code too.
+    files: ["apps/web/src/**/*.tsx", "packages/ui/src/**/*.tsx"],
+    ignores: ["**/*.test.tsx", "**/*.test.ts"],
+    plugins: { "ir-i18n": { rules: { "no-inline-ui-text": noInlineUiText } } },
+    rules: { "ir-i18n/no-inline-ui-text": "error" },
   },
   {
     // Legacy debt, tracked: these files are replaced by core/detect (P1-004..P1-006) and P2 adapters.

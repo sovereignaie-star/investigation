@@ -85,9 +85,6 @@ export interface ResultNodeKinds {
   location: LocationNodeData;
 }
 
-/** The honest shell invalid data renders — its text is part of the contract. */
-export const INVALID_NODE_MESSAGE = "بيانات عقدة غير صالحة";
-
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
 const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 

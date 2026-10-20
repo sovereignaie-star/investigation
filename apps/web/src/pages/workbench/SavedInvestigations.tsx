@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { getCaseProjection, getListCasesQueryKey, useListCases, type CaseSummary } from "@workspace/api-client-react";
 import { Badge, Button, Input, Label } from "@ir/ui";
@@ -51,12 +52,12 @@ export function SavedInvestigationsView({
     <section aria-labelledby="saved-investigations" data-testid="saved-investigations" className="rounded-md border border-border p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 id="saved-investigations" className="font-semibold">
-          التحقيقات المحفوظة
+          {t("workbench.saved.title")}
         </h2>
-        <p className="text-xs text-muted-foreground">فتح قضية محفوظة من الخادم — لا شيء يُخزَّن في المتصفح (D-033).</p>
+        <p className="text-xs text-muted-foreground">{t("workbench.saved.hint")}</p>
       </div>
       <div className="mb-3 grid gap-1 sm:max-w-xs">
-        <Label htmlFor="saved-token-input">رمز الإدارة</Label>
+        <Label htmlFor="saved-token-input">{t("cases.adminToken.label")}</Label>
         <Input
           id="saved-token-input"
           data-testid="saved-token"
@@ -64,18 +65,18 @@ export function SavedInvestigationsView({
           dir="ltr"
           value={token}
           onChange={(e) => onTokenChange(e.target.value)}
-          placeholder="IR_ADMIN_TOKEN — للذاكرة فقط"
+          placeholder={t("workbench.saved.tokenPlaceholder")}
         />
       </div>
-      {listStatus === "loading" && <p className="text-sm text-muted-foreground">جارٍ تحميل القضايا…</p>}
+      {listStatus === "loading" && <p className="text-sm text-muted-foreground">{t("cases.list.loading")}</p>}
       {listStatus === "error" && (
         <p data-testid="saved-list-error" className="text-sm text-destructive">
-          تعذر جلب القضايا — تحقق من رمز الإدارة ومن تشغيل الخادم.
+          {t("cases.list.error")}
         </p>
       )}
       {listStatus === "success" &&
         (cases.length === 0 ? (
-          <p className="text-sm text-muted-foreground">لا قضايا محفوظة بعد — أنشئ قضية من شاشة القضايا ثم افتحها هنا بعد أي إعادة تشغيل.</p>
+          <p className="text-sm text-muted-foreground">{t("workbench.saved.empty")}</p>
         ) : (
           <ul className="divide-y divide-border">
             {cases.map((c) => (
@@ -90,15 +91,17 @@ export function SavedInvestigationsView({
                   )}
                 </span>
                 <span className="flex items-center gap-2">
-                  {c.status === "locked-encrypted" && <span className="text-xs text-muted-foreground">مقفلة — تتطلب فك التشفير</span>}
+                  {c.status === "locked-encrypted" && (
+                    <span className="text-xs text-muted-foreground">{t("cases.status.lockedMessage")}</span>
+                  )}
                   {activeCaseId === c.id && (
                     <Badge data-testid={`opened-badge-${c.id}`} className="text-xs">
-                      مفتوحة في المحطة
+                      {t("workbench.saved.openInWorkbench")}
                     </Badge>
                   )}
                   {canOpenCase(c) && (
                     <Button size="sm" variant="outline" data-testid={`open-case-${c.id}`} disabled={busy} onClick={() => onOpen(c)}>
-                      {busy && state.id === c.id ? "جارٍ الفتح…" : "فتح في المحطة"}
+                      {busy && state.id === c.id ? t("workbench.saved.opening") : t("workbench.saved.openInWorkbench")}
                     </Button>
                   )}
                 </span>
@@ -108,7 +111,7 @@ export function SavedInvestigationsView({
         ))}
       {state.kind === "error" && (
         <p data-testid="saved-error" className="mt-2 text-sm text-destructive">
-          تعذر فتح القضية: {state.message}
+          {t("workbench.saved.openError")} {state.message}
         </p>
       )}
     </section>
@@ -120,18 +123,18 @@ export function OpenedCaseBanner({ opened, onClose }: { opened: OpenedCase; onCl
   return (
     <section
       data-testid="opened-case-banner"
-      aria-label="القضية المفتوحة"
+      aria-label={t("workbench.saved.openedAria")}
       className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-3"
     >
-      <span className="text-sm font-semibold">مفتوحة في المحطة: {opened.title ?? opened.id}</span>
+      <span className="text-sm font-semibold">{t("workbench.saved.openedIn", { title: opened.title ?? opened.id })}</span>
       <span dir="ltr" data-testid="opened-seq" className="text-xs tabular-nums text-muted-foreground">
-        seq {opened.seq}
+        {t("cases.stats.seq")} {opened.seq}
       </span>
       <span dir="ltr" data-testid="opened-sha" className="max-w-[16rem] truncate font-mono text-[11px] text-muted-foreground">
         {opened.sha256}
       </span>
       <Button size="sm" variant="ghost" onClick={onClose}>
-        إغلاق القضية المفتوحة
+        {t("workbench.saved.closeOpened")}
       </Button>
     </section>
   );
@@ -153,13 +156,13 @@ export function SavedInvestigations({ onOpen, activeCaseId }: { onOpen: (c: Open
       const snapshot = parseProjection(body as unknown);
       if (!snapshot) {
         // Fail-closed: a malformed snapshot never becomes an "opened" empty case.
-        setState({ kind: "error", message: "استجابة الإسقاط غير صالحة — لم تُفتح القضية" });
+        setState({ kind: "error", message: t("workbench.saved.invalidProjection") });
         return;
       }
       setState({ kind: "idle" });
       onOpen(toOpenedCase(row, snapshot));
     } catch (x) {
-      setState({ kind: "error", message: x instanceof Error ? x.message : "خطأ غير معروف" });
+      setState({ kind: "error", message: x instanceof Error ? x.message : t("workbench.saved.unknownError") });
     }
   };
 

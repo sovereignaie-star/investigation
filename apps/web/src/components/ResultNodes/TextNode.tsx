@@ -1,5 +1,6 @@
 import { Copy, FileText } from "lucide-react";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader, copyText } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type TextNodeData } from "./contract";
 
 /**
@@ -18,14 +19,14 @@ export function TextNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<FileText size={14} />} label="نص">
+        <NodeHeader icon={<FileText size={14} />} label={t("resultNodes.kind.text")}>
           {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
         </NodeHeader>
       }
       footer={
         <NodeAction onClick={() => copyText(node.value)}>
           <Copy size={11} />
-          <span className="text-xs">نسخ النص</span>
+          <span className="text-xs">{t("resultNodes.copyText")}</span>
         </NodeAction>
       }
     >

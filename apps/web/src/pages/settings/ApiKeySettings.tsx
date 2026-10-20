@@ -10,6 +10,7 @@
  * vault runs migrateLegacyKeys() first, which moves any keys older builds left
  * in localStorage to the vault and deletes the local copy.
  */
+import { t } from "@ir/i18n";
 import { useCallback, useRef, useState, type ReactElement } from "react";
 import { Badge, Button, Input, Label } from "@ir/ui";
 import { API_KEY_DEFINITIONS, apiKeyManager } from "../../utils/apiKeyManager";
@@ -41,16 +42,16 @@ export type KeyRowActions = {
 /** Presentational — no secrets, no fetches: only the honest states. */
 export function ApiKeySettingsView({ state, actions }: { state: ApiKeySettingsState; actions?: KeyRowActions }): ReactElement {
   return (
-    <section data-testid="keys-panel" aria-label="إعدادات المفاتيح">
-      <h2>مفاتيح المزوّدين</h2>
+    <section data-testid="keys-panel" aria-label={t("settings.keys.ariaLabel")}>
+      <h2>{t("settings.keys.title")}</h2>
       {state.kind === "idle" && (
         <p data-testid="keys-idle" className="text-muted-foreground">
-          أدخل رمز الإدارة أعلاه ثم اضغط «قراءة الخزنة».
+          {t("settings.keys.idle")}
         </p>
       )}
       {state.kind === "loading" && (
         <p data-testid="keys-loading" className="text-muted-foreground">
-          جارٍ قراءة حالة الخزنة…
+          {t("settings.keys.loading")}
         </p>
       )}
       {state.kind === "error" && (
@@ -70,9 +71,7 @@ export function ApiKeySettingsView({ state, actions }: { state: ApiKeySettingsSt
               {migrationNotice(state.migration)}
             </p>
           )}
-          <p className="text-sm text-muted-foreground">
-            المفاتيح تُحفظ في خزنة الخادم المختومة — لا يبقى شيء في المتصفح، والمفتاح لا يُعرض بعد الحفظ.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("settings.keys.storageNote")}</p>
           <div className="space-y-4">
             {state.rows.map((row) => (
               <KeyRow
@@ -106,7 +105,9 @@ function KeyRow({
     <div data-testid={`key-row-${row.key}`} className="rounded-md border border-border p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold">{row.label}</span>
-        <Badge data-testid={`key-badge-${row.key}`}>{row.configured ? "مُعد" : "غير مُعد"}</Badge>
+        <Badge data-testid={`key-badge-${row.key}`}>
+          {row.configured ? t("settings.keys.configured") : t("settings.keys.notConfigured")}
+        </Badge>
         {row.updatedAt !== null && (
           <span data-testid={`key-updated-${row.key}`} className="text-xs text-muted-foreground" dir="ltr">
             {row.updatedAt}
@@ -114,7 +115,7 @@ function KeyRow({
         )}
         {row.link !== "" && (
           <a href={row.link} target="_blank" rel="noreferrer" className="text-xs underline">
-            وثائق المزوّد
+            {t("settings.keys.docs")}
           </a>
         )}
       </div>
@@ -125,12 +126,12 @@ function KeyRow({
           type="password"
           value={secret}
           onChange={(e) => actions?.setSecret(row.key, e.target.value)}
-          placeholder={row.placeholder !== "" ? row.placeholder : "مفتاح جديد"}
+          placeholder={row.placeholder !== "" ? row.placeholder : t("settings.keys.newKey")}
           className="max-w-xs"
           autoComplete="off"
         />
         <Button data-testid={`key-save-${row.key}`} disabled={busy || secret.length === 0} onClick={() => actions?.save(row.key)}>
-          حفظ
+          {t("common.save")}
         </Button>
         <Button
           data-testid={`key-test-${row.key}`}
@@ -138,7 +139,7 @@ function KeyRow({
           variant="outline"
           onClick={() => actions?.test(row.key)}
         >
-          اختبار
+          {t("settings.keys.test")}
         </Button>
         <Button
           data-testid={`key-delete-${row.key}`}
@@ -146,7 +147,7 @@ function KeyRow({
           variant="outline"
           onClick={() => actions?.remove(row.key)}
         >
-          حذف
+          {t("settings.keys.delete")}
         </Button>
       </div>
       {message !== null && (
@@ -201,7 +202,7 @@ export function ApiKeySettings(): ReactElement {
       migratedRef.current = outcome.complete;
       setMigrationFailed(outcome.failed);
       if (outcome.statuses === null) {
-        setState({ kind: "error", message: outcome.error ?? "خطأ في قراءة الخزنة" });
+        setState({ kind: "error", message: outcome.error ?? t("settings.keys.readError") });
         return;
       }
       setState({
@@ -258,7 +259,7 @@ export function ApiKeySettings(): ReactElement {
     remove: (key) => {
       run(key, async () => {
         await apiKeyManager.delete(key);
-        return { success: true, message: "حُذف المفتاح من الخزنة" };
+        return { success: true, message: t("settings.keys.deleted") };
       });
     },
   };
@@ -266,10 +267,8 @@ export function ApiKeySettings(): ReactElement {
   return (
     <div className="space-y-6">
       <section className="rounded-md border border-border p-4">
-        <Label htmlFor="settings-admin-token">رمز الإدارة</Label>
-        <p className="mb-2 mt-1 text-xs text-muted-foreground">
-          الخزنة خلف حد الأدمن — أدخل رمز الإدارة (يبقى في الذاكرة لهذه الجلسة فقط، بلا أي تخزين متصفح).
-        </p>
+        <Label htmlFor="settings-admin-token">{t("cases.adminToken.label")}</Label>
+        <p className="mb-2 mt-1 text-xs text-muted-foreground">{t("settings.keys.adminTokenHint")}</p>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             id="settings-admin-token"
@@ -280,12 +279,12 @@ export function ApiKeySettings(): ReactElement {
               setToken(e.target.value);
               apiKeyManager.setAdminToken(e.target.value);
             }}
-            placeholder="IR_ADMIN_TOKEN"
+            placeholder={t("cases.adminToken.placeholder")}
             className="max-w-xs"
             autoComplete="off"
           />
           <Button data-testid="keys-read" onClick={onRead}>
-            قراءة الخزنة
+            {t("settings.keys.readVault")}
           </Button>
         </div>
       </section>
