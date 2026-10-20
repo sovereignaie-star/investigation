@@ -41,7 +41,7 @@ export function ExportMenuView({
             </Button>
           ))}
           {error !== null && (
-            <span data-testid={`export-error-${caseId}`} role="alert" className="text-xs text-destructive">
+            <span data-testid={`export-error-${caseId}`} role="alert" className="text-xs text-destructive-text">
               {error}
             </span>
           )}

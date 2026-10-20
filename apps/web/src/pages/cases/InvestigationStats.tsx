@@ -26,7 +26,7 @@ export function InvestigationStatsView({ state }: { state: InvestigationStatsSta
   if (state.kind === "error") {
     return (
       <section data-testid="stats-panel" className="rounded-lg border border-border bg-card p-4">
-        <p data-testid="stats-error" className="text-sm text-destructive">
+        <p data-testid="stats-error" className="text-sm text-destructive-text">
           {t("cases.stats.error")} {state.message}
         </p>
       </section>

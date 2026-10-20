@@ -55,14 +55,14 @@ export function ApiKeySettingsView({ state, actions }: { state: ApiKeySettingsSt
         </p>
       )}
       {state.kind === "error" && (
-        <p data-testid="keys-error" role="alert" className="text-destructive">
+        <p data-testid="keys-error" role="alert" className="text-destructive-text">
           {state.message}
         </p>
       )}
       {state.kind === "ready" && (
         <>
           {state.migrationFailed === true && (
-            <p data-testid="keys-migration-failed" role="alert" className="text-sm text-destructive">
+            <p data-testid="keys-migration-failed" role="alert" className="text-sm text-destructive-text">
               {migrationFailureNotice()}
             </p>
           )}
@@ -154,7 +154,7 @@ function KeyRow({
         <p
           data-testid={`key-message-${row.key}`}
           role="status"
-          className={message.success ? "mt-2 text-xs" : "mt-2 text-xs text-destructive"}
+          className={message.success ? "mt-2 text-xs" : "mt-2 text-xs text-destructive-text"}
         >
           {message.message}
         </p>

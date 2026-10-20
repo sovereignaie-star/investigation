@@ -92,7 +92,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
             {t("workbench.run.submit")}
           </button>
           {state.kind === "submit-error" ? (
-            <p data-testid="run-submit-error" className="text-sm text-destructive">
+            <p data-testid="run-submit-error" className="text-sm text-destructive-text">
               {t("workbench.run.submitError")} {state.message}
             </p>
           ) : null}
@@ -125,7 +125,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
             {state.cancelling ? t("workbench.run.cancelling") : t("workbench.run.cancel")}
           </button>
           {state.notice ? (
-            <p data-testid="run-notice" className="text-sm text-destructive">
+            <p data-testid="run-notice" className="text-sm text-destructive-text">
               {state.notice}
             </p>
           ) : null}
@@ -145,14 +145,14 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
             {t("workbench.run.result")}: {PHASE_LABELS[state.phase] ? t(PHASE_LABELS[state.phase]) : state.phase}
           </p>
           {state.notice ? (
-            <p data-testid="run-notice" className="text-sm text-destructive">
+            <p data-testid="run-notice" className="text-sm text-destructive-text">
               {state.notice}
             </p>
           ) : null}
         </div>
       ) : null}
       {state.kind === "connection-lost" ? (
-        <p data-testid="run-connection-lost" className="text-sm text-destructive">
+        <p data-testid="run-connection-lost" className="text-sm text-destructive-text">
           {t("workbench.run.connectionLost")}
         </p>
       ) : null}

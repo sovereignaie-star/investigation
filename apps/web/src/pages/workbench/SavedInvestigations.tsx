@@ -70,7 +70,7 @@ export function SavedInvestigationsView({
       </div>
       {listStatus === "loading" && <p className="text-sm text-muted-foreground">{t("cases.list.loading")}</p>}
       {listStatus === "error" && (
-        <p data-testid="saved-list-error" className="text-sm text-destructive">
+        <p data-testid="saved-list-error" className="text-sm text-destructive-text">
           {t("cases.list.error")}
         </p>
       )}
@@ -110,7 +110,7 @@ export function SavedInvestigationsView({
           </ul>
         ))}
       {state.kind === "error" && (
-        <p data-testid="saved-error" className="mt-2 text-sm text-destructive">
+        <p data-testid="saved-error" className="mt-2 text-sm text-destructive-text">
           {t("workbench.saved.openError")} {state.message}
         </p>
       )}
