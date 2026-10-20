@@ -1,0 +1,10 @@
+[
+  {
+    "match": "https://example.org/e2e-archive",
+    "response": {
+      "status": 200,
+      "headers": { "content-type": "text/html" },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title>E2E archived page</title></head><body><h1>الصفحة المؤرشفة للاختبار</h1><p>e2e archive snapshot content</p></body></html>"
+    }
+  }
+]

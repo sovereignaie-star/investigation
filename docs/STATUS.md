@@ -19,7 +19,7 @@
 | 0 | التثبيت والتأسيس | 29 | 29 | 0 |
 | 1 | النواة والسجل | 30 | 30 | 0 |
 | 2 | المحرّك والمحوّلات | 43 | 39 | 2 |
-| 3 | محطة العمل | 26 | 20 | 0 |
+| 3 | محطة العمل | 26 | 20 | 1 |
 | 4 | ذكاء التحليل | 23 | 0 | 0 |
 | 5 | العربية وكتب الإجراءات والتقارير والذكاء الاصطناعي | 27 | 0 | 0 |
 | 6 | التقوية والنسخة التجريبية | 20 | 5 | 0 |
@@ -177,7 +177,22 @@
 | P3-017 | i18n كامل (ar/en) وقاعدة lint للنصوص المضمنة (M) | done | مُغلقة: [#283](https://github.com/sovereignaie-star/investigation/pull/283) (إيداع الدمج `acb15f6`) — أحمر أولاً موثق على القاعدة e0cb801 (فشل الوحدة المفقودة قبل التنفيذ)؛ معيار القبول «صفر نص مضمن» مستوفى ومُؤمَّن بقاعدة lint مفعلة (`pnpm run lint` أخضر عليها)؛ التحقق اللاحق على main: check-runs على إيداع الدمج كلها success (test/build/gates/docker/gitleaks/zap/analyze/governance)، ومحلياً lint/typecheck/build/governance exit 0 وtest exit 0 (2266/6/0) |
 | P3-018 | الوصول: لوحة المفاتيح، القارئ، التباين (M) | done | مُغلقة: [#285](https://github.com/sovereignaie-star/investigation/pull/285) (إيداع الدمج `8b5d071`) — أحمر أولاً موثق (color-contrast serious على .text-destructive قبل الإصلاح)؛ معيار القبول «axe بلا حرج» مستوفى بطبقتين: vitest/jsdom دائمة (5 شاشات) + سكربت متصفح حقيقي قابل للتكرار (10/10 نظيفة: 5 مسارات × وضعان)؛ التحقق اللاحق على main: check-runs كلها success، ومحلياً lint/governance exit 0 وtest exit 0 (2271/6/0) |
 | P3-019 | ميزانية الحزمة وتقسيم الشيفرة (M) | done | مُغلقة: [#287](https://github.com/sovereignaie-star/investigation/pull/287) (إيداع الدمج `42bd7b7`) — معيار القبول ≤300KB مضغوطاً مستوفى ومؤمّن: 212.8KB محلياً وبوابة `bundle-budget` خضراء في CI (خطوة البناء نجحت على إيداع الدمج نفسه — القياس يعاد في كل PR)؛ التحقق اللاحق على main: check-runs كلها success، ومحلياً test exit 0 (2271/6/0) وlint/governance exit 0 |
-| P3-020 | E2E Playwright على المحاكاة لـ UC-01..UC-06 (M) | todo | — |
+| P3-020 | E2E Playwright على المحاكاة لـ UC-01..UC-06 (M) | in_progress | تنفيذ: حزمة E2E حقيقية (Playwright 1.64) لرحلات UC-01..UC-06 على المحاكاة — الخادم المبني فعلياً (منفذ 18720، جذر بيانات معزول لكل تشغيلة) + مسار المحرك الحقيقي عبر CLI «ir run» على عالم @ir/sim، والمتصفح يؤكد مخارج كل رحلة على إسقاط القضية (EntityTable/NodeDetailPanel/EvidenceViewer)؛ 6 ملفات spec (9 اختبارات) في scripts/e2e + سير عمل .github/workflows/e2e.yml (نفس مشغلات build/test)؛ إصلاحات حقيقية كُشفت بها الرحلات (كلها أحمر-أولاً): أشكال مخارج التحويلات التي كانت تدور على نفسها بلا حافة/خاصية (TR-021 has_legal_name→company_name، TR-012 has_archive_snapshot→iso_datetime بطابع زمني، TR-016 has_balance/has_transaction_count→satoshis/tx_count؛ إصدارات 1.1.0/1.1.0/1.1.1)، صفوف EntityTable قابلة للتحديد (تفتح لوحة تفاصيل العقدة — نفس تحديد الرسم)، مفتاح استعلام قائمة القضايا يضم الرمز (إدخاله يعيد الجلب — تدفق P3-015 البارد)، وقائمة قضايا فارغة الجذر تعيد 200 صادقة لا 500؛ «pnpm e2e» => 9/9 ناجحة؛ مخرجات Playwright المحلية مستثناة عبر .gitignore |
+
+> workspace@0.0.0 e2e /home/user/workspace/investigation
+> pnpm --filter @workspace/scripts e2e
+
+.                                        |  WARN  Unsupported engine: wanted: {"node":">=24.7"} (current: {"node":"v20.20.2","pnpm":"10.34.6"})
+
+> @workspace/scripts@0.0.0 e2e /home/user/workspace/investigation/scripts
+> playwright test -c e2e/playwright.config.ts
+
+Error: Process from config.webServer was not able to start. Exit code: 1
+
+/home/user/workspace/investigation/scripts:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/scripts@0.0.0 e2e: `playwright test -c e2e/playwright.config.ts`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1. => 9/9 ناجحة |
 | P3-021 | لوحة الأوامر (Ctrl/Cmd+K) واختصارات لوحة المفاتيح الموثقة والقائمة السياقية للعقدة (S) | todo | — |
 | P3-022 | التراجع والإعادة (Undo/Redo) لعمليات الواجهة (S) | todo | — |
 | P3-023 | الحالات الفارغة والتحميل والخطأ: حد خطأ عام، `Suspense`، هياكل تحميل (S) | todo | — |

@@ -1,0 +1,54 @@
+name: e2e
+
+# P3-020: E2E Playwright على المحاكاة لـ UC-01..UC-06. The suite runs against the REAL
+# built server + REAL CLI engine path on the @ir/sim simulation world (no third-party
+# network). It is a required branch-protection gate for feature PRs (same trigger set
+# as build/test).
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    env:
+      IR_ADMIN_TOKEN: e2e-admin-token
+      IR_OPENSANCTIONS_TOKEN: e2e-sim-token
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run governance checks
+        uses: ./.github/actions/verify
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all
+        run: pnpm build
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @workspace/scripts exec playwright install --with-deps chromium
+
+      - name: Run E2E (UC-01..UC-06 on the simulation world)
+        run: pnpm e2e

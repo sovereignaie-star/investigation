@@ -4,6 +4,7 @@ import * as React from "react";
 import type { GraphNode } from "@ir/ledger/projections";
 
 import { type EntityRow, type SortKey, type SortSpec, visibleWindow } from "./entityTableModel";
+import { useSelection } from "../../store/selectionStore";
 
 /**
  * P3-009: the entity table — default sorting, filtering and a virtualized window
@@ -44,9 +45,14 @@ export interface EntityTableProps {
   onFilterChange: (filter: string) => void;
   /** Unfiltered total, for the count line when a filter is active. */
   totalRows?: number;
+  /**
+   * P3-020/UC-03: selecting a row opens the node's detail panel — the table is a view
+   * of the same graph the canvas shows, so its rows carry the same selection.
+   */
+  onSelectRow?: (nodeId: string) => void;
 }
 
-export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, totalRows }: EntityTableProps) {
+export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, totalRows, onSelectRow }: EntityTableProps) {
   const [scrollTop, setScrollTop] = React.useState(0);
 
   const win = visibleWindow({
@@ -111,7 +117,14 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
               <td colSpan={COLUMNS.length} />
             </tr>
             {visible.map((r) => (
-              <tr key={r.id} data-testid="entity-row" className="border-t" style={{ height: ROW_HEIGHT }}>
+              <tr
+                key={r.id}
+                data-testid="entity-row"
+                {...(onSelectRow
+                  ? { "data-node-id": r.id, className: "cursor-pointer border-t", onClick: () => onSelectRow(r.id) }
+                  : { className: "border-t" })}
+                style={{ height: ROW_HEIGHT }}
+              >
                 <td className="px-2 py-1 font-mono text-[11px]">{r.type}</td>
                 <td className="px-2 py-1">{r.label}</td>
                 <td className="px-2 py-1 font-mono text-[11px]">{r.canonicalKey}</td>
@@ -145,13 +158,22 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
 export function EntityTableContainer({ nodes }: { nodes: readonly GraphNode[] }) {
   const [filter, setFilter] = React.useState("");
   const [sort, setSort] = React.useState<SortSpec>({ key: "type", dir: "asc" });
+  const selectNode = useSelection((s) => s.selectNode);
 
   const allRows = React.useMemo(() => buildEntityRowsFor(nodes), [nodes]);
   const filtered = React.useMemo(() => filterEntityRowsFor(allRows, filter), [allRows, filter]);
   const rows = React.useMemo(() => sortEntityRowsFor(filtered, sort), [filtered, sort]);
 
   return (
-    <EntityTable rows={rows} sort={sort} onSortChange={setSort} filter={filter} onFilterChange={setFilter} totalRows={allRows.length} />
+    <EntityTable
+      rows={rows}
+      sort={sort}
+      onSortChange={setSort}
+      filter={filter}
+      onFilterChange={setFilter}
+      totalRows={allRows.length}
+      onSelectRow={selectNode}
+    />
   );
 }
 

@@ -24,6 +24,8 @@ export interface NodeDetailRelation {
   otherId: string;
   otherLabel: string;
   confidence: number;
+  /** P3-020 / UC-03: the edge's source note («كل حافة لها ملاحظة مصدرية») — verbatim. */
+  explanation: string | null;
   evidenceIds: string[];
 }
 
@@ -61,6 +63,8 @@ export function buildNodeDetail(graph: Graph, nodeId: string): NodeDetail | null
         direction,
         otherId,
         otherLabel: labelOfId(otherId),
+        // P3-020 / UC-03: the source note travels with the relation — never invented
+        explanation: e.explanation ?? null,
         confidence: e.confidence,
         evidenceIds: e.evidenceIds,
       };

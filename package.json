@@ -17,6 +17,7 @@
     "audit:measure": "node scripts/audit/measure.mjs --full",
     "gates:phase1": "scripts/node_modules/.bin/tsx scripts/gates/phase1.ts",
     "test": "vitest run",
+    "e2e": "pnpm --filter @workspace/scripts e2e",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },

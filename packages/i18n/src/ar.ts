@@ -231,6 +231,7 @@ export const ar = {
   "workbench.nodeDetail.ariaLabel": "تفاصيل العقدة",
   "workbench.nodeDetail.mergedEntities": "كيانات مدمجة: {aliases}",
   "workbench.nodeDetail.notesTitle": "ملاحظات موجبة / سالبة / أخطاء",
+  "workbench.nodeDetail.sourceNoteTitle": "ملاحظة مصدرية — دليل الحافة",
   "workbench.nodeDetail.evidenceHeading": "الدليل {id}",
   "workbench.nodeDetail.citedIn": "يُستشهد به في:",
   "workbench.nodeDetail.attributes": "الخصائص (ادعاءات قيمية)",

@@ -26,10 +26,13 @@ describe("TR-021 gleif", () => {
     expect(result.requestCount).toBe(1);
     const findings = result.output.findings;
     expect(findings).toHaveLength(1);
+    // P3-020/UC-04: the legal name is the finding's OBJECT — a company_name entity the ledger
+    // links the LEI record to as an edge. The old shape (objectType lei_code, objectValue the
+    // LEI itself) self-looped: the claim rendered nowhere (no edge, no attribute).
     expect(findings[0]).toMatchObject({
       predicate: "has_legal_name",
-      objectType: "lei_code",
-      objectValue: LEI,
+      objectType: "company_name",
+      objectValue: "Example Corp",
     });
     expect(findings[0].explanation).toContain("Example Corp");
     expect(findings[0].evidence).toEqual([result.output.findings[0].evidence?.[0]]);

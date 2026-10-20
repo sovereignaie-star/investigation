@@ -242,3 +242,21 @@ describe("P3-003 cases API (UC-01, J-16/J-17/J-18)", () => {
     expect(detail.status).toBe(200);
   });
 });
+
+describe("P3-020: an empty cases root (fresh deployment)", () => {
+  it("lists an honest empty case list, never a 500 — the root dir may not exist yet", async () => {
+    // A fresh deployment's data root has no cases/ directory until the first case is
+    // created; the list must answer 200 {cases: []}, not an ENOENT 500 (the cold
+    // journey of UC-01 starts here).
+    const parent = mkdtempSync(path.join(tmpdir(), "ir-cases-empty-"));
+    roots.push(parent);
+    const app = createApp(casesRouter(() => path.join(parent, "cases"), { env: ENABLED }));
+    const server = app.listen(0, "127.0.0.1");
+    servers.push(server);
+    await new Promise((r) => server.once("listening", r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+    const res = await fetch(`${base}/cases`, withAdmin());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ cases: [] });
+  });
+});

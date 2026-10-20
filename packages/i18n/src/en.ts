@@ -236,6 +236,7 @@ export const en = {
   "workbench.nodeDetail.ariaLabel": "Node details",
   "workbench.nodeDetail.mergedEntities": "Merged entities: {aliases}",
   "workbench.nodeDetail.notesTitle": "positive / negative notes and errors",
+  "workbench.nodeDetail.sourceNoteTitle": "Source note — the edge's evidence",
   "workbench.nodeDetail.evidenceHeading": "Evidence {id}",
   "workbench.nodeDetail.citedIn": "cited in:",
   "workbench.nodeDetail.attributes": "Attributes (value claims)",

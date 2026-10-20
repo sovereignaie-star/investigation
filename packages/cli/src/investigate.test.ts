@@ -284,9 +284,10 @@ describe("P2-038 ir investigate end to end (sandbox -> IPC -> one gateway -> cas
     // Every request was on the operator's list; the list was never widened.
     for (const c of x.calls) expect(HOSTS).toContain(c.host);
     // Each (transform, identifier) ran once: 3 domain runs + TR-052, 2 on 8.8.8.8, 4 TR-001 runs on
-    // host names, and the capture URL's 2 (TR-010 found, TR-011 none; TR-009/TR-047 are keyless-
-    // refused at setup — designed not_run, the TR-047/TR-051 precedent).
-    expect(r.result?.runs).toBe(12);
+    // host names, and the capture URL's 3 (TR-010 found, TR-011 none, TR-012 the P3-020 WARC
+    // archive — now a registered url transform; TR-009/TR-047 are keyless-refused at setup —
+    // designed not_run, the TR-047/TR-051 precedent).
+    expect(r.result?.runs).toBe(13);
     // Consecutive runs are paced by one gateway token interval (rate 1/s).
     expect(r.pacing.filter((ms) => ms === 1000).length).toBeGreaterThanOrEqual(4);
     expect(verifyCase(dir).ok).toBe(true);
@@ -627,12 +628,13 @@ describe("P2-039 ir investigate end to end: host name, IP and subdomain from one
       const ran = cov.filter((k) => k.state === "found" || k.state === "none" || k.state === "failed");
 
       // Selection by entity type: domain -> TR-001/002/004/052; ipv4 -> TR-003/006; hostname -> TR-001 only;
-      // url -> TR-010/011 (P2-026: TR-052's capture URL expands into the graph).
+      // url -> TR-010/011/012 (P2-026: TR-052's capture URL expands into the graph; P3-020:
+      // TR-012 is now a registered url transform — the capture URL is also archived to WARC).
       const byType = (t: string) => [...new Set(ran.filter((k) => k.entityKey.startsWith(`${t}:`)).map((k) => k.transformId))].sort();
       expect(byType("domain")).toEqual(["TR-001", "TR-002", "TR-004", "TR-052"]);
       expect(byType("ipv4")).toEqual(["TR-003", "TR-006"]);
       expect(byType("hostname")).toEqual(["TR-001"]);
-      expect(byType("url")).toEqual(["TR-010", "TR-011"]);
+      expect(byType("url")).toEqual(["TR-010", "TR-011", "TR-012"]);
       // The seed produced a host name (name server), an IP address and a subdomain (certificate name).
       for (const k of ["hostname:a.iana-servers.net", "ipv4:8.8.8.8", "hostname:www.example.com"]) {
         expect(
@@ -644,7 +646,7 @@ describe("P2-039 ir investigate end to end: host name, IP and subdomain from one
       // Every run went through the sandbox (one isolated child per run, the registry module), IPC and the gateway:
       // the only transport is the gateway's, and each run's request count matches what reached it.
       expect(isolatedRuns.modules).toHaveLength(r.result?.runs ?? -1);
-      for (const m of isolatedRuns.modules) expect(m).toMatch(/transforms\/src\/transforms\/tr-(00[1-6]|010|011|052)-[a-z-]+\.ts$/);
+      for (const m of isolatedRuns.modules) expect(m).toMatch(/transforms\/src\/transforms\/tr-(00[1-6]|010|011|012|052)-[a-z-]+\.ts$/);
       expect(ran.reduce((n, k) => n + k.requests, 0)).toBe(x.calls.length);
 
       // found / none / not_run are distinct (failed is covered below and in the budget tests).

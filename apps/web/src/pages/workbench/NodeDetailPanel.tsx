@@ -148,6 +148,15 @@ export function NodeDetailPanel({
                   <span className="ms-1 font-mono text-[11px] text-muted-foreground" data-testid="claim-confidence">
                     {r.confidence.toFixed(2)}
                   </span>
+                  {r.explanation !== null ? (
+                    <span
+                      className="block text-xs text-muted-foreground"
+                      data-testid="relation-source-note"
+                      title={t("workbench.nodeDetail.sourceNoteTitle")}
+                    >
+                      {r.explanation}
+                    </span>
+                  ) : null}
                 </span>
                 <EvidenceLinks evidenceIds={r.evidenceIds} onSelectEvidence={onSelectEvidence} />
               </li>
