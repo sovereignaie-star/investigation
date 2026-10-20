@@ -228,6 +228,7 @@ export function CasesPage() {
             }}
             onReopen={(id) => setReopening({ id, reason: "", purposeConfirmation: "" })}
             onStats={(id) => setStatsFor((prev) => (prev === id ? null : id))}
+            exportToken={token}
           />
         )}
         {/* P3-012: keyed by case id — switching cases never shows the previous

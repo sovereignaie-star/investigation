@@ -18,6 +18,7 @@ import type {
 
 import type {
   CaseDetail,
+  CaseExport,
   CaseStats,
   CaseSummary,
   CreateCaseInput,
@@ -625,6 +626,70 @@ export function useGetCaseStats<TData = Awaited<ReturnType<typeof getCaseStats>>
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCaseStatsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetCaseExportUrl = (id: string, format: "projection") => {
+  return `/api/cases/${id}/export/${format}`;
+};
+
+/**
+ * The phase's export format: the case's projection snapshot JSON — the exact shape `ir project --json` emits ({...projection, sha256}), taken from ONE snapshot of the case's own projection. The file is a projection snapshot, NOT a full copy of the case and its evidence. J-17: a locked case fails closed with 403. An unsupported format is an explicit 400 naming the supported formats — never a silent fallback.
+ * @summary Case export (P3-014 — the projection snapshot JSON, the format available in this phase)
+ */
+export const getCaseExport = async (id: string, format: "projection", options?: RequestInit): Promise<CaseExport> => {
+  return customFetch<CaseExport>(getGetCaseExportUrl(id, format), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCaseExportQueryKey = (id: string, format: "projection") => {
+  return [`/api/cases/${id}/export/${format}`] as const;
+};
+
+export const getGetCaseExportQueryOptions = <TData = Awaited<ReturnType<typeof getCaseExport>>, TError = ErrorType<Error>>(
+  id: string,
+  format: "projection",
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseExport>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCaseExportQueryKey(id, format);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaseExport>>> = ({ signal }) =>
+    getCaseExport(id, format, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined && format !== null && format !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getCaseExport>>, TError, TData> & { queryKey: QueryKey };
+};
+
+export type GetCaseExportQueryResult = NonNullable<Awaited<ReturnType<typeof getCaseExport>>>;
+export type GetCaseExportQueryError = ErrorType<Error>;
+
+/**
+ * @summary Case export (P3-014 — the projection snapshot JSON, the format available in this phase)
+ */
+
+export function useGetCaseExport<TData = Awaited<ReturnType<typeof getCaseExport>>, TError = ErrorType<Error>>(
+  id: string,
+  format: "projection",
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseExport>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCaseExportQueryOptions(id, format, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
