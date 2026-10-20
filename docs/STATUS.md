@@ -193,7 +193,7 @@ Error: Process from config.webServer was not able to start. Exit code: 1
  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/scripts@0.0.0 e2e: `playwright test -c e2e/playwright.config.ts`
 Exit status 1
  ELIFECYCLE  Command failed with exit code 1. => 9/9 ناجحة |
-| P3-021 | لوحة الأوامر (Ctrl/Cmd+K) واختصارات لوحة المفاتيح الموثقة والقائمة السياقية للعقدة (S) | done | سجل أوامر موحد + لوحة Ctrl/Cmd+K + قائمة سياق عقدة + ملاحظات node.added عبر API حقيقية + E2E UC-07 (14/14) — تعريفا «إعادة الجلب» و«الفرع» اعتمدهما المالك |
+| P3-021 | لوحة الأوامر (Ctrl/Cmd+K) واختصارات لوحة المفاتيح الموثقة والقائمة السياقية للعقدة (S) | done | feat مدموج (squash 4450116، PR #291): سجل أوامر موحد + لوحة Ctrl/Cmd+K + قائمة سياق عقدة + ملاحظات node.added عبر API حقيقية + E2E UC-07 (14/14) — تعريفا «إعادة الجلب» و«الفرع» اعتمدهما المالك |
 | P3-022 | التراجع والإعادة (Undo/Redo) لعمليات الواجهة (S) | todo | — |
 | P3-023 | الحالات الفارغة والتحميل والخطأ: حد خطأ عام، `Suspense`، هياكل تحميل (S) | todo | — |
 | P3-024 | Storybook لمكونات `@ir/ui` واختبارات انحدار بصري بلقطات RTL وLTR وداكن وفاتح (S) | todo | — |
