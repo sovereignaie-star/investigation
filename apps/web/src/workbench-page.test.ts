@@ -1,6 +1,7 @@
 import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { extract, specById, type Extracted } from "@ir/core/identifiers";
 
 import { SearchBar } from "./pages/workbench/SearchBar";
@@ -168,8 +169,16 @@ describe("P3-004 IdentifierSelector (UC-02 step: classified list with confidence
 });
 
 describe("P3-004 WorkbenchPage (UC-02 wiring)", () => {
+  // P3-015: the page now mounts the saved-investigations surface, whose list comes
+  // from the generated hook — so the page renders inside a QueryClientProvider
+  // (exactly as App.tsx mounts it); the extraction assertions are unchanged.
+  const renderPage = (props: { initialText?: string } = {}): string => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return renderToStaticMarkup(React.createElement(QueryClientProvider, { client }, React.createElement(WorkbenchPage, props)));
+  };
+
   it("extracts and displays classified identifiers from the pasted text on first render", () => {
-    const html = renderToStaticMarkup(React.createElement(WorkbenchPage, { initialText: FIXTURE_TEXT }));
+    const html = renderPage({ initialText: FIXTURE_TEXT });
     expect(html).toContain('data-testid="workbench-page"');
     expect(html).toContain("192.168.1.10");
     expect(html).toContain(labelOf("ip_private"));
@@ -177,7 +186,7 @@ describe("P3-004 WorkbenchPage (UC-02 wiring)", () => {
   });
 
   it("shows the empty state before any input", () => {
-    const html = renderToStaticMarkup(React.createElement(WorkbenchPage));
+    const html = renderPage();
     expect(html).toContain("لا معرّفات بعد");
   });
 });

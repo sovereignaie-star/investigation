@@ -1,6 +1,7 @@
 import * as React from "react";
-import { ApiError, cancelRun, setAuthTokenGetter, submitRun } from "@workspace/api-client-react";
+import { ApiError, cancelRun, submitRun } from "@workspace/api-client-react";
 
+import { useAdminToken } from "../../utils/adminToken";
 import { openRunEvents, readSseStream } from "./runEventsModel";
 import { initialRunPanelState, runPanelReducer, type RunPanelState } from "./runPanelModel";
 
@@ -150,7 +151,9 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
 
 /** The wired panel: real submit, live SSE phases, real cancel. */
 export function RunPanel() {
-  const [token, setToken] = React.useState("");
+  // P3-015: the token is the app-session-wide memory-only admin token (shared
+  // with the saved-investigations surface) — one ref, one getter, no shadowing.
+  const [token, setToken] = useAdminToken();
   const [form, setForm] = React.useState<RunPanelForm>({ kind: "lookup", canonicalInput: "" });
   const [state, dispatch] = React.useReducer(runPanelReducer, initialRunPanelState);
   const tokenRef = React.useRef(token);
@@ -158,7 +161,6 @@ export function RunPanel() {
 
   React.useEffect(() => {
     tokenRef.current = token;
-    setAuthTokenGetter(() => (tokenRef.current === "" ? null : tokenRef.current));
   }, [token]);
 
   React.useEffect(() => {
