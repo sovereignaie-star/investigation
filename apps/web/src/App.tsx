@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+// P3-019: route-level code splitting — the heavy screens load on demand, the
+// initial download stays within the 300KB gzipped budget.
+const CasesPage = lazy(() => import("./pages/CasesPage").then((m) => ({ default: m.CasesPage })));
+const EvidencePage = lazy(() => import("./pages/EvidencePage").then((m) => ({ default: m.EvidencePage })));
+const SettingsPage = lazy(() => import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const WorkbenchPage = lazy(() => import("./pages/WorkbenchPage").then((m) => ({ default: m.WorkbenchPage })));
+const InfiniteCanvas = lazy(() => import("./pages/workbench/InfiniteCanvas").then((m) => ({ default: m.InfiniteCanvas })));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppShell, Button } from "@ir/ui";
 // P3-017: every UI string comes from @ir/i18n — the app subscribes to the
@@ -6,17 +13,12 @@ import { AppShell, Button } from "@ir/ui";
 import { t, useI18n } from "@ir/i18n";
 import { IDENTIFIER_LIST } from "./utils/identifierList";
 // P3-003 (طلب ب): the cases screen, wired to the generated SDK over the case lifecycle API.
-import { CasesPage } from "./pages/CasesPage";
 // P3-004 (UC-02): the workbench input flow — paste text or read a file, extract identifiers.
-import { WorkbenchPage } from "./pages/WorkbenchPage";
 // P3-010: the raw-evidence screen — sanitized HTML in a sandboxed iframe, text, or honest refusal.
-import { EvidencePage } from "./pages/EvidencePage";
 // P3-013: the settings screen — the key-management surface (UC-20).
-import { SettingsPage } from "./pages/SettingsPage";
 // P3-005: the large-graph canvas and its NFR-02 measurement harness.
 import { GraphBenchPage } from "./pages/workbench/GraphBenchPage";
 // P3-006: the small editable canvas (@xyflow/react).
-import { InfiniteCanvas } from "./pages/workbench/InfiniteCanvas";
 
 // P0-006: minimal entry point so the app builds and runs. The real workbench is built in phase 3 (P3-002..P3-020).
 // P3-002: the app renders inside the AppShell (layout, navigation, theme, RTL/LTR).
@@ -61,24 +63,28 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppShell title={t("app.title")} nav={NAV}>
-        {/* P3-003..P3-005: workbench routes — overview, cases, input flow and graph bench. */}
-        {path === "/cases" ? (
-          <CasesPage />
-        ) : path === "/evidence" ? (
-          <EvidencePage />
-        ) : path === "/settings" ? (
-          <SettingsPage />
-        ) : path === "/workbench" ? (
-          <WorkbenchPage />
-        ) : path === "/graph-bench" ? (
-          <GraphBenchPage />
-        ) : path === "/canvas" ? (
-          <div className="h-[calc(100vh-4rem)]">
-            <InfiniteCanvas />
-          </div>
-        ) : (
-          <Overview />
-        )}
+        {/* P3-003..P3-005: workbench routes — overview, cases, input flow and graph bench.
+            P3-019: the heavy screens are lazy — Suspense shows the honest loading
+            state while the route's chunk downloads. */}
+        <Suspense fallback={<p className="text-sm text-muted-foreground">{t("common.loading")}</p>}>
+          {path === "/cases" ? (
+            <CasesPage />
+          ) : path === "/evidence" ? (
+            <EvidencePage />
+          ) : path === "/settings" ? (
+            <SettingsPage />
+          ) : path === "/workbench" ? (
+            <WorkbenchPage />
+          ) : path === "/graph-bench" ? (
+            <GraphBenchPage />
+          ) : path === "/canvas" ? (
+            <div className="h-[calc(100vh-4rem)]">
+              <InfiniteCanvas />
+            </div>
+          ) : (
+            <Overview />
+          )}
+        </Suspense>
       </AppShell>
     </QueryClientProvider>
   );

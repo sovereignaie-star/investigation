@@ -55,6 +55,8 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.goto(`${ORIGIN}/#/graph-bench`, { waitUntil: "domcontentloaded" });
+    // P3-019: routes are lazy — wait for the route chunk before measuring.
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "ابدأ القياس" }).click();
     // The workload runs 10 seconds; the result paragraph appears after it ends.
     const strong = page.locator("strong", { hasText: "إطاراً/ث" });

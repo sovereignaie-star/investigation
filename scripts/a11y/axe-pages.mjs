@@ -84,6 +84,8 @@ async function main() {
           await page.click("[data-theme-toggle]");
         }
         await page.goto(`${ORIGIN}/${route.hash}`, { waitUntil: "domcontentloaded" });
+        // P3-019: routes are lazy — wait for the route chunk before measuring.
+        await page.waitForLoadState("networkidle");
         if (theme === "dark") {
           await page.click("[data-theme-toggle]");
         }

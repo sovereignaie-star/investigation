@@ -25,6 +25,8 @@ jobs:
       - run: pnpm run typecheck
       - name: Build all packages
         run: pnpm -r --if-present run build
+      - name: Bundle budget (P3-019 — ≤ 300KB gzipped initial load)
+        run: node scripts/budget/bundle-budget.mjs
   test:
     runs-on: ubuntu-latest
     steps:
