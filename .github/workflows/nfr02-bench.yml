@@ -1,0 +1,28 @@
+name: nfr02-bench
+# P3-005 / NFR-02 on the OFFICIAL REFERENCE DEVICE (owner decision 2026-10-20):
+# a GitHub Actions runner (ubuntu-latest) driving Playwright's default headless
+# Chromium. The workflow builds the workbench, serves its static build and runs
+# the reproducible #/graph-bench harness (seed 42 — 10,000 nodes / 20,000 edges,
+# 10 seconds of continuous camera pans), then reports the measured fps.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build all packages
+        run: pnpm -r --if-present run build
+      - name: Install Playwright's default Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Measure NFR-02 on the reference device
+        run: node scripts/bench/nfr02.mjs
