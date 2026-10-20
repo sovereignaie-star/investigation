@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { setAuthTokenGetter, useCreateCase, useListCases, useUpdateCaseLifecycle, type CreateCaseInput } from "@workspace/api-client-react";
+import { useState, type FormEvent } from "react";
+import { useCreateCase, useListCases, useUpdateCaseLifecycle, type CreateCaseInput } from "@workspace/api-client-react";
 import { Badge, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea } from "@ir/ui";
+import { useAdminToken } from "../utils/adminToken";
 import { CasesTable } from "./cases/CasesTable";
 import { InvestigationStats } from "./cases/InvestigationStats";
 
@@ -17,8 +18,6 @@ import { InvestigationStats } from "./cases/InvestigationStats";
  * P1-021/D-033: the browser storage stays empty — the token lives in memory only and is
  * re-entered per session (the generated client's auth getter reads the ref below).
  */
-
-const tokenRef = { current: "" };
 
 const LEGAL_BASES: Array<{ value: string; label: string }> = [
   { value: "due_diligence", label: "العناية الواجبة" },
@@ -44,14 +43,9 @@ const EMPTY_FORM: FormState = { title: "", purpose: "", legalBasis: "", passphra
 
 export function CasesPage() {
   // The admin token for the API boundary (D-037): memory only — nothing is persisted.
-  const [token, setToken] = useState<string>(tokenRef.current);
-  useEffect(() => {
-    setAuthTokenGetter(() => (tokenRef.current === "" ? null : tokenRef.current));
-  }, []);
-  const saveToken = (value: string): void => {
-    tokenRef.current = value;
-    setToken(value);
-  };
+  // P3-015: the app-wide one-ref token (shared with the workbench surfaces) — one
+  // getter installed at module load, no page can shadow another's token.
+  const [token, saveToken] = useAdminToken();
 
   const [includeArchived, setIncludeArchived] = useState(false);
   const list = useListCases(includeArchived ? { includeArchived: true } : undefined);
