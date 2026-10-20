@@ -1,5 +1,6 @@
 import { Navigation } from "lucide-react";
 import { EvidenceBadge, InvalidNode, NodeFrame, NodeHeader } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type LocationNodeData } from "./contract";
 
 /**
@@ -19,7 +20,7 @@ export function LocationNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<Navigation size={14} />} label="موقع">
+        <NodeHeader icon={<Navigation size={14} />} label={t("resultNodes.kind.location")}>
           {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
         </NodeHeader>
       }

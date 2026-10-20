@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { Button } from "@ir/ui";
 import { EXPORT_FORMATS, exportUrl, filenameFromDisposition, triggerDownload, type ExportFormat } from "./exportMenu";
@@ -33,10 +34,10 @@ export function ExportMenuView({
               size="sm"
               disabled={busy}
               data-testid={`export-item-${f.id}-${caseId}`}
-              title={f.description}
+              title={t(f.descriptionKey)}
               onClick={() => onExport(f.id)}
             >
-              تصدير: {f.label}
+              {t("cases.export.prefix")} {t(f.labelKey)}
             </Button>
           ))}
           {error !== null && (
@@ -46,7 +47,7 @@ export function ExportMenuView({
           )}
         </>
       ) : (
-        <span className="text-xs text-muted-foreground">لا تصدير قبل فك التشفير</span>
+        <span className="text-xs text-muted-foreground">{t("cases.export.locked")}</span>
       )}
     </span>
   );

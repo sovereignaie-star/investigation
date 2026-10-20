@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import type { CaseSummary } from "@workspace/api-client-react";
 import { Badge, Button } from "@ir/ui";
 import { ExportMenu } from "./ExportMenu";
@@ -12,7 +13,7 @@ import { ExportMenu } from "./ExportMenu";
  *   no title, no purpose, no names — with the explicit locked indicator.
  */
 
-const LOCKED_MESSAGE = "مقفلة — تتطلب فك التشفير";
+// P3-017: the locked-case text lives in the dictionary (rendered below).
 
 export function CasesTable({
   cases,
@@ -35,11 +36,11 @@ export function CasesTable({
     <table className="w-full text-sm" data-testid="cases-table">
       <thead>
         <tr className="border-b border-border text-start text-muted-foreground">
-          <th className="py-2 text-start font-medium">العنوان</th>
-          <th className="py-2 text-start font-medium">الأساس القانوني</th>
-          <th className="py-2 text-start font-medium">الحالة</th>
-          <th className="py-2 text-start font-medium">آخر نشاط</th>
-          <th className="py-2 text-start font-medium">إجراءات</th>
+          <th className="py-2 text-start font-medium">{t("cases.create.titleLabel")}</th>
+          <th className="py-2 text-start font-medium">{t("cases.create.legalBasisLabel")}</th>
+          <th className="py-2 text-start font-medium">{t("cases.table.status")}</th>
+          <th className="py-2 text-start font-medium">{t("cases.table.lastActivity")}</th>
+          <th className="py-2 text-start font-medium">{t("cases.table.actions")}</th>
         </tr>
       </thead>
       <tbody>
@@ -49,7 +50,7 @@ export function CasesTable({
               {c.status === "locked-encrypted" ? (
                 // J-17: identifier and indicator only — the API sends no content to leak.
                 <span className="text-muted-foreground" dir="rtl">
-                  {LOCKED_MESSAGE}
+                  {t("cases.status.lockedMessage")}
                 </span>
               ) : (
                 c.title
@@ -60,9 +61,9 @@ export function CasesTable({
             </td>
             <td className="py-2 pe-2">{c.legalBasis ?? "—"}</td>
             <td className="py-2 pe-2">
-              {c.status === "locked-encrypted" && <Badge variant="outline">مقفلة</Badge>}
-              {c.status === "active" && <Badge variant="secondary">نشطة</Badge>}
-              {c.status === "archived" && <Badge variant="outline">مؤرشفة</Badge>}
+              {c.status === "locked-encrypted" && <Badge variant="outline">{t("cases.status.locked")}</Badge>}
+              {c.status === "active" && <Badge variant="secondary">{t("cases.status.active")}</Badge>}
+              {c.status === "archived" && <Badge variant="outline">{t("cases.status.archived")}</Badge>}
             </td>
             <td dir="ltr" className="py-2 pe-2 tabular-nums text-muted-foreground">
               {c.lastActivityAt ?? "—"}
@@ -70,28 +71,28 @@ export function CasesTable({
             <td className="py-2">
               {c.status !== "locked-encrypted" && onStats && (
                 <Button variant="outline" size="sm" data-action="stats" onClick={() => onStats(c.id)}>
-                  الإحصاءات
+                  {t("cases.table.stats")}
                 </Button>
               )}
               {c.status === "active" && onArchive && (
                 <Button variant="outline" size="sm" data-action="archive" onClick={() => onArchive(c.id)}>
-                  أرشفة
+                  {t("cases.archive.submit")}
                 </Button>
               )}
               {c.status === "archived" && onReopen && (
                 <Button variant="outline" size="sm" data-action="unarchive" onClick={() => onReopen(c.id)}>
-                  إعادة فتح
+                  {t("cases.reopen.submit")}
                 </Button>
               )}
               {exportToken !== undefined && <ExportMenu caseId={c.id} canExport={c.status !== "locked-encrypted"} token={exportToken} />}
-              {c.status === "locked-encrypted" && <span className="text-xs text-muted-foreground">لا إجراء قبل فك التشفير</span>}
+              {c.status === "locked-encrypted" && <span className="text-xs text-muted-foreground">{t("cases.table.lockedNoAction")}</span>}
             </td>
           </tr>
         ))}
         {visible.length === 0 && (
           <tr>
             <td colSpan={5} className="py-6 text-center text-muted-foreground">
-              لا قضايا بعد — أنشئ أول قضية بصيغة غرض موثق.
+              {t("cases.table.empty")}
             </td>
           </tr>
         )}

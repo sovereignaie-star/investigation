@@ -1,5 +1,6 @@
 import { Download, File } from "lucide-react";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type FileNodeData } from "./contract";
 
 /**
@@ -20,7 +21,7 @@ export function FileNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<File size={14} />} label="ملف">
+        <NodeHeader icon={<File size={14} />} label={t("resultNodes.kind.file")}>
           {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
         </NodeHeader>
       }
@@ -28,7 +29,7 @@ export function FileNode({ data, selected }: Props) {
         node.url ? (
           <NodeAction href={node.url}>
             <Download size={11} />
-            <span className="text-xs">تحميل</span>
+            <span className="text-xs">{t("common.download")}</span>
           </NodeAction>
         ) : undefined
       }

@@ -1,5 +1,6 @@
 import { ExternalLink, Link } from "lucide-react";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type LinkNodeData } from "./contract";
 
 /**
@@ -18,14 +19,14 @@ export function LinkNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<Link size={14} />} label="رابط">
+        <NodeHeader icon={<Link size={14} />} label={t("resultNodes.kind.link")}>
           {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
         </NodeHeader>
       }
       footer={
         <NodeAction href={node.url}>
           <ExternalLink size={11} />
-          <span className="text-xs">فتح</span>
+          <span className="text-xs">{t("common.open")}</span>
         </NodeAction>
       }
     >

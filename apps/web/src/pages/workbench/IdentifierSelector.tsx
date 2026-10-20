@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { Badge } from "@ir/ui";
 
@@ -32,7 +33,7 @@ export function IdentifierSelector({
   if (rows.length === 0) {
     return (
       <p data-testid="identifier-selector" className="text-sm text-muted-foreground">
-        لا معرّفات بعد — الصق نصاً أو ارفع ملفاً لاستخراج المعرّفات.
+        {t("workbench.identifiers.empty")}
       </p>
     );
   }
@@ -51,7 +52,7 @@ export function IdentifierSelector({
   return (
     <div data-testid="identifier-selector" className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">
-        محدد المعرّفات: {selected.size}/{rows.length.toLocaleString("en-US")}
+        {t("workbench.identifiers.selected", { selected: selected.size, total: rows.length.toLocaleString("en-US") })}
       </p>
       <div
         className="overflow-auto rounded-md border border-border"
@@ -61,11 +62,11 @@ export function IdentifierSelector({
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-muted">
             <tr className="border-b border-border text-start text-muted-foreground">
-              <th className="py-2 text-start font-medium">القيمة</th>
-              <th className="py-2 text-start font-medium">النوع</th>
-              <th className="py-2 text-start font-medium">الثقة</th>
-              <th className="py-2 text-start font-medium">التحقق</th>
-              <th className="py-2 text-start font-medium">اختيار</th>
+              <th className="py-2 text-start font-medium">{t("workbench.identifiers.value")}</th>
+              <th className="py-2 text-start font-medium">{t("workbench.identifiers.type")}</th>
+              <th className="py-2 text-start font-medium">{t("workbench.identifiers.confidence")}</th>
+              <th className="py-2 text-start font-medium">{t("workbench.identifiers.validated")}</th>
+              <th className="py-2 text-start font-medium">{t("workbench.identifiers.select")}</th>
             </tr>
           </thead>
           <tbody>
@@ -82,14 +83,14 @@ export function IdentifierSelector({
                   <span className="block text-xs text-muted-foreground">{row.category}</span>
                 </td>
                 <td className="py-2 pe-2">{Math.round(row.confidence * 100)}%</td>
-                <td className="py-2 pe-2">{row.validated && <Badge variant="outline">مؤكد</Badge>}</td>
+                <td className="py-2 pe-2">{row.validated && <Badge variant="outline">{t("workbench.identifiers.confirmed")}</Badge>}</td>
                 <td className="py-2 pe-2">
                   <input
                     type="checkbox"
                     name={`identifier:${row.id}`}
                     checked={selected.has(row.id)}
                     onChange={() => onToggle(row.id)}
-                    aria-label={`اختر ${row.value}`}
+                    aria-label={t("workbench.identifiers.pick", { value: row.value })}
                   />
                 </td>
               </tr>

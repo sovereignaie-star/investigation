@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { Button } from "@ir/ui";
 
@@ -34,12 +35,12 @@ function webglRendererInfo(): string {
   try {
     const canvas = document.createElement("canvas");
     const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-    if (gl === null) return "غير متوفر";
+    if (gl === null) return t("workbench.bench.unavailable");
     const dbg = gl.getExtension("WEBGL_debug_renderer_info");
-    if (dbg === null) return "مجهول";
+    if (dbg === null) return t("workbench.bench.unknown");
     return String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
   } catch {
-    return "تعذر القراءة";
+    return t("workbench.bench.readFailed");
   }
 }
 
@@ -83,18 +84,23 @@ export function GraphBenchPage() {
 
   return (
     <div data-testid="graph-bench" className="flex flex-col gap-4 p-4 md:p-6">
-      <h1 className="text-xl font-semibold">قياس أداء لوحة الرسم (NFR-02)</h1>
+      <h1 className="text-xl font-semibold">{t("workbench.bench.title")}</h1>
       <p className="max-w-2xl text-sm text-muted-foreground">
-        حمل مرجعي ثابت: {NODES.toLocaleString("en-US")} عقدة و{EDGES.toLocaleString("en-US")} حافة (بذرة {SEED} — نفس المدخل لكل قياس).
-        المعيار: ≥ 30 إطاراً/ث على الجهاز المرجعي أثناء تحريك مستمر للكاميرا لمدة {WORKLOAD_MS / 1000} ثوانٍ.
+        {t("workbench.bench.workload", {
+          nodes: NODES.toLocaleString("en-US"),
+          edges: EDGES.toLocaleString("en-US"),
+          seed: SEED,
+          seconds: WORKLOAD_MS / 1000,
+        })}
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={startMeasurement} disabled={running}>
-          {running ? "القياس جارٍ…" : "ابدأ القياس"}
+          {running ? t("workbench.bench.running") : t("workbench.bench.start")}
         </Button>
         {result !== null && (
           <p className="text-sm">
-            <strong>{result.fps.toFixed(1)} إطاراً/ث</strong> — {result.frames} إطاراً في {result.seconds.toFixed(1)} ثانية
+            <strong>{t("workbench.bench.fps", { fps: result.fps.toFixed(1) })}</strong> —{" "}
+            {t("workbench.bench.frames", { frames: result.frames, seconds: result.seconds.toFixed(1) })}
           </p>
         )}
       </div>
@@ -102,11 +108,17 @@ export function GraphBenchPage() {
         <InvestigationGraph graph={graph} onInstance={captureInstance} />
       </div>
       <details className="text-sm">
-        <summary className="cursor-pointer">بيئة القياس</summary>
+        <summary className="cursor-pointer">{t("workbench.bench.environment")}</summary>
         <ul className="mt-2 space-y-1 text-muted-foreground">
-          <li>المعقّم (renderer): {result !== null ? webglRendererInfo() : "يُقرأ عند القياس"}</li>
-          <li>كثافة البكسل (DPR): {typeof devicePixelRatio === "number" ? devicePixelRatio : "—"}</li>
-          <li>وكيل المستخدم: {typeof navigator !== "undefined" ? navigator.userAgent : "—"}</li>
+          <li>
+            {t("workbench.bench.renderer")}: {result !== null ? webglRendererInfo() : t("workbench.bench.readOnMeasure")}
+          </li>
+          <li>
+            {t("workbench.bench.dpr")}: {typeof devicePixelRatio === "number" ? devicePixelRatio : "—"}
+          </li>
+          <li>
+            {t("workbench.bench.userAgent")}: {typeof navigator !== "undefined" ? navigator.userAgent : "—"}
+          </li>
         </ul>
       </details>
     </div>

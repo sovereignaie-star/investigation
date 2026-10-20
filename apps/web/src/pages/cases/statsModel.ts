@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import type { CaseStats } from "@workspace/api-client-react";
 
 /**
@@ -13,15 +14,27 @@ export type CaseStatsShape = CaseStats;
 /** The eight projection counts, keyed as the projection defines them. */
 export type StatsCountKey = "entities" | "nodes" | "claims" | "edges" | "observations" | "evidence" | "merges" | "notes";
 
-const LABELS: Record<StatsCountKey, string> = {
-  entities: "الكيانات",
-  nodes: "العقد في الرسم",
-  claims: "الادعاءات",
-  edges: "الحواف",
-  observations: "المشاهدات",
-  evidence: "الأدلة",
-  merges: "عمليات الدمج",
-  notes: "الملاحظات",
+// P3-017: the row labels are dictionary keys — resolved at call time so a
+// locale switch re-renders them.
+const LABELS: Record<
+  StatsCountKey,
+  | "cases.stats.row.entities"
+  | "cases.stats.row.nodes"
+  | "cases.stats.row.claims"
+  | "cases.stats.row.edges"
+  | "cases.stats.row.observations"
+  | "cases.stats.row.evidence"
+  | "cases.stats.row.merges"
+  | "cases.stats.row.notes"
+> = {
+  entities: "cases.stats.row.entities",
+  nodes: "cases.stats.row.nodes",
+  claims: "cases.stats.row.claims",
+  edges: "cases.stats.row.edges",
+  observations: "cases.stats.row.observations",
+  evidence: "cases.stats.row.evidence",
+  merges: "cases.stats.row.merges",
+  notes: "cases.stats.row.notes",
 };
 
 const KEYS: readonly StatsCountKey[] = ["entities", "nodes", "claims", "edges", "observations", "evidence", "merges", "notes"];
@@ -34,7 +47,7 @@ export interface StatsRow {
 
 /** One labelled row per projection count, in the projection's own order. */
 export function buildStatsRows(stats: CaseStatsShape): StatsRow[] {
-  return KEYS.map((key) => ({ key, label: LABELS[key], value: stats.counts[key] }));
+  return KEYS.map((key) => ({ key, label: t(LABELS[key]), value: stats.counts[key] }));
 }
 
 /** True when every count is zero — an empty chain, shown honestly, not hidden. */

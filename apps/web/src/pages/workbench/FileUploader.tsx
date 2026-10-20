@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { Label } from "@ir/ui";
 
@@ -17,7 +18,7 @@ export function FileUploader({ onText }: { onText: (text: string, name: string) 
   const [error, setError] = React.useState<string | null>(null);
   return (
     <div data-testid="file-uploader" className="flex flex-col gap-1">
-      <Label htmlFor="file-input">ارفع ملفاً نصياً</Label>
+      <Label htmlFor="file-input">{t("workbench.uploader.label")}</Label>
       <input
         id="file-input"
         type="file"
@@ -26,7 +27,7 @@ export function FileUploader({ onText }: { onText: (text: string, name: string) 
           const file = event.target.files?.[0];
           if (file === undefined) return;
           if (isFileTooLarge(file.size)) {
-            setError(`الملف كبير جداً — الحد ${MAX_FILE_BYTES / 1000} كيلوبايت`);
+            setError(t("workbench.uploader.tooLarge", { kb: MAX_FILE_BYTES / 1000 }));
             return;
           }
           setError(null);

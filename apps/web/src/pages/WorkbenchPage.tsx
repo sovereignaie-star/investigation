@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { extract } from "@ir/core/identifiers";
 import type { Graph as ProjectionGraph, GraphNode } from "@ir/ledger/projections";
@@ -65,7 +66,7 @@ export function WorkbenchPage({
 
   return (
     <div data-testid="workbench-page" className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="text-xl font-semibold">محطة العمل</h1>
+      <h1 className="text-xl font-semibold">{t("nav.workbench")}</h1>
       {/* P3-015: re-open a saved case from the server — «فتح قضية بعد إعادة التشغيل». */}
       <SavedInvestigations onOpen={setOpenedCase} activeCaseId={openedCase?.id ?? null} />
       {openedCase && <OpenedCaseBanner opened={openedCase} onClose={() => setOpenedCase(null)} />}

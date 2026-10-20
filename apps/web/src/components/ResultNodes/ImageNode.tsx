@@ -1,5 +1,6 @@
 import { Download, Image } from "lucide-react";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type ImageNodeData } from "./contract";
 
 /**
@@ -18,14 +19,14 @@ export function ImageNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<Image size={14} />} label="صورة">
+        <NodeHeader icon={<Image size={14} />} label={t("resultNodes.kind.image")}>
           {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
         </NodeHeader>
       }
       footer={
         <NodeAction href={node.src}>
           <Download size={11} />
-          <span className="text-xs">تحميل</span>
+          <span className="text-xs">{t("common.download")}</span>
         </NodeAction>
       }
     >

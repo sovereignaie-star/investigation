@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { Handle, Position } from "@xyflow/react";
 
@@ -57,7 +58,7 @@ export function EvidenceBadge({ evidenceIds }: { evidenceIds: string[] }) {
       title={evidenceIds.join("، ")}
       dir="ltr"
     >
-      دليل {evidenceIds.length}
+      {t("resultNodes.evidenceBadge", { n: evidenceIds.length })}
     </span>
   );
 }
@@ -67,7 +68,7 @@ export function InvalidNode() {
   return (
     <div className={`${NODE_FRAME} border-destructive`} data-testid="invalid-node">
       <Handle type="target" position={Position.Top} className="!bg-destructive !w-2 !h-2" />
-      <div className="p-3 text-xs text-muted-foreground">بيانات عقدة غير صالحة</div>
+      <div className="p-3 text-xs text-muted-foreground">{t("resultNodes.invalid")}</div>
       <Handle type="source" position={Position.Bottom} className="!bg-destructive !w-2 !h-2" />
     </div>
   );

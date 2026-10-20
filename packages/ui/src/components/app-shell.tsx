@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { t, setLocale } from "@ir/i18n";
+
 import { Button } from "./button";
 
 // P3-002: the workbench app shell — layout, navigation, theme and direction.
@@ -57,7 +59,15 @@ export function AppShell({ title, nav = [], dir = "rtl", theme = "light", childr
   }, [currentDir]);
 
   const toggleTheme = () => setCurrentTheme(nextTheme);
-  const toggleDir = () => setCurrentDir((d) => (d === "rtl" ? "ltr" : "rtl"));
+  // P3-017: the direction toggle is the language toggle — the locale is the
+  // source of truth (ar -> rtl, en -> ltr) and every t() string follows it.
+  const toggleDir = () => {
+    setCurrentDir((d) => {
+      const next = d === "rtl" ? "ltr" : "rtl";
+      setLocale(next === "rtl" ? "ar" : "en");
+      return next;
+    });
+  };
 
   return (
     <div dir={currentDir} className="flex min-h-svh flex-col bg-background text-foreground">
@@ -69,24 +79,24 @@ export function AppShell({ title, nav = [], dir = "rtl", theme = "light", childr
             variant="outline"
             size="sm"
             onClick={toggleTheme}
-            aria-label={currentTheme === "light" ? "تفعيل الوضع الليلي" : "تفعيل الوضع النهاري"}
+            aria-label={currentTheme === "light" ? t("shell.theme.toDark") : t("shell.theme.toLight")}
           >
-            {currentTheme === "light" ? "الوضع الليلي" : "الوضع النهاري"}
+            {currentTheme === "light" ? t("shell.theme.dark") : t("shell.theme.light")}
           </Button>
           <Button
             data-dir-toggle
             variant="outline"
             size="sm"
             onClick={toggleDir}
-            aria-label={currentDir === "rtl" ? "Switch to English layout" : "التبديل إلى تخطيط العربية"}
+            aria-label={currentDir === "rtl" ? t("shell.lang.toEn") : t("shell.lang.toAr")}
           >
-            {currentDir === "rtl" ? "English" : "العربية"}
+            {currentDir === "rtl" ? t("shell.lang.en") : t("shell.lang.ar")}
           </Button>
         </div>
       </header>
       <div className="flex flex-1">
         <aside className="hidden w-60 shrink-0 border-e bg-card md:block">
-          <nav aria-label="التنقل الرئيسي" className="p-2">
+          <nav aria-label={t("nav.main")} className="p-2">
             <ul className="space-y-1">
               {nav.map((item) => (
                 <li key={item.id}>

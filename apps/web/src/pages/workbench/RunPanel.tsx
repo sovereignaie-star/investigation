@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import { ApiError, cancelRun, submitRun } from "@workspace/api-client-react";
 
@@ -27,21 +28,29 @@ export interface RunPanelViewProps {
   onCancel: () => void;
 }
 
-const PHASE_LABELS: Record<string, string> = {
-  queued: "في الانتظار",
-  running: "قيد التشغيل",
-  succeeded: "اكتمل بنجاح",
-  failed: "فشل",
-  cancelled: "أُلغي",
+// P3-017: the phase labels are dictionary keys, resolved at render time.
+const PHASE_LABELS: Record<
+  string,
+  | "workbench.run.phase.queued"
+  | "workbench.run.phase.running"
+  | "workbench.run.phase.succeeded"
+  | "workbench.run.phase.failed"
+  | "workbench.run.phase.cancelled"
+> = {
+  queued: "workbench.run.phase.queued",
+  running: "workbench.run.phase.running",
+  succeeded: "workbench.run.phase.succeeded",
+  failed: "workbench.run.phase.failed",
+  cancelled: "workbench.run.phase.cancelled",
 };
 
 /** The presentational panel: renders the state machine, emits user intents. */
 export function RunPanelView({ state, form, token, onFormChange, onTokenChange, onSubmit, onCancel }: RunPanelViewProps) {
   return (
     <section data-testid="run-panel" className="flex flex-col gap-3 rounded-md border border-border p-4">
-      <h2 className="text-base font-semibold">تشغيل المحرك</h2>
+      <h2 className="text-base font-semibold">{t("workbench.run.title")}</h2>
       <label className="flex flex-col gap-1 text-sm">
-        <span>رمز المدير (Admin token)</span>
+        <span>{t("workbench.run.adminToken")}</span>
         <input
           data-testid="run-token-input"
           type="password"
@@ -53,7 +62,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
       </label>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm">
-          <span>نوع التشغيل (kind)</span>
+          <span>{t("workbench.run.kind")}</span>
           <input
             data-testid="run-kind-input"
             value={form.kind}
@@ -62,7 +71,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span>المدخل القياسي (canonicalInput)</span>
+          <span>{t("workbench.run.canonicalInput")}</span>
           <input
             data-testid="run-input-input"
             value={form.canonicalInput}
@@ -80,18 +89,18 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
             disabled={form.kind === "" || form.canonicalInput === ""}
             className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
-            أرسل التشغيل
+            {t("workbench.run.submit")}
           </button>
           {state.kind === "submit-error" ? (
             <p data-testid="run-submit-error" className="text-sm text-destructive">
-              فشل الإرسال: {state.message}
+              {t("workbench.run.submitError")} {state.message}
             </p>
           ) : null}
         </div>
       ) : null}
       {state.kind === "submitting" ? (
         <p data-testid="run-submitting" className="text-sm">
-          جارٍ الإرسال…
+          {t("workbench.run.submitting")}
         </p>
       ) : null}
       {state.kind === "live" ? (
@@ -102,7 +111,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
           <ol data-testid="run-phases" className="flex flex-wrap gap-1 text-xs">
             {state.phases.map((phase, i) => (
               <li key={`${phase}-${i}`} className="rounded border border-border px-2 py-0.5">
-                {PHASE_LABELS[phase] ?? phase}
+                {PHASE_LABELS[phase] ? t(PHASE_LABELS[phase]) : phase}
               </li>
             ))}
           </ol>
@@ -113,7 +122,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
             disabled={state.cancelling}
             className="rounded bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground disabled:opacity-50"
           >
-            {state.cancelling ? "جارٍ الإلغاء…" : "ألغِ التشغيل"}
+            {state.cancelling ? t("workbench.run.cancelling") : t("workbench.run.cancel")}
           </button>
           {state.notice ? (
             <p data-testid="run-notice" className="text-sm text-destructive">
@@ -128,11 +137,13 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
           <ol className="flex flex-wrap gap-1 text-xs">
             {state.phases.map((phase, i) => (
               <li key={`${phase}-${i}`} className="rounded border border-border px-2 py-0.5">
-                {PHASE_LABELS[phase] ?? phase}
+                {PHASE_LABELS[phase] ? t(PHASE_LABELS[phase]) : phase}
               </li>
             ))}
           </ol>
-          <p className="text-sm font-medium">النتيجة: {PHASE_LABELS[state.phase] ?? state.phase}</p>
+          <p className="text-sm font-medium">
+            {t("workbench.run.result")}: {PHASE_LABELS[state.phase] ? t(PHASE_LABELS[state.phase]) : state.phase}
+          </p>
           {state.notice ? (
             <p data-testid="run-notice" className="text-sm text-destructive">
               {state.notice}
@@ -142,7 +153,7 @@ export function RunPanelView({ state, form, token, onFormChange, onTokenChange, 
       ) : null}
       {state.kind === "connection-lost" ? (
         <p data-testid="run-connection-lost" className="text-sm text-destructive">
-          انقطع الاتصال بالتيار قبل اكتمال التشغيل — النتيجة غير معروفة. تحقق من حالة التشغيل يدويًا.
+          {t("workbench.run.connectionLost")}
         </p>
       ) : null}
     </section>

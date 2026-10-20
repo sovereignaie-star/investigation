@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 import type { Graph as ProjectionGraph } from "@ir/ledger/projections";
 
@@ -43,7 +44,7 @@ function iterationsOf(order: number): number {
 export function InvestigationGraph({
   graph,
   onInstance,
-  ariaLabel = "لوحة رسم التحقيق",
+  ariaLabel = t("workbench.graph.ariaLabel"),
   layoutSeed = 42,
 }: {
   graph: ProjectionGraph;
@@ -176,13 +177,11 @@ export function InvestigationGraph({
     <div data-testid="investigation-graph" className="relative h-full min-h-[300px] w-full">
       <div ref={containerRef} className="absolute inset-0" aria-label={ariaLabel} role="img" />
       {graph.nodes.length === 0 && (
-        <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-          لا عقد بعد — استخرج معرّفات لرسم اللوحة.
-        </p>
+        <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">{t("workbench.graph.empty")}</p>
       )}
       {error !== null && (
         <p role="alert" className="absolute inset-x-0 bottom-0 bg-destructive/10 p-2 text-sm text-destructive">
-          تعذر تشغيل لوحة الرسم (WebGL غير متوفر): {error}
+          {t("workbench.graph.noWebgl", { error })}
         </p>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { Copy } from "lucide-react";
 import { IDENTIFIER_LIST } from "../../utils/identifierList";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader, copyText } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type DefaultNodeData } from "./contract";
 
 /**
@@ -28,7 +29,7 @@ export function DefaultNode({ data, selected }: Props) {
       footer={
         <NodeAction onClick={() => copyText(node.value)}>
           <Copy size={11} />
-          <span className="text-xs">نسخ</span>
+          <span className="text-xs">{t("resultNodes.copyValue")}</span>
         </NodeAction>
       }
     >

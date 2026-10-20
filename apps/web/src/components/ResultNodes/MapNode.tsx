@@ -1,5 +1,6 @@
 import { ExternalLink, MapPin } from "lucide-react";
 import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { t } from "@ir/i18n";
 import { parseNodeData, type MapNodeData } from "./contract";
 
 /**
@@ -28,7 +29,7 @@ export function MapNode({ data, selected }: Props) {
     <NodeFrame
       selected={selected}
       header={
-        <NodeHeader icon={<MapPin size={14} />} label="خريطة">
+        <NodeHeader icon={<MapPin size={14} />} label={t("resultNodes.kind.map")}>
           {node.city && (
             <span className="text-xs text-muted-foreground" dir="ltr">
               {node.city}
@@ -42,13 +43,13 @@ export function MapNode({ data, selected }: Props) {
         mapsUrl ? (
           <NodeAction href={mapsUrl}>
             <ExternalLink size={11} />
-            <span className="text-xs">فتح الخريطة</span>
+            <span className="text-xs">{t("resultNodes.openMap")}</span>
           </NodeAction>
         ) : undefined
       }
     >
       {embedUrl ? (
-        <iframe src={embedUrl} className="w-full h-32 rounded border-0" title="خريطة" />
+        <iframe src={embedUrl} className="w-full h-32 rounded border-0" title={t("resultNodes.mapTitle")} />
       ) : (
         <div className="w-full h-24 bg-muted rounded flex items-center justify-center">
           <MapPin size={32} className="text-muted-foreground" />

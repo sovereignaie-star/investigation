@@ -11,8 +11,8 @@
 export const EXPORT_FORMATS = [
   {
     id: "projection",
-    label: "لقطة الإسقاط (JSON)",
-    description: "لقطة إسقاط القضية مع بصمة سلامة sha256 — ليست نسخة كاملة من القضية وأدلتها",
+    labelKey: "cases.export.projection.label",
+    descriptionKey: "cases.export.projection.description",
   },
 ] as const;
 

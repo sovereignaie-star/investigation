@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useCreateCase, useListCases, useUpdateCaseLifecycle, type CreateCaseInput } from "@workspace/api-client-react";
 import { Badge, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, Textarea } from "@ir/ui";
+// P3-017: every UI string comes from @ir/i18n.
+import { t } from "@ir/i18n";
 import { useAdminToken } from "../utils/adminToken";
 import { CasesTable } from "./cases/CasesTable";
 import { InvestigationStats } from "./cases/InvestigationStats";
@@ -19,17 +21,33 @@ import { InvestigationStats } from "./cases/InvestigationStats";
  * re-entered per session (the generated client's auth getter reads the ref below).
  */
 
-const LEGAL_BASES: Array<{ value: string; label: string }> = [
-  { value: "due_diligence", label: "العناية الواجبة" },
-  { value: "fraud_investigation", label: "تحقيق احتيال" },
-  { value: "security_incident", label: "حادثة أمنية" },
-  { value: "threat_intelligence", label: "استخبارات تهديدات" },
-  { value: "journalism", label: "عمل صحفي استقصائي" },
-  { value: "litigation_support", label: "دعم تقاضي" },
-  { value: "compliance_kyc", label: "امتثال و KYC" },
-  { value: "academic_research", label: "بحث أكاديمي" },
-  { value: "self_assessment", label: "تقييم ذاتي" },
-  { value: "training_simulation", label: "تدريب ومحاكاة" },
+// P3-017: the labels are dictionary keys — they resolve at render time, so a
+// locale switch re-renders them (a module-level t() call would freeze the
+// import-time locale).
+const LEGAL_BASES: Array<{
+  value: string;
+  key:
+    | "cases.legalBasis.due_diligence"
+    | "cases.legalBasis.fraud_investigation"
+    | "cases.legalBasis.security_incident"
+    | "cases.legalBasis.threat_intelligence"
+    | "cases.legalBasis.journalism"
+    | "cases.legalBasis.litigation_support"
+    | "cases.legalBasis.compliance_kyc"
+    | "cases.legalBasis.academic_research"
+    | "cases.legalBasis.self_assessment"
+    | "cases.legalBasis.training_simulation";
+}> = [
+  { value: "due_diligence", key: "cases.legalBasis.due_diligence" },
+  { value: "fraud_investigation", key: "cases.legalBasis.fraud_investigation" },
+  { value: "security_incident", key: "cases.legalBasis.security_incident" },
+  { value: "threat_intelligence", key: "cases.legalBasis.threat_intelligence" },
+  { value: "journalism", key: "cases.legalBasis.journalism" },
+  { value: "litigation_support", key: "cases.legalBasis.litigation_support" },
+  { value: "compliance_kyc", key: "cases.legalBasis.compliance_kyc" },
+  { value: "academic_research", key: "cases.legalBasis.academic_research" },
+  { value: "self_assessment", key: "cases.legalBasis.self_assessment" },
+  { value: "training_simulation", key: "cases.legalBasis.training_simulation" },
 ];
 
 type FormState = {
@@ -81,7 +99,7 @@ export function CasesPage() {
       setCreated(c.title);
       setForm(EMPTY_FORM);
     } catch (x) {
-      setError(x instanceof Error ? x.message : "تعذر إنشاء القضية");
+      setError(x instanceof Error ? x.message : t("cases.create.error"));
     }
   };
 
@@ -92,7 +110,7 @@ export function CasesPage() {
       setArchivingId(null);
       setArchiveReason("");
     } catch (x) {
-      setError(x instanceof Error ? x.message : "تعذر الأرشفة");
+      setError(x instanceof Error ? x.message : t("cases.archive.error"));
     }
   };
 
@@ -106,91 +124,89 @@ export function CasesPage() {
       });
       setReopening(null);
     } catch (x) {
-      setError(x instanceof Error ? x.message : "تعذر إعادة الفتح — تأكيد الغرض مطلوب");
+      setError(x instanceof Error ? x.message : t("cases.reopen.error"));
     }
   };
 
   return (
     <div className="space-y-8">
       <header>
-        <p className="text-sm text-muted-foreground">القضايا</p>
-        <h1 className="mt-1 text-xl font-semibold">قضايا التحقيق — إنشاء بغرض، فتح، أرشفة</h1>
+        <p className="text-sm text-muted-foreground">{t("cases.header.kicker")}</p>
+        <h1 className="mt-1 text-xl font-semibold">{t("cases.header.title")}</h1>
       </header>
 
       <section aria-labelledby="token" className="rounded-md border border-border p-4">
-        <Label htmlFor="admin-token">رمز الإدارة</Label>
-        <p className="mb-2 mt-1 text-xs text-muted-foreground">
-          واجهات القضايا خلف حدود الأدمن — أدخل رمز الإدارة (يبقى في الذاكرة لهذه الجلسة فقط، بلا أي تخزين متصفح).
-        </p>
+        <Label htmlFor="admin-token">{t("cases.adminToken.label")}</Label>
+        <p className="mb-2 mt-1 text-xs text-muted-foreground">{t("cases.adminToken.hint")}</p>
         <Input
           id="admin-token"
           type="password"
           dir="ltr"
           value={token}
           onChange={(e) => saveToken(e.target.value)}
-          placeholder="IR_ADMIN_TOKEN"
+          placeholder={t("cases.adminToken.placeholder")}
           className="max-w-xs"
         />
       </section>
 
       <section aria-labelledby="create-case" className="rounded-md border border-border p-4">
         <h2 id="create-case" className="mb-3 font-semibold">
-          إنشاء قضية
+          {t("cases.create.title")}
         </h2>
         <form onSubmit={submit} className="grid gap-3 sm:max-w-xl">
           <div className="grid gap-1">
-            <Label htmlFor="case-title">العنوان</Label>
+            <Label htmlFor="case-title">{t("cases.create.titleLabel")}</Label>
             <Input
               id="case-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="عنوان موجز للقضية"
+              placeholder={t("cases.create.titlePlaceholder")}
               required
               maxLength={200}
             />
           </div>
           <div className="grid gap-1">
-            <Label htmlFor="case-purpose">الغرض</Label>
+            <Label htmlFor="case-purpose">{t("cases.create.purposeLabel")}</Label>
             <Textarea
               id="case-purpose"
               value={form.purpose}
               onChange={(e) => setForm({ ...form, purpose: e.target.value })}
-              placeholder="لماذا هذه القضية؟ غرض موثق (١٠ أحرف على الأقل — بلا غرض لا قضية)"
+              placeholder={t("cases.create.purposePlaceholder")}
               required
             />
-            <p className="text-xs text-muted-foreground">E-01: لا تُنشأ قضية بلا غرض موثق — عشرة أحرف على الأقل.</p>
+            <p className="text-xs text-muted-foreground">{t("cases.create.e01")}</p>
           </div>
           <div className="grid gap-1">
-            <Label htmlFor="case-legal-basis">الأساس القانوني</Label>
+            <Label htmlFor="case-legal-basis">{t("cases.create.legalBasisLabel")}</Label>
             <Select value={form.legalBasis} onValueChange={(v) => setForm({ ...form, legalBasis: v })}>
               <SelectTrigger id="case-legal-basis">
-                <SelectValue placeholder="اختر الأساس" />
+                <SelectValue placeholder={t("cases.create.legalBasisPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {LEGAL_BASES.map((b) => (
                   <SelectItem key={b.value} value={b.value}>
-                    {b.label} — <span dir="ltr">{b.value}</span>
+                    {t(b.key)} — <span dir="ltr">{b.value}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-1">
-            <Label htmlFor="case-passphrase">عبارة المرور (اختياري — تشفير القضية)</Label>
+            <Label htmlFor="case-passphrase">{t("cases.create.passphraseLabel")}</Label>
             <Input
               id="case-passphrase"
               type="password"
               dir="ltr"
               value={form.passphrase}
               onChange={(e) => setForm({ ...form, passphrase: e.target.value })}
-              placeholder="تُترك فارغة لقضية غير مشفرة"
+              placeholder={t("cases.create.passphrasePlaceholder")}
             />
           </div>
           <div>
             <Button type="submit" disabled={createCase.isPending}>
-              {createCase.isPending ? "جارٍ الإنشاء…" : "إنشاء قضية"}
+              {createCase.isPending ? t("cases.create.submitting") : t("cases.create.submit")}
             </Button>
-            {created && <Badge className="ms-3">أُنشئت: {created}</Badge>}
+            {created && <Badge className="ms-3">{t("cases.create.created", { title: created })}</Badge>}
             {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           </div>
         </form>
@@ -199,18 +215,18 @@ export function CasesPage() {
       <section aria-labelledby="case-list" className="rounded-md border border-border p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="case-list" className="font-semibold">
-            القضايا
+            {t("cases.list.title")}
           </h2>
           <label className="flex items-center gap-2 text-sm">
             <Switch checked={includeArchived} onCheckedChange={setIncludeArchived} />
-            إظهار المؤرشفة
+            {t("cases.list.showArchived")}
           </label>
         </div>
         {list.isPending ? (
-          <p className="text-sm text-muted-foreground">جارٍ تحميل القضايا…</p>
+          <p className="text-sm text-muted-foreground">{t("cases.list.loading")}</p>
         ) : list.isError ? (
           <p className="text-sm text-destructive">
-            تعذر جلب القضايا — تحقق من رمز الإدارة ومن تشغيل الخادم. ({list.error instanceof Error ? list.error.message : "خطأ"})
+            {t("cases.list.error")} ({list.error instanceof Error ? list.error.message : t("cases.list.errorGeneric")})
           </p>
         ) : (
           <CasesTable
@@ -237,21 +253,21 @@ export function CasesPage() {
             }}
           >
             <div className="grid flex-1 gap-1">
-              <Label htmlFor="archive-reason">سبب الأرشفة</Label>
+              <Label htmlFor="archive-reason">{t("cases.archive.reasonLabel")}</Label>
               <Input
                 id="archive-reason"
                 value={archiveReason}
                 onChange={(e) => setArchiveReason(e.target.value)}
-                placeholder="مثال: اكتمل التحقيق واعتُمد التقرير"
+                placeholder={t("cases.archive.reasonPlaceholder")}
                 required
                 minLength={3}
               />
             </div>
             <Button type="submit" variant="outline" disabled={lifecycle.isPending}>
-              أرشفة
+              {t("cases.archive.submit")}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setArchivingId(null)}>
-              إلغاء
+              {t("common.cancel")}
             </Button>
           </form>
         )}
@@ -264,7 +280,7 @@ export function CasesPage() {
             }}
           >
             <div className="grid gap-1">
-              <Label htmlFor="reopen-reason">سبب إعادة الفتح</Label>
+              <Label htmlFor="reopen-reason">{t("cases.reopen.reasonLabel")}</Label>
               <Input
                 id="reopen-reason"
                 value={reopening.reason}
@@ -274,22 +290,22 @@ export function CasesPage() {
               />
             </div>
             <div className="grid gap-1">
-              <Label htmlFor="reopen-purpose">تأكيد الغرض (PurposeConfirmation — إلزامي)</Label>
+              <Label htmlFor="reopen-purpose">{t("cases.reopen.purposeLabel")}</Label>
               <Textarea
                 id="reopen-purpose"
                 value={reopening.purposeConfirmation}
                 onChange={(e) => setReopening({ ...reopening, purposeConfirmation: e.target.value })}
-                placeholder="غرض صريح لإعادة الفتح (١٠ أحرف على الأقل) — بلا تأكيد غرض لا إعادة فتح"
+                placeholder={t("cases.reopen.purposePlaceholder")}
                 required
                 minLength={10}
               />
             </div>
             <div className="flex gap-2">
               <Button type="submit" variant="outline" disabled={lifecycle.isPending}>
-                إعادة فتح
+                {t("cases.reopen.submit")}
               </Button>
               <Button type="button" variant="ghost" onClick={() => setReopening(null)}>
-                إلغاء
+                {t("common.cancel")}
               </Button>
             </div>
           </form>

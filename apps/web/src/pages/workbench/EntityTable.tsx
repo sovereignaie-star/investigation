@@ -1,3 +1,4 @@
+import { t } from "@ir/i18n";
 import * as React from "react";
 
 import type { GraphNode } from "@ir/ledger/projections";
@@ -18,12 +19,21 @@ const ROW_HEIGHT = 36;
 const VIEWPORT_HEIGHT = 360;
 const OVERSCAN = 3;
 
-const COLUMNS: { key: SortKey; labelAr: string }[] = [
-  { key: "type", labelAr: "النوع" },
-  { key: "label", labelAr: "التسمية" },
-  { key: "canonicalKey", labelAr: "المفتاح القانوني" },
-  { key: "claims", labelAr: "الادعاءات" },
-  { key: "evidence", labelAr: "الأدلة" },
+// P3-017: the column labels are dictionary keys, resolved at render time.
+const COLUMNS: Array<{
+  key: SortKey;
+  msgKey:
+    | "workbench.entities.type"
+    | "workbench.entities.label"
+    | "workbench.entities.canonicalKey"
+    | "workbench.entities.claims"
+    | "workbench.entities.evidence";
+}> = [
+  { key: "type", msgKey: "workbench.entities.type" },
+  { key: "label", msgKey: "workbench.entities.label" },
+  { key: "canonicalKey", msgKey: "workbench.entities.canonicalKey" },
+  { key: "claims", msgKey: "workbench.entities.claims" },
+  { key: "evidence", msgKey: "workbench.entities.evidence" },
 ];
 
 export interface EntityTableProps {
@@ -67,7 +77,7 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
         <input
           data-testid="entity-filter"
           className="w-64 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-          placeholder="تصفية بالنوع أو التسمية أو المفتاح…"
+          placeholder={t("workbench.entities.filter")}
           value={filter}
           onChange={(e) => onFilterChange(e.target.value)}
         />
@@ -91,7 +101,7 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
                   className="cursor-pointer px-2 py-1.5 text-start font-normal"
                   onClick={() => toggleSort(c.key)}
                 >
-                  {c.labelAr} {sort.key === c.key ? (sort.dir === "asc" ? "▲" : "▼") : ""}
+                  {t(c.msgKey)} {sort.key === c.key ? (sort.dir === "asc" ? "▲" : "▼") : ""}
                 </th>
               ))}
             </tr>
@@ -114,7 +124,7 @@ export function EntityTable({ rows, sort, onSortChange, filter, onFilterChange, 
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={COLUMNS.length} className="px-2 py-8 text-center text-muted-foreground">
-                  لا كيانات مطابقة
+                  {t("workbench.entities.empty")}
                 </td>
               </tr>
             ) : null}
