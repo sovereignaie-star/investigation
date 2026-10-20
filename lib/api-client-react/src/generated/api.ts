@@ -632,6 +632,67 @@ export function useGetCaseStats<TData = Awaited<ReturnType<typeof getCaseStats>>
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export const getGetCaseProjectionUrl = (id: string) => {
+  return `/api/cases/${id}/projection`;
+};
+
+/**
+ * The case's own projection snapshot — the exact shape `ir project --json` emits ({...projection, sha256}) — served as plain JSON for the workbench's saved- investigations flow. The graph the workbench renders after a restart comes from this snapshot of the case itself, never a browser rebuild. J-17: a locked case fails closed with 403 and the locked message — never an empty graph that looks like an opened case.
+ * @summary Case projection (P3-015 — the data path of re-opening a saved case after restart)
+ */
+export const getCaseProjection = async (id: string, options?: RequestInit): Promise<CaseExport> => {
+  return customFetch<CaseExport>(getGetCaseProjectionUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCaseProjectionQueryKey = (id: string) => {
+  return [`/api/cases/${id}/projection`] as const;
+};
+
+export const getGetCaseProjectionQueryOptions = <TData = Awaited<ReturnType<typeof getCaseProjection>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseProjection>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCaseProjectionQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCaseProjection>>> = ({ signal }) =>
+    getCaseProjection(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCaseProjection>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCaseProjectionQueryResult = NonNullable<Awaited<ReturnType<typeof getCaseProjection>>>;
+export type GetCaseProjectionQueryError = ErrorType<Error>;
+
+/**
+ * @summary Case projection (P3-015 — the data path of re-opening a saved case after restart)
+ */
+
+export function useGetCaseProjection<TData = Awaited<ReturnType<typeof getCaseProjection>>, TError = ErrorType<Error>>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCaseProjection>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCaseProjectionQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export const getGetCaseExportUrl = (id: string, format: "projection") => {
   return `/api/cases/${id}/export/${format}`;
 };

@@ -343,6 +343,53 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /cases/{id}/projection:
+    get:
+      operationId: getCaseProjection
+      tags: [cases]
+      summary: Case projection (P3-015 — the data path of re-opening a saved case after restart)
+      description: >-
+        The case's own projection snapshot — the exact shape `ir project --json` emits
+        ({...projection, sha256}) — served as plain JSON for the workbench's saved-
+        investigations flow. The graph the workbench renders after a restart comes from
+        this snapshot of the case itself, never a browser rebuild. J-17: a locked case
+        fails closed with 403 and the locked message — never an empty graph that looks
+        like an opened case.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Case id (ULID).
+      responses:
+        "200":
+          description: The case's projection snapshot with its sha256.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseExport"
+        "401":
+          description: Missing or wrong admin token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: J-17 — the case is locked-encrypted; nothing is readable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No case with this id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /cases/{id}/export/{format}:
     get:
       operationId: getCaseExport

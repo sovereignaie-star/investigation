@@ -259,6 +259,41 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
     }
   });
 
+  // GET /cases/:id/projection — P3-015 («فتح قضية بعد إعادة التشغيل»): the data path of
+  // re-opening a saved case in the workbench. Serves the case's own projection
+  // snapshot — the exact shape `ir project --json` emits ({...projection, sha256}) —
+  // from the durable store, so the graph the workbench renders after a restart is
+  // the case's own snapshot, never a browser rebuild. J-17: a locked case fails
+  // closed with the locked message — never an empty graph that looks like an opened
+  // case. The route opens the case readOnly and never mutates it; same admin
+  // boundary as every case route (D-037).
+  router.get("/cases/:id/projection", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    if (found.fp.encrypted) {
+      // J-17: not even the projection shape is readable — an empty case would look
+      // like an opened one, so the locked case fails closed instead.
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const { dir } = found;
+    const c = openCase(dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const p = c.projection();
+      res.json({ ...p, sha256: projectionHash(p) });
+    } finally {
+      c.close();
+    }
+  });
+
   // GET /cases/:id/export — P3-014 (يصدر الصيغ المتاحة في المرحلة): the phase's export
   // format is the projection snapshot JSON — the exact shape `ir project --json` emits
   // ({...projection, sha256}) — served as a download from ONE projection snapshot of the
