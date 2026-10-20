@@ -1,45 +1,46 @@
-import { Handle, Position } from "@xyflow/react";
-import { Image, Download } from "lucide-react";
+import { Download, Image } from "lucide-react";
+import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { parseNodeData, type ImageNodeData } from "./contract";
 
+/**
+ * P3-016: the image result node on the new view model — typed data, the token
+ * palette, and the evidence rule of P3-008.
+ */
 interface Props {
-  data: { label: string; value: string; nodeData: Record<string, unknown> };
+  data: ImageNodeData;
   selected: boolean;
 }
 
 export function ImageNode({ data, selected }: Props) {
-  const src = (data.nodeData as { src?: string }).src || data.value;
+  const node = parseNodeData("image", data);
+  if (!node) return <InvalidNode />;
   return (
-    <div
-      className={`bg-zinc-900 border ${selected ? "border-pink-500" : "border-zinc-700"} rounded-lg shadow-xl min-w-[200px] max-w-[280px]`}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-pink-500 !w-2 !h-2" />
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-800 rounded-t-lg">
-        <Image size={14} className="text-pink-400" />
-        <span className="text-xs font-medium text-zinc-300">صورة</span>
-      </div>
-      <div className="p-2">
-        <img
-          src={src}
-          alt={data.label}
-          loading="lazy"
-          className="w-full rounded object-cover max-h-40"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-        <p className="text-xs text-zinc-500 mt-1 truncate">{data.label}</p>
-      </div>
-      <div className="border-t border-zinc-800">
-        <a
-          href={src}
-          download
-          className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-pink-400 transition-colors"
-        >
+    <NodeFrame
+      selected={selected}
+      header={
+        <NodeHeader icon={<Image size={14} />} label="صورة">
+          {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
+        </NodeHeader>
+      }
+      footer={
+        <NodeAction href={node.src}>
           <Download size={11} />
           <span className="text-xs">تحميل</span>
-        </a>
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-pink-500 !w-2 !h-2" />
-    </div>
+        </NodeAction>
+      }
+    >
+      <img
+        src={node.src}
+        alt={node.label}
+        loading="lazy"
+        className="w-full rounded object-cover max-h-40"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = "none";
+        }}
+      />
+      <p className="text-xs text-muted-foreground mt-1 truncate" dir="ltr">
+        {node.label}
+      </p>
+    </NodeFrame>
   );
 }

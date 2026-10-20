@@ -35,25 +35,25 @@ const SAMPLE_NODES: Node[] = [
     id: "sample-text",
     type: "text",
     position: { x: 40, y: 40 },
-    data: { label: "نص", value: "عينة نص مستخرج من نص حر", nodeData: {}, status: "done" },
+    data: { label: "نص", value: "عينة نص مستخرج من نص حر" },
   },
   {
     id: "sample-link",
     type: "link",
     position: { x: 380, y: 60 },
-    data: { label: "رابط", value: "https://example.com", nodeData: {} },
+    data: { label: "رابط", url: "https://example.com", domain: "example.com" },
   },
   {
     id: "sample-file",
     type: "file",
     position: { x: 60, y: 300 },
-    data: { label: "ملف", value: "report.pdf", nodeData: { size: 1024 } },
+    data: { label: "ملف", name: "report.pdf", size: 1024, mime: "application/pdf" },
   },
   {
     id: "sample-image",
     type: "image",
     position: { x: 400, y: 320 },
-    data: { label: "صورة", value: "photo.jpg", nodeData: {} },
+    data: { label: "صورة", src: "https://example.com/photo.jpg" },
   },
 ];
 

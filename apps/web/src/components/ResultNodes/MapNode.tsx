@@ -1,59 +1,64 @@
-import { Handle, Position } from "@xyflow/react";
-import { MapPin, ExternalLink } from "lucide-react";
+import { ExternalLink, MapPin } from "lucide-react";
+import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { parseNodeData, type MapNodeData } from "./contract";
 
+/**
+ * P3-016: the map result node on the new view model — typed data, the token
+ * palette, and the evidence rule of P3-008. The geo coordinate follows the
+ * catalog's geo_point shape ("lat,lng"); the embed is built only from a valid
+ * pair (numbers, not a string guess) — no embed otherwise, honestly.
+ */
 interface Props {
-  data: { label: string; value: string; nodeData: Record<string, unknown> };
+  data: MapNodeData;
   selected: boolean;
 }
 
 export function MapNode({ data, selected }: Props) {
-  const nd = data.nodeData as { loc?: string; city?: string; country?: string };
-  const loc = nd.loc || "";
-  const [lat, lng] = loc ? loc.split(",") : ["", ""];
-  const mapsUrl = lat && lng ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=10` : null;
-  const embedUrl =
-    lat && lng
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.1},${Number(lat) - 0.1},${Number(lng) + 0.1},${Number(lat) + 0.1}&layer=mapnik&marker=${lat},${lng}`
-      : null;
-
+  const node = parseNodeData("map", data);
+  if (!node) return <InvalidNode />;
+  const [lat, lng] = node.geo ? node.geo.split(",") : ["", ""];
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+  const valid = node.geo && lat !== "" && lng !== "" && Number.isFinite(latNum) && Number.isFinite(lngNum);
+  const mapsUrl = valid ? `https://www.openstreetmap.org/?mlat=${latNum}&mlon=${lngNum}&zoom=10` : null;
+  const embedUrl = valid
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${lngNum - 0.1},${latNum - 0.1},${lngNum + 0.1},${latNum + 0.1}&layer=mapnik&marker=${latNum},${lngNum}`
+    : null;
   return (
-    <div
-      className={`bg-zinc-900 border ${selected ? "border-green-500" : "border-zinc-700"} rounded-lg shadow-xl min-w-[240px] max-w-[300px]`}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-green-500 !w-2 !h-2" />
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-800 rounded-t-lg">
-        <MapPin size={14} className="text-green-400" />
-        <span className="text-xs font-medium text-zinc-300">خريطة</span>
-        {nd.city && (
-          <span className="text-xs text-zinc-500">
-            {nd.city}, {nd.country}
-          </span>
-        )}
-      </div>
-      <div className="p-2">
-        {embedUrl ? (
-          <iframe src={embedUrl} className="w-full h-32 rounded border-0" title="map" />
-        ) : (
-          <div className="w-full h-24 bg-zinc-800 rounded flex items-center justify-center">
-            <MapPin size={32} className="text-zinc-600" />
-          </div>
-        )}
-        {loc && <p className="text-xs text-zinc-500 mt-1 font-mono">{loc}</p>}
-      </div>
-      {mapsUrl && (
-        <div className="border-t border-zinc-800">
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-green-400 transition-colors"
-          >
+    <NodeFrame
+      selected={selected}
+      header={
+        <NodeHeader icon={<MapPin size={14} />} label="خريطة">
+          {node.city && (
+            <span className="text-xs text-muted-foreground" dir="ltr">
+              {node.city}
+              {node.country ? `, ${node.country}` : ""}
+            </span>
+          )}
+          {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
+        </NodeHeader>
+      }
+      footer={
+        mapsUrl ? (
+          <NodeAction href={mapsUrl}>
             <ExternalLink size={11} />
             <span className="text-xs">فتح الخريطة</span>
-          </a>
+          </NodeAction>
+        ) : undefined
+      }
+    >
+      {embedUrl ? (
+        <iframe src={embedUrl} className="w-full h-32 rounded border-0" title="خريطة" />
+      ) : (
+        <div className="w-full h-24 bg-muted rounded flex items-center justify-center">
+          <MapPin size={32} className="text-muted-foreground" />
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-green-500 !w-2 !h-2" />
-    </div>
+      {node.geo && (
+        <p className="text-xs text-muted-foreground mt-1 font-mono" dir="ltr">
+          {node.geo}
+        </p>
+      )}
+    </NodeFrame>
   );
 }

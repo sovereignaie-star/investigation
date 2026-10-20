@@ -1,48 +1,50 @@
-import { Handle, Position } from "@xyflow/react";
-import { Video, ExternalLink } from "lucide-react";
+import { ExternalLink, Play } from "lucide-react";
 import { youtubeId } from "../../utils/youtube";
+import { EvidenceBadge, InvalidNode, NodeAction, NodeFrame, NodeHeader } from "./shared";
+import { parseNodeData, type VideoNodeData } from "./contract";
 
+/**
+ * P3-016: the video result node on the new view model — typed data, the token
+ * palette, and the evidence rule of P3-008. P1-023 preserved: the embed gate is
+ * the parsed-hostname YouTube check (youtubeId) — a non-YouTube URL renders the
+ * link and NO iframe, never a substring-match guess.
+ */
 interface Props {
-  data: { label: string; value: string; nodeData: Record<string, unknown> };
+  data: VideoNodeData;
   selected: boolean;
 }
 
 export function VideoNode({ data, selected }: Props) {
-  const src = (data.nodeData as { src?: string }).src || data.value;
-  const ytId = youtubeId(src);
-  const embedUrl = ytId ? `https://www.youtube.com/embed/${ytId}` : null;
-
+  const node = parseNodeData("video", data);
+  if (!node) return <InvalidNode />;
+  const id = youtubeId(node.url);
   return (
-    <div
-      className={`bg-zinc-900 border ${selected ? "border-red-500" : "border-zinc-700"} rounded-lg shadow-xl min-w-[240px] max-w-[320px]`}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-red-500 !w-2 !h-2" />
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800 bg-zinc-800 rounded-t-lg">
-        <Video size={14} className="text-red-400" />
-        <span className="text-xs font-medium text-zinc-300">فيديو</span>
-      </div>
-      <div className="p-2">
-        {embedUrl ? (
-          <iframe src={embedUrl} className="w-full h-32 rounded" allow="encrypted-media" title={data.label} />
-        ) : (
-          <div className="w-full h-24 bg-zinc-800 rounded flex items-center justify-center">
-            <Video size={32} className="text-zinc-600" />
-          </div>
-        )}
-        <p className="text-xs text-zinc-500 mt-1 truncate">{data.label}</p>
-      </div>
-      <div className="border-t border-zinc-800">
-        <a
-          href={src}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1 py-1.5 hover:bg-zinc-800 text-zinc-500 hover:text-red-400 transition-colors"
-        >
+    <NodeFrame
+      selected={selected}
+      header={
+        <NodeHeader icon={<Play size={14} />} label="فيديو">
+          {node.evidenceIds && <EvidenceBadge evidenceIds={node.evidenceIds} />}
+        </NodeHeader>
+      }
+      footer={
+        <NodeAction href={node.url}>
           <ExternalLink size={11} />
           <span className="text-xs">فتح</span>
-        </a>
-      </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-red-500 !w-2 !h-2" />
-    </div>
+        </NodeAction>
+      }
+    >
+      {id ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${id}`}
+          title={node.label}
+          className="w-full aspect-video rounded border-0"
+          allowFullScreen
+        />
+      ) : (
+        <p className="text-xs font-mono break-all text-muted-foreground" dir="ltr">
+          {node.url}
+        </p>
+      )}
+    </NodeFrame>
   );
 }
