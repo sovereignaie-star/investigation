@@ -2,18 +2,20 @@
 
 الوصف الصادق أولاً: هذا **إثبات تعطيل تعويضي لاحق** لا أحمر تاريخي سابق للتنفيذ — كود مكوّن العرض كان قد كُتب قبل أي تشغيل أحمر سلوكي ناجح (الانحراف الموثق في L-52). الغرض: إثبات أن اختبارات العرض، عند تعطيل التنفيذ، تفشل على تأكيداتها السلوكية لا على أخطاء استيراد أو بناء.
 
-مصدر المستند: مخرجات الأمر أدناه أُخذت حرفياً وقت التنفيذ (2026-10-21، محفوظة أصلاً في ملف مؤقت ثم أُلحقت هنا). الأوامر والحقنة المؤقتة منقولة حرفياً من سجل الجلسة، وقد أُعيد بناء صياغتها من السجل نفسه — كل ما دون مخرجات الأمر مبني على السجل المحفوظ لا على الذاكرة.
+مصدر المستند: مخرجات الأمر أدناه أُعيد تنسيقها وأُزيل تلوينها من مخرجات التنفيذ الأصلية (2026-10-21، المحفوظة أصلاً في ملف مؤقت ثم أُلحقت هنا). الأوامر والحقنة **مقتطفات من سجل الجلسة** (لا إعادة كتابة من الذاكرة)، ومعروضة مختصرة لا كاملة. الاستعادة أُثبتت من مخرجات التنفيذ الأصلية نفسها (انظر القسم الأخير).
 
-## الأمر (حرفي من سجل الجلسة)
+## الأمر (مقتطف من سجل الجلسة)
 
 ```bash
 cd /home/user/workspace/ir-p4-007 && python3 - << 'PYEOF'
-# (حقن الحارسين المؤقتين — انظر القسم التالي)
+# حقن الحارسين المؤقتين (المقتطف أدناه) — ثم:
 PYEOF
 source $HOME/.node24rc && pnpm vitest run apps/web/src/pages/workbench/TimelineView.test.ts 2>&1 | grep -E "×|✓|Tests |AssertionError|Cannot|SyntaxError" | head -20 | tee /tmp/p4007-red-behavioral.log
 ```
 
-## الحقنة المؤقتة (حرفية من سجل الجلسة — لم تُلتزم قط)
+## الحقنة المؤقتة (مقتطف من سجل الجلسة — لم تُلتزم قط)
+
+مقتطف من الحقنة الفعلية المسجلة (الاستدعاء الناجح كان يحوي أيضاً تعيينات مسارات وقراءة ملفات حُذفت من العرض هنا):
 
 ```python
 # 1. timelineModel.ts — sortTimelineItems returns the WRONG order (reversed).
@@ -37,7 +39,7 @@ s3 = s2.replace(obs_block.group(0), "      {/* STUB (behavioral-red proof): obse
 
 أي: `sortTimelineItems` أعادت ترتيباً معكوساً (صياغة سليمة — لا خلل استيراد)، وحُجبت تسمية نافذة الحدوث وملاحظات الرصد من العرض (حذف كتلتَي JSX مع إبقاء صياغة صحيحة).
 
-## المخرجات الحرفية (كما التقطها الأمر)
+## المخرجات (من مخرجات التنفيذ الأصلية، بعد إعادة التنسيق وإزالة التلوين)
 
 ```
      × renders every event with its subject, predicate and object — sorted display order 5ms
@@ -47,7 +49,7 @@ s3 = s2.replace(obs_block.group(0), "      {/* STUB (behavioral-red proof): obse
      × the full raw occurrence window is exposed verbatim (title) — no precision or offset loss 3ms
      × ISO timestamps are directionally isolated (dir=ltr) inside the RTL context — the BiDi visual scrambling fix 1ms
      × buildTimelineItems feeds real graph shapes into the view (integration of model + view) 1ms
-⎯⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯
 AssertionError: expected 621 to be greater than 980
 AssertionError: expected '<section aria-label="الخط الزمني" dat…' to contain '<span>من </span>'
 AssertionError: expected '<section aria-label="الخط الزمني" dat…' to contain 'لا رصد'
@@ -57,13 +59,22 @@ AssertionError: expected '<section aria-label="الخط الزمني" dat…' to
       Tests  6 failed | 1 passed (7)
 ```
 
-## الاستعادة وإثباتها
+## الاستعادة وإثباتها (من مخرجات التنفيذ الأصلية في سجل الجلسة)
 
 ```bash
-cd /home/user/workspace/ir-p4-007 && git checkout -- apps/web/src/pages/workbench/timelineModel.ts apps/web/src/pages/workbench/TimelineView.tsx
+cd /home/user/workspace/ir-p4-007 && git checkout -- apps/web/src/pages/workbench/timelineModel.ts apps/web/src/pages/workbench/TimelineView.tsx && git diff --stat | tail -2; source $HOME/.node24rc && pnpm vitest run apps/web/src/pages/workbench/ 2>&1 | grep -E "Test Files|Tests "
 ```
 
-بعد الاستعادة عادت حزمة workbench كلها خضراء: **111/111 ناجح** (موثق في إدخال حكم المالك بالسجل). الحقنة لم تدخل أي التزام — شجرة العمل كانت نظيفة قبلها وبعدها (أكد `git status` ذلك وقتها).
+مخرجاتها الحرفية (من سجل الجلسة، بعد إزالة التلوين):
+
+```
+ M apps/web/src/pages/workbench/TimelineView.tsx
+ M apps/web/src/pages/workbench/timelineModel.ts
+ Test Files  15 passed (15)
+      Tests  111 passed (111)
+```
+
+أي: ملفا التنفيذ وحدهما استُعيدا — الشجرة كلها لم تكن «نظيفة» (كانت تحوي وقتها ثلاثة ملفات حارس جديدة غير متتبعة: no-silent-skips.ts واختبارها وخط الأساس، أثبتها `git status` الأصلي في سجل الجلسة). الحقنة لم تدخل أي التزام — استعادة الملفين أعلاه أعادتهما إلى حالة الالتزام.
 
 ## الخلاصة
 

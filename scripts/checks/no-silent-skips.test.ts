@@ -175,6 +175,27 @@ it("b", () => {});`,
     }
   });
 
+  it("detects a CHAINED skip (round-6 gap): test.skip.each([1])(...) is a real silent skip", () => {
+    // Round-6 verification demand: the call-structure regex required the paren
+    // directly after the method name — a chained modifier (.each([1])) hid the
+    // skip entirely. The guard must see the CALL STRUCTURE, not one spelling.
+    // built by concatenation so the guard's own suite is not self-flagged
+    const content = `test${".ski" + "p"}.each([1])("x", () => {});`;
+    const findings = analyzeSkips([{ path: "packages/x/src/chained.test.ts", content }], {});
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ kind: "new-skip", file: "packages/x/src/chained.test.ts" });
+  });
+
+  it("detects a skip after a NESTED template literal containing // (round-6 gap): the scanner must be token-aware, not quote-counting", () => {
+    // Round-6 verification demand: a quote-counting scanner ends the template at
+    // the INNER backtick, then reads `https://x`'s // as a comment opener and
+    // eats the skip call that follows ON THE SAME LINE. Real parsing required.
+    const content = "const label = `outer ${`https://x`}`; test" + TOK_SKIP + '"y", () => {});';
+    const findings = analyzeSkips([{ path: "packages/x/src/tpl.test.ts", content }], {});
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ kind: "new-skip", file: "packages/x/src/tpl.test.ts" });
+  });
+
   it("the baseline file exists at the committed path (the guard is only as good as its baseline)", () => {
     expect(BASELINE_PATH.endsWith("skip-baseline.json")).toBe(true);
   });

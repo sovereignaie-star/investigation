@@ -23,6 +23,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 
 export type Finding = {
   readonly kind: "new-skip" | "undiscovered";
@@ -109,101 +110,61 @@ const NODE_TEST_CI = new Set([
 /** .test.mjs files run by an explicit pnpm script (documented, not CI) — allowlisted. */
 const SCRIPT_RUN = new Set(["scripts/reference/iana-drift.test.mjs"]);
 
-/** A skip token keyed on the CALL STRUCTURE, not a tight textual sequence (round-4:
- * `test.skip ("x")` — a space before the argument list — is a real skip). */
-const SKIP_TOKEN_RE = /\.\s*(?:skip|todo|skipIf|only)\s*\(|ctx\s*\.\s*skip\s*\(/g;
-
 /**
- * Strip comments with a STRING-AWARE scanner (round-5): `//` inside a string
- * literal is TEXT, not a comment opener — the naive regex ate everything after
- * `describe("https://x", ...)` and hid the very skip token it exists to catch.
- * Comment bytes become spaces (newlines preserved) so every token's line number
- * stays honest. This is a token-level scanner, not a JS parser: a comment inside
- * a template-literal expression survives as text (documented floor, header above).
+ * Skip detection is a REAL PARSE (round-6), not a regex over source text: the
+ * TypeScript parser (an existing workspace dependency) is the token authority —
+ * strings and template literals (even nested ones containing "//") are text,
+ * comments are never nodes, and the CALL STRUCTURE is walked on the AST:
+ * `test.skip ("x")` (space), `test.skip.each([1])("x")` (chained modifier), and
+ * `ctx.skip(` are all the same thing — a property access named skip/todo/skipIf/
+ * only in the callee chain of a call. A parse still cannot see runtime control
+ * flow (a test that RUNS but asserts nothing stays invisible — behavioral-red
+ * discipline), but no SPELLING of a token-level skip hides behind lexing anymore.
  */
-function stripComments(src: string): string {
-  let out = "";
-  let i = 0;
-  const n = src.length;
-  while (i < n) {
-    const c = src[i];
-    const next = src[i + 1];
-    if (c === "/" && next === "/") {
-      i = stripLineComment(src, i, (ch) => (out += ch));
-      continue;
-    }
-    if (c === "/" && next === "*") {
-      i = stripBlockComment(src, i, (ch) => (out += ch));
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      i = copyStringLiteral(src, i, (ch) => (out += ch));
-      continue;
-    }
-    out += c;
-    i += 1;
-  }
-  return out;
+const SKIP_METHOD_NAMES = new Set(["skip", "todo", "skipIf", "only"]);
+
+function scriptKindFor(filePath: string): ts.ScriptKind {
+  if (filePath.endsWith(".tsx")) return ts.ScriptKind.TSX;
+  if (filePath.endsWith(".jsx")) return ts.ScriptKind.JSX;
+  if (/\.[cm]?js$/.test(filePath)) return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
 }
 
-/** A // comment: every byte until the newline becomes a space (the newline stays). */
-function stripLineComment(src: string, i: number, emit: (ch: string) => void): number {
-  const n = src.length;
-  while (i < n && src[i] !== "\n") {
-    emit(" ");
-    i += 1;
-  }
-  return i;
-}
-
-/** A slash-star comment: bytes become spaces, newlines stay (line numbers stay honest). */
-function stripBlockComment(src: string, i: number, emit: (ch: string) => void): number {
-  const n = src.length;
-  emit(" ");
-  emit(" ");
-  i += 2;
-  while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
-    emit(src[i] === "\n" ? "\n" : " ");
-    i += 1;
-  }
-  if (i < n) {
-    emit(" ");
-    emit(" ");
-    i += 2;
-  }
-  return i;
-}
-
-/** A string/template literal is TEXT: copied verbatim (escapes keep the next byte). */
-function copyStringLiteral(src: string, i: number, emit: (ch: string) => void): number {
-  const n = src.length;
-  const quote = src[i];
-  emit(quote);
-  i += 1;
-  while (i < n && src[i] !== quote) {
-    if (src[i] === "\\") {
-      emit(src[i]);
-      emit(src[i + 1] ?? "");
-      i += 2;
-      continue;
-    }
-    emit(src[i]);
-    i += 1;
-  }
-  if (i < n) {
-    emit(quote);
-    i += 1;
-  }
-  return i;
-}
-
-/** The skip tokens in a file with their 1-based lines. */
-function countSkipTokens(content: string): { count: number; lines: number[] } {
-  const code = stripComments(content);
+/** The skip calls in a file with their 1-based lines (AST positions, always honest). */
+function countSkipTokens(content: string, filePath = "file.test.ts"): { count: number; lines: number[] } {
+  const sf = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true, scriptKindFor(filePath));
   const lines: number[] = [];
-  for (const m of code.matchAll(SKIP_TOKEN_RE)) {
-    lines.push(code.slice(0, m.index).split("\n").length);
-  }
+  const visit = (node: ts.Node, parent: ts.Node | undefined): void => {
+    // a call that is itself the CALLEE of another call (describe.skipIf(cond)(...))
+    // is not a separate skip — the outer call is the one being invoked. Without
+    // this guard the same source skip is counted twice (round-6: baseline drift).
+    const isCalleeOfAnotherCall = parent !== undefined && ts.isCallExpression(parent) && parent.expression === node;
+    if (ts.isCallExpression(node) && !isCalleeOfAnotherCall) {
+      let expr: ts.Expression = node.expression;
+      let isSkip = false;
+      // walk the callee chain: plain property access (test.skip), spaced
+      // (test.skip ("x")), and chained modifiers (test.skip.each([1])(...))
+      // all end in a skip method name somewhere in the chain.
+      for (;;) {
+        if (ts.isPropertyAccessExpression(expr)) {
+          if (SKIP_METHOD_NAMES.has(expr.name.text)) {
+            isSkip = true;
+            break;
+          }
+          expr = expr.expression;
+          continue;
+        }
+        if (ts.isCallExpression(expr)) {
+          expr = expr.expression;
+          continue;
+        }
+        break;
+      }
+      if (isSkip) lines.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1);
+    }
+    ts.forEachChild(node, (child) => visit(child, node));
+  };
+  visit(sf, undefined);
   return { count: lines.length, lines };
 }
 
@@ -260,7 +221,7 @@ export function analyzeSkips(files: readonly TestFile[], baseline: SkipBaseline)
   for (const f of files) {
     const rel = f.path.split(path.sep).join("/");
     const allowed = baseline[rel] ?? 0;
-    const { count, lines } = countSkipTokens(f.content);
+    const { count, lines } = countSkipTokens(f.content, f.path);
     if (count > allowed) {
       findings.push({
         kind: "new-skip",
@@ -313,7 +274,7 @@ export function regenBaseline(repo: string): SkipBaseline {
   const files = walkTestFiles(repo);
   const baseline: SkipBaseline = {};
   for (const f of files) {
-    const { count } = countSkipTokens(f.content);
+    const { count } = countSkipTokens(f.content, f.path);
     if (count > 0) baseline[f.path] = count;
   }
   writeFileSync(path.join(repo, BASELINE_PATH), `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
