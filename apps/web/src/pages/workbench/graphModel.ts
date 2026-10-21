@@ -139,6 +139,7 @@ export function generateBenchGraph(nodeCount: number, edgeCount: number, seed = 
       validTo: null,
       explanation: "bench-synthetic-claim",
       evidenceIds: [],
+      observations: [],
     });
   }
   return { nodes, edges };
