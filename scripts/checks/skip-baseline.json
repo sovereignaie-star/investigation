@@ -1,0 +1,6 @@
+{
+  "packages/cli/src/connectors.test.ts": 1,
+  "packages/cli/src/live-network.test.ts": 1,
+  "packages/egress/src/rate-measurement.test.ts": 1,
+  "packages/sandbox/src/tsbx.test.ts": 24
+}
