@@ -97,3 +97,23 @@ describe("monitor comparison state (P4-009)", () => {
     expect(monitorFindingKey(monitorFindingState([finding()])[0])).toContain("nginx");
   });
 });
+
+describe("monitor comparison state — duplicate-key findings (P4-009 round 3)", () => {
+  it("two findings with the SAME key are a multiset: reversing their order is NOT a change", () => {
+    const a = monitorFindingState([finding({ confidence: 0.5 }), finding({ confidence: 0.9 })]);
+    const b = monitorFindingState([finding({ confidence: 0.9 }), finding({ confidence: 0.5 })]);
+    expect(compareFindingStates(a, b).equal).toBe(true);
+  });
+
+  it("gaining a second finding with an EXISTING key is detected (not silently merged away)", () => {
+    const one = monitorFindingState([finding({ confidence: 0.9 })]);
+    const two = monitorFindingState([finding({ confidence: 0.5 }), finding({ confidence: 0.9 })]);
+    expect(compareFindingStates(one, two).equal).toBe(false);
+  });
+
+  it("the finding key is an unambiguous encoding: a | inside a value cannot forge another finding's key", () => {
+    const f1 = monitorFindingState([finding({ predicate: "p", objectType: "t", objectValue: "a|b" })])[0];
+    const f2 = monitorFindingState([finding({ predicate: "p|t", objectType: "a", objectValue: "b" })])[0];
+    expect(monitorFindingKey(f1)).not.toBe(monitorFindingKey(f2));
+  });
+});

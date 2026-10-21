@@ -45,6 +45,16 @@ export interface Case {
   /** Appends an entry; in encrypted cases the payload is sealed first. */
   append(kind: Kind, payload: unknown): Entry;
   /**
+   * P4-009: the audit form of appendIfSeq — appends an audit.event (chain entry AND audit-index
+   * row, so the P1-017 mirror check stays green) ONLY if the ledger's head seq still equals
+   * `expectedSeq`, all inside one SQLite IMMEDIATE transaction. Returns the event, or null when
+   * the head moved — the caller's pre-append validation is then outdated and must be rejected
+   * WITHOUT any partial write. This is the atomic claim `ir monitor check` uses so two handles
+   * on one case can never both claim the same check (one alert per change, not two).
+   * Like appendIfSeq: never call it inside another transaction (it opens its own).
+   */
+  auditIfSeq(action: string, target: string, detail: Record<string, unknown> | undefined, expectedSeq: number): AuditEvent | null;
+  /**
    * P4-005 (UC-11): optimistic-concurrency append — appends ONLY if the ledger's
    * head seq still equals `expectedSeq`, ALL inside one SQLite IMMEDIATE
    * transaction (the read of the head, the check and the write are atomic wrt
@@ -403,6 +413,37 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
         return ev;
       },
       auditTrail: () => self.entries().flatMap((e) => (e.kind === "audit.event" ? [AuditEvent.parse(e.payload)] : [])),
+      auditIfSeq(action, target, detail, expectedSeq) {
+        const ev = AuditEvent.parse({
+          id: newId(),
+          at: isoNow(clock),
+          actor: opts.actor,
+          action,
+          target,
+          purposeRef: caseIdOf(),
+          ...(detail ? { detail } : {}),
+        });
+        let won: AuditEvent | null = null;
+        // the head check, the chain entry and the index row in ONE write scope: a stale head
+        // writes nothing at all (no chain entry without its index row, no index row alone).
+        transaction(() => {
+          const all = ledger.entries();
+          const lastSeq = all[all.length - 1]?.seq ?? -1;
+          if (lastSeq !== expectedSeq) return;
+          append("audit.event", ev);
+          insertAudit.run(
+            ev.id,
+            ev.at,
+            ev.actor,
+            ev.action,
+            ev.target,
+            ev.purposeRef,
+            detail && !encrypted ? JSON.stringify(detail) : null,
+          );
+          won = ev;
+        });
+        return won;
+      },
       changePassphrase(oldPassphrase, newPassphrase) {
         if (!encrypted) throw new Error("this case is not encrypted");
         const keyFile = path.join(dir, CASE_KEY);

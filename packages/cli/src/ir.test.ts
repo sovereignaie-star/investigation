@@ -2,11 +2,11 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { manualClock, seededRandom, ulidFactory } from "@ir/core";
 import { checkpoint, generateInstallationKey, signCheckpoint } from "@ir/ledger";
 import { CASE_DB, openCase, verifyCase } from "@ir/store";
-import { main } from "./ir.ts";
+import { main, monitorSleep } from "./ir.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -871,6 +871,101 @@ describe("ir monitor (P4-009)", () => {
     expect(r.code).toBe(0);
   });
 
+  it("a FAILED check does not make the monitor due again before the interval elapses (the schedule, not every poll)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-due-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const clock = manualClock("2026-10-22T10:00:00.000Z");
+    await runWith(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"], { clock });
+    const id = (await monitors(dir))[0].id;
+    expect((await runWith(["monitor", dir, "check", id, "--sim", rules], { clock })).code).toBe(0);
+    // the interval elapses and the source now fails: the due check FAILS at t0+5m
+    clock.advance(5 * 60_000);
+    const failing = path.join(dir, "failing.rules.json");
+    writeFileSync(failing, JSON.stringify([{ match: "https://example.com/", failure: { kind: "transport:timeout" } }]));
+    expect((await runWith(["monitor", dir, "check", id, "--sim", failing], { clock })).code).toBe(1);
+    // 30 seconds later the monitor is NOT due again: the failed attempt counts as an attempt
+    clock.advance(30_000);
+    const notDue = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(notDue.code).toBe(0);
+    expect(notDue.text).toContain("0 due");
+    // a full interval after the failed attempt it is due again (exactly one retry, on schedule)
+    clock.advance(5 * 60_000 - 30_000);
+    const due = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(due.code).toBe(0);
+    expect(due.text).toContain("1 due");
+  });
+
+  it("two CONCURRENT checks of one monitor alert ONCE (the claim is atomic across handles)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-race-"));
+    dirs.push(dir);
+    const rulesA = simRules(dir, "nginx");
+    await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"]);
+    const id = (await monitors(dir))[0].id;
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // baseline: nginx
+    const rulesB = simRules(dir, "apache"); // the source changes
+    const [r1, r2] = await Promise.all([
+      run(["monitor", dir, "check", id, "--sim", rulesB]),
+      run(["monitor", dir, "check", id, "--sim", rulesB]),
+    ]);
+    // exactly one ran the transform and alerted; the other was refused with no second alert
+    expect([r1.code, r2.code].sort()).toEqual([0, 2]);
+    const m = (await monitors(dir))[0];
+    expect(m.alertCount).toBe(1); // ONE alert for the change, never two
+    expect(m.checks.filter((k) => k.status === "success")).toHaveLength(2); // baseline + the change check
+  });
+
+  it("an interrupted check is visible as incomplete and the next attempt gets a FRESH id (no id reuse)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    // a check that started and died: a started event with no result, written 11 minutes ago (stale)
+    const pastAt = new Date(Date.now() - 11 * 60_000).toISOString(); // 11 minutes ago: beyond IN_FLIGHT_MS
+    const past = manualClock(pastAt);
+    const c = openCase(dir, { actor: "ir-cli", clock: past });
+    c.audit("monitor.check.started", `${id}#1`, { monitorId: id, transformId: "TR-010", at: pastAt });
+    c.close();
+    // the incomplete attempt is VISIBLE (UC-10: every attempt is on the record, interrupted ones too)
+    expect((await monitors(dir))[0].checks.some((k) => k.checkId === `${id}#1` && k.status === "incomplete")).toBe(true);
+    // the next attempt does not reuse #1: it runs as #2 (an interrupted attempt's id is never reused)
+    const rules = simRules(dir, "nginx");
+    const check = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(check.code).toBe(0);
+    const m = (await monitors(dir))[0];
+    expect(m.checks.some((k) => k.checkId === `${id}#2`)).toBe(true);
+    expect(m.checks.filter((k) => k.status === "incomplete")).toHaveLength(1); // #1 stays incomplete forever
+  });
+
+  it("a FRESH in-flight check refuses a second attempt (and the scheduler skips the monitor)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    // a started event written NOW with no result: the check is in flight
+    const c = openCase(dir, { actor: "ir-cli" });
+    c.audit("monitor.check.started", `${id}#1`, { monitorId: id, transformId: "TR-010", at: new Date().toISOString() });
+    c.close();
+    const check = await run(["monitor", dir, "check", id]);
+    expect(check.code).toBe(2);
+    expect(check.text).toContain("already running");
+    const once = await run(["monitor", dir, "run", "--once"]);
+    expect(once.text).toContain("0 due"); // the scheduler does not try an in-flight monitor
+  });
+
+  it("a ROUTE-SETUP failure of a scheduled monitor is a logged failed attempt (not a silent exit 2)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rules = simRules(dir, "nginx");
+    await run(["monitor", dir, "check", id, "--sim", rules]); // baseline
+    // the rules file breaks (malformed JSON): the attempt starts, route setup fails
+    const broken = path.join(dir, "broken.rules.json");
+    writeFileSync(broken, "{ not json");
+    const check = await run(["monitor", dir, "check", id, "--sim", broken]);
+    expect(check.code).toBe(1);
+    expect(check.text).toContain("failed");
+    const m = (await monitors(dir))[0];
+    const failed = m.checks.find((k) => k.status === "failed");
+    expect(failed).toBeDefined();
+    // the baseline survived: the source recovers and the next check compares against it, no false alert
+    const ok = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(ok.code).toBe(0);
+    expect(ok.text).toContain("no change");
+  });
+
   it("refuses an encrypted case: add cannot schedule a monitor whose checks could never run", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-enc-"));
     dirs.push(dir);
@@ -897,3 +992,53 @@ async function waitUntil(cond: () => Promise<boolean>, tries = 200): Promise<voi
   }
   throw new Error("condition never became true");
 }
+
+describe("monitorSleep (P4-009 — the scheduler's default wait)", () => {
+  it("resolves on timeout and REMOVES its abort listener (no listener leak over a long scheduler run)", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      let live = 0;
+      const signal = controller.signal as AbortSignal & {
+        addEventListener: typeof AbortSignal.prototype.addEventListener;
+        removeEventListener: typeof AbortSignal.prototype.removeEventListener;
+      };
+      const origAdd = signal.addEventListener.bind(signal);
+      const origRemove = signal.removeEventListener.bind(signal);
+      signal.addEventListener = ((type: string, fn: never, opts?: unknown) => {
+        live++;
+        return origAdd(type, fn, opts as never);
+      }) as typeof signal.addEventListener;
+      signal.removeEventListener = ((type: string, fn: never, opts?: unknown) => {
+        live--;
+        return origRemove(type, fn, opts as never);
+      }) as typeof signal.removeEventListener;
+      for (let i = 0; i < 20; i++) {
+        const p = monitorSleep(60_000, signal);
+        await vi.advanceTimersByTimeAsync(60_000);
+        await p;
+        expect(live).toBe(0); // every completed wait cleaned up its own listener
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resolves immediately on abort (the timer is cleaned, no waiting)", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const p = monitorSleep(60_000, controller.signal);
+      controller.abort();
+      await p; // resolves without any timer advance
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resolves immediately for an ALREADY-aborted signal (no pointless full wait)", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await monitorSleep(60_000, controller.signal); // hangs (and times the test out) if it waits the full ms
+  });
+});

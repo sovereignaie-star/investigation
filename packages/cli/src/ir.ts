@@ -965,14 +965,18 @@ interface CaseMonitor {
   removed?: boolean;
 }
 
-/** One committed check result, as recorded on the case's audit chain. */
+/**
+ * One check ATTEMPT on the chain: a committed result (success/failed) OR a started-without-result
+ * attempt ("incomplete" — the process died mid-check; visible forever, never silently lost, and its
+ * id is never reused). The baseline keeper reads only the successful results.
+ */
 interface MonitorCheck {
   readonly checkId: string;
   readonly monitorId: string;
-  readonly status: "success" | "failed";
+  readonly status: "success" | "failed" | "incomplete";
   readonly at: string;
-  /** the seq of the check's `monitor.check.started` event: the chain range the check created. */
-  readonly startedSeq?: number;
+  /** the chain head when the attempt started: the check's work is the range fromSeq+1..result. */
+  readonly fromSeq?: number;
   readonly findingsCount?: number;
   readonly changed?: boolean;
   /** the new baseline (the normalized findings of this successful run) — present on success. */
@@ -980,6 +984,9 @@ interface MonitorCheck {
   readonly alert?: { added: string[]; removed: string[]; changed: string[] };
   readonly error?: string;
 }
+
+/** How long a started-without-result attempt blocks a new one: beyond it the attempt is stale (the process died) and a new attempt may claim. Longer than the default run budget (2 min); an operator budget beyond it could overlap two attempts — documented in L-55. */
+const IN_FLIGHT_MS = 10 * 60_000;
 
 /** The monitor id is derived deterministically from the NORMALIZED input (transform + type + canonicalKey): re-adding the same identifier — in any equivalent spelling — is the same monitor, not a duplicate. */
 function monitorIdFor(transformId: string, subjectType: string, subjectKey: string): string {
@@ -1018,28 +1025,50 @@ function caseMonitors(c: Case): Map<string, CaseMonitor> {
   return monitors;
 }
 
-/** Every committed check result on the chain, oldest first. The required fields are validated; the optional ones were written by this CLI and the chain is tamper-evident (verify covers it). */
+/** Every check attempt on the chain, oldest first: committed results paired with their started events, and started-without-result attempts listed as incomplete. */
 function monitorChecks(c: Case): MonitorCheck[] {
   const checks: MonitorCheck[] = [];
   for (const ev of c.auditTrail()) {
+    if (ev.action === "monitor.check.started") {
+      const d = (ev.detail ?? {}) as Record<string, unknown>;
+      if (typeof d["monitorId"] === "string" && typeof ev.at === "string") {
+        checks.push({ checkId: ev.target, monitorId: d["monitorId"], status: "incomplete", at: ev.at });
+      }
+      continue;
+    }
     if (ev.action !== "monitor.check.result") continue;
-    const d = (ev.detail ?? {}) as Record<string, unknown>;
-    const status = d["status"];
-    if (typeof d["monitorId"] !== "string" || (status !== "success" && status !== "failed") || typeof ev.at !== "string") continue;
-    checks.push({
-      checkId: ev.target,
-      monitorId: d["monitorId"],
-      status,
-      at: ev.at,
-      startedSeq: d["startedSeq"] as number | undefined,
-      findingsCount: d["findingsCount"] as number | undefined,
-      changed: d["changed"] === true ? true : undefined,
-      state: Array.isArray(d["state"]) ? (d["state"] as MonitorFinding[]) : undefined,
-      alert: (d["alert"] as MonitorCheck["alert"]) ?? undefined,
-      error: d["error"] as string | undefined,
-    });
+    const parsed = parseCheckResult(ev);
+    if (!parsed) continue;
+    // the result replaces its own started entry (an attempt that completed); a result without a
+    // started entry (a legacy chain) is kept as-is.
+    const idx = checks.findIndex((k) => k.checkId === parsed.checkId && k.status === "incomplete");
+    if (idx >= 0) checks[idx] = parsed;
+    else checks.push(parsed);
   }
   return checks;
+}
+
+/** Validates one result event's detail into a MonitorCheck — fail-closed on the required fields, per-field (the chain being tamper-evident does not prove payload types). */
+function parseCheckResult(ev: { target: string; at: string; detail?: Record<string, unknown> }): MonitorCheck | undefined {
+  const d = ev.detail ?? {};
+  const monitorId = d["monitorId"];
+  const status = d["status"];
+  if (typeof monitorId !== "string" || (status !== "success" && status !== "failed") || typeof ev.at !== "string") return undefined;
+  const check: MonitorCheck = {
+    checkId: ev.target,
+    monitorId,
+    status,
+    at: ev.at,
+    ...(typeof d["fromSeq"] === "number" ? { fromSeq: d["fromSeq"] as number } : {}),
+    ...(typeof d["findingsCount"] === "number" ? { findingsCount: d["findingsCount"] as number } : {}),
+    ...(d["changed"] === true ? { changed: true } : {}),
+    ...(Array.isArray(d["state"]) ? { state: d["state"] as MonitorFinding[] } : {}),
+    ...(d["alert"] !== null && typeof d["alert"] === "object" && Array.isArray((d["alert"] as Record<string, unknown>)["added"])
+      ? { alert: d["alert"] as MonitorCheck["alert"] }
+      : {}),
+    ...(typeof d["error"] === "string" ? { error: d["error"] as string } : {}),
+  };
+  return check;
 }
 
 /** The monitor's committed results, oldest first. */
@@ -1218,7 +1247,7 @@ function commitMonitorSuccess(
   c: Case,
   monitor: CaseMonitor,
   checkId: string,
-  startedSeq: number,
+  fromSeq: number,
   result: RunTransformResult,
   clock: Clock,
   out: (s: string) => void,
@@ -1233,7 +1262,7 @@ function commitMonitorSuccess(
     monitorId: monitor.id,
     status: "success",
     at: isoNow(clock),
-    startedSeq,
+    fromSeq,
     findingsCount: result.output.findings.length,
     changed,
     ...(baseline === undefined ? { first: true } : {}),
@@ -1265,7 +1294,7 @@ function commitMonitorFailure(
   c: Case,
   monitor: CaseMonitor,
   checkId: string,
-  startedSeq: number,
+  fromSeq: number,
   subjectId: string,
   entry: RegisteredTransform,
   input: Record<string, unknown>,
@@ -1279,10 +1308,31 @@ function commitMonitorFailure(
     monitorId: monitor.id,
     status: "failed",
     at: isoNow(clock),
-    startedSeq,
+    fromSeq,
     error: x.message,
   });
   err(`ir monitor: check ${checkId} failed: ${x.message}${hostRefusalHint(entry, route.events)}`);
+}
+
+/** Commits an attempt that failed BEFORE the transform ran (route setup: a broken --sim file, a refused route): the attempt is logged with its error — no run happened, so no error observation, and the baseline stays. */
+function commitAttemptFailure(
+  c: Case,
+  monitor: CaseMonitor,
+  checkId: string,
+  fromSeq: number,
+  x: unknown,
+  clock: Clock,
+  err: (s: string) => void,
+): void {
+  const message = x instanceof Error ? x.message : String(x);
+  c.audit("monitor.check.result", checkId, {
+    monitorId: monitor.id,
+    status: "failed",
+    at: isoNow(clock),
+    fromSeq,
+    error: message,
+  });
+  err(`ir monitor: check ${checkId} failed: ${message}`);
 }
 
 /** The scheduled monitors that are due at `now`, plus the next due time (for the scheduler's sleep). */
@@ -1290,10 +1340,18 @@ function dueMonitors(c: Case, now: number): { due: CaseMonitor[]; notDue: number
   const due: CaseMonitor[] = [];
   let notDue = 0;
   let nextDueMs = Infinity;
+  const checks = monitorChecks(c);
   for (const m of [...caseMonitors(c).values()].filter((m) => !m.removed)) {
-    // due = never checked, or the interval has elapsed since the LAST SUCCESSFUL check. A missed
-    // deadline is repaid with exactly one catch-up check — never a flood of compensatory checks.
-    const last = lastSuccessfulCheck(c, m.id)?.at;
+    // DUE is computed from the last ATTEMPT (success or failure — a failed attempt must not make
+    // the monitor retry on every poll), never from the last success (that is the comparison
+    // baseline's job). A missed deadline is repaid with exactly one catch-up check — never a flood.
+    const own = checksOfMonitor(checks, m.id);
+    const inFlight = own.filter((k) => k.status === "incomplete").at(-1);
+    if (inFlight !== undefined && now - Date.parse(inFlight.at) < IN_FLIGHT_MS) {
+      notDue++; // a check is in flight: the scheduler does not pile a second attempt on it
+      continue;
+    }
+    const last = own.at(-1)?.at;
     const dueAt = last === undefined ? now : Date.parse(last) + m.intervalMinutes * 60_000;
     if (dueAt <= now) due.push(m);
     else {
@@ -1304,7 +1362,37 @@ function dueMonitors(c: Case, now: number): { due: CaseMonitor[]; notDue: number
   return { due, notDue, nextDueMs };
 }
 
-/** Runs ONE check of one monitor on an OPEN case: re-runs the transform, records the run, compares, commits the result. */
+/**
+ * Atomically CLAIMS the next check attempt of one monitor (P4-009 round 3): the in-flight guard
+ * refuses a monitor whose check is already running (a fresh started-without-result attempt — the
+ * process died mid-check within IN_FLIGHT_MS), then the started event is appended ONLY if the
+ * chain head is still what we validated (the store's auditIfSeq — the audit twin of appendIfSeq,
+ * chain entry and index row in one transaction). A second handle on the same case therefore
+ * gets a clean null instead of a second claim: one alert per change, never two. The attempt id
+ * counts EVERY attempt (committed or interrupted), so an interrupted attempt's id is never reused.
+ */
+function claimCheck(c: Case, monitor: CaseMonitor, clock: Clock): { checkId: string; fromSeq: number } | { error: string } {
+  const now = clock.now();
+  const own = checksOfMonitor(monitorChecks(c), monitor.id);
+  const inFlight = own.filter((k) => k.status === "incomplete").at(-1);
+  if (inFlight !== undefined && now - Date.parse(inFlight.at) < IN_FLIGHT_MS) {
+    return { error: `check ${inFlight.checkId} of this monitor is already running (started at ${inFlight.at})` };
+  }
+  const checkId = `${monitor.id}#${own.length + 1}`;
+  const fromSeq = headSeq(c);
+  const started = c.auditIfSeq(
+    "monitor.check.started",
+    checkId,
+    { monitorId: monitor.id, transformId: monitor.transformId, at: isoNow(clock) },
+    fromSeq,
+  );
+  if (started === null) {
+    return { error: "the case changed while this check was starting (a concurrent check won the claim) — retry" };
+  }
+  return { checkId, fromSeq };
+}
+
+/** Runs ONE check of one monitor on an OPEN case: claims the attempt atomically, re-runs the transform, records the run, compares, commits the result. */
 async function runMonitorCheckOnCase(
   c: Case,
   monitor: CaseMonitor,
@@ -1313,25 +1401,31 @@ async function runMonitorCheckOnCase(
   err: (s: string) => void,
   opts: CliOptions,
 ): Promise<number> {
+  // usage errors that do NOT start a check (unknown transform, invalid subject) are refused
+  // before anything is written — an attempt is not an attempt until its start is claimed.
   const prelude = runTransformPrelude(monitor.transformId, monitor.subjectType, monitor.subjectValue);
   if ("error" in prelude) {
     err(`ir monitor: ${prelude.error}`);
     return 2;
   }
-  const transform = prelude.entry.transform;
-  const route = runRoute(c, prelude.entry, monitor.subjectType, v, opts);
-  if ("error" in route) {
-    err(`ir monitor: ${route.error}`);
+  const clock = opts.clock ?? systemClock;
+  const claim = claimCheck(c, monitor, clock);
+  if ("error" in claim) {
+    err(`ir monitor: ${claim.error}`);
     return 2;
   }
-  const clock = opts.clock ?? systemClock;
-  const subjectId = ensureSubject(c, monitor.subjectKey, monitor.subjectType, clock);
-  const checkId = `${monitor.id}#${checksOfMonitor(monitorChecks(c), monitor.id).length + 1}`;
-  // the check's start is logged BEFORE the transform runs: a check interrupted mid-run is visible as
-  // started-without-result on the chain, never silently lost.
-  c.audit("monitor.check.started", checkId, { monitorId: monitor.id, transformId: monitor.transformId, at: isoNow(clock) });
-  const startedSeq = headSeq(c);
+  const { checkId, fromSeq } = claim;
+  // from here on the attempt is on the chain: every failure is a LOGGED attempt failure (exit 1),
+  // never a silent exit — the baseline stays and the next attempt is due on schedule.
+  let route: ReturnType<typeof runRoute> | undefined;
   try {
+    route = runRoute(c, prelude.entry, monitor.subjectType, v, opts);
+    if ("error" in route) {
+      commitAttemptFailure(c, monitor, checkId, fromSeq, new Error(route.error), clock, err);
+      return 1;
+    }
+    const transform = prelude.entry.transform;
+    const subjectId = ensureSubject(c, monitor.subjectKey, monitor.subjectType, clock);
     const result = await runTransform(transform, {
       transport: route.transport,
       input: prelude.input,
@@ -1344,14 +1438,30 @@ async function runMonitorCheckOnCase(
     // the run is recorded on the case exactly like `ir run` records it (evidence, claims, observations).
     const recorded = recordRunSuccess(c, subjectId, transform, prelude.input, result, clock, route.origin);
     if (transform.manifest.id === "TR-012") storeWarcForRun(c, recorded.requests, route.origin);
-    commitMonitorSuccess(c, monitor, checkId, startedSeq, result, clock, out);
+    commitMonitorSuccess(c, monitor, checkId, fromSeq, result, clock, out);
     return 0;
   } catch (x) {
-    if (x instanceof TransformRunError) {
-      commitMonitorFailure(c, monitor, checkId, startedSeq, subjectId, prelude.entry, prelude.input, x, clock, route, err);
+    const live = route !== undefined && !("error" in route) ? route : undefined;
+    if (x instanceof TransformRunError && live !== undefined) {
+      commitMonitorFailure(
+        c,
+        monitor,
+        checkId,
+        fromSeq,
+        ensureSubject(c, monitor.subjectKey, monitor.subjectType, clock),
+        prelude.entry,
+        prelude.input,
+        x,
+        clock,
+        live,
+        err,
+      );
       return 1;
     }
-    throw x;
+    // route setup threw (a broken --sim file), or the run failed before its route existed:
+    // a logged attempt failure, not a crash
+    commitAttemptFailure(c, monitor, checkId, fromSeq, x, clock, err);
+    return 1;
   }
 }
 
@@ -1421,14 +1531,17 @@ async function schedulerWait(opts: CliOptions, clock: Clock, nextDueMs: number):
   await (opts.sleep ?? monitorSleep)(Math.max(wait, 0), opts.signal ?? new AbortController().signal);
 }
 
-/** The default scheduler sleep: the wait is capped at 60 s and the signal wakes it immediately (clean stop). */
-function monitorSleep(ms: number, signal: AbortSignal): Promise<void> {
+/** The default scheduler sleep: resolves on timeout or abort, and ALWAYS cleans up its timer and its abort listener (a long-running scheduler must not leak one listener per wait). Exported for its direct tests (P4-009 round 3). */
+export function monitorSleep(ms: number, signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.resolve(); // an already-aborted signal: no pointless full wait
   return new Promise<void>((resolve) => {
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => {
+    const done = () => {
       clearTimeout(t);
+      signal.removeEventListener("abort", done);
       resolve();
-    });
+    };
+    const t = setTimeout(done, ms);
+    signal.addEventListener("abort", done);
   });
 }
 
