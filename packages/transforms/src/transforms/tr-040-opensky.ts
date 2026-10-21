@@ -190,6 +190,12 @@ export const opensky = defineTransform<{ icao24?: string; callsign?: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 20_000_000 },
     sensitivity: "normal",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "D",
+      credibility: 4,
+      rationale: "شبكة OpenSky التطوعية لاستقبال ADS-B — ملاحظات أجهزة استقبال حقيقية بتغطية وتشغيل متفاوتين",
+    },
   },
   async (input, ctx) => {
     const icao24 = typeof input.icao24 === "string" ? input.icao24.trim().toLowerCase() : undefined;

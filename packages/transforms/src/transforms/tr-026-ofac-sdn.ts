@@ -30,6 +30,12 @@ export const ofacSdn = defineTransform<{ name: string }>(
     limits: { rps: 1, timeoutMs: 120_000, maxBytes: 40_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 1,
+      rationale: "ملف OFAC SDN الرسمي الصادر عن وزارة الخزانة الأمريكية — قائمة عقوبات تنفيذية أولية",
+    },
   },
   async (input, ctx) => {
     const name = input.name.trim();

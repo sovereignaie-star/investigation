@@ -164,6 +164,13 @@ export const opensanctions = defineTransform<Tr025Input>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-E",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale:
+        "OpenSanctions يجمع قوائم عقوبات وسياسية رسمية بمنهجية موثقة — القوائم المصدر رسمية، والتجميع والمطابقة الاسمية درجاتها تقديرية مسجلة",
+    },
   },
   async (input, ctx) => {
     const key = process.env[ENV_KEY] ?? "";

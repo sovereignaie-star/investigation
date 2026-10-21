@@ -123,6 +123,12 @@ export const perceptualHash = defineTransform<{ content: string }>(
     limits: { rps: 1, timeoutMs: 10_000, maxBytes: 14_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "F",
+      credibility: 5,
+      rationale: "بصمة إدراكية محلية مشتقة حسابياً من الصورة — ليست ادعاءً واقعياً بل قيمة مقارنة؛ مصدر الملف غير معروف",
+    },
   },
   async (input) => {
     const content = input?.content;

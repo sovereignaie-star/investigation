@@ -88,6 +88,12 @@ export const secEdgar = defineTransform<{ cik: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 4_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 1,
+      rationale: "نظام EDGAR لهيئة الأوراق المالية الأمريكية — الإفصاحات الرسمية المودعة إلزامياً",
+    },
   },
   async (input, ctx) => {
     const cik = String(input.cik).trim();

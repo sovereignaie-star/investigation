@@ -41,6 +41,12 @@ export const euSanctions = defineTransform<{ name: string }>(
     limits: { rps: 1, timeoutMs: 120_000, maxBytes: 32_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 1,
+      rationale: "ملفات العقوبات المالية الرسمية للاتحاد الأوروبي — قائمة أولية رسمية نافذة قانونياً",
+    },
   },
   async (input, ctx) => {
     const name = input.name.trim();

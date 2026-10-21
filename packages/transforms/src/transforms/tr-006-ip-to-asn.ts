@@ -32,6 +32,12 @@ export const ipToAsn = defineTransform<{ ip: string }>(
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale: "Team Cymru DNS — خدمة مستقرة لبيانات ASN المستمدة من جداول التوجيه؛ الاشتقاق موثوق نسبياً وليس سجلاً تفويضياً",
+    },
   },
   async (input, ctx) => {
     const ip = input.ip.trim();

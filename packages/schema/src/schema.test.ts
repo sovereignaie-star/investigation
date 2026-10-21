@@ -71,6 +71,7 @@ const valid: Record<keyof typeof SCHEMAS, unknown> = {
     limits: { rps: 5, timeoutMs: 5000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    admiralty: { reliability: "B", credibility: 3, rationale: "وسيط موثوق نسبياً — تثبيت اختبار" },
   },
   ViewState: { positions: { [U(2)]: { x: 1, y: 2 } }, layout: "force" },
 };

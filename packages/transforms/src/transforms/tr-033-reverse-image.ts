@@ -49,6 +49,12 @@ export const reverseImageLinks = defineTransform<{ url: string }>(
     limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "F",
+      credibility: 6,
+      rationale: "يحرّر روابط بحث صور معكوس لفتحها يدوياً — لا يجلب محتوى ولا يدّعي ادعاءً واقعياً",
+    },
   },
   (input, _ctx) => {
     const parsed = requireImageUrl(input?.url);

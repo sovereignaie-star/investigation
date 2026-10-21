@@ -107,6 +107,12 @@ export const greyNoiseClassification = defineTransform<Tr045Input>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 100_000 },
     sensitivity: "normal",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 3,
+      rationale: "GreyNoise يصنف مصادر المسح الشامل منهجياً — تصنيف تشغيلي موثوق للأنماط الشائعة مع حالات غموض معلنة",
+    },
   },
   async (input, ctx) => {
     if (input.ip === undefined || input.ip === null) throw new Error("TR-045: ip is required");

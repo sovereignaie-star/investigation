@@ -145,6 +145,8 @@ export const commonCrawlIndex = defineTransform<Tr052Input>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: { reliability: "C", credibility: 4, rationale: "فهرس Common Crawl المفتوح — زحف دوري واسع لكنه انتقائي وغير مكتمل" },
   },
   async (input, ctx) => {
     if (input.domain === undefined || input.domain === null) throw new Error("TR-052: domain is required");

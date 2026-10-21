@@ -120,6 +120,12 @@ export const hunterDomainEmails = defineTransform<Tr051Input>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 1_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "D",
+      credibility: 4,
+      rationale: "Hunter.io يكتشف إيميلات منشورة تجميعياً — التغطية انتقائية والبيانات قديمة نسبياً بطبيعتها",
+    },
   },
   async (input, ctx) => {
     if (input.domain === undefined || input.domain === null) throw new Error("TR-051: domain is required");

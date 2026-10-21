@@ -92,6 +92,12 @@ export const usernamePresence = defineTransform<{ username: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 1_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "D",
+      credibility: 4,
+      rationale: "فحص وجود حساب عبر قائمة مواقع منسقة — الوجود ملحوظ فعلياً لكن المواقع تغير واجهاتها ويظل الفحص عينة انتقائية",
+    },
   },
   async (input, ctx) => {
     const username = input?.username?.trim() ?? "";

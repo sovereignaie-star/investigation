@@ -25,6 +25,7 @@ const MANIFEST = {
   limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 },
   sensitivity: "normal",
   license: "LC-B",
+  admiralty: { reliability: "B", credibility: 3, rationale: "وسيط موثوق نسبياً — تثبيت اختبار" },
 };
 
 function okTransform() {

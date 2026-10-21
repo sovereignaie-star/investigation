@@ -27,6 +27,7 @@ function makeManifest(overrides: Partial<{ rps: number; timeoutMs: number; maxBy
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000, ...overrides },
     sensitivity: "normal",
     license: "LC-B",
+    admiralty: { reliability: "B", credibility: 3, rationale: "وسيط موثوق نسبياً — تثبيت اختبار" },
   };
 }
 

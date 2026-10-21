@@ -49,6 +49,12 @@ export const rdapIp = defineTransform<{ ip: string }>(
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 2,
+      rationale: "RDAP سجلات الإنترنت الإقليمية الرسمية عبر إقلالات IANA — بيانات تخصيص العناوين من السلطات المفوضة نفسها",
+    },
   },
   async (input, ctx) => {
     const raw = input.ip.trim();

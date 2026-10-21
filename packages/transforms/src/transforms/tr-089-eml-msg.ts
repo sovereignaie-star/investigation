@@ -903,6 +903,12 @@ export const emlMsgParse = defineTransform<EmailParseInput>(
     limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "F",
+      credibility: 3,
+      rationale: "تحليل محلي لملف بريد (EML/MSG) كما هو — مصدر الملف غير معروف؛ الترويسات والمرفقات مستخرجة بنيوياً من الملف نفسه",
+    },
   },
   async (input: EmailParseInput, _ctx: TransformContext) => {
     if (!input || typeof input.content !== "string" || input.content.length === 0) {

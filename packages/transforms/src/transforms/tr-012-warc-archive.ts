@@ -29,6 +29,12 @@ export const warcArchive = defineTransform<{ url: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: MAX_BYTES },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale: "أرشفة ذاتية الاستضافة داخل القضية — اللقطة جُلبت عبر البوابة بمصدر وهوية موثقين في سجل القضية نفسها",
+    },
   },
   async (input, ctx) => {
     let target: string;

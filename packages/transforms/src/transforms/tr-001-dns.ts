@@ -71,6 +71,13 @@ export const dnsResolve = defineTransform<{ domain: string }>(
     limits: { rps: 1, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale:
+        "محلل DNS عام تديره Google — بنية تحتية موثوقة عالية الاتاحة؛ السجل نفسه (A/MX/NS) إجابة موثقة من الاسم المستعلم لكنها لقطة من نقطة تحليل واحدة",
+    },
   },
   async (input, ctx) => {
     const domain = normalizeDomain(input.domain);

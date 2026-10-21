@@ -27,6 +27,12 @@ export const emailTech = defineTransform<{ email: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 1_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale: "تحقق تقني ذاتي الاستضافة عبر DNS مباشر — سجلات MX/SPF/DMARC من DNS نفسه لحظة الاستعلام",
+    },
   },
   async (input, ctx) => {
     const email = input.email.trim();

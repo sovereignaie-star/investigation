@@ -26,6 +26,12 @@ export const gitlabProfile = defineTransform<{ username: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 3,
+      rationale: "واجهة GitLab العامة (مثيل gitlab.com) — بيانات منصة حقيقية لكن التشغيل والموثوقية أقل رسوخاً من المنصات الكبرى",
+    },
   },
   async (input, ctx) => {
     const username = input.username.trim();
