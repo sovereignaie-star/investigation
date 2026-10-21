@@ -21,7 +21,7 @@
  * discipline). The rule is a floor: no token-level skip appears without the baseline, and no
  * test file escapes every runner.
  */
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 export type Finding = {
@@ -120,15 +120,18 @@ export function analyzeSkips(files: readonly TestFile[], baseline: SkipBaseline)
 function walkTestFiles(repo: string): TestFile[] {
   const out: TestFile[] = [];
   const walk = (dir: string): void => {
-    for (const name of readdirSync(dir)) {
-      if (SKIP_DIR_NAMES.has(name)) continue;
-      const full = path.join(dir, name);
-      const st = statSync(full);
-      if (st.isDirectory()) {
+    // withFileTypes: the directory entry and its kind arrive from ONE readdir
+    // call — no separate stat-then-read window (CodeQL: race-on-check-then-use).
+    // If a file vanishes between listing and reading, the honest failure is
+    // the ENOENT throw — never a silently-skipped test.
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (SKIP_DIR_NAMES.has(entry.name)) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
         walk(full);
         continue;
       }
-      if (!isTestFileName(name)) continue;
+      if (!isTestFileName(entry.name)) continue;
       const rel = path.relative(repo, full).split(path.sep).join("/");
       out.push({ path: rel, content: readFileSync(full, "utf8") });
     }
