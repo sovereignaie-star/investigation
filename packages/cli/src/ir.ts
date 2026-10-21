@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
 import type { ExpandResult } from "@ir/ledger";
-import { project, projectionHash, type Projection } from "@ir/ledger/projections";
+import { diffProjections, project, projectionHash, type Projection } from "@ir/ledger/projections";
 import { formatReport, openCase, readCheckpointFile, verifyCase, type Case } from "@ir/store";
 import { createSimServer, type SimRule } from "@ir/sim";
 import { runTransform, TransformRunError, type RunTransformResult, type Transform } from "@ir/transforms";
@@ -21,6 +21,7 @@ import { corroboration, disabledSources, investigate, type InvestigationBudget, 
 
 const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoint checkpoint.json] [--passphrase-file file] [--json]
        ir project <case-dir> [--at seq] [--expect sha256] [--passphrase-file file] [--json]
+       ir diff <case-dir> --from seq --to seq [--passphrase-file file] [--json]
        ir run <case-dir> <transform-id> <subject-type> <subject-value> [--sim rules.json] [--json] [--passphrase-file file]
        ir run <case-dir> <transform-id> <subject-type> <subject-value> --network --allow-host <host> [--allow-host <host>...]
               [--purpose text --legal-basis basis] [--json]
@@ -33,6 +34,9 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
   project: rebuilds the graph, table, coverage and network-log views from the chain, offline (optionally as of seq --at),
            and prints their counts and projection hash; --expect fails (exit 1) unless the hash matches.
+  diff:    compares two snapshots of one case (the projections at seq --from and seq --to) by legal keys and
+           prints what was added, removed and changed (entities by canonicalKey, claims by id) with the counts
+           of each (UC-09). Evidence accrual is not a content change. --json serves the full diff object.
   run:     runs a transform against a subject in the deterministic simulation world (@ir/sim), stores the
            response as evidence, and expands the findings into the ledger. --sim loads a JSON array of sim
            rules (see @ir/sim); without it every URL returns 200 with an empty body. Refuses encrypted cases.
@@ -112,6 +116,8 @@ export async function main(
         json: { type: "boolean" },
         at: { type: "string" },
         expect: { type: "string" },
+        from: { type: "string" },
+        to: { type: "string" },
         sim: { type: "string" },
         network: { type: "boolean" },
         "allow-host": { type: "string", multiple: true },
@@ -182,6 +188,8 @@ function commandFor(
   }
   // P2-028 (ADR-31): `ir proxy` — the case's proxy configuration on its audit chain.
   if (cmd === "proxy") return proxyCommandFor(dir, rest, v, out, err);
+  // P4-008: `ir diff` — two snapshots of one case, compared by legal keys (UC-09).
+  if (cmd === "diff") return diffCommandFor(dir, rest, v, out, err);
   if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
   switch (cmd) {
     case "verify":
@@ -277,6 +285,95 @@ function runProject(
     err(`ir project: ${(x as Error).message}`);
     return 2;
   }
+}
+
+/**
+ * P4-008 (UC-09/T-TIME-006..010): `ir diff <case-dir> --from <seq> --to <seq>` — compares
+ * the projections of one case at two seqs by legal keys and prints the added/removed/changed
+ * counts (and, in --json, the full lists). Read-only: like `ir project`, it never writes.
+ */
+function diffCommandFor(
+  dir: string,
+  rest: readonly string[],
+  v: { from?: string | undefined; to?: string | undefined; json?: boolean | undefined; "passphrase-file"?: string | undefined },
+  out: (s: string) => void,
+  err: (s: string) => void,
+): (() => number | Promise<number>) | undefined {
+  if (rest.length > 0) return undefined; // no positionals beyond the case dir
+  const from = v.from === undefined ? undefined : Number(v.from);
+  const to = v.to === undefined ? undefined : Number(v.to);
+  if (from === undefined || to === undefined || !Number.isInteger(from) || !Number.isInteger(to)) {
+    err(`ir diff: --from and --to must be integer seqs\n${USAGE}`);
+    return () => 2;
+  }
+  return () => {
+    try {
+      const { passphrase } = passphraseFrom(v["passphrase-file"]);
+      const c =
+        passphrase === undefined
+          ? openCase(dir, { actor: "ir-cli", readOnly: true })
+          : openCase(dir, { actor: "ir-cli", readOnly: true, passphrase });
+      try {
+        const entries = c.entries();
+        if (from > to) {
+          err(`ir diff: --from ${from} is after --to ${to}\n${USAGE}`);
+          return 2;
+        }
+        const a = project(entries, { upTo: from });
+        const b = project(entries, { upTo: to });
+        const d = diffProjections(a, b);
+        out(v.json ? JSON.stringify(d, null, 2) : diffSummary(d));
+        return 0;
+      } finally {
+        c.close();
+      }
+    } catch (x) {
+      err(`ir diff: ${(x as Error).message}`);
+      return 2;
+    }
+  };
+}
+
+/** The human-readable diff: counts first, then the keys that moved (first few each). */
+/** The human-readable diff: counts per side, then the first few keys that moved. */
+function diffSummary(d: ReturnType<typeof diffProjections>): string {
+  const keys = (xs: readonly { canonicalKey?: string; claimId?: string }[]) =>
+    xs.length === 0
+      ? ""
+      : ` (${xs
+          .slice(0, 5)
+          .map((x) => x.canonicalKey ?? x.claimId)
+          .join(", ")}${xs.length > 5 ? " …" : ""})`;
+  const changeKeys = (xs: readonly { key?: string; id?: string }[]) =>
+    xs.length === 0
+      ? ""
+      : ` (${xs
+          .slice(0, 5)
+          .map((x) => x.key ?? x.id)
+          .join(", ")}${xs.length > 5 ? " …" : ""})`;
+  const line = (label: string, added: number, removed: number, changed: number, plus: string, minus: string, tilde: string) =>
+    `  ${label} +${added} -${removed} ~${changed}${plus}${minus}${tilde}`;
+  return [
+    `diff seq ${d.fromSeq} -> ${d.toSeq}`,
+    line(
+      "entities",
+      d.counts.entities.added,
+      d.counts.entities.removed,
+      d.counts.entities.changed,
+      keys(d.entities.added),
+      keys(d.entities.removed),
+      changeKeys(d.entities.changed),
+    ),
+    line(
+      "claims",
+      d.counts.claims.added,
+      d.counts.claims.removed,
+      d.counts.claims.changed,
+      keys(d.claims.added),
+      keys(d.claims.removed),
+      changeKeys(d.claims.changed),
+    ),
+  ].join("\n");
 }
 
 type RunValues = {

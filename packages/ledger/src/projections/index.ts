@@ -7,6 +7,8 @@ import { type Coverage, coverageView, type Graph, graphView, type NetworkLog, ne
 export { Projector, type Issue } from "./state.ts";
 export type { StoredNote } from "./state.ts";
 export * from "./views.ts";
+export { diffProjections } from "./diff.ts";
+export type { CaseDiff, ClaimChange, DiffClaim, EntityChange } from "./diff.ts";
 
 /** All views of a case at one point of its chain (P1-016). */
 export interface Projection {
