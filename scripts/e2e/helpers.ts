@@ -92,7 +92,17 @@ export async function openCase(page: Page, caseId: string): Promise<void> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     if (await banner.isVisible()) return;
     await page.getByTestId(`open-case-${caseId}`).click();
-    // a swallowed click shows nothing — wait a beat before judging, then retry
+    // a swallowed click shows nothing — wait a beat before judging, then retry.
+    // The click is retried with a fresh locator each attempt: a list refetch can
+    // replace the row between attempts, and a stale locator keeps pointing at the
+    // detached node (Playwright then waits for it to re-attach and times out).
+    await page
+      .getByTestId(`open-case-${caseId}`)
+      .waitFor({ timeout: 5_000 })
+      .then(
+        () => undefined,
+        () => undefined,
+      );
     await banner.waitFor({ timeout: 5_000 }).then(
       () => undefined,
       () => undefined,
