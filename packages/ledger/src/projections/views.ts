@@ -18,20 +18,26 @@ export interface ClaimObservation {
 
 /** P4-006 — observations sort by MOMENT, not by text: ISO strings with mixed timezone offsets
  *  ("2026-01-01T10:00:00-05:00" = 15:00Z) make text order lie about which came first.
- *  The schema also accepts fractional seconds beyond milliseconds (verified: 7-digit fractions pass
- *  `z.iso.datetime({ offset: true })`), which Date.parse collapses — so the moment key compares the
- *  whole-second instant via Date.parse PLUS the sub-millisecond fraction as nanoseconds.
- *  Precision bound: nanoseconds (digits beyond nine are ignored). */
-const ISO_MOMENT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
-const momentKey = (t: string): { ms: number; frac: number } => {
+ *  The schema accepts fractional seconds of ANY length (verified: 20 digits pass
+ *  `z.iso.datetime({ offset: true })`, which also accepts a missing-seconds `T00:00Z` form),
+ *  which Date.parse collapses — so the moment key compares the whole-second instant via
+ *  Date.parse PLUS the fraction as full decimal TEXT (right-padded to the longer fraction,
+ *  never truncated, never converted to a number): `.1` equals `.10`, `.01` sorts before both,
+ *  and every accepted precision is preserved. */
+const ISO_MOMENT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2})?)(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
+const momentKey = (t: string): { ms: number; frac: string } => {
   const m = ISO_MOMENT.exec(t);
-  if (!m) return { ms: Date.parse(t), frac: 0 };
-  return { ms: Date.parse(`${m[1]}T${m[2]}${m[4]}`), frac: Number((m[3] ?? "").padEnd(9, "0").slice(0, 9)) };
+  if (!m) return { ms: Date.parse(t), frac: "" };
+  return { ms: Date.parse(`${m[1]}T${m[2]}${m[4]}`), frac: m[3] ?? "" };
 };
 const byObservedMoment = (a: string, b: string): number => {
   const ka = momentKey(a);
   const kb = momentKey(b);
-  return ka.ms !== kb.ms ? ka.ms - kb.ms : ka.frac - kb.frac;
+  if (ka.ms !== kb.ms) return ka.ms - kb.ms;
+  const n = Math.max(ka.frac.length, kb.frac.length);
+  const fa = ka.frac.padEnd(n, "0");
+  const fb = kb.frac.padEnd(n, "0");
+  return fa < fb ? -1 : fa > fb ? 1 : 0;
 };
 const byMoment = (a: { id: string; observedAt: string }, b: { id: string; observedAt: string }) => {
   const d = byObservedMoment(a.observedAt, b.observedAt);

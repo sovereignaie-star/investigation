@@ -246,6 +246,47 @@ describe("P4-006 — bitemporal projections (T-TIME)", () => {
     expect(eo.map((o) => o.kind)).toEqual(["error", "positive"]); // error kind served like any other
   });
 
+  // T-TIME-004c/d/e (round 2 of verification): the schema accepts fractional seconds of ANY length
+  // (verified: 20 digits pass) — a comparator that truncates the fraction just moves the same defect
+  // to a smaller scale. Three INDEPENDENT checks so one failure never masks the others.
+  const subNanoCase = () => {
+    const f = fixture();
+    const a = f.entity("person", "a");
+    const b = f.entity("person", "b");
+    const rel = f.claim(a, "knows", { objectId: b });
+    const ev1 = f.evidence();
+    const ev2 = f.evidence();
+    // 10-digit fractions: .0000000009Z is the LATER moment, appended FIRST
+    const late = f.observe({ claimId: rel }, "error", ev1, "2026-01-01T00:00:00.0000000009Z");
+    const early = f.observe({ claimId: rel }, "negative", ev2, "2026-01-01T00:00:00.0000000001Z");
+    f.observe({ entityId: a }, "error", ev1, "2026-01-01T00:00:00.0000000009Z");
+    f.observe({ entityId: a }, "negative", ev2, "2026-01-01T00:00:00.0000000001Z");
+    return { f, rel, a, late, early };
+  };
+
+  it("T-TIME-004c: fractions beyond the comparator's declared precision still keep TRUE moment order — the edge observations list", () => {
+    const { f, rel, late, early } = subNanoCase();
+    const p = project(f.ledger.entries());
+    const eo = (p.graph.edges.find((e) => e.id === rel)?.observations ?? []) as ClaimObservation[];
+    expect(eo.map((o) => o.observationId)).toEqual([early, late]);
+  });
+
+  it("T-TIME-004d: fractions beyond the comparator's declared precision still keep TRUE moment order — the table row", () => {
+    const { f, a } = subNanoCase();
+    const p = project(f.ledger.entries());
+    const row = p.table.find((r) => r.id === a);
+    expect(row?.firstObservedAt).toBe("2026-01-01T00:00:00.0000000001Z");
+    expect(row?.lastObservedAt).toBe("2026-01-01T00:00:00.0000000009Z");
+  });
+
+  it("T-TIME-004e: fractions beyond the comparator's declared precision still keep TRUE moment order — the coverage cell", () => {
+    const { f, a } = subNanoCase();
+    const p = project(f.ledger.entries());
+    const cell = p.coverage.cells.find((c) => c.entityId === a);
+    expect(cell?.lastAt).toBe("2026-01-01T00:00:00.0000000009Z");
+    expect(cell?.last).toBe("error");
+  });
+
   it("T-TIME-005: a snapshot at an earlier seq never leaks a later-appended observation even when its observedAt is old (existing upTo behavior, verified)", () => {
     const f = fixture();
     const a = f.entity("person", "a");
