@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { manualClock, seededRandom, ulidFactory } from "@ir/core";
+import { manualClock, seededRandom, systemClock, ulidFactory } from "@ir/core";
 import { checkpoint, generateInstallationKey, signCheckpoint } from "@ir/ledger";
 import { CASE_DB, openCase, verifyCase } from "@ir/store";
-import { main, monitorSleep } from "./ir.ts";
+import { claimCheck, main, monitorSleep } from "./ir.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -92,12 +92,14 @@ interface MonitorListJson {
     transformId: string;
     subjectType: string;
     subjectValue: string;
+    subjectKey: string;
     intervalMinutes: number;
     removed?: boolean;
     checks: Array<{
       checkId: string;
       status: string;
       at: string;
+      superseded?: boolean;
       changed?: boolean;
       alert?: { added: string[]; removed: string[]; changed: string[] };
       error?: string;
@@ -964,6 +966,121 @@ describe("ir monitor (P4-009)", () => {
     const ok = await run(["monitor", dir, "check", id, "--sim", rules]);
     expect(ok.code).toBe(0);
     expect(ok.text).toContain("no change");
+  });
+
+  it("a claim from a head snapshot taken BEFORE another handle's claim is refused (the head is captured before the attempt state)", async () => {
+    const { dir } = await monitoredCase("5");
+    // a second monitor on another URL: claiming ITS check moves the chain head without tripping the first monitor's in-flight guard
+    await run(["monitor", dir, "add", "TR-010", "url", "https://other.example/", "--every", "5"]);
+    const list = await monitors(dir);
+    const first = list.find((m) => m.subjectValue === "https://example.com/");
+    const second = list.find((m) => m.subjectValue === "https://other.example/");
+    if (first === undefined || second === undefined) throw new Error("test setup: both monitors must be listed");
+    const asCaseMonitor = (m: typeof first) => ({
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    });
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    try {
+      // B claims the SECOND monitor's check — its write moves the chain head
+      const b = claimCheck(cB, asCaseMonitor(second), systemClock);
+      expect("error" in b).toBe(false);
+      // A had captured the head BEFORE B's claim (the first step of its own claim): A's claim from that
+      // stale snapshot must be REFUSED — never a second claim on a case that changed under it
+      const a = claimCheck(cA, asCaseMonitor(first), systemClock, (b as { fromSeq: number }).fromSeq);
+      expect("error" in a).toBe(true);
+      // exactly ONE started event is on the chain — no duplicate attempt
+      const started = cA.auditTrail().filter((e) => e.action === "monitor.check.started");
+      expect(started).toHaveLength(1);
+    } finally {
+      cA.close();
+      cB.close();
+    }
+  });
+
+  it("a LATE result from a superseded attempt never becomes the baseline and never alerts (a suspended attempt resuming after a newer claim)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    // attempt #1 started 11 minutes ago (stale — the process was suspended mid-check)
+    const pastAt = new Date(Date.now() - 11 * 60_000).toISOString();
+    const c = openCase(dir, { actor: "ir-cli", clock: manualClock(pastAt) });
+    c.audit("monitor.check.started", `${id}#1`, { monitorId: id, transformId: "TR-010", at: pastAt });
+    c.close();
+    // the newer attempt #2 runs while #1 is suspended and establishes the baseline (first success)
+    const rules = simRules(dir, "nginx");
+    const second = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(second.code).toBe(0);
+    expect(second.text).toContain("baseline established");
+    // the suspended attempt RESUMES and commits its result late — exactly the write the old code made unconditionally
+    const c2 = openCase(dir, { actor: "ir-cli" });
+    c2.audit("monitor.check.result", `${id}#1`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      fromSeq: 5,
+      findingsCount: 1,
+      changed: true,
+      alert: { added: ["has_technology|http|other.example|stale"], removed: [], changed: [] },
+      state: [
+        {
+          predicate: "has_technology",
+          objectType: "http",
+          objectValue: "other.example",
+          objectId: "stale",
+          confidence: 1,
+          explanation: "the suspended attempt's own run",
+        },
+      ],
+    });
+    c2.close();
+    // the late result is logged but SUPERSEDED: its alert is void and it did not become the baseline
+    const m = (await monitors(dir))[0];
+    expect(m.alertCount).toBe(0);
+    // the next check against the SAME rules as #2 reports "no change" — if #1's state had become the baseline this would alert
+    const third = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(third.code).toBe(0);
+    expect(third.text).toContain("no change");
+    expect((await monitors(dir))[0].alertCount).toBe(0);
+  });
+
+  it("a result event with malformed fields is excluded from the monitor's checks (fail-closed: nothing is cast into a baseline)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const c = openCase(dir, { actor: "ir-cli" });
+    // state elements that are not findings (a string, a number) — must never be cast into a baseline
+    c.audit("monitor.check.result", `${id}#1`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      findingsCount: 2,
+      changed: false,
+      state: ["not-a-finding", 42],
+    });
+    // an alert whose members are not string arrays — not a comparable alert
+    c.audit("monitor.check.result", `${id}#2`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      findingsCount: 0,
+      changed: true,
+      alert: { added: "has_technology", removed: null, changed: [] },
+    });
+    // a finding with the right shape but wrong field types (confidence a string) — not a finding
+    c.audit("monitor.check.result", `${id}#3`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      findingsCount: 1,
+      changed: false,
+      state: [{ predicate: "has_technology", objectType: "http", objectValue: "example.com", confidence: "high", explanation: "x" }],
+    });
+    c.close();
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(0);
+    expect(m.alertCount).toBe(0);
   });
 
   it("refuses an encrypted case: add cannot schedule a monitor whose checks could never run", async () => {

@@ -983,6 +983,14 @@ interface MonitorCheck {
   readonly state?: MonitorFinding[];
   readonly alert?: { added: string[]; removed: string[]; changed: string[] };
   readonly error?: string;
+  /** true when a NEWER attempt of this monitor was already on the chain when this result landed: the result is logged but VOID — it never becomes the baseline and its alert never fires (P4-009 round 5). */
+  readonly superseded?: boolean;
+}
+
+/** The attempt number encoded in a check id (`<monitorId>#<n>`) — the supersession order. */
+function attemptNumberOf(checkId: string): number {
+  const m = /#(\d+)$/.exec(checkId);
+  return m === null ? -1 : Number(m[1]);
 }
 
 /** How long a started-without-result attempt blocks a new one: beyond it the attempt is stale (the process died) and a new attempt may claim. Longer than the default run budget (2 min); an operator budget beyond it could overlap two attempts — documented in L-55. */
@@ -1028,47 +1036,95 @@ function caseMonitors(c: Case): Map<string, CaseMonitor> {
 /** Every check attempt on the chain, oldest first: committed results paired with their started events, and started-without-result attempts listed as incomplete. */
 function monitorChecks(c: Case): MonitorCheck[] {
   const checks: MonitorCheck[] = [];
+  // per monitor, the highest attempt number whose start (or result) has been seen so far in TRAIL ORDER:
+  // a result that lands when a NEWER attempt is already on the chain is SUPERSEDED — logged but void
+  // (it never becomes the baseline and its alert never fires). This is read-time derivation from the
+  // chain, so even a late write from a suspended attempt is neutralized AFTER the fact (P4-009 round 5).
+  const maxSeen = new Map<string, number>();
+  const bump = (monitorId: string, n: number): void => {
+    maxSeen.set(monitorId, Math.max(maxSeen.get(monitorId) ?? -1, n));
+  };
   for (const ev of c.auditTrail()) {
     if (ev.action === "monitor.check.started") {
       const d = (ev.detail ?? {}) as Record<string, unknown>;
       if (typeof d["monitorId"] === "string" && typeof ev.at === "string") {
         checks.push({ checkId: ev.target, monitorId: d["monitorId"], status: "incomplete", at: ev.at });
+        bump(d["monitorId"], attemptNumberOf(ev.target));
       }
       continue;
     }
     if (ev.action !== "monitor.check.result") continue;
     const parsed = parseCheckResult(ev);
     if (!parsed) continue;
+    bump(parsed.monitorId, attemptNumberOf(parsed.checkId));
+    // a result that lands when a NEWER attempt is already on the chain is SUPERSEDED (logged but void)
+    const superseded = parsed.status === "success" && attemptNumberOf(parsed.checkId) < (maxSeen.get(parsed.monitorId) ?? -1);
+    const check: MonitorCheck = superseded ? { ...parsed, superseded: true } : parsed;
     // the result replaces its own started entry (an attempt that completed); a result without a
     // started entry (a legacy chain) is kept as-is.
     const idx = checks.findIndex((k) => k.checkId === parsed.checkId && k.status === "incomplete");
-    if (idx >= 0) checks[idx] = parsed;
-    else checks.push(parsed);
+    if (idx >= 0) checks[idx] = check;
+    else checks.push(check);
   }
   return checks;
 }
 
 /** Validates one result event's detail into a MonitorCheck — fail-closed on the required fields, per-field (the chain being tamper-evident does not prove payload types). */
+/** A finding-shaped value: the result event's state must be an array of THESE — anything else is malformed, not a baseline (P4-009 round 5). */
+function isMonitorFinding(x: unknown): x is MonitorFinding {
+  if (typeof x !== "object" || x === null) return false;
+  const f = x as Record<string, unknown>;
+  if (
+    typeof f["predicate"] !== "string" ||
+    typeof f["objectType"] !== "string" ||
+    typeof f["objectValue"] !== "string" ||
+    typeof f["confidence"] !== "number" ||
+    typeof f["explanation"] !== "string"
+  ) {
+    return false;
+  }
+  for (const k of ["objectId", "observedAt", "validFrom", "validTo"] as const) {
+    if (f[k] !== undefined && typeof f[k] !== "string") return false;
+  }
+  return true;
+}
+
+/** An alert-shaped value: added/removed/changed must each be arrays of strings. */
+function isStringArray(x: unknown): x is string[] {
+  return Array.isArray(x) && x.every((e) => typeof e === "string");
+}
+
+function isMonitorAlert(x: unknown): x is MonitorCheck["alert"] {
+  if (typeof x !== "object" || x === null) return false;
+  const a = x as Record<string, unknown>;
+  return isStringArray(a["added"]) && isStringArray(a["removed"]) && isStringArray(a["changed"]);
+}
+
+/** The optional result fields, each validated per-field before use (P4-009 round 5). */
+function checkResultExtras(d: Record<string, unknown>): Partial<MonitorCheck> {
+  return {
+    ...(typeof d["fromSeq"] === "number" ? { fromSeq: d["fromSeq"] as number } : {}),
+    ...(typeof d["findingsCount"] === "number" ? { findingsCount: d["findingsCount"] as number } : {}),
+    ...(d["changed"] === true ? { changed: true } : {}),
+    ...(Array.isArray(d["state"]) ? { state: d["state"] as MonitorFinding[] } : {}),
+    ...(isMonitorAlert(d["alert"]) ? { alert: d["alert"] as MonitorCheck["alert"] } : {}),
+    ...(typeof d["error"] === "string" ? { error: d["error"] as string } : {}),
+  };
+}
+
 function parseCheckResult(ev: { target: string; at: string; detail?: Record<string, unknown> }): MonitorCheck | undefined {
   const d = ev.detail ?? {};
   const monitorId = d["monitorId"];
   const status = d["status"];
   if (typeof monitorId !== "string" || (status !== "success" && status !== "failed") || typeof ev.at !== "string") return undefined;
-  const check: MonitorCheck = {
-    checkId: ev.target,
-    monitorId,
-    status,
-    at: ev.at,
-    ...(typeof d["fromSeq"] === "number" ? { fromSeq: d["fromSeq"] as number } : {}),
-    ...(typeof d["findingsCount"] === "number" ? { findingsCount: d["findingsCount"] as number } : {}),
-    ...(d["changed"] === true ? { changed: true } : {}),
-    ...(Array.isArray(d["state"]) ? { state: d["state"] as MonitorFinding[] } : {}),
-    ...(d["alert"] !== null && typeof d["alert"] === "object" && Array.isArray((d["alert"] as Record<string, unknown>)["added"])
-      ? { alert: d["alert"] as MonitorCheck["alert"] }
-      : {}),
-    ...(typeof d["error"] === "string" ? { error: d["error"] as string } : {}),
-  };
-  return check;
+  // fail-closed validation of every field the monitor logic USES (P4-009 round 5): a result event whose
+  // state or alert is not structurally what a monitor wrote is excluded from the checks — never cast
+  // into a baseline. The chain itself stays tamper-evident; this is defense against malformed records.
+  const state = d["state"];
+  if (state !== undefined && !(Array.isArray(state) && state.every(isMonitorFinding))) return undefined;
+  const alert = d["alert"];
+  if (alert !== undefined && alert !== null && !isMonitorAlert(alert)) return undefined;
+  return { checkId: ev.target, monitorId, status, at: ev.at, ...checkResultExtras(d) };
 }
 
 /** The monitor's committed results, oldest first. */
@@ -1170,17 +1226,19 @@ function runMonitorList(dir: string, v: Values & RunValues, out: (s: string) => 
                 transformId: m.transformId,
                 subjectType: m.subjectType,
                 subjectValue: m.subjectValue,
+                subjectKey: m.subjectKey,
                 intervalMinutes: m.intervalMinutes,
                 ...(m.removed ? { removed: true } : {}),
-                checks: own.map(({ checkId, status, at, changed, alert, error }) => ({
+                checks: own.map(({ checkId, status, at, superseded, changed, alert, error }) => ({
                   checkId,
                   status,
                   at,
+                  ...(superseded ? { superseded: true } : {}),
                   ...(changed === true ? { changed: true } : { changed: false }),
                   ...(alert ? { alert } : {}),
                   ...(error ? { error } : {}),
                 })),
-                alertCount: own.filter((k) => k.alert !== undefined).length,
+                alertCount: own.filter((k) => k.alert !== undefined && k.superseded !== true).length,
               };
             }),
           },
@@ -1194,7 +1252,7 @@ function runMonitorList(dir: string, v: Values & RunValues, out: (s: string) => 
     for (const m of monitors) {
       const own = checksOfMonitor(checks, m.id);
       out(
-        `${m.id}  ${m.transformId}  ${m.subjectKey}  every ${m.intervalMinutes}m${m.removed ? "  removed" : ""}  checks ${own.length}  alerts ${own.filter((k) => k.alert !== undefined).length}`,
+        `${m.id}  ${m.transformId}  ${m.subjectKey}  every ${m.intervalMinutes}m${m.removed ? "  removed" : ""}  checks ${own.length}  alerts ${own.filter((k) => k.alert !== undefined && k.superseded !== true).length}`,
       );
     }
     return 0;
@@ -1254,6 +1312,26 @@ function commitMonitorSuccess(
 ): void {
   // the comparison state is THIS RUN's findings, normalized — never the whole case projection.
   const state = monitorFindingState(result.output.findings);
+  // SUPERSESSION GATE (P4-009 round 5): if a NEWER attempt of this monitor is already on the chain
+  // (a suspended attempt resuming after a newer claim), this result is logged but VOID — no alert
+  // decision, no baseline change. The read-time supersession filter in monitorChecks enforces the
+  // same invariant for anything that lands on the chain regardless of who wrote it.
+  const superseded = checksOfMonitor(monitorChecks(c), monitor.id).some((k) => attemptNumberOf(k.checkId) > attemptNumberOf(checkId));
+  if (superseded) {
+    c.audit("monitor.check.result", checkId, {
+      monitorId: monitor.id,
+      status: "success",
+      at: isoNow(clock),
+      fromSeq,
+      findingsCount: result.output.findings.length,
+      superseded: true,
+      state,
+    });
+    out(
+      `ir monitor: check ${checkId} ${monitor.transformId} findings ${result.output.findings.length} — SUPERSEDED (a newer attempt exists): logged without changing the baseline`,
+    );
+    return;
+  }
   const baseline = lastSuccessfulCheck(c, monitor.id)?.state;
   const d = baseline === undefined ? undefined : compareFindingStates(baseline, state);
   const changed = d !== undefined && !d.equal;
@@ -1363,15 +1441,26 @@ function dueMonitors(c: Case, now: number): { due: CaseMonitor[]; notDue: number
 }
 
 /**
- * Atomically CLAIMS the next check attempt of one monitor (P4-009 round 3): the in-flight guard
- * refuses a monitor whose check is already running (a fresh started-without-result attempt — the
- * process died mid-check within IN_FLIGHT_MS), then the started event is appended ONLY if the
- * chain head is still what we validated (the store's auditIfSeq — the audit twin of appendIfSeq,
- * chain entry and index row in one transaction). A second handle on the same case therefore
- * gets a clean null instead of a second claim: one alert per change, never two. The attempt id
- * counts EVERY attempt (committed or interrupted), so an interrupted attempt's id is never reused.
+ * Atomically CLAIMS the next check attempt of one monitor (P4-009 rounds 3+5): the chain head is
+ * captured BEFORE the attempt state is read (and that SAME head is what auditIfSeq verifies), so a
+ * claim decided from a snapshot taken before another handle's claim can never be written — two
+ * concurrent handles can never both claim, and an attempt id can never be duplicated. The in-flight
+ * guard refuses a monitor whose check is already running (a fresh started-without-result attempt
+ * within IN_FLIGHT_MS); a stale one (the process died) is superseded and the next attempt claims a
+ * FRESH id (every attempt — committed, failed or interrupted — is counted, so ids are never reused).
+ * Exported for its direct tests (P4-009 round 5), which force the interleaving by passing the
+ * pre-captured head of a stale snapshot.
  */
-function claimCheck(c: Case, monitor: CaseMonitor, clock: Clock): { checkId: string; fromSeq: number } | { error: string } {
+export function claimCheck(
+  c: Case,
+  monitor: CaseMonitor,
+  clock: Clock,
+  fromSeq?: number,
+): { checkId: string; fromSeq: number } | { error: string } {
+  // the head FIRST — before the attempt state is read (P4-009 round 5: the advisor's race — a claim
+  // must never succeed on a head that was read after another claim's write while its id was decided
+  // from a pre-claim snapshot; capturing the head first makes the auditIfSeq check reject exactly that).
+  const head = fromSeq ?? headSeq(c);
   const now = clock.now();
   const own = checksOfMonitor(monitorChecks(c), monitor.id);
   const inFlight = own.filter((k) => k.status === "incomplete").at(-1);
@@ -1379,17 +1468,16 @@ function claimCheck(c: Case, monitor: CaseMonitor, clock: Clock): { checkId: str
     return { error: `check ${inFlight.checkId} of this monitor is already running (started at ${inFlight.at})` };
   }
   const checkId = `${monitor.id}#${own.length + 1}`;
-  const fromSeq = headSeq(c);
   const started = c.auditIfSeq(
     "monitor.check.started",
     checkId,
     { monitorId: monitor.id, transformId: monitor.transformId, at: isoNow(clock) },
-    fromSeq,
+    head,
   );
   if (started === null) {
     return { error: "the case changed while this check was starting (a concurrent check won the claim) — retry" };
   }
-  return { checkId, fromSeq };
+  return { checkId, fromSeq: head };
 }
 
 /** Runs ONE check of one monitor on an OPEN case: claims the attempt atomically, re-runs the transform, records the run, compares, commits the result. */
@@ -1545,10 +1633,10 @@ export function monitorSleep(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** The last SUCCESSFUL check of a monitor (the baseline keeper) — a failed check never becomes the baseline. */
+/** The last SUCCESSFUL check of a monitor (the baseline keeper) — a failed check never becomes the baseline, and neither does a SUPERSEDED one (a late result from an attempt a newer claim already replaced). */
 function lastSuccessfulCheck(c: Case, monitorId: string): MonitorCheck | undefined {
   return checksOfMonitor(monitorChecks(c), monitorId)
-    .filter((k) => k.status === "success")
+    .filter((k) => k.status === "success" && k.superseded !== true)
     .at(-1);
 }
 
