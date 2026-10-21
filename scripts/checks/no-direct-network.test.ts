@@ -75,7 +75,10 @@ describe("no direct network paths outside @ir/egress (P2-003 / ADR-08 C)", () =>
     });
   });
 
-  it("test files that open local listeners are reported separately and never counted as production paths", () => {
+  // D-060: the same full-repo scan as the guard above — it needs the documented
+  // slow budget too (observed on CI 2026-10-21: three timeouts at the 5 s
+  // default on runs 39567448254/39567469003/39572022779 — slow runner days).
+  slowIt("test files that open local listeners are reported separately and never counted as production paths", () => {
     const { tests } = scanRepo(REPO);
     // informational: tests may import node:http/node:net for local controlled servers
     expect(Array.isArray(tests)).toBe(true);
