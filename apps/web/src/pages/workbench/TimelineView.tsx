@@ -34,7 +34,18 @@ function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeI
         <span className="text-muted-foreground">{item.predicate}</span>
         <span className="font-medium">{item.objectLabel}</span>
         <span className="text-muted-foreground" title={label.full}>
-          {label.text}
+          {label.segments.map((s, i) =>
+            s.type === "ts" ? (
+              // BiDi (visual QA): ISO timestamps scramble inside the RTL paragraph —
+              // isolate each run directionally instead. whitespace-nowrap (375px): a
+              // timestamp never breaks mid-string — it wraps as one unit or not at all.
+              <span key={i} dir="ltr" className="whitespace-nowrap">
+                {s.value}
+              </span>
+            ) : (
+              <span key={i}>{s.value}</span>
+            ),
+          )}
         </span>
       </div>
       {item.observations.length === 0 ? (
@@ -43,7 +54,10 @@ function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeI
         <ol className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           {item.observations.map((o) => (
             <li key={o.observationId} title={t("workbench.timeline.evidenceTitle", { id: o.evidenceId })} className={o.kind}>
-              {KIND_LABEL[o.kind]} · {o.observedAt}
+              {KIND_LABEL[o.kind]} ·{" "}
+              <span dir="ltr" className="whitespace-nowrap">
+                {o.observedAt}
+              </span>
             </li>
           ))}
         </ol>

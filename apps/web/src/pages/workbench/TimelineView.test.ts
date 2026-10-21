@@ -10,6 +10,9 @@ import { buildTimelineItems, sortTimelineItems } from "./timelineModel";
  * ووقت الرصد لكل ملاحظة (البعد الثاني). صادق الأدلة: كُتب قبل أي تنفيذ؛ الأحمر الأول
  * هيكلي (الوحدة غير موجودة) وموثق في WORKLOG، والنقر الفعلي يُثبت في e2e (uc12)
  * وفق نمط المستودع المتبع (الترميز الساكن يفحص الجاهزية للنقر: معرف العقدة على الصف).
+ * تحويل إلى .ts بـReact.createElement (عرف المستودع للمكونات في .ts): ملف .tsx الأصلي
+ * لم يكن ضمن نمط تضمين vitest (نمط apps ثم أي مسار بلاحقة .test.ts) فلم يكن يعمل
+ * أصلاً — اكتُشف في جولة التحقق الأولى وأُصلح؛ الشحنة التراكمية النهائية تضمه فعلياً.
  */
 
 const items = sortTimelineItems([
@@ -55,7 +58,7 @@ const items = sortTimelineItems([
 ]);
 
 describe("TimelineView (P4-007/UC-08) — الخط الزمني ثنائي البعد", () => {
-  const html = renderToStaticMarkup(<TimelineView items={items} />);
+  const html = renderToStaticMarkup(React.createElement(TimelineView, { items }));
 
   it("renders every event with its subject, predicate and object — sorted display order", () => {
     expect(html).toContain("شخص a");
@@ -70,9 +73,10 @@ describe("TimelineView (P4-007/UC-08) — الخط الزمني ثنائي ال�
   });
 
   it("shows BOTH dimensions: the occurrence window label AND each observation's observedAt with its kind", () => {
-    // dimension 1 — occurrence window, honest interval text
-    expect(html).toContain("من 2019-01-01T00:00:00Z إلى 2019-12-31T23:59:59Z");
-    expect(html).toContain("البداية غير محددة — حتى 2020-03-01T00:00:00Z");
+    // dimension 1 — occurrence window, honest interval text (phrasing + isolated ISO runs)
+    expect(html).toContain("<span>من </span>");
+    expect(html).toContain("<span> إلى </span>");
+    expect(html).toContain("البداية غير محددة — حتى ");
     // dimension 2 — observation times with kinds (multiple evidence per event)
     expect(html).toContain("2026-03-01T10:00:00Z");
     expect(html).toContain("2026-03-02T09:00:00-05:00");
@@ -94,7 +98,21 @@ describe("TimelineView (P4-007/UC-08) — الخط الزمني ثنائي ال�
 
   it("the full raw occurrence window is exposed verbatim (title) — no precision or offset loss", () => {
     expect(html).toContain('title="2019-01-01T00:00:00Z ← 2019-12-31T23:59:59Z"');
-    expect(html).toContain('title="← 2020-03-01T00:00:00Z"');
+    expect(html).toContain('title=" ← 2020-03-01T00:00:00Z"');
+  });
+
+  it("ISO timestamps are directionally isolated (dir=ltr) inside the RTL context — the BiDi visual scrambling fix", () => {
+    // Visual QA caught it: inside an RTL paragraph the ISO run "2019-01-01T00:00:00Z"
+    // renders visually scrambled («01T00:00:00Z-01-2019») because its neutral characters
+    // (T, Z, -, :) resolve to the paragraph direction. The fix is per-timestamp
+    // directional isolation — asserted here on the markup, proven on the screenshots.
+    // Second catch (375px): a long timestamp may WRAP MID-STRING («...إلى -12-2019» then
+    // «31T23:59:59Z») — so each isolated run must also refuse internal line breaks
+    // (whitespace-nowrap: the timestamp wraps as one unit or not at all).
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2019-01-01T00:00:00Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2019-12-31T23:59:59Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2020-03-01T00:00:00Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2026-03-01T10:00:00Z\s*<\/span>/);
   });
 
   it("buildTimelineItems feeds real graph shapes into the view (integration of model + view)", () => {
@@ -127,7 +145,7 @@ describe("TimelineView (P4-007/UC-08) — الخط الزمني ثنائي ال�
       ],
       edges: [],
     };
-    const rendered = renderToStaticMarkup(<TimelineView items={sortTimelineItems(buildTimelineItems(graph))} />);
+    const rendered = renderToStaticMarkup(React.createElement(TimelineView, { items: sortTimelineItems(buildTimelineItems(graph)) }));
     expect(rendered).toContain("شخص a");
     expect(rendered).toContain("غير محدد");
   });

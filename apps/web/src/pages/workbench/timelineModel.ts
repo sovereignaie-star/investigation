@@ -103,8 +103,18 @@ export function sortTimelineItems(items: TimelineItem[]): TimelineItem[] {
   return [...dated, ...undated];
 }
 
-/** Honest phrasing for the occurrence window; `full` keeps the raw bounds verbatim (title). */
-export function occurrenceLabel(item: Pick<TimelineItem, "occurredFrom" | "occurredTo">): { text: string; full: string } {
+/** Honest phrasing for the occurrence window; `full` keeps the raw bounds verbatim (title).
+ * A segment of the label: text (Arabic phrasing) or ts (an ISO
+ * timestamp — rendered inside a dir="ltr" span; visual QA caught ISO runs
+ * scrambling inside the RTL paragraph because their neutral characters
+ * (T, Z, -, :) resolve to the paragraph direction). */
+export type OccurrenceSegment = { type: "text" | "ts"; value: string };
+
+export function occurrenceLabel(item: Pick<TimelineItem, "occurredFrom" | "occurredTo">): {
+  text: string;
+  full: string;
+  segments: OccurrenceSegment[];
+} {
   const { occurredFrom: f, occurredTo: t } = item;
   const shape = occurrenceShape(item);
   const text =
@@ -118,5 +128,30 @@ export function occurrenceLabel(item: Pick<TimelineItem, "occurredFrom" | "occur
             ? `البداية غير محددة — حتى ${t}`
             : `من ${f} — النهاية غير محددة`;
   const full = `${f ?? ""} ← ${t ?? ""}`;
-  return { text, full };
+  const segments: OccurrenceSegment[] =
+    shape === "unknown"
+      ? [{ type: "text", value: "غير محدد" }]
+      : shape === "point"
+        ? [
+            { type: "text", value: "في " },
+            { type: "ts", value: f as string },
+          ]
+        : shape === "closed"
+          ? [
+              { type: "text", value: "من " },
+              { type: "ts", value: f as string },
+              { type: "text", value: " إلى " },
+              { type: "ts", value: t as string },
+            ]
+          : shape === "open-start"
+            ? [
+                { type: "text", value: "البداية غير محددة — حتى " },
+                { type: "ts", value: t as string },
+              ]
+            : [
+                { type: "text", value: "من " },
+                { type: "ts", value: f as string },
+                { type: "text", value: " — النهاية غير محددة" },
+              ];
+  return { text, full, segments };
 }
