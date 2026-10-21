@@ -199,11 +199,14 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
     await page.getByTestId("command-palette-input").fill("التراجع");
     // the sync point must WAIT, not glance: fill() resolves when the input holds
     // the text, but the palette's FILTERED list renders in later frames — under
-    // CPU starvation (CI runs 39631847884/39635339270, reproduced locally with
-    // 6x throttling) an instant isVisible() reads a not-yet-rendered list and
-    // misjudges a recorded drag as unrecorded, then the cleanup closes the
-    // palette and the final strict assertion fails against a CLOSED palette.
-    // A bounded 3s wait keeps the retry honest without loosening the assertion.
+    // CPU starvation (CI runs 39631847884/39635339270; reproduced locally with 6x
+    // CDP throttling: red before this wait, green after) an instant isVisible()
+    // reads a list that may not be rendered yet, and the retry's cleanup then
+    // closes the palette so the final strict assertion would judge a CLOSED
+    // palette (a misleading failure that hides the real diagnosis). A bounded
+    // 3s wait keeps the retry honest without loosening the final assertion —
+    // the full root cause of the CI flake (incl. the openCase banner timeout)
+    // remains UNRESOLVED and is documented as such (L-53).
     dragRecorded = await page
       .getByTestId("command-view.undo")
       .waitFor({ state: "visible", timeout: 3_000 })

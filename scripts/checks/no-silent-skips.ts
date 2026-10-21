@@ -113,9 +113,88 @@ const SCRIPT_RUN = new Set(["scripts/reference/iana-drift.test.mjs"]);
  * `test.skip ("x")` — a space before the argument list — is a real skip). */
 const SKIP_TOKEN_RE = /\.\s*(?:skip|todo|skipIf|only)\s*\(|ctx\s*\.\s*skip\s*\(/g;
 
-/** Strip comments so a token mentioned in a comment is not a false positive. */
+/**
+ * Strip comments with a STRING-AWARE scanner (round-5): `//` inside a string
+ * literal is TEXT, not a comment opener — the naive regex ate everything after
+ * `describe("https://x", ...)` and hid the very skip token it exists to catch.
+ * Comment bytes become spaces (newlines preserved) so every token's line number
+ * stays honest. This is a token-level scanner, not a JS parser: a comment inside
+ * a template-literal expression survives as text (documented floor, header above).
+ */
 function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  let out = "";
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const next = src[i + 1];
+    if (c === "/" && next === "/") {
+      i = stripLineComment(src, i, (ch) => (out += ch));
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      i = stripBlockComment(src, i, (ch) => (out += ch));
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      i = copyStringLiteral(src, i, (ch) => (out += ch));
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+/** A // comment: every byte until the newline becomes a space (the newline stays). */
+function stripLineComment(src: string, i: number, emit: (ch: string) => void): number {
+  const n = src.length;
+  while (i < n && src[i] !== "\n") {
+    emit(" ");
+    i += 1;
+  }
+  return i;
+}
+
+/** A slash-star comment: bytes become spaces, newlines stay (line numbers stay honest). */
+function stripBlockComment(src: string, i: number, emit: (ch: string) => void): number {
+  const n = src.length;
+  emit(" ");
+  emit(" ");
+  i += 2;
+  while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
+    emit(src[i] === "\n" ? "\n" : " ");
+    i += 1;
+  }
+  if (i < n) {
+    emit(" ");
+    emit(" ");
+    i += 2;
+  }
+  return i;
+}
+
+/** A string/template literal is TEXT: copied verbatim (escapes keep the next byte). */
+function copyStringLiteral(src: string, i: number, emit: (ch: string) => void): number {
+  const n = src.length;
+  const quote = src[i];
+  emit(quote);
+  i += 1;
+  while (i < n && src[i] !== quote) {
+    if (src[i] === "\\") {
+      emit(src[i]);
+      emit(src[i + 1] ?? "");
+      i += 2;
+      continue;
+    }
+    emit(src[i]);
+    i += 1;
+  }
+  if (i < n) {
+    emit(quote);
+    i += 1;
+  }
+  return i;
 }
 
 /** The skip tokens in a file with their 1-based lines. */
@@ -128,9 +207,11 @@ function countSkipTokens(content: string): { count: number; lines: number[] } {
   return { count: lines.length, lines };
 }
 
-/** A test-shaped file name: the guard looks at anything a runner might have claimed. */
+/** A test-shaped file name: the guard looks at anything a runner might have claimed
+ * (round-5: .mts/.cts restored — a .test.mts file is REAL here and must be REPORTED
+ * as outside every runner, never silently vanish from the walk). */
 function isTestFileName(name: string): boolean {
-  return /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(name);
+  return /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/.test(name);
 }
 
 function vitestDiscovered(rel: string, cfg: RunnerConfigs): boolean {
@@ -192,7 +273,8 @@ export function analyzeSkips(files: readonly TestFile[], baseline: SkipBaseline)
   return findings;
 }
 
-function walkTestFiles(repo: string): TestFile[] {
+/** The real filesystem walk (exported for the self-test's round-5 negative control). */
+export function walkTestFiles(repo: string): TestFile[] {
   const out: TestFile[] = [];
   const walk = (dir: string): void => {
     // withFileTypes: the directory entry and its kind arrive from ONE readdir

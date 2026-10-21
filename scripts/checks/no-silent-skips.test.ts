@@ -1,7 +1,9 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { analyzeDiscovery, analyzeSkips, BASELINE_PATH, scanRepo } from "./no-silent-skips";
+import { analyzeDiscovery, analyzeSkips, BASELINE_PATH, scanRepo, walkTestFiles } from "./no-silent-skips";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -122,6 +124,55 @@ describe("no silent skips — tests that never run (P4-007 owner ruling 2026-10-
     // apps/sandbox is excluded from vitest — its files must not claim vitest discovery
     const sandbox = analyzeDiscovery([{ path: "apps/sandbox/src/x.test.ts", content: "" }]);
     expect(sandbox[0]).toMatchObject({ kind: "undiscovered" });
+  });
+
+  it("detects a skip token after a string containing // (round-5 gap): comment stripping must be string-aware", () => {
+    // Round-5 verification demand: the naive // regex ate everything after a URL
+    // inside a string literal — hiding the very skip token the guard exists to
+    // catch. The scan must treat "https://x" as TEXT, not as a comment opener.
+    const findings = analyzeSkips(
+      [
+        {
+          path: "packages/x/src/str.test.ts",
+          content: `describe("https://x", () => { test${TOK_SKIP}"a", () => {}); });`,
+        },
+      ],
+      {},
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ kind: "new-skip", file: "packages/x/src/str.test.ts" });
+  });
+
+  it("still ignores a skip token that lives ONLY in a comment after string-aware stripping (no false positives)", () => {
+    const findings = analyzeSkips(
+      [
+        {
+          path: "packages/x/src/comment.test.ts",
+          // a comment on a line that also has code; the token is inside the comment
+          content: `it("a", () => {}); // see test${TOK_SKIP}docs for why
+it("b", () => {});`,
+        },
+      ],
+      {},
+    );
+    expect(findings).toHaveLength(0);
+  });
+
+  it("a .test.mts file is SEEN by the real file walk and reported undiscovered (round-5 gap)", () => {
+    // Round-5 verification demand: the walk's file-name filter had dropped .mts —
+    // such a file would vanish from the scan entirely instead of being reported
+    // as outside every runner (vitest's include is **/*.test.ts only).
+    const dir = mkdtempSync(path.join(tmpdir(), "nss-mts-"));
+    try {
+      writeFileSync(path.join(dir, "x.test.mts"), `test${TOK_SKIP}"a", () => {});`);
+      const files = walkTestFiles(dir);
+      expect(files.map((f) => f.path)).toContain("x.test.mts");
+      const findings = analyzeDiscovery(files);
+      expect(findings).toHaveLength(1);
+      expect(findings[0]).toMatchObject({ kind: "undiscovered", file: "x.test.mts" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("the baseline file exists at the committed path (the guard is only as good as its baseline)", () => {
