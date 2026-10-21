@@ -40,11 +40,63 @@ export const BASELINE_PATH = "scripts/checks/skip-baseline.json";
 
 const SKIP_DIR_NAMES = new Set(["node_modules", "dist", "coverage", ".git", "generated"]);
 
-/** vitest include roots (vitest.config.ts) — the discovery check below flags any drift. */
-const VITEST_ROOTS = ["lib/", "packages/", "apps/", "scripts/checks/", "docs/adr/reference/"];
-/** vitest excludes apps/sandbox — its test files are not vitest-discovered. */
-const VITEST_EXCLUDED = ["apps/sandbox/"];
-/** Playwright specs (e2e workflow, playwright.config.ts) — a real runner, not vitest. */
+/** vitest's real include/exclude globs, PARSED from vitest.config.ts — not a hand copy. */
+export type RunnerConfigs = {
+  readonly vitestInclude: RegExp[];
+  readonly vitestExclude: RegExp[];
+  /** Playwright's real testMatch (from e2e/playwright.config.ts). */
+  readonly playwrightTestMatch: RegExp;
+};
+
+const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
+
+/** A vitest include glob becomes an anchored regex: the double-star allows zero or
+ * more directories, a single star never crosses a directory separator. */
+function globToRegex(glob: string): RegExp {
+  let re = "";
+  for (let i = 0; i < glob.length; i += 1) {
+    const c = glob[i];
+    if (c !== "*") {
+      re += c === "." ? "\\." : c;
+      continue;
+    }
+    if (glob[i + 1] === "*") {
+      if (glob[i + 2] === "/") {
+        re += "(?:.*/)?";
+        i += 2;
+      } else {
+        re += ".*";
+        i += 1;
+      }
+    } else {
+      re += "[^/]*";
+    }
+  }
+  return new RegExp(`^${re}$`);
+}
+
+function extractQuotedStrings(block: string): string[] {
+  return [...block.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+}
+
+/** Parse the runner configs from the real files — the guard mirrors the runners, not a memory. */
+export function loadRunnerConfigs(repo: string): RunnerConfigs {
+  const vitestSrc = readFileSync(path.join(repo, "vitest.config.ts"), "utf8");
+  const incStart = vitestSrc.indexOf("include: [") + "include: [".length;
+  const includeBlock = vitestSrc.slice(incStart, vitestSrc.indexOf("]", incStart));
+  const excStart = vitestSrc.indexOf("exclude: [") + "exclude: [".length;
+  const excludeBlock = vitestSrc.slice(excStart, vitestSrc.indexOf("]", excStart));
+  const playwrightSrc = readFileSync(path.join(repo, "scripts/e2e/playwright.config.ts"), "utf8");
+  const m = playwrightSrc.match(/testMatch:\s*\/(.+)\//);
+  if (!m) throw new Error("no-silent-skips: cannot parse playwright testMatch — the guard refuses to run blind");
+  return {
+    vitestInclude: extractQuotedStrings(includeBlock).map(globToRegex),
+    vitestExclude: extractQuotedStrings(excludeBlock).map(globToRegex),
+    playwrightTestMatch: new RegExp(m[1]),
+  };
+}
+
+/** Playwright specs (e2e workflow) — a real runner, discovered by its own config. */
 const PLAYWRIGHT_ROOT = "scripts/e2e/";
 /** Spec-shaped fixtures loaded (never registered) by the isolated-runner suite — a real import target. */
 const FIXTURE_SPECS = new Set(["packages/transforms/src/transforms/tr-iso-test-transforms.spec.ts"]);
@@ -57,27 +109,58 @@ const NODE_TEST_CI = new Set([
 /** .test.mjs files run by an explicit pnpm script (documented, not CI) — allowlisted. */
 const SCRIPT_RUN = new Set(["scripts/reference/iana-drift.test.mjs"]);
 
-const SKIP_TOKEN_RE = /\.skip\(|\.todo\(|\.skipIf\(|\.only\(|ctx\.skip\(/;
+/** A skip token keyed on the CALL STRUCTURE, not a tight textual sequence (round-4:
+ * `test.skip ("x")` — a space before the argument list — is a real skip). */
+const SKIP_TOKEN_RE = /\.\s*(?:skip|todo|skipIf|only)\s*\(|ctx\s*\.\s*skip\s*\(/g;
 
+/** Strip comments so a token mentioned in a comment is not a false positive. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+}
+
+/** The skip tokens in a file with their 1-based lines. */
+function countSkipTokens(content: string): { count: number; lines: number[] } {
+  const code = stripComments(content);
+  const lines: number[] = [];
+  for (const m of code.matchAll(SKIP_TOKEN_RE)) {
+    lines.push(code.slice(0, m.index).split("\n").length);
+  }
+  return { count: lines.length, lines };
+}
+
+/** A test-shaped file name: the guard looks at anything a runner might have claimed. */
 function isTestFileName(name: string): boolean {
-  return /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(name) || /\.test\.m?ts$/.test(name);
+  return /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(name);
 }
 
-function vitestDiscovered(rel: string): boolean {
-  if (!rel.endsWith(".test.ts")) return false;
-  if (VITEST_EXCLUDED.some((p) => rel.startsWith(p))) return false;
-  return VITEST_ROOTS.some((p) => rel.startsWith(p));
+function vitestDiscovered(rel: string, cfg: RunnerConfigs): boolean {
+  if (!cfg.vitestInclude.some((re) => re.test(rel))) return false;
+  return !cfg.vitestExclude.some((re) => re.test(rel));
 }
 
-/** (B) every *.test.* file must be loadable by SOME runner — else it is silently dead. */
-export function analyzeDiscovery(files: readonly TestFile[]): Finding[] {
+/** (B) every *.test.* file must be loadable by SOME runner — else it is silently dead.
+ * The runner sets are the REAL configs (vitest include/exclude parsed from vitest.config.ts;
+ * Playwright testMatch parsed from e2e/playwright.config.ts) — never a hand-copied list. */
+export function analyzeDiscovery(files: readonly TestFile[], configs?: RunnerConfigs): Finding[] {
+  const cfg = configs ?? loadRunnerConfigs(REPO_ROOT);
   const findings: Finding[] = [];
   for (const f of files) {
     const rel = f.path.split(path.sep).join("/");
-    if (rel.startsWith("scripts/checks/") && rel.endsWith(".test.ts")) continue; // this guard's own suite
-    if (rel.startsWith(PLAYWRIGHT_ROOT)) continue; // Playwright runs the e2e specs
+    if (rel.startsWith(PLAYWRIGHT_ROOT)) {
+      // the exemption mirrors the runner's OWN testMatch: a spec the config would
+      // not load (e.g. _tmp-shot.spec.ts) is flagged, not waved through by directory.
+      const base = rel.slice(PLAYWRIGHT_ROOT.length);
+      if (cfg.playwrightTestMatch.test(base)) continue;
+      findings.push({
+        kind: "undiscovered",
+        file: rel,
+        line: 0,
+        detail: "a Playwright spec the real testMatch would not load — it would never run",
+      });
+      continue;
+    }
     if (FIXTURE_SPECS.has(rel)) continue; // loaded by the isolated-runner suite, never a runner
-    if (vitestDiscovered(rel)) continue;
+    if (vitestDiscovered(rel, cfg)) continue;
     if (rel.endsWith(".test.mjs") && (NODE_TEST_CI.has(rel) || SCRIPT_RUN.has(rel))) continue;
     findings.push({
       kind: "undiscovered",
@@ -96,21 +179,13 @@ export function analyzeSkips(files: readonly TestFile[], baseline: SkipBaseline)
   for (const f of files) {
     const rel = f.path.split(path.sep).join("/");
     const allowed = baseline[rel] ?? 0;
-    const lines = f.content.split("\n");
-    let count = 0;
-    const offenders: number[] = [];
-    for (let i = 0; i < lines.length; i += 1) {
-      if (SKIP_TOKEN_RE.test(lines[i])) {
-        count += 1;
-        offenders.push(i + 1);
-      }
-    }
+    const { count, lines } = countSkipTokens(f.content);
     if (count > allowed) {
       findings.push({
         kind: "new-skip",
         file: rel,
-        line: offenders[0] ?? 0,
-        detail: `${count} skip tokens (baseline allows ${allowed}) at lines ${offenders.join(", ")} — a new silent skip needs an owner-visible WORKLOG entry and a deliberate baseline regeneration`,
+        line: lines[0] ?? 0,
+        detail: `${count} skip tokens (baseline allows ${allowed}) at lines ${lines.join(", ")} — a new silent skip needs an owner-visible WORKLOG entry and a deliberate baseline regeneration`,
       });
     }
   }
@@ -156,7 +231,7 @@ export function regenBaseline(repo: string): SkipBaseline {
   const files = walkTestFiles(repo);
   const baseline: SkipBaseline = {};
   for (const f of files) {
-    const count = f.content.split("\n").filter((l) => SKIP_TOKEN_RE.test(l)).length;
+    const { count } = countSkipTokens(f.content);
     if (count > 0) baseline[f.path] = count;
   }
   writeFileSync(path.join(repo, BASELINE_PATH), `${JSON.stringify(baseline, null, 2)}\n`, "utf8");

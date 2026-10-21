@@ -74,6 +74,28 @@ describe("no silent skips — tests that never run (P4-007 owner ruling 2026-10-
     expect(findings[0].detail).toContain("5");
   });
 
+  it("detects a skip token separated from its paren by a SPACE (round-4 gap): a member call with a space before the argument list is a real skip", () => {
+    // Round-4 verification demand: the token regex must key on the CALL STRUCTURE
+    // (member call, optional whitespace before the argument list), not a tight
+    // textual sequence — `test.skip ("x")` is valid JavaScript and a real skip.
+    // ".skip (" with a SPACE before the argument list — built by concatenation.
+    const TOK_SKIP_SPACEY = ".ski" + "p (";
+    const content = [`it("a", () => {});`, `test${TOK_SKIP_SPACEY}"b", () => {});`].join("\n");
+    const findings = analyzeSkips([{ path: "packages/x/src/spacey.test.ts", content }], {});
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ kind: "new-skip", file: "packages/x/src/spacey.test.ts" });
+  });
+
+  it("detects a Playwright spec that the real testMatch would NOT discover (round-4 gap): _tmp-shot.spec.ts under scripts/e2e", () => {
+    // Round-4 verification demand: exemption must mirror the RUNNER'S ACTUAL config —
+    // playwright.config.ts matches /uc\d{2}.*\.spec\.ts/ only. A spec file that does
+    // not match it (like this session's temporary _tmp-shot.spec.ts) is silently
+    // dead and MUST be flagged, not waved through by a directory-prefix exemption.
+    const findings = analyzeDiscovery([{ path: "scripts/e2e/_tmp-shot.spec.ts", content: "" }]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({ kind: "undiscovered", file: "scripts/e2e/_tmp-shot.spec.ts" });
+  });
+
   it("detects an undiscovered test file — the P4-007 defect class (.test.tsx under apps/web)", () => {
     const findings = analyzeDiscovery([{ path: "apps/web/src/pages/workbench/X.test.tsx", content: "" }]);
     expect(findings).toHaveLength(1);
