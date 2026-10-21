@@ -54,12 +54,14 @@ export default defineConfig({
       // L-53: the CI failure artifact proved case-open received HTTP 429 — the issuer is
       // one of the two /api limiters (global 300/min or cases-route 60/min); which one
       // fired in CI is not conclusively distinguishable from the artifact, so BOTH
-      // ceilings are raised for this suite. It is ONE trusted hermetic client
-      // (127.0.0.1, no abuse surface) whose honest accumulated load crossed the
-      // ceilings in CI's slower 60s windows. The limiter code still runs (nothing is
-      // disabled); IR_API_RATE_LIMIT is the pre-existing global knob (app.ts), and
-      // IR_CASES_RATE_LIMIT is the per-route override shipped with a valid red-first
-      // test (cases-routes.test.ts). Production defaults are unchanged (300/min, 60/min).
+      // ceilings are raised for this suite — a mitigation robust to either cause, not
+      // a proof of which one fired. It is ONE trusted hermetic client
+      // (127.0.0.1, no abuse surface) whose accumulated load plausibly crossed the
+      // ceilings in CI's slower 60s windows (hypothesis, not proven). The limiter code
+      // still runs (nothing is disabled); IR_API_RATE_LIMIT is the pre-existing global
+      // knob (app.ts), and IR_CASES_RATE_LIMIT is the per-route override shipped with
+      // a documented red-first test (cases-routes.test.ts). Production defaults are
+      // unchanged (300/min, 60/min).
       IR_API_RATE_LIMIT: "6000",
       IR_CASES_RATE_LIMIT: "6000",
     },

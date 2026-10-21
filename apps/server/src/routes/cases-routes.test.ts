@@ -26,9 +26,9 @@ function withAdmin(init: RequestInit = {}): RequestInit {
   return { ...init, headers };
 }
 
-// L-53 (P4-007): the per-route cases limiter must honor IR_CASES_RATE_LIMIT — the e2e
-// suite is ONE trusted client in a hermetic environment whose honest load crossed the
-// hardcoded 60/min in CI (HTTP 429 on case-open, proven from the CI failure artifact).
+// L-53 (P4-007): the per-route cases limiter must honor IR_CASES_RATE_LIMIT. What the
+// CI failure artifact PROVED is that case-open received HTTP 429; which limiter
+// (this one or the global one) rejected it is not conclusively distinguishable.
 // Production keeps the default; the override makes the ceiling a deployment decision.
 it("the cases limiter honors IR_CASES_RATE_LIMIT (env-configurable, default unchanged)", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "ir-cases-rate-"));
