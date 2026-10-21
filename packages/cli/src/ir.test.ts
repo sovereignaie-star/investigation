@@ -58,6 +58,58 @@ const run = async (args: string[]) => {
   return { code, text: out.join("\n") };
 };
 
+/** `run` with injected CLI options (P4-009 scheduler tests drive the clock, the sleep and the signal). */
+const runWith = async (args: string[], opts: NonNullable<Parameters<typeof main>[3]>) => {
+  const out: string[] = [];
+  const code = await main(
+    args,
+    (s) => out.push(s),
+    (s) => out.push(s),
+    opts,
+  );
+  return { code, text: out.join("\n") };
+};
+
+/** The simulation-world rules of one monitored source; rewriting the file changes what the next fetch sees. */
+function simRules(dir: string, server: string): string {
+  const file = path.join(dir, "..", `${path.basename(dir)}.rules.json`);
+  writeFileSync(
+    file,
+    JSON.stringify([
+      {
+        match: "https://example.com/",
+        response: { status: 200, headers: { "content-type": "text/html", server }, body: "<html>ok</html>" },
+      },
+    ]),
+  );
+  return file;
+}
+
+/** The `--json` shape of `ir monitor list` (P4-009). */
+interface MonitorListJson {
+  monitors: Array<{
+    id: string;
+    transformId: string;
+    subjectType: string;
+    subjectValue: string;
+    intervalMinutes: number;
+    removed?: boolean;
+    checks: Array<{
+      checkId: string;
+      status: string;
+      at: string;
+      changed?: boolean;
+      alert?: { added: string[]; removed: string[]; changed: string[] };
+      error?: string;
+    }>;
+    alertCount: number;
+  }>;
+}
+
+/** Runs `ir monitor list --json` and returns the parsed monitors. */
+const monitors = async (dir: string): Promise<MonitorListJson["monitors"]> =>
+  (JSON.parse((await run(["monitor", dir, "list", "--json"])).text) as MonitorListJson).monitors;
+
 describe("ir verify (P1-012)", () => {
   it("reports an intact case as OK with every section, exit 0", async () => {
     const { dir, keyFile, cpFile } = makeCase();
@@ -622,3 +674,226 @@ describe("ir import (P2-031: local receiver dumps)", () => {
     expect((await run(["import", dir, "ais"])).code).toBe(2);
   });
 });
+
+describe("ir monitor (P4-009)", () => {
+  /** A fresh case + a monitor on TR-010 over one simulated URL, with rules the test rewrites between checks. */
+  async function monitoredCase(every: string) {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const add = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", every]);
+    expect(add.code).toBe(0);
+    return { dir, rules, id: (await monitors(dir))[0].id };
+  }
+
+  it("usage errors: missing verb, missing or invalid --every, unknown transform and unknown monitor exit 2", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-usage-"));
+    dirs.push(dir);
+    const missing = await run(["monitor", dir]);
+    expect(missing.code).toBe(2);
+    expect(missing.text).toContain("ir monitor:");
+    expect((await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/"])).code).toBe(2);
+    const zero = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "0"]);
+    expect(zero.code).toBe(2);
+    expect(zero.text).toContain("--every");
+    expect((await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "abc"])).code).toBe(2);
+    expect((await run(["monitor", dir, "add", "TR-999", "url", "https://example.com/", "--every", "5"])).code).toBe(2);
+    const add = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"]);
+    expect(add.code).toBe(0);
+    const unknown = await run(["monitor", dir, "check", "m-does-not-exist"]);
+    expect(unknown.code).toBe(2);
+    expect(unknown.text).toContain("m-does-not-exist");
+  });
+
+  it("add schedules a monitor on the case's audit chain and list shows it", async () => {
+    const { dir } = await monitoredCase("5");
+    const list = await run(["monitor", dir, "list"]);
+    expect(list.code).toBe(0);
+    expect(list.text).toContain("TR-010");
+    expect(list.text).toContain("every 5m");
+    expect(list.text).toContain("checks 0");
+    expect(list.text).toContain("alerts 0");
+    // the configuration is an audit event on the case chain (the proxy.set pattern)
+    const c = openCase(dir, { actor: "test" });
+    const scheduled = c.auditTrail().filter((e) => e.action === "monitor.scheduled");
+    c.close();
+    expect(scheduled).toHaveLength(1);
+  });
+
+  it("adding the same subject twice (in an equivalent spelling) does not create a second monitor", async () => {
+    const { dir } = await monitoredCase("5");
+    const again = await run(["monitor", dir, "add", "TR-010", "url", "HTTPS://Example.com/", "--every", "5"]);
+    expect(again.code).toBe(0);
+    expect(again.text).toContain("already scheduled");
+    expect((await monitors(dir)).length).toBe(1);
+    // re-adding with a different interval updates the same monitor (latest wins), it does not duplicate it
+    const updated = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "10"]);
+    expect(updated.code).toBe(0);
+    expect(updated.text).toContain("every 10m");
+    expect((await monitors(dir)).length).toBe(1);
+    expect((await monitors(dir))[0].intervalMinutes).toBe(10);
+  });
+
+  it("a check runs the transform through the real engine: the first success establishes the baseline without an alert", async () => {
+    const { dir, rules, id } = await monitoredCase("5");
+    const r = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("baseline established");
+    expect(r.text).toContain("findings 2");
+    expect(r.text).not.toContain("ALERT");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(1);
+    expect(m.checks[0].status).toBe("success");
+    expect(m.checks[0].changed).toBe(false);
+    expect(m.alertCount).toBe(0);
+  });
+
+  it("no change on the next check: no alert, and the check is still logged (UC-10: تسجيل كل فحص)", async () => {
+    const { dir, rules, id } = await monitoredCase("5");
+    await run(["monitor", dir, "check", id, "--sim", rules]);
+    const r = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("no change");
+    expect(r.text).not.toContain("ALERT");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(2); // every check is logged, changed or not
+    expect(m.alertCount).toBe(0);
+  });
+
+  it("a real change alerts once, the unchanged re-check does not repeat it, and returning to the old state alerts again", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rulesA = simRules(dir, "nginx");
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // baseline: nginx
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // no change
+    const rulesB = simRules(dir, "apache");
+    const changed = await run(["monitor", dir, "check", id, "--sim", rulesB]);
+    expect(changed.code).toBe(0);
+    expect(changed.text).toContain("CHANGED");
+    expect(changed.text).toContain("ALERT");
+    expect(changed.text).toContain("has_technology");
+    const again = await run(["monitor", dir, "check", id, "--sim", rulesB]); // same new state: no repeat
+    expect(again.code).toBe(0);
+    expect(again.text).toContain("no change");
+    const rulesA2 = simRules(dir, "nginx"); // the file is rewritten in place: the source returns to the old state
+    const back = await run(["monitor", dir, "check", id, "--sim", rulesA2]); // return to the old state is a NEW change
+    expect(back.code).toBe(0);
+    expect(back.text).toContain("ALERT");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(5);
+    expect(m.alertCount).toBe(2); // exactly one alert per state transition, never a duplicate
+  });
+
+  it("a failed check is logged with its error, changes nothing about the baseline, and alerts nothing", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rulesA = simRules(dir, "nginx");
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // baseline: nginx
+    // the source now fails: the check fails (exit 1), is logged as failed, and the baseline survives
+    const failing = path.join(path.dirname(rulesA), "failing.rules.json");
+    writeFileSync(failing, JSON.stringify([{ match: "https://example.com/", failure: { kind: "transport:timeout" } }]));
+    const fail = await run(["monitor", dir, "check", id, "--sim", failing]);
+    expect(fail.code).toBe(1);
+    expect(fail.text).toContain("failed");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(2);
+    expect(m.checks[1].status).toBe("failed");
+    expect(m.checks[1].alert).toBeUndefined();
+    expect(m.alertCount).toBe(0);
+    // the source recovers to the SAME state: no change vs the surviving baseline, no alert
+    const ok = await run(["monitor", dir, "check", id, "--sim", rulesA]);
+    expect(ok.code).toBe(0);
+    expect(ok.text).toContain("no change");
+  });
+
+  it("remove unschedules a monitor and a check on it is refused", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rm = await run(["monitor", dir, "remove", id]);
+    expect(rm.code).toBe(0);
+    const m = (await monitors(dir))[0];
+    expect(m.removed).toBe(true);
+    const check = await run(["monitor", dir, "check", id]);
+    expect(check.code).toBe(2);
+  });
+
+  it("the scheduler runs only DUE checks: --once checks an overdue monitor and skips one checked moments ago", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-run-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const clock = manualClock("2026-10-22T10:00:00.000Z");
+    const add = await runWith(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"], { clock });
+    expect(add.code).toBe(0);
+    const id = (await monitors(dir))[0].id;
+    // a check run now (at t0) makes the monitor not due again until t0+5m
+    const check = await runWith(["monitor", dir, "check", id, "--sim", rules], { clock });
+    expect(check.code).toBe(0);
+    const notDue = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(notDue.code).toBe(0);
+    expect(notDue.text).toContain("0 due");
+    expect((await monitors(dir))[0].checks).toHaveLength(1); // nothing ran
+    // 6 minutes later the monitor is due: --once runs exactly one catch-up check (no compensatory flood)
+    clock.advance(6 * 60_000);
+    const due = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(due.code).toBe(0);
+    expect(due.text).toContain("1 due");
+    expect((await monitors(dir))[0].checks).toHaveLength(2);
+  });
+
+  it("the scheduler loop honors the interval with the injected clock and sleep, and stops cleanly on the signal", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-loop-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const clock = manualClock("2026-10-22T10:00:00.000Z");
+    await runWith(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "1"], { clock });
+    const controller = new AbortController();
+    let wake: (() => void) | undefined;
+    const sleeps: number[] = [];
+    const loop = runWith(["monitor", dir, "run", "--sim", rules], {
+      clock,
+      signal: controller.signal,
+      sleep: (ms, signal) =>
+        new Promise<void>((resolve) => {
+          sleeps.push(ms);
+          wake = resolve;
+          signal.addEventListener("abort", () => resolve());
+        }),
+    });
+    // the never-checked monitor is due immediately: check #1 runs before the first sleep
+    await waitUntil(async () => (await monitors(dir))[0].checks.length === 1);
+    // the loop sleeps until the next due time (t0 + 1m), capped at the 60 s poll
+    await waitUntil(async () => sleeps.length === 1);
+    expect(sleeps[0]).toBe(60_000);
+    // 2 minutes pass while the loop sleeps: on wake the monitor is due again → check #2
+    clock.advance(2 * 60_000);
+    wake?.();
+    await waitUntil(async () => (await monitors(dir))[0].checks.length === 2);
+    // the signal stops the loop cleanly (exit 0), never mid-write
+    controller.abort();
+    const r = await loop;
+    expect(r.code).toBe(0);
+  });
+
+  it("refuses an encrypted case: add cannot schedule a monitor whose checks could never run", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-enc-"));
+    dirs.push(dir);
+    openCase(dir, {
+      actor: "a",
+      passphrase: "passphrase for tests",
+      kdf: { memoryKiB: 256, passes: 1, parallelism: 1 },
+      create: { title: "t", purpose: "encrypted case test", legalBasis: "self_assessment" },
+    }).close();
+    const add = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"]);
+    expect(add.code).toBe(2);
+    expect(add.text).toContain("refusing to schedule a monitor on an encrypted case");
+    const check = await run(["monitor", dir, "check", "m-any"]);
+    expect(check.code).toBe(2);
+    expect(check.text).toContain("refusing to run a transform against an encrypted case");
+  });
+});
+
+/** Awaits a condition that the CLI's own asynchrony makes eventually true (P4-009 loop tests). */
+async function waitUntil(cond: () => Promise<boolean>, tries = 200): Promise<void> {
+  for (let i = 0; i < tries; i++) {
+    if (await cond()) return;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  throw new Error("condition never became true");
+}
