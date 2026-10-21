@@ -6,6 +6,51 @@ const zero = (): Counts => ({ positive: 0, negative: 0, error: 0 });
 const byId = <T extends { id: string }>(a: T, b: T) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const sorted = (s: Iterable<string>) => [...new Set(s)].sort();
 
+/** P4-006 — one observation as the projections serve it per claim: the bitemporal contract in one row.
+ *  `observedAt` is the OBSERVATION time (when we saw it); the claim's validity lives on the claim
+ *  (validFrom/validTo) and must never leak into this record. */
+export interface ClaimObservation {
+  observationId: string;
+  evidenceId: string;
+  observedAt: string;
+  kind: "positive" | "negative" | "error";
+}
+
+/** P4-006 — observations sort by MOMENT, not by text: ISO strings with mixed timezone offsets
+ *  ("2026-01-01T10:00:00-05:00" = 15:00Z) make text order lie about which came first.
+ *  The schema accepts fractional seconds of ANY length (verified: 20 digits pass
+ *  `z.iso.datetime({ offset: true })`, which also accepts a missing-seconds `T00:00Z` form),
+ *  which Date.parse collapses — so the moment key compares the whole-second instant via
+ *  Date.parse PLUS the fraction as full decimal TEXT (right-padded to the longer fraction,
+ *  never truncated, never converted to a number): `.1` equals `.10`, `.01` sorts before both,
+ *  and every accepted precision is preserved. */
+const ISO_MOMENT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2})?)(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
+const momentKey = (t: string): { ms: number; frac: string } => {
+  const m = ISO_MOMENT.exec(t);
+  if (!m) return { ms: Date.parse(t), frac: "" };
+  return { ms: Date.parse(`${m[1]}T${m[2]}${m[4]}`), frac: m[3] ?? "" };
+};
+const byObservedMoment = (a: string, b: string): number => {
+  const ka = momentKey(a);
+  const kb = momentKey(b);
+  if (ka.ms !== kb.ms) return ka.ms - kb.ms;
+  const n = Math.max(ka.frac.length, kb.frac.length);
+  const fa = ka.frac.padEnd(n, "0");
+  const fb = kb.frac.padEnd(n, "0");
+  return fa < fb ? -1 : fa > fb ? 1 : 0;
+};
+const byMoment = (a: { id: string; observedAt: string }, b: { id: string; observedAt: string }) => {
+  const d = byObservedMoment(a.observedAt, b.observedAt);
+  return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+};
+const claimObservations = (obs: StoredObservation[] = []): ClaimObservation[] =>
+  obs
+    .map((o) => ({ observationId: o.id, evidenceId: o.evidenceId, observedAt: o.observedAt, kind: o.kind }))
+    .sort((a, b) => {
+      const d = byObservedMoment(a.observedAt, b.observedAt);
+      return d !== 0 ? d : a.observationId < b.observationId ? -1 : a.observationId > b.observationId ? 1 : 0;
+    });
+
 export interface GraphNode {
   id: string;
   type: string;
@@ -15,8 +60,18 @@ export interface GraphNode {
   /** Other entity ids shown as this node: same canonical key, or merged into it. */
   aliases: string[];
   /** Claims whose object is a literal value. `evidenceIds` per claim: every field shown
-   *  to the investigator must link to its evidence (P3-008). */
-  attributes: { claimId: string; predicate: string; value: string | number | boolean; confidence: number; evidenceIds: string[] }[];
+   *  to the investigator must link to its evidence (P3-008). P4-006: literal claims carry the
+   *  SAME bitemporal data as relation edges — validity on the claim, observations beside it. */
+  attributes: {
+    claimId: string;
+    predicate: string;
+    value: string | number | boolean;
+    confidence: number;
+    validFrom: string | null;
+    validTo: string | null;
+    evidenceIds: string[];
+    observations: ClaimObservation[];
+  }[];
   observations: Counts;
   evidenceIds: string[];
 }
@@ -30,6 +85,8 @@ export interface GraphEdge {
   validTo: string | null;
   explanation: string;
   evidenceIds: string[];
+  /** P4-006 — the claim's own observations (id, evidence, time, kind), earliest moment first. */
+  observations: ClaimObservation[];
 }
 export interface Graph {
   nodes: GraphNode[];
@@ -88,7 +145,10 @@ export function graphView(p: Projector): Graph {
         predicate: c.predicate,
         value: c.value as string | number | boolean,
         confidence: c.confidence,
+        validFrom: c.validFrom,
+        validTo: c.validTo,
         evidenceIds: sorted((byClaim.get(c.id) ?? []).map((o) => o.evidenceId)),
+        observations: claimObservations(byClaim.get(c.id)),
       });
       continue;
     }
@@ -104,6 +164,7 @@ export function graphView(p: Projector): Graph {
       validTo: c.validTo,
       explanation: c.explanation,
       evidenceIds: sorted((byClaim.get(c.id) ?? []).map((o) => o.evidenceId)),
+      observations: claimObservations(byClaim.get(c.id)),
     });
   }
   const list = [...nodes.values()].map((n) => ({
@@ -136,7 +197,7 @@ export function tableView(p: Projector, graph: Graph = graphView(p)): TableRow[]
   }
   const { byNode } = observationsBy(p);
   return graph.nodes.map((n) => {
-    const times = (byNode.get(n.id) ?? []).map((o) => o.observedAt).sort();
+    const obs = (byNode.get(n.id) ?? []).slice().sort(byMoment);
     return {
       id: n.id,
       type: n.type,
@@ -146,8 +207,8 @@ export function tableView(p: Projector, graph: Graph = graphView(p)): TableRow[]
       claims: claims.get(n.id) ?? 0,
       observations: n.observations,
       evidence: n.evidenceIds.length,
-      firstObservedAt: times[0] ?? null,
-      lastObservedAt: times.at(-1) ?? null,
+      firstObservedAt: obs[0]?.observedAt ?? null,
+      lastObservedAt: obs.at(-1)?.observedAt ?? null,
     };
   });
 }
@@ -357,7 +418,7 @@ export function coverageView(p: Projector, graph: Graph = graphView(p)): Coverag
       lastAt: o.observedAt,
     };
     c[o.kind]++;
-    if (o.observedAt >= c.lastAt) {
+    if (byObservedMoment(o.observedAt, c.lastAt) >= 0) {
       c.last = o.kind;
       c.lastAt = o.observedAt;
     }
