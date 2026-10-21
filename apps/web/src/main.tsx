@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import "./index.css";
+import "@fontsource-variable/noto-sans-arabic";
 import { purgeLegacyCaseStorage } from "./store/storagePolicy";
 
 // P1-021: delete the graph that older builds kept in localStorage before anything renders.

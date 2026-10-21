@@ -5,7 +5,7 @@
 
 :root {
   color-scheme: light dark;
-  font-family: system-ui, "Segoe UI", "Noto Sans Arabic", "Noto Naskh Arabic", Tahoma, sans-serif;
+  font-family: "Noto Sans Arabic Variable", system-ui, "Segoe UI", "Noto Sans Arabic", "Noto Naskh Arabic", Tahoma, sans-serif;
 }
 
 body {
