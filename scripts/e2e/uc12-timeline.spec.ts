@@ -50,7 +50,10 @@ async function seededCase(): Promise<string> {
       transformId: "tr-dns",
       version: "1",
     });
-    // «تقريباً 2019»: the whole year IS the honest uncertainty window (closed)
+    // «تقريباً 2019»: the whole year IS the honest uncertainty window (closed).
+    // Registration is DELIBERATELY REVERSED relative to occurrence: this event's
+    // observations (2026-03/2026-04) are LATER than the 2020 event's observation
+    // (2026-03-02) — proving the timeline orders by OCCURRENCE, never by registration.
     c.append("claim.added", {
       id: "01FFFFFFFFFFFFFFFFFFFFFFF1",
       subjectId: PERSON,
@@ -63,15 +66,27 @@ async function seededCase(): Promise<string> {
       occurredFrom: "2019-01-01T00:00:00Z",
       occurredTo: "2019-12-31T23:59:59Z",
     });
+    // two observations appended in REVERSE moment order (later first): the projection
+    // sorts by moment, so the display must show the earlier (2026-03-15) FIRST.
     c.append("observation.added", {
       id: "01FFFFFFFFFFFFFFFFFFFFFFF2",
       claimId: "01FFFFFFFFFFFFFFFFFFFFFFF1",
       transformId: "tr-dns",
       evidenceId: "01EEEEEEEEEEEEEEEEEEEEEEEE",
-      observedAt: "2026-03-01T10:00:00Z",
+      observedAt: "2026-04-01T00:00:00Z",
       kind: "positive",
     });
-    // «قبل 2020-03»: open start — the upper bound is all we know
+    c.append("observation.added", {
+      id: "01FFFFFFFFFFFFFFFFFFFFFFF6",
+      claimId: "01FFFFFFFFFFFFFFFFFFFFFFF1",
+      transformId: "tr-dns",
+      evidenceId: "01EEEEEEEEEEEEEEEEEEEEEEEE",
+      observedAt: "2026-03-15T12:00:00Z",
+      kind: "negative",
+    });
+    // «قبل 2020-03»: open start — the upper bound is all we know. Its observation
+    // (2026-03-02) is the EARLIEST registration in the case — earlier than the 2019
+    // event's — yet the 2019 event renders FIRST (occurrence is the primary key).
     c.append("claim.added", {
       id: "01FFFFFFFFFFFFFFFFFFFFFFF3",
       subjectId: TARGET,
@@ -111,6 +126,11 @@ async function seededCase(): Promise<string> {
   return caseId;
 }
 
+/** The rows, as a helper the reversed-order assertions reuse before the count check. */
+function items2(page: import("@playwright/test").Page) {
+  return page.getByTestId("timeline-item");
+}
+
 test("UC-08: bitemporal timeline — correct ordering with temporal uncertainty, both dimensions, real selection", async ({ page }) => {
   const caseId = await seededCase();
   await openCase(page, caseId);
@@ -121,9 +141,23 @@ test("UC-08: bitemporal timeline — correct ordering with temporal uncertainty,
   // both dimensions are visible per event: the occurrence window label AND
   // the observations' own times with their kinds
   await expect(timeline).toContainText("من 2019-01-01T00:00:00Z إلى 2019-12-31T23:59:59Z");
-  await expect(timeline).toContainText("2026-03-01T10:00:00Z");
+  await expect(timeline).toContainText("2026-03-15T12:00:00Z");
+  await expect(timeline).toContainText("2026-04-01T00:00:00Z");
   await expect(timeline).toContainText("رصد خطأ");
   await expect(timeline).toContainText("2026-03-02T09:00:00-05:00");
+
+  // the SECOND dimension's own order (within an event, by registration moment):
+  // the two observations of the 2019 event were appended LATER-first, yet the
+  // display shows the earlier moment (2026-03-15) BEFORE the later (2026-04-01)
+  const firstRowText = (await items2(page).nth(0).textContent()) ?? "";
+  expect(firstRowText.indexOf("2026-03-15T12:00:00Z")).toBeLessThan(firstRowText.indexOf("2026-04-01T00:00:00Z"));
+
+  // OCCURRENCE is the primary order — registration NEVER overrides it: the 2019
+  // event's registrations (2026-03-15, 2026-04-01) are LATER than the 2020 event's
+  // registration (2026-03-02), yet the 2019 event renders FIRST.
+  const secondRowText = (await items2(page).nth(1).textContent()) ?? "";
+  expect(firstRowText).toContain("2019-01-01T00:00:00Z");
+  expect(secondRowText).toContain("2026-03-02T09:00:00-05:00");
 
   // honest uncertainty: the open bound says «غير محددة» — never a faked bound
   await expect(timeline).toContainText("البداية غير محددة — حتى 2020-03-01T00:00:00Z");

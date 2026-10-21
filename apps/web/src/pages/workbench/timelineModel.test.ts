@@ -139,6 +139,29 @@ describe("sortTimelineItems — ترتيب صحيح مع عدم اليقين ا�
     expect(sorted.map((i) => i.claimId)).toEqual(["a-earlier", "b-later"]);
   });
 
+  // Supplementary coverage (round-1 verification demand): the behavior PRE-EXISTS this
+  // test — the sort has always keyed on occurrence only — so this is NOT a red-first
+  // test; it proves the two-dimensional contract explicitly: occurrence is PRIMARY and
+  // the registration dimension (observedAt) NEVER overrides it, even when the two orders
+  // are reversed (the e2e proves the same through the real projection path).
+  it("supplementary: occurrence is the PRIMARY sort key — reversed registration order never overrides it", () => {
+    const late2019 = {
+      ...item("c-late-reg", "2019-01-01T00:00:00Z", "2019-12-31T23:59:59Z"),
+      observations: [
+        { observationId: "o-l1", evidenceId: "e1", observedAt: "2026-04-01T00:00:00Z", kind: "positive" as const },
+        { observationId: "o-l2", evidenceId: "e1", observedAt: "2026-03-15T12:00:00Z", kind: "negative" as const },
+      ],
+    };
+    const early2020 = {
+      ...item("c-early-reg", "2020-01-01T00:00:00Z", "2020-02-29T23:59:59Z"),
+      observations: [{ observationId: "o-e", evidenceId: "e1", observedAt: "2026-03-02T09:00:00-05:00", kind: "error" as const }],
+    };
+    // registration order is REVERSED relative to occurrence: the 2020 event was
+    // observed BEFORE the 2019 event — yet the timeline orders by occurrence (2019 first).
+    const sorted = sortTimelineItems([early2020, late2019]);
+    expect(sorted.map((i) => i.claimId)).toEqual(["c-late-reg", "c-early-reg"]);
+  });
+
   it("equal known bounds tie-break deterministically by claimId", () => {
     const sorted = sortTimelineItems([
       item("zz", "2019-01-01T00:00:00Z", "2019-01-31T00:00:00Z"),
