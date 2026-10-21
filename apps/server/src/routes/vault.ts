@@ -71,7 +71,12 @@ export function vaultRouter(
   const lookupsOn = lookupsEnabled(opts.env ?? process.env);
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env);
-  const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
+  // L-53: the ceiling is env-configurable (default unchanged — production keeps 60/min).
+  // The e2e suite is one trusted client whose honest load crossed the hardcoded limit
+  // in CI (HTTP 429 on case-open, proven from the failure artifact); the override makes
+  // the ceiling a deployment decision instead of a silent flake source.
+  const routeRateLimit = Number((opts.env ?? process.env)["IR_VAULT_RATE_LIMIT"] ?? 60);
+  const limiter = rateLimit({ windowMs: 60_000, limit: routeRateLimit, standardHeaders: "draft-8", legacyHeaders: false });
 
   // Vault writes and provider-funded lookups are not browser-public APIs. Parsing, throttling and authentication are
   // applied as one boundary so an unauthenticated request cannot reach a provider.

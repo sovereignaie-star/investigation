@@ -120,6 +120,24 @@ async function start(env: NodeJS.ProcessEnv = ENABLED, opts: { vaultTransportSta
   return { call, upstream: externalCalls, all, vault, vaultTestCalls };
 }
 
+// L-53 (P4-007): the per-route vault limiter must honor IR_VAULT_RATE_LIMIT (same
+// construction as the cases limiter — the hardcoded 60/min silently rejected the
+// e2e suite's honest load in CI; the override makes the ceiling a deployment decision).
+it("the vault limiter honors IR_VAULT_RATE_LIMIT (env-configurable, default unchanged)", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "ir-vault-rate-"));
+  const vault = openVault(path.join(dir, "vault.json"), { key: new Uint8Array(32).fill(3) });
+  const app = createApp(vaultRouter(() => vault, { env: { IR_ADMIN_TOKEN: ADMIN_TOKEN, IR_VAULT_RATE_LIMIT: "2" } }));
+  const server = app.listen(0, "127.0.0.1");
+  servers.push(server);
+  await new Promise((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+  const statuses: number[] = [];
+  for (let i = 0; i < 4; i += 1) {
+    statuses.push((await fetch(`${base}/vault/keys`, withAdmin())).status);
+  }
+  expect(statuses.slice(2)).toEqual([429, 429]);
+});
+
 describe("vault routes (P1-015, P1-026)", () => {
   it("stores, lists status, tests and deletes a key; no response ever contains the secret", async () => {
     const { call, upstream, all, vaultTestCalls } = await start();

@@ -51,6 +51,15 @@ export default defineConfig({
       IR_ADMIN_TOKEN: adminToken,
       SOVEREIGN_DATA_ROOT: dataRoot,
       IR_DATA_DIR: path.join(dataRoot, "vault"),
+      // L-53: the suite is ONE trusted hermetic client (127.0.0.1, no abuse surface) whose
+      // honest accumulated load crossed the per-route 60/min ceilings in CI's slower 60s
+      // windows — the failure artifact proved case-open hit HTTP 429 (تعذر فتح القضية:
+      // 429). The limiter code still runs (nothing is disabled); the ceilings are raised
+      // via the env overrides shipped with the routes (apps/server/src/routes/*.ts) so
+      // deployment can pick its own values. Production defaults are unchanged (60/min).
+      IR_CASES_RATE_LIMIT: "6000",
+      IR_VAULT_RATE_LIMIT: "6000",
+      IR_ENGINE_RATE_LIMIT: "6000",
     },
   },
 });

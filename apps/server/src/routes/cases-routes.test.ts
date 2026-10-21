@@ -26,6 +26,26 @@ function withAdmin(init: RequestInit = {}): RequestInit {
   return { ...init, headers };
 }
 
+// L-53 (P4-007): the per-route cases limiter must honor IR_CASES_RATE_LIMIT — the e2e
+// suite is ONE trusted client in a hermetic environment whose honest load crossed the
+// hardcoded 60/min in CI (HTTP 429 on case-open, proven from the CI failure artifact).
+// Production keeps the default; the override makes the ceiling a deployment decision.
+it("the cases limiter honors IR_CASES_RATE_LIMIT (env-configurable, default unchanged)", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "ir-cases-rate-"));
+  roots.push(root);
+  const app = createApp(casesRouter(() => root, { env: { ...ENABLED, IR_CASES_RATE_LIMIT: "2" } }));
+  const server = app.listen(0, "127.0.0.1");
+  servers.push(server);
+  await new Promise((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+  const statuses: number[] = [];
+  for (let i = 0; i < 4; i += 1) {
+    statuses.push((await fetch(`${base}/cases`, withAdmin())).status);
+  }
+  expect(statuses.slice(0, 2)).toEqual([200, 200]);
+  expect(statuses.slice(2)).toEqual([429, 429]);
+});
+
 async function start() {
   const root = mkdtempSync(path.join(tmpdir(), "ir-cases-"));
   roots.push(root);
