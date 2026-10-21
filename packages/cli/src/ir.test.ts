@@ -1225,6 +1225,84 @@ describe("ir monitor (P4-009)", () => {
     expect(m.alertCount).toBe(0);
   });
 
+  it("an exhausted conditional commit (unrelated concurrent writes, no newer claim) is VOID: it never becomes the baseline and the next check alerts against the last committed baseline", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rules = simRules(dir, "nginx");
+    const first = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(first.text).toContain("baseline established");
+    // the change every subsequent run sees: apache instead of nginx — A's voided result carries
+    // EXACTLY the findings a real run against these rules produces (TR-010 on the sim rules is
+    // deterministic: no run-local ids, no time fields), so if the voided result wrongly became the
+    // baseline the next check would report "no change" and MISS the alert
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        {
+          match: "https://example.com/",
+          response: { status: 200, headers: { "content-type": "text/html", server: "apache" }, body: "<html>ok</html>" },
+        },
+      ]),
+    );
+    const aResult: RunTransformResult = {
+      output: {
+        findings: [
+          {
+            predicate: "has_http_response",
+            objectType: "http_status",
+            objectValue: "200",
+            confidence: 1,
+            explanation: "HTTP 200 from example.com",
+            derivedFrom: "input",
+          },
+          {
+            predicate: "has_technology",
+            objectType: "technology",
+            objectValue: "server: apache",
+            confidence: 0.9,
+            explanation: "Response header server from example.com",
+            derivedFrom: "input",
+          },
+        ],
+      },
+      requestCount: 0,
+      evidence: [],
+    };
+    const list = await monitors(dir);
+    const m = list[0];
+    const asCaseMonitor = {
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    };
+    // A's commit: every decision read moves the head with an UNRELATED write (a note — never a newer
+    // claim of THIS monitor), so the conditional commit keeps failing until it exhausts its tries
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    const realTrail = cA.auditTrail.bind(cA);
+    let writes = 0;
+    cA.auditTrail = () => {
+      writes++;
+      cB.audit("note.added", `unrelated-${writes}`, { note: "a concurrent write unrelated to this monitor" });
+      return realTrail();
+    };
+    const lines: string[] = [];
+    commitMonitorSuccess(cA, asCaseMonitor, `${id}#2`, 5, aResult, systemClock, (s) => lines.push(s));
+    cA.auditTrail = realTrail;
+    // the exhausted commit is VOID: no alert decision, and it did NOT become the baseline
+    expect(lines.join("\n")).toContain("kept changing");
+    expect(lines.filter((l) => l.includes("ALERT"))).toHaveLength(0);
+    // the next check with the SAME changed state must alert ONCE against the last COMMITTED baseline
+    // (#1, nginx) — if the exhausted result had become the baseline this would print "no change"
+    const next = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(next.text).toContain("ALERT");
+    expect((await monitors(dir))[0].alertCount).toBe(1);
+    cA.close();
+    cB.close();
+  });
+
   it("refuses an encrypted case: add cannot schedule a monitor whose checks could never run", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-enc-"));
     dirs.push(dir);

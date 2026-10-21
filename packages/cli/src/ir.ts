@@ -983,7 +983,7 @@ interface MonitorCheck {
   readonly state?: MonitorFinding[];
   readonly alert?: { added: string[]; removed: string[]; changed: string[] };
   readonly error?: string;
-  /** true when a NEWER attempt of this monitor was already on the chain when this result landed: the result is logged but VOID — it never becomes the baseline and its alert never fires (P4-009 round 5). */
+  /** true when the result is VOID — logged but never a baseline and never an alert: either a NEWER attempt of this monitor was already on the chain when this result landed (P4-009 round 5), or the commit itself marked it void (P4-009 round 9: the conditional commit exhausted its tries under unrelated concurrent writes — no alert decision was committed). Both the stored flag and the read-time derivation feed it. */
   readonly superseded?: boolean;
 }
 
@@ -1057,9 +1057,11 @@ function monitorChecks(c: Case): MonitorCheck[] {
     const parsed = parseCheckResult(ev);
     if (!parsed) continue;
     bump(parsed.monitorId, attemptNumberOf(parsed.checkId));
-    // a result that lands when a NEWER attempt is already on the chain is SUPERSEDED (logged but void)
-    const superseded = parsed.status === "success" && attemptNumberOf(parsed.checkId) < (maxSeen.get(parsed.monitorId) ?? -1);
-    const check: MonitorCheck = superseded ? { ...parsed, superseded: true } : parsed;
+    // a result is SUPERSEDED (logged but void) when a NEWER attempt was already on the chain when it
+    // landed, OR when the commit itself marked it void (a conditional commit that exhausted its
+    // tries) — the stored flag must survive the round trip, or a voided result would become a baseline
+    const derived = parsed.status === "success" && attemptNumberOf(parsed.checkId) < (maxSeen.get(parsed.monitorId) ?? -1);
+    const check: MonitorCheck = derived ? { ...parsed, superseded: true } : parsed;
     // the result replaces its own started entry (an attempt that completed); a result without a
     // started entry (a legacy chain) is kept as-is.
     const idx = checks.findIndex((k) => k.checkId === parsed.checkId && k.status === "incomplete");
@@ -1106,6 +1108,7 @@ function checkResultExtras(d: Record<string, unknown>): Partial<MonitorCheck> {
     ...(typeof d["fromSeq"] === "number" ? { fromSeq: d["fromSeq"] as number } : {}),
     ...(typeof d["findingsCount"] === "number" ? { findingsCount: d["findingsCount"] as number } : {}),
     ...(d["changed"] === true ? { changed: true } : {}),
+    ...(d["superseded"] === true ? { superseded: true } : {}),
     ...(Array.isArray(d["state"]) ? { state: d["state"] as MonitorFinding[] } : {}),
     ...(isMonitorAlert(d["alert"]) ? { alert: d["alert"] as MonitorCheck["alert"] } : {}),
     ...(typeof d["error"] === "string" ? { error: d["error"] as string } : {}),
