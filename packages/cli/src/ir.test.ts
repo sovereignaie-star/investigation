@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { manualClock } from "@ir/core";
+import { manualClock, seededRandom, ulidFactory } from "@ir/core";
 import { checkpoint, generateInstallationKey, signCheckpoint } from "@ir/ledger";
 import { CASE_DB, openCase, verifyCase } from "@ir/store";
 import { main } from "./ir.ts";
@@ -41,6 +41,13 @@ function makeCase() {
   dirs.push(keyFile, cpFile);
   return { dir, keyFile, cpFile };
 }
+/** The seq of the last entry — the fixture chain is never empty, and the check says so. */
+function lastSeq(entries: readonly { seq: number }[]): number {
+  const last = entries.at(-1);
+  if (last === undefined) throw new Error("fixture chain must not be empty");
+  return last.seq;
+}
+
 const run = async (args: string[]) => {
   const out: string[] = [];
   const code = await main(
@@ -146,6 +153,113 @@ describe("ir verify (P1-012)", () => {
     expect(open.text).toContain("evidence  PASS  1 blobs re-hashed");
     writeFileSync(pf, "wrong passphrase!");
     expect((await run(["verify", dir, "--passphrase-file", pf])).code).toBe(2);
+  });
+});
+
+/**
+ * P4-008 (T-TIME-006..010/UC-09): `ir diff` — مقارنة لقطتين من سلسلة القضية بالمفاتيح
+ * القانونية. الجولة الحمراء: الأمر غير موجود قبل التنفيذ (خروج 2 من الاستعمال) —
+ * موثقة في WORKLOG قبل أي تنفيذ (قاعدة J-1).
+ */
+describe("ir diff (P4-008)", () => {
+  function makeDiffCase() {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-diff-"));
+    dirs.push(dir);
+    const clock = manualClock("2026-10-10T13:00:00.000Z");
+    const c = openCase(dir, {
+      actor: "analyst",
+      clock,
+      create: { title: "t", purpose: "مراجعة بنية تحتية", legalBasis: "security_incident" },
+    });
+    const id = ulidFactory(clock, seededRandom(7));
+    const entity = (type: string, value: string) => {
+      const entityId = id();
+      c.ledger.append("entity.added", {
+        id: entityId,
+        type,
+        canonicalKey: `${type}:${value}`,
+        labels: { en: value },
+        props: {},
+      });
+      return entityId;
+    };
+    const alice = entity("person", "alice");
+    const bob = entity("person", "bob");
+    c.ledger.append("claim.added", {
+      id: id(),
+      subjectId: alice,
+      predicate: "knows",
+      objectId: bob,
+      validFrom: null,
+      validTo: null,
+      occurredFrom: null,
+      occurredTo: null,
+      confidence: 0.8,
+      explanation: "fixture",
+    });
+    const fromSeq = lastSeq(c.ledger.entries());
+    const dave = entity("person", "dave");
+    c.ledger.append("claim.added", {
+      id: id(),
+      subjectId: dave,
+      predicate: "name",
+      value: "Dave",
+      validFrom: null,
+      validTo: null,
+      occurredFrom: null,
+      occurredTo: null,
+      confidence: 0.8,
+      explanation: "fixture",
+    });
+    c.ledger.append("merge.decided", {
+      id: id(),
+      entityIds: [alice, bob],
+      survivorId: alice,
+      reasons: ["same person"],
+      decidedBy: "analyst",
+      decidedAt: "2026-10-10T13:00:00.000Z",
+      reverted: false,
+    });
+    const toSeq = lastSeq(c.ledger.entries());
+    c.close();
+    return { dir, fromSeq, toSeq };
+  }
+
+  it("diffs two snapshots of one case by legal keys and prints the counts (UC-09)", async () => {
+    const { dir, fromSeq, toSeq } = makeDiffCase();
+    const a = await run(["diff", dir, "--from", String(fromSeq), "--to", String(toSeq)]);
+    expect(a.code).toBe(0);
+    expect(a.text).toContain(`diff seq ${fromSeq} -> ${toSeq}`);
+    expect(a.text).toMatch(/entities \+1 -1 ~1/);
+    expect(a.text).toMatch(/claims \+1 -0 ~1/);
+  });
+
+  it("diffing a snapshot against itself reports an empty diff", async () => {
+    const { dir, toSeq } = makeDiffCase();
+    const a = await run(["diff", dir, "--from", String(toSeq), "--to", String(toSeq)]);
+    expect(a.code).toBe(0);
+    expect(a.text).toMatch(/entities \+0 -0 ~0/);
+    expect(a.text).toMatch(/claims \+0 -0 ~0/);
+  });
+
+  it("rejects a non-integer --from or --to with the usage error", async () => {
+    const { dir } = makeDiffCase();
+    expect((await run(["diff", dir, "--from", "x", "--to", "1"])).code).toBe(2);
+    expect((await run(["diff", dir, "--from", "1", "--to", "y"])).code).toBe(2);
+  });
+
+  it("serves the machine-readable diff with --json", async () => {
+    const { dir, fromSeq, toSeq } = makeDiffCase();
+    const a = await run(["diff", dir, "--from", String(fromSeq), "--to", String(toSeq), "--json"]);
+    expect(a.code).toBe(0);
+    const parsed = JSON.parse(a.text) as {
+      fromSeq: number;
+      toSeq: number;
+      counts: { entities: { added: number; removed: number; changed: number } };
+    };
+    expect(parsed.fromSeq).toBe(fromSeq);
+    expect(parsed.toSeq).toBe(toSeq);
+    expect(parsed.counts.entities).toEqual({ added: 1, removed: 1, changed: 1 });
   });
 });
 
