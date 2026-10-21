@@ -6,7 +6,7 @@
     "codegen": "orval --config ./orval.config.ts && node ./postprocess.mjs && prettier --log-level warn --ignore-path /dev/null --write ../api-zod/src/generated ../api-client-react/src/generated && pnpm -w run typecheck:libs"
   },
   "devDependencies": {
-    "orval": "8.22.0",
-    "prettier": "^3.9.9"
+    "orval": "8.43.0",
+    "prettier": "^3.9.10"
   }
 }
