@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import "./index.css";
 import { purgeLegacyCaseStorage } from "./store/storagePolicy";
 
@@ -12,6 +13,9 @@ if (!container) throw new Error("#root element not found in index.html");
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    {/* P3-023: last line of defence — an error outside the shell still shows a copyable report, never a white screen. */}
+    <AppErrorBoundary path="/">
+      <App />
+    </AppErrorBoundary>
   </StrictMode>,
 );

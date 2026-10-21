@@ -328,4 +328,14 @@ export const en = {
     "The vault sits behind the admin boundary — enter the admin token (memory-only for this session, no browser storage).",
   "settings.keys.readVault": "Read the vault",
   "evidence.sha256": "sha256:",
+  // ---- P3-023: failure states
+  "errors.boundary.title": "This screen could not be displayed",
+  "errors.boundary.hint":
+    "An unexpected error occurred. Your saved data is intact — you can retry or go to another screen. Copy the report below when reporting the problem.",
+  "errors.boundary.reportLabel": "Error report (copyable)",
+  "errors.boundary.copy": "Copy report",
+  "errors.boundary.copied": "Report copied",
+  "errors.boundary.copyFailed": "Automatic copy failed — select the text above and copy it manually",
+  "errors.boundary.retry": "Retry",
+  "errors.boundary.reload": "Reload page",
 } satisfies Record<keyof typeof ar, string>;

@@ -12,6 +12,9 @@ import { AppShell, Button } from "@ir/ui";
 // locale store so a language switch re-renders the whole tree.
 import { t, useI18n } from "@ir/i18n";
 import { IDENTIFIER_LIST } from "./utils/identifierList";
+// P3-023: the error boundary and the skeleton loading state.
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import { PageSkeleton } from "./components/PageSkeleton";
 // P3-003 (طلب ب): the cases screen, wired to the generated SDK over the case lifecycle API.
 // P3-004 (UC-02): the workbench input flow — paste text or read a file, extract identifiers.
 // P3-010: the raw-evidence screen — sanitized HTML in a sandboxed iframe, text, or honest refusal.
@@ -66,25 +69,27 @@ export default function App() {
         {/* P3-003..P3-005: workbench routes — overview, cases, input flow and graph bench.
             P3-019: the heavy screens are lazy — Suspense shows the honest loading
             state while the route's chunk downloads. */}
-        <Suspense fallback={<p className="text-sm text-muted-foreground">{t("common.loading")}</p>}>
-          {path === "/cases" ? (
-            <CasesPage />
-          ) : path === "/evidence" ? (
-            <EvidencePage />
-          ) : path === "/settings" ? (
-            <SettingsPage />
-          ) : path === "/workbench" ? (
-            <WorkbenchPage />
-          ) : path === "/graph-bench" ? (
-            <GraphBenchPage />
-          ) : path === "/canvas" ? (
-            <div className="h-[calc(100vh-4rem)]">
-              <InfiniteCanvas />
-            </div>
-          ) : (
-            <Overview />
-          )}
-        </Suspense>
+        <AppErrorBoundary path={path}>
+          <Suspense fallback={<PageSkeleton />}>
+            {path === "/cases" ? (
+              <CasesPage />
+            ) : path === "/evidence" ? (
+              <EvidencePage />
+            ) : path === "/settings" ? (
+              <SettingsPage />
+            ) : path === "/workbench" ? (
+              <WorkbenchPage />
+            ) : path === "/graph-bench" ? (
+              <GraphBenchPage />
+            ) : path === "/canvas" ? (
+              <div className="h-[calc(100vh-4rem)]">
+                <InfiniteCanvas />
+              </div>
+            ) : (
+              <Overview />
+            )}
+          </Suspense>
+        </AppErrorBoundary>
       </AppShell>
     </QueryClientProvider>
   );
