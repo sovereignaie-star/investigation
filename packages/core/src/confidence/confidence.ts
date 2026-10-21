@@ -19,6 +19,9 @@
  * tested independently of the concrete numbers.
  */
 
+/** P4-003: the canonical identity of a source — repetition across mirrors is ONE group. */
+import { canonicalSource } from "./independence.ts";
+
 export type ReliabilityGrade = "A" | "B" | "C" | "D" | "E" | "F";
 export type CredibilityGrade = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -44,15 +47,23 @@ export const CREDIBILITY_WEIGHTS: Record<CredibilityGrade, number> = {
 
 /** One observation of a claim: which original source it traces back to, with its grades. */
 export interface Observation {
-  /** Identity of the ORIGINAL source — observations sharing it are ONE independent group. */
+  /** Identity of the ORIGINAL source — observations with the same CANONICAL identity (P4-003) are ONE independent group. */
   source: string;
   reliability: ReliabilityGrade;
   credibility: CredibilityGrade;
 }
 
+/** A repetition that was merged into a group — REPORTED, never counted (التكرار لا يرفع الثقة). */
+export interface SourceRepetition {
+  /** The duplicate (mirror) source string as the user entered it. */
+  source: string;
+  /** The group's original (first-seen) source string it was merged into. */
+  duplicateOf: string;
+}
+
 /** One independent group's contribution to the formula. */
 export interface GroupContribution {
-  /** The group's original source identity. */
+  /** The group's original source identity (first-seen raw spelling of the canonical key). */
   source: string;
   reliability: ReliabilityGrade;
   credibility: CredibilityGrade;
@@ -71,10 +82,12 @@ export interface Contradiction extends Observation {
 export interface ConfidenceResult {
   /** c(claim) ∈ [0,1]. */
   confidence: number;
-  /** The independent groups, in order of first appearance in the input. */
+  /** The independent groups, in deterministic canonical order (sorted by source identity). */
   groups: GroupContribution[];
   /** Contradicting evidence, displayed separately — never affects `confidence`. */
   contradictions: Contradiction[];
+  /** Merged repetitions (P4-003): sources that turned out to be the same original — never raise the score. */
+  repetitions: SourceRepetition[];
   /** Arabic rendering of the applied formula — the model is مفسَّر (explainable). */
   explanation: string;
 }
@@ -95,26 +108,41 @@ function groupWeight(observations: Observation[]): { weight: number; best: Obser
 
 /**
  * Computes c(claim) per 5.13. Deterministic, pure, order-independent (groups are
- * keyed by their original source). Contradictions pass through for separate
- * display and never touch the score.
+ * keyed by the source's CANONICAL identity — P4-003: mirrors and re-publications
+ * are ONE original, merged and reported in `repetitions`). Contradictions pass
+ * through for separate display and never touch the score.
  */
 export function claimConfidence(observations: Observation[], contradictions: Contradiction[] = []): ConfidenceResult {
-  // group by original source, preserving first-appearance order
+  // group by canonical source identity, preserving first-appearance order
   const bySource = new Map<string, Observation[]>();
+  const firstRawSource = new Map<string, string>();
+  const repetitions: SourceRepetition[] = [];
   for (const o of observations) {
-    const list = bySource.get(o.source);
-    if (list === undefined) bySource.set(o.source, [o]);
-    else list.push(o);
+    const key = canonicalSource(o.source);
+    const list = bySource.get(key);
+    if (list === undefined) {
+      bySource.set(key, [o]);
+      firstRawSource.set(key, o.source);
+    } else {
+      list.push(o);
+      const first = firstRawSource.get(key) as string;
+      if (o.source !== first) repetitions.push({ source: o.source, duplicateOf: first });
+    }
   }
 
   const groups: GroupContribution[] = [];
   let product = 1;
-  for (const [source, list] of bySource) {
+  // P4-003: iterate the groups in CANONICAL SORTED order so the product — and
+  // therefore the score — is BIT-EXACT order-independent (floating-point
+  // multiplication is not associative; first-appearance order would leak the
+  // input order into the last bits of the result).
+  for (const key of [...bySource.keys()].sort()) {
+    const list = bySource.get(key) as Observation[];
     const { weight, best } = groupWeight(list);
     const factor = 1 - weight;
     product *= factor;
     groups.push({
-      source,
+      source: firstRawSource.get(key) as string,
       reliability: best.reliability,
       credibility: best.credibility,
       weight,
@@ -138,7 +166,13 @@ export function claimConfidence(observations: Observation[], contradictions: Con
       ? ""
       : ` أدلة مناقضة تُعرض منفصلة ولا تُطرح آلياً (ADR-12): ${contradictions.map((c) => `${c.source} (r=${c.reliability}، k=${c.credibility}): ${c.summary}`).join("؛ ")}`;
 
-  const explanation = `الثقة = 1 − ${formula} = ${confidence.toFixed(4)}. ${sourcesLine}.${contradictionLine}`;
+  // P4-003: merged repetitions are REPORTED in the explanation — repetition never raises the score
+  const repetitionLine =
+    repetitions.length === 0
+      ? ""
+      : ` مصادر مكررة مُدمجة (التكرار لا يرفع الثقة): ${repetitions.map((r) => `${r.source} = ${r.duplicateOf}`).join("؛ ")}`;
 
-  return { confidence, groups, contradictions, explanation };
+  const explanation = `الثقة = 1 − ${formula} = ${confidence.toFixed(4)}. ${sourcesLine}.${repetitionLine}${contradictionLine}`;
+
+  return { confidence, groups, contradictions, repetitions, explanation };
 }
