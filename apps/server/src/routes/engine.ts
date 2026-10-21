@@ -58,12 +58,7 @@ function serializeResult(runId: string, result: { phase: string; processed: numb
 export function engineRouter(getEngine: () => RunEngine, opts: { env?: NodeJS.ProcessEnv } = {}): IRouter {
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env ?? process.env);
-  // L-53: the ceiling is env-configurable (default unchanged — production keeps 60/min).
-  // The e2e suite is one trusted client whose honest load crossed the hardcoded limit
-  // in CI (HTTP 429 on case-open, proven from the failure artifact); the override makes
-  // the ceiling a deployment decision instead of a silent flake source.
-  const routeRateLimit = Number((opts.env ?? process.env)["IR_ENGINE_RATE_LIMIT"] ?? 60);
-  const limiter = rateLimit({ windowMs: 60_000, limit: routeRateLimit, standardHeaders: "draft-8", legacyHeaders: false });
+  const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
 
   /**
    * P3-011: the run lifecycle. A submitted run must move on its own — nothing in

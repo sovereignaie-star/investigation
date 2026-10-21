@@ -65,28 +65,6 @@ async function submitRun(call: (p: string, init?: RequestInit) => Promise<{ stat
   return (JSON.parse(res.text) as { runId: string }).runId;
 }
 
-// L-53 (P4-007): the per-route engine limiter must honor IR_ENGINE_RATE_LIMIT (same
-// construction as the cases limiter — env-configurable, default unchanged).
-it("the engine limiter honors IR_ENGINE_RATE_LIMIT (env-configurable, default unchanged)", async () => {
-  const engine = new RunEngine({
-    transport: fakeTransport(),
-    caps: { maxNodes: 5, maxDepth: 3, maxRequests: 5, maxCostEstimate: 100, maxElapsedMs: 5_000 },
-    retryBaseMs: 1,
-  });
-  const app = createApp(engineRouter(() => engine, { env: { ...ENABLED, IR_ENGINE_RATE_LIMIT: "2" } }));
-  const server = app.listen(0, "127.0.0.1");
-  servers.push(server);
-  await new Promise((r) => server.once("listening", r));
-  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
-  const statuses: number[] = [];
-  for (let i = 0; i < 4; i += 1) {
-    // POST /runs passes the limiter and admin, then fails body validation (400) —
-    // the limiter's count is what is under test, not the handler's verdict.
-    statuses.push((await fetch(`${base}/runs`, withAdmin({ method: "POST" }))).status);
-  }
-  expect(statuses.slice(2)).toEqual([429, 429]);
-});
-
 describe("engine routes (P2-019)", () => {
   it("submits a run and returns a queued runId (202)", async () => {
     const { call } = await start();

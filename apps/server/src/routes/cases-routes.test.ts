@@ -46,6 +46,25 @@ it("the cases limiter honors IR_CASES_RATE_LIMIT (env-configurable, default unch
   expect(statuses.slice(2)).toEqual([429, 429]);
 });
 
+// L-53 (P4-007): the default ceiling is UNCHANGED by the override capability — 60/min
+// in a fixed window: the first 60 pass, the 61st is rejected. This guards the production
+// default against accidental drift while the override exists.
+it("the cases limiter default stays 60/min when no override is set", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "ir-cases-rate-default-"));
+  roots.push(root);
+  const app = createApp(casesRouter(() => root, { env: ENABLED }));
+  const server = app.listen(0, "127.0.0.1");
+  servers.push(server);
+  await new Promise((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+  const statuses: number[] = [];
+  for (let i = 0; i < 61; i += 1) {
+    statuses.push((await fetch(`${base}/cases`, withAdmin())).status);
+  }
+  expect(statuses.slice(0, 60)).not.toContain(429);
+  expect(statuses[60]).toBe(429);
+});
+
 async function start() {
   const root = mkdtempSync(path.join(tmpdir(), "ir-cases-"));
   roots.push(root);
