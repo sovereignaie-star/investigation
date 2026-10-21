@@ -321,6 +321,16 @@ export const ar = {
   "settings.keys.adminTokenHint": "الخزنة خلف حد الأدمن — أدخل رمز الإدارة (يبقى في الذاكرة لهذه الجلسة فقط، بلا أي تخزين متصفح).",
   "settings.keys.readVault": "قراءة الخزنة",
   "evidence.sha256": "sha256:",
+  // ---- P3-023: failure states
+  "errors.boundary.title": "تعذّر عرض هذه الشاشة",
+  "errors.boundary.hint":
+    "حدث خطأ غير متوقع. بياناتك المحفوظة سليمة ويمكنك إعادة المحاولة أو الانتقال إلى شاشة أخرى. انسخ التقرير أدناه عند الإبلاغ عن المشكلة.",
+  "errors.boundary.reportLabel": "تقرير الخطأ (قابل للنسخ)",
+  "errors.boundary.copy": "نسخ التقرير",
+  "errors.boundary.copied": "تم نسخ التقرير",
+  "errors.boundary.copyFailed": "تعذّر النسخ تلقائياً — حدّد النص أعلاه وانسخه يدوياً",
+  "errors.boundary.retry": "إعادة المحاولة",
+  "errors.boundary.reload": "إعادة تحميل الصفحة",
 } as const;
 
 export type MessageKey = keyof typeof ar;
