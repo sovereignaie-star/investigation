@@ -2,11 +2,12 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it } from "vitest";
-import { manualClock, seededRandom, ulidFactory } from "@ir/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { manualClock, seededRandom, systemClock, ulidFactory } from "@ir/core";
 import { checkpoint, generateInstallationKey, signCheckpoint } from "@ir/ledger";
+import type { RunTransformResult } from "@ir/transforms";
 import { CASE_DB, openCase, verifyCase } from "@ir/store";
-import { main } from "./ir.ts";
+import { claimCheck, commitMonitorSuccess, main, monitorSleep } from "./ir.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -57,6 +58,60 @@ const run = async (args: string[]) => {
   );
   return { code, text: out.join("\n") };
 };
+
+/** `run` with injected CLI options (P4-009 scheduler tests drive the clock, the sleep and the signal). */
+const runWith = async (args: string[], opts: NonNullable<Parameters<typeof main>[3]>) => {
+  const out: string[] = [];
+  const code = await main(
+    args,
+    (s) => out.push(s),
+    (s) => out.push(s),
+    opts,
+  );
+  return { code, text: out.join("\n") };
+};
+
+/** The simulation-world rules of one monitored source; rewriting the file changes what the next fetch sees. */
+function simRules(dir: string, server: string): string {
+  const file = path.join(dir, "..", `${path.basename(dir)}.rules.json`);
+  writeFileSync(
+    file,
+    JSON.stringify([
+      {
+        match: "https://example.com/",
+        response: { status: 200, headers: { "content-type": "text/html", server }, body: "<html>ok</html>" },
+      },
+    ]),
+  );
+  return file;
+}
+
+/** The `--json` shape of `ir monitor list` (P4-009). */
+interface MonitorListJson {
+  monitors: Array<{
+    id: string;
+    transformId: string;
+    subjectType: string;
+    subjectValue: string;
+    subjectKey: string;
+    intervalMinutes: number;
+    removed?: boolean;
+    checks: Array<{
+      checkId: string;
+      status: string;
+      at: string;
+      superseded?: boolean;
+      changed?: boolean;
+      alert?: { added: string[]; removed: string[]; changed: string[] };
+      error?: string;
+    }>;
+    alertCount: number;
+  }>;
+}
+
+/** Runs `ir monitor list --json` and returns the parsed monitors. */
+const monitors = async (dir: string): Promise<MonitorListJson["monitors"]> =>
+  (JSON.parse((await run(["monitor", dir, "list", "--json"])).text) as MonitorListJson).monitors;
 
 describe("ir verify (P1-012)", () => {
   it("reports an intact case as OK with every section, exit 0", async () => {
@@ -620,5 +675,707 @@ describe("ir import (P2-031: local receiver dumps)", () => {
     expect((await run(["import", dir, "nmea", file])).code).toBe(2);
     expect((await run(["import", dir, "ais", path.join(dir, "missing.ndjson")])).code).toBe(2);
     expect((await run(["import", dir, "ais"])).code).toBe(2);
+  });
+});
+
+describe("ir monitor (P4-009)", () => {
+  /** A fresh case + a monitor on TR-010 over one simulated URL, with rules the test rewrites between checks. */
+  async function monitoredCase(every: string) {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const add = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", every]);
+    expect(add.code).toBe(0);
+    return { dir, rules, id: (await monitors(dir))[0].id };
+  }
+
+  it("usage errors: missing verb, missing or invalid --every, unknown transform and unknown monitor exit 2", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-usage-"));
+    dirs.push(dir);
+    const missing = await run(["monitor", dir]);
+    expect(missing.code).toBe(2);
+    expect(missing.text).toContain("ir monitor:");
+    expect((await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/"])).code).toBe(2);
+    const zero = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "0"]);
+    expect(zero.code).toBe(2);
+    expect(zero.text).toContain("--every");
+    expect((await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "abc"])).code).toBe(2);
+    expect((await run(["monitor", dir, "add", "TR-999", "url", "https://example.com/", "--every", "5"])).code).toBe(2);
+    const add = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"]);
+    expect(add.code).toBe(0);
+    const unknown = await run(["monitor", dir, "check", "m-does-not-exist"]);
+    expect(unknown.code).toBe(2);
+    expect(unknown.text).toContain("m-does-not-exist");
+  });
+
+  it("add schedules a monitor on the case's audit chain and list shows it", async () => {
+    const { dir } = await monitoredCase("5");
+    const list = await run(["monitor", dir, "list"]);
+    expect(list.code).toBe(0);
+    expect(list.text).toContain("TR-010");
+    expect(list.text).toContain("every 5m");
+    expect(list.text).toContain("checks 0");
+    expect(list.text).toContain("alerts 0");
+    // the configuration is an audit event on the case chain (the proxy.set pattern)
+    const c = openCase(dir, { actor: "test" });
+    const scheduled = c.auditTrail().filter((e) => e.action === "monitor.scheduled");
+    c.close();
+    expect(scheduled).toHaveLength(1);
+  });
+
+  it("adding the same subject twice (in an equivalent spelling) does not create a second monitor", async () => {
+    const { dir } = await monitoredCase("5");
+    const again = await run(["monitor", dir, "add", "TR-010", "url", "HTTPS://Example.com/", "--every", "5"]);
+    expect(again.code).toBe(0);
+    expect(again.text).toContain("already scheduled");
+    expect((await monitors(dir)).length).toBe(1);
+    // re-adding with a different interval updates the same monitor (latest wins), it does not duplicate it
+    const updated = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "10"]);
+    expect(updated.code).toBe(0);
+    expect(updated.text).toContain("every 10m");
+    expect((await monitors(dir)).length).toBe(1);
+    expect((await monitors(dir))[0].intervalMinutes).toBe(10);
+  });
+
+  it("a check runs the transform through the real engine: the first success establishes the baseline without an alert", async () => {
+    const { dir, rules, id } = await monitoredCase("5");
+    const r = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("baseline established");
+    expect(r.text).toContain("findings 2");
+    expect(r.text).not.toContain("ALERT");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(1);
+    expect(m.checks[0].status).toBe("success");
+    expect(m.checks[0].changed).toBe(false);
+    expect(m.alertCount).toBe(0);
+  });
+
+  it("no change on the next check: no alert, and the check is still logged (UC-10: تسجيل كل فحص)", async () => {
+    const { dir, rules, id } = await monitoredCase("5");
+    await run(["monitor", dir, "check", id, "--sim", rules]);
+    const r = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(r.code).toBe(0);
+    expect(r.text).toContain("no change");
+    expect(r.text).not.toContain("ALERT");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(2); // every check is logged, changed or not
+    expect(m.alertCount).toBe(0);
+  });
+
+  it("a real change alerts once, the unchanged re-check does not repeat it, and returning to the old state alerts again", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rulesA = simRules(dir, "nginx");
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // baseline: nginx
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // no change
+    const rulesB = simRules(dir, "apache");
+    const changed = await run(["monitor", dir, "check", id, "--sim", rulesB]);
+    expect(changed.code).toBe(0);
+    expect(changed.text).toContain("CHANGED");
+    expect(changed.text).toContain("ALERT");
+    expect(changed.text).toContain("has_technology");
+    const again = await run(["monitor", dir, "check", id, "--sim", rulesB]); // same new state: no repeat
+    expect(again.code).toBe(0);
+    expect(again.text).toContain("no change");
+    const rulesA2 = simRules(dir, "nginx"); // the file is rewritten in place: the source returns to the old state
+    const back = await run(["monitor", dir, "check", id, "--sim", rulesA2]); // return to the old state is a NEW change
+    expect(back.code).toBe(0);
+    expect(back.text).toContain("ALERT");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(5);
+    expect(m.alertCount).toBe(2); // exactly one alert per state transition, never a duplicate
+  });
+
+  it("a failed check is logged with its error, changes nothing about the baseline, and alerts nothing", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rulesA = simRules(dir, "nginx");
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // baseline: nginx
+    // the source now fails: the check fails (exit 1), is logged as failed, and the baseline survives
+    const failing = path.join(path.dirname(rulesA), "failing.rules.json");
+    writeFileSync(failing, JSON.stringify([{ match: "https://example.com/", failure: { kind: "transport:timeout" } }]));
+    const fail = await run(["monitor", dir, "check", id, "--sim", failing]);
+    expect(fail.code).toBe(1);
+    expect(fail.text).toContain("failed");
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(2);
+    expect(m.checks[1].status).toBe("failed");
+    expect(m.checks[1].alert).toBeUndefined();
+    expect(m.alertCount).toBe(0);
+    // the source recovers to the SAME state: no change vs the surviving baseline, no alert
+    const ok = await run(["monitor", dir, "check", id, "--sim", rulesA]);
+    expect(ok.code).toBe(0);
+    expect(ok.text).toContain("no change");
+  });
+
+  it("remove unschedules a monitor and a check on it is refused", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rm = await run(["monitor", dir, "remove", id]);
+    expect(rm.code).toBe(0);
+    const m = (await monitors(dir))[0];
+    expect(m.removed).toBe(true);
+    const check = await run(["monitor", dir, "check", id]);
+    expect(check.code).toBe(2);
+  });
+
+  it("the scheduler runs only DUE checks: --once checks an overdue monitor and skips one checked moments ago", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-run-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const clock = manualClock("2026-10-22T10:00:00.000Z");
+    const add = await runWith(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"], { clock });
+    expect(add.code).toBe(0);
+    const id = (await monitors(dir))[0].id;
+    // a check run now (at t0) makes the monitor not due again until t0+5m
+    const check = await runWith(["monitor", dir, "check", id, "--sim", rules], { clock });
+    expect(check.code).toBe(0);
+    const notDue = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(notDue.code).toBe(0);
+    expect(notDue.text).toContain("0 due");
+    expect((await monitors(dir))[0].checks).toHaveLength(1); // nothing ran
+    // 6 minutes later the monitor is due: --once runs exactly one catch-up check (no compensatory flood)
+    clock.advance(6 * 60_000);
+    const due = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(due.code).toBe(0);
+    expect(due.text).toContain("1 due");
+    expect((await monitors(dir))[0].checks).toHaveLength(2);
+  });
+
+  it("the scheduler loop honors the interval with the injected clock and sleep, and stops cleanly on the signal", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-loop-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const clock = manualClock("2026-10-22T10:00:00.000Z");
+    await runWith(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "1"], { clock });
+    const controller = new AbortController();
+    let wake: (() => void) | undefined;
+    const sleeps: number[] = [];
+    const loop = runWith(["monitor", dir, "run", "--sim", rules], {
+      clock,
+      signal: controller.signal,
+      sleep: (ms, signal) =>
+        new Promise<void>((resolve) => {
+          sleeps.push(ms);
+          wake = resolve;
+          signal.addEventListener("abort", () => resolve());
+        }),
+    });
+    // the never-checked monitor is due immediately: check #1 runs before the first sleep
+    await waitUntil(async () => (await monitors(dir))[0].checks.length === 1);
+    // the loop sleeps until the next due time (t0 + 1m), capped at the 60 s poll
+    await waitUntil(async () => sleeps.length === 1);
+    expect(sleeps[0]).toBe(60_000);
+    // 2 minutes pass while the loop sleeps: on wake the monitor is due again → check #2
+    clock.advance(2 * 60_000);
+    wake?.();
+    await waitUntil(async () => (await monitors(dir))[0].checks.length === 2);
+    // the signal stops the loop cleanly (exit 0), never mid-write
+    controller.abort();
+    const r = await loop;
+    expect(r.code).toBe(0);
+  });
+
+  it("a FAILED check does not make the monitor due again before the interval elapses (the schedule, not every poll)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-due-"));
+    dirs.push(dir);
+    const rules = simRules(dir, "nginx");
+    const clock = manualClock("2026-10-22T10:00:00.000Z");
+    await runWith(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"], { clock });
+    const id = (await monitors(dir))[0].id;
+    expect((await runWith(["monitor", dir, "check", id, "--sim", rules], { clock })).code).toBe(0);
+    // the interval elapses and the source now fails: the due check FAILS at t0+5m
+    clock.advance(5 * 60_000);
+    const failing = path.join(dir, "failing.rules.json");
+    writeFileSync(failing, JSON.stringify([{ match: "https://example.com/", failure: { kind: "transport:timeout" } }]));
+    expect((await runWith(["monitor", dir, "check", id, "--sim", failing], { clock })).code).toBe(1);
+    // 30 seconds later the monitor is NOT due again: the failed attempt counts as an attempt
+    clock.advance(30_000);
+    const notDue = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(notDue.code).toBe(0);
+    expect(notDue.text).toContain("0 due");
+    // a full interval after the failed attempt it is due again (exactly one retry, on schedule)
+    clock.advance(5 * 60_000 - 30_000);
+    const due = await runWith(["monitor", dir, "run", "--once", "--sim", rules], { clock });
+    expect(due.code).toBe(0);
+    expect(due.text).toContain("1 due");
+  });
+
+  it("two CONCURRENT checks of one monitor alert ONCE (the claim is atomic across handles)", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-race-"));
+    dirs.push(dir);
+    const rulesA = simRules(dir, "nginx");
+    await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"]);
+    const id = (await monitors(dir))[0].id;
+    await run(["monitor", dir, "check", id, "--sim", rulesA]); // baseline: nginx
+    const rulesB = simRules(dir, "apache"); // the source changes
+    const [r1, r2] = await Promise.all([
+      run(["monitor", dir, "check", id, "--sim", rulesB]),
+      run(["monitor", dir, "check", id, "--sim", rulesB]),
+    ]);
+    // exactly one ran the transform and alerted; the other was refused with no second alert
+    expect([r1.code, r2.code].sort()).toEqual([0, 2]);
+    const m = (await monitors(dir))[0];
+    expect(m.alertCount).toBe(1); // ONE alert for the change, never two
+    expect(m.checks.filter((k) => k.status === "success")).toHaveLength(2); // baseline + the change check
+  });
+
+  it("an interrupted check is visible as incomplete and the next attempt gets a FRESH id (no id reuse)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    // a check that started and died: a started event with no result, written 11 minutes ago (stale)
+    const pastAt = new Date(Date.now() - 11 * 60_000).toISOString(); // 11 minutes ago: beyond IN_FLIGHT_MS
+    const past = manualClock(pastAt);
+    const c = openCase(dir, { actor: "ir-cli", clock: past });
+    c.audit("monitor.check.started", `${id}#1`, { monitorId: id, transformId: "TR-010", at: pastAt });
+    c.close();
+    // the incomplete attempt is VISIBLE (UC-10: every attempt is on the record, interrupted ones too)
+    expect((await monitors(dir))[0].checks.some((k) => k.checkId === `${id}#1` && k.status === "incomplete")).toBe(true);
+    // the next attempt does not reuse #1: it runs as #2 (an interrupted attempt's id is never reused)
+    const rules = simRules(dir, "nginx");
+    const check = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(check.code).toBe(0);
+    const m = (await monitors(dir))[0];
+    expect(m.checks.some((k) => k.checkId === `${id}#2`)).toBe(true);
+    expect(m.checks.filter((k) => k.status === "incomplete")).toHaveLength(1); // #1 stays incomplete forever
+  });
+
+  it("a FRESH in-flight check refuses a second attempt (and the scheduler skips the monitor)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    // a started event written NOW with no result: the check is in flight
+    const c = openCase(dir, { actor: "ir-cli" });
+    c.audit("monitor.check.started", `${id}#1`, { monitorId: id, transformId: "TR-010", at: new Date().toISOString() });
+    c.close();
+    const check = await run(["monitor", dir, "check", id]);
+    expect(check.code).toBe(2);
+    expect(check.text).toContain("already running");
+    const once = await run(["monitor", dir, "run", "--once"]);
+    expect(once.text).toContain("0 due"); // the scheduler does not try an in-flight monitor
+  });
+
+  it("a ROUTE-SETUP failure of a scheduled monitor is a logged failed attempt (not a silent exit 2)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rules = simRules(dir, "nginx");
+    await run(["monitor", dir, "check", id, "--sim", rules]); // baseline
+    // the rules file breaks (malformed JSON): the attempt starts, route setup fails
+    const broken = path.join(dir, "broken.rules.json");
+    writeFileSync(broken, "{ not json");
+    const check = await run(["monitor", dir, "check", id, "--sim", broken]);
+    expect(check.code).toBe(1);
+    expect(check.text).toContain("failed");
+    const m = (await monitors(dir))[0];
+    const failed = m.checks.find((k) => k.status === "failed");
+    expect(failed).toBeDefined();
+    // the baseline survived: the source recovers and the next check compares against it, no false alert
+    const ok = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(ok.code).toBe(0);
+    expect(ok.text).toContain("no change");
+  });
+
+  it("a claim from a head snapshot taken BEFORE another handle's claim is refused (the head is captured before the attempt state)", async () => {
+    const { dir } = await monitoredCase("5");
+    // a second monitor on another URL: claiming ITS check moves the chain head without tripping the first monitor's in-flight guard
+    await run(["monitor", dir, "add", "TR-010", "url", "https://other.example/", "--every", "5"]);
+    const list = await monitors(dir);
+    const first = list.find((m) => m.subjectValue === "https://example.com/");
+    const second = list.find((m) => m.subjectValue === "https://other.example/");
+    if (first === undefined || second === undefined) throw new Error("test setup: both monitors must be listed");
+    const asCaseMonitor = (m: typeof first) => ({
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    });
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    try {
+      // B claims the SECOND monitor's check — its write moves the chain head
+      const b = claimCheck(cB, asCaseMonitor(second), systemClock);
+      expect("error" in b).toBe(false);
+      // A had captured the head BEFORE B's claim (the first step of its own claim): A's claim from that
+      // stale snapshot must be REFUSED — never a second claim on a case that changed under it
+      const a = claimCheck(cA, asCaseMonitor(first), systemClock, (b as { fromSeq: number }).fromSeq);
+      expect("error" in a).toBe(true);
+      // exactly ONE started event is on the chain — no duplicate attempt
+      const started = cA.auditTrail().filter((e) => e.action === "monitor.check.started");
+      expect(started).toHaveLength(1);
+    } finally {
+      cA.close();
+      cB.close();
+    }
+  });
+
+  it("claimCheck (no injected head) reads the attempt state from a STALE snapshot and is still refused when the case changed under it", async () => {
+    // coverage strengthening for the round-6 head-first fix (per the advisor: not a pre-implementation red —
+    // it verifies the PRODUCTION read order, where the head is captured before the attempt state)
+    const { dir } = await monitoredCase("5");
+    const list = await monitors(dir);
+    const m = list[0];
+    const asCaseMonitor = {
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    };
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    try {
+      // the pre-B snapshot A's attempt-state read will return (captured before B claims)
+      const realTrail = cA.auditTrail.bind(cA);
+      const preB = realTrail();
+      let intercepted = false;
+      cA.auditTrail = () => {
+        if (intercepted) return realTrail();
+        intercepted = true;
+        // B claims the SAME monitor while A holds its stale snapshot — the head moves under A
+        const b = claimCheck(cB, asCaseMonitor, systemClock);
+        expect("error" in b).toBe(false);
+        return preB; // A's read: the pre-B state (no in-flight guard, the id B already took)
+      };
+      const a = claimCheck(cA, asCaseMonitor, systemClock);
+      cA.auditTrail = realTrail;
+      // A's claim from the stale snapshot must be REFUSED by the head check — never a duplicate attempt id
+      expect("error" in a).toBe(true);
+      const started = cA.auditTrail().filter((e) => e.action === "monitor.check.started");
+      expect(started).toHaveLength(1); // only B's claim landed
+    } finally {
+      cA.close();
+      cB.close();
+    }
+  });
+
+  it("the result commit is CONDITIONAL: an attempt that read its decision before a newer claim never prints a second ALERT", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rules = simRules(dir, "nginx");
+    // baseline #1: the first successful check (nginx)
+    const first = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(first.text).toContain("baseline established");
+    // A = attempt #2, suspended 11 minutes ago (stale — its claim predates everything below)
+    const pastAt = new Date(Date.now() - 11 * 60_000).toISOString();
+    const c0 = openCase(dir, { actor: "ir-cli", clock: manualClock(pastAt) });
+    c0.audit("monitor.check.started", `${id}#2`, { monitorId: id, transformId: "TR-010", at: pastAt });
+    c0.close();
+    // the change both attempts see: apache instead of nginx
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        {
+          match: "https://example.com/",
+          response: { status: 200, headers: { "content-type": "text/html", server: "apache" }, body: "<html>ok</html>" },
+        },
+      ]),
+    );
+    // A's run result (what its suspended transform returned before the pause)
+    const aResult: RunTransformResult = {
+      output: {
+        findings: [
+          {
+            predicate: "has_technology",
+            objectType: "http",
+            objectValue: "example.com",
+            objectId: "apache",
+            confidence: 1,
+            explanation: "server header",
+            derivedFrom: "input",
+          },
+        ],
+      },
+      requestCount: 0,
+      evidence: [],
+    };
+    const list = await monitors(dir);
+    const m = list[0];
+    const asCaseMonitor = {
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    };
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    try {
+      // the snapshot A's decision read will see (captured BEFORE B claims — A read its decision first)
+      const realTrail = cA.auditTrail.bind(cA);
+      const preB = realTrail();
+      let reads = 0;
+      cA.auditTrail = () => {
+        if (reads >= 2) return realTrail(); // after A's decision reads: the real trail (its retry)
+        reads++;
+        if (reads === 1) {
+          // while A is between its decision read and its write: B claims the newer attempt (A's #2 is
+          // 11 minutes stale) and commits its finished result — the head moves under A's decision
+          const b = claimCheck(cB, asCaseMonitor, systemClock);
+          expect("error" in b).toBe(false);
+          cB.audit("monitor.check.result", (b as { checkId: string }).checkId, {
+            monitorId: id,
+            status: "success",
+            at: new Date().toISOString(),
+            findingsCount: 1,
+            changed: true,
+            alert: { added: ["has_technology|http|example.com|apache"], removed: [], changed: [] },
+            state: [
+              {
+                predicate: "has_technology",
+                objectType: "http",
+                objectValue: "example.com",
+                objectId: "apache",
+                confidence: 1,
+                explanation: "server header",
+              },
+            ],
+          });
+        }
+        return preB; // BOTH of A's decision reads (supersession + baseline) see the pre-B snapshot
+      };
+      const lines: string[] = [];
+      commitMonitorSuccess(cA, asCaseMonitor, `${id}#2`, 5, aResult, systemClock, (s) => lines.push(s));
+      cA.auditTrail = realTrail;
+      // A's late commit must NOT print an ALERT: its pre-read decision is void — it recomputes,
+      // sees B's newer attempt, and lands as a logged-superseded result
+      expect(lines.filter((l) => l.includes("ALERT"))).toHaveLength(0);
+      expect(lines.join("\n")).toContain("SUPERSEDED");
+      // and the chain keeps exactly one alert (B's)
+      expect((await monitors(dir))[0].alertCount).toBe(1);
+    } finally {
+      cA.close();
+      cB.close();
+    }
+  });
+
+  it("a LATE result from a superseded attempt never becomes the baseline and never alerts (a suspended attempt resuming after a newer claim)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    // attempt #1 started 11 minutes ago (stale — the process was suspended mid-check)
+    const pastAt = new Date(Date.now() - 11 * 60_000).toISOString();
+    const c = openCase(dir, { actor: "ir-cli", clock: manualClock(pastAt) });
+    c.audit("monitor.check.started", `${id}#1`, { monitorId: id, transformId: "TR-010", at: pastAt });
+    c.close();
+    // the newer attempt #2 runs while #1 is suspended and establishes the baseline (first success)
+    const rules = simRules(dir, "nginx");
+    const second = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(second.code).toBe(0);
+    expect(second.text).toContain("baseline established");
+    // the suspended attempt RESUMES and commits its result late — exactly the write the old code made unconditionally
+    const c2 = openCase(dir, { actor: "ir-cli" });
+    c2.audit("monitor.check.result", `${id}#1`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      fromSeq: 5,
+      findingsCount: 1,
+      changed: true,
+      alert: { added: ["has_technology|http|other.example|stale"], removed: [], changed: [] },
+      state: [
+        {
+          predicate: "has_technology",
+          objectType: "http",
+          objectValue: "other.example",
+          objectId: "stale",
+          confidence: 1,
+          explanation: "the suspended attempt's own run",
+        },
+      ],
+    });
+    c2.close();
+    // the late result is logged but SUPERSEDED: its alert is void and it did not become the baseline
+    const m = (await monitors(dir))[0];
+    expect(m.alertCount).toBe(0);
+    // the next check against the SAME rules as #2 reports "no change" — if #1's state had become the baseline this would alert
+    const third = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(third.code).toBe(0);
+    expect(third.text).toContain("no change");
+    expect((await monitors(dir))[0].alertCount).toBe(0);
+  });
+
+  it("a result event with malformed fields is excluded from the monitor's checks (fail-closed: nothing is cast into a baseline)", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const c = openCase(dir, { actor: "ir-cli" });
+    // state elements that are not findings (a string, a number) — must never be cast into a baseline
+    c.audit("monitor.check.result", `${id}#1`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      findingsCount: 2,
+      changed: false,
+      state: ["not-a-finding", 42],
+    });
+    // an alert whose members are not string arrays — not a comparable alert
+    c.audit("monitor.check.result", `${id}#2`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      findingsCount: 0,
+      changed: true,
+      alert: { added: "has_technology", removed: null, changed: [] },
+    });
+    // a finding with the right shape but wrong field types (confidence a string) — not a finding
+    c.audit("monitor.check.result", `${id}#3`, {
+      monitorId: id,
+      status: "success",
+      at: new Date().toISOString(),
+      findingsCount: 1,
+      changed: false,
+      state: [{ predicate: "has_technology", objectType: "http", objectValue: "example.com", confidence: "high", explanation: "x" }],
+    });
+    c.close();
+    const m = (await monitors(dir))[0];
+    expect(m.checks).toHaveLength(0);
+    expect(m.alertCount).toBe(0);
+  });
+
+  it("an exhausted conditional commit (unrelated concurrent writes, no newer claim) is VOID: it never becomes the baseline and the next check alerts against the last committed baseline", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rules = simRules(dir, "nginx");
+    const first = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(first.text).toContain("baseline established");
+    // the change every subsequent run sees: apache instead of nginx — A's voided result carries
+    // EXACTLY the findings a real run against these rules produces (TR-010 on the sim rules is
+    // deterministic: no run-local ids, no time fields), so if the voided result wrongly became the
+    // baseline the next check would report "no change" and MISS the alert
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        {
+          match: "https://example.com/",
+          response: { status: 200, headers: { "content-type": "text/html", server: "apache" }, body: "<html>ok</html>" },
+        },
+      ]),
+    );
+    const aResult: RunTransformResult = {
+      output: {
+        findings: [
+          {
+            predicate: "has_http_response",
+            objectType: "http_status",
+            objectValue: "200",
+            confidence: 1,
+            explanation: "HTTP 200 from example.com",
+            derivedFrom: "input",
+          },
+          {
+            predicate: "has_technology",
+            objectType: "technology",
+            objectValue: "server: apache",
+            confidence: 0.9,
+            explanation: "Response header server from example.com",
+            derivedFrom: "input",
+          },
+        ],
+      },
+      requestCount: 0,
+      evidence: [],
+    };
+    const list = await monitors(dir);
+    const m = list[0];
+    const asCaseMonitor = {
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    };
+    // A's commit: every decision read moves the head with an UNRELATED write (a note — never a newer
+    // claim of THIS monitor), so the conditional commit keeps failing until it exhausts its tries
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    const realTrail = cA.auditTrail.bind(cA);
+    let writes = 0;
+    cA.auditTrail = () => {
+      writes++;
+      cB.audit("note.added", `unrelated-${writes}`, { note: "a concurrent write unrelated to this monitor" });
+      return realTrail();
+    };
+    const lines: string[] = [];
+    commitMonitorSuccess(cA, asCaseMonitor, `${id}#2`, 5, aResult, systemClock, (s) => lines.push(s));
+    cA.auditTrail = realTrail;
+    // the exhausted commit is VOID: no alert decision, and it did NOT become the baseline
+    expect(lines.join("\n")).toContain("kept changing");
+    expect(lines.filter((l) => l.includes("ALERT"))).toHaveLength(0);
+    // the next check with the SAME changed state must alert ONCE against the last COMMITTED baseline
+    // (#1, nginx) — if the exhausted result had become the baseline this would print "no change"
+    const next = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(next.text).toContain("ALERT");
+    expect((await monitors(dir))[0].alertCount).toBe(1);
+    cA.close();
+    cB.close();
+  });
+
+  it("refuses an encrypted case: add cannot schedule a monitor whose checks could never run", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "ir-monitor-enc-"));
+    dirs.push(dir);
+    openCase(dir, {
+      actor: "a",
+      passphrase: "passphrase for tests",
+      kdf: { memoryKiB: 256, passes: 1, parallelism: 1 },
+      create: { title: "t", purpose: "encrypted case test", legalBasis: "self_assessment" },
+    }).close();
+    const add = await run(["monitor", dir, "add", "TR-010", "url", "https://example.com/", "--every", "5"]);
+    expect(add.code).toBe(2);
+    expect(add.text).toContain("refusing to schedule a monitor on an encrypted case");
+    const check = await run(["monitor", dir, "check", "m-any"]);
+    expect(check.code).toBe(2);
+    expect(check.text).toContain("refusing to run a transform against an encrypted case");
+  });
+});
+
+/** Awaits a condition that the CLI's own asynchrony makes eventually true (P4-009 loop tests). */
+async function waitUntil(cond: () => Promise<boolean>, tries = 200): Promise<void> {
+  for (let i = 0; i < tries; i++) {
+    if (await cond()) return;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  throw new Error("condition never became true");
+}
+
+describe("monitorSleep (P4-009 — the scheduler's default wait)", () => {
+  it("resolves on timeout and REMOVES its abort listener (no listener leak over a long scheduler run)", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      let live = 0;
+      const signal = controller.signal as AbortSignal & {
+        addEventListener: typeof AbortSignal.prototype.addEventListener;
+        removeEventListener: typeof AbortSignal.prototype.removeEventListener;
+      };
+      const origAdd = signal.addEventListener.bind(signal);
+      const origRemove = signal.removeEventListener.bind(signal);
+      signal.addEventListener = ((type: string, fn: never, opts?: unknown) => {
+        live++;
+        return origAdd(type, fn, opts as never);
+      }) as typeof signal.addEventListener;
+      signal.removeEventListener = ((type: string, fn: never, opts?: unknown) => {
+        live--;
+        return origRemove(type, fn, opts as never);
+      }) as typeof signal.removeEventListener;
+      for (let i = 0; i < 20; i++) {
+        const p = monitorSleep(60_000, signal);
+        await vi.advanceTimersByTimeAsync(60_000);
+        await p;
+        expect(live).toBe(0); // every completed wait cleaned up its own listener
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resolves immediately on abort (the timer is cleaned, no waiting)", async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new AbortController();
+      const p = monitorSleep(60_000, controller.signal);
+      controller.abort();
+      await p; // resolves without any timer advance
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resolves immediately for an ALREADY-aborted signal (no pointless full wait)", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await monitorSleep(60_000, controller.signal); // hangs (and times the test out) if it waits the full ms
   });
 });

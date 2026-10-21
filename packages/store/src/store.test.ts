@@ -13,6 +13,7 @@ import {
   MIGRATIONS,
   openCase,
   caseFingerprint,
+  verifyCase,
   userVersion,
   type Migration,
 } from "./index.ts";
@@ -205,5 +206,52 @@ describe("caseFingerprint (P3-003, J-17)", () => {
     const ro = openCase(dir, { actor: "verifier", readOnly: true });
     expect(ro.info().archivedAt).toBeNull();
     ro.close();
+  });
+});
+
+// P4-009: the atomic audit claim — an audit.event appended ONLY if the head seq still matches,
+// with the audit index row written in the SAME transaction (the index must mirror the chain, P1-017).
+describe("auditIfSeq (P4-009 — one atomic audit write scope)", () => {
+  it("appends the audit event and its index row when the head matches, and the trail sees it", () => {
+    const dir = tmp();
+    const c = clock();
+    const a = openCase(dir, { actor: "analyst", clock: c, create: CREATE });
+    const head = a.entries().at(-1)?.seq ?? -1;
+    const ev = a.auditIfSeq("monitor.check.started", "m-x#1", { monitorId: "m-x" }, head);
+    expect(ev).not.toBeNull();
+    expect(ev?.action).toBe("monitor.check.started");
+    a.close();
+    const after = openCase(dir, { actor: "verifier", readOnly: true });
+    try {
+      expect(after.auditTrail().filter((e) => e.action === "monitor.check.started")).toHaveLength(1);
+      // the index mirrors the chain: the P1-017 check in verifyCase sees no mismatch
+      const report = verifyCase(dir);
+      expect(report.audit.problems).toHaveLength(0);
+    } finally {
+      after.close();
+    }
+  });
+
+  it("two handles on one head: one audit wins, the other gets null with NO event and NO index row", () => {
+    const dir = tmp();
+    const c = clock();
+    const a = openCase(dir, { actor: "analyst", clock: c, create: CREATE });
+    const b = openCase(dir, { actor: "analyst", clock: c });
+    const head = a.entries().at(-1)?.seq ?? -1;
+    expect(b.entries().at(-1)?.seq).toBe(head);
+    const first = a.auditIfSeq("monitor.scheduled", "m-x", { monitorId: "m-x" }, head);
+    expect(first).not.toBeNull();
+    const second = b.auditIfSeq("monitor.scheduled", "m-y", { monitorId: "m-y" }, head);
+    expect(second).toBeNull();
+    b.close();
+    a.close();
+    const after = openCase(dir, { actor: "verifier", readOnly: true });
+    try {
+      expect(after.auditTrail().filter((e) => e.action === "monitor.scheduled")).toHaveLength(1);
+      const report = verifyCase(dir);
+      expect(report.audit.problems).toHaveLength(0);
+    } finally {
+      after.close();
+    }
   });
 });
