@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 /**
  * P3-022 / UC-08 — «التراجع والإعادة» (ROADMAP 3.2 P3-022): the view's edit history,
  * driven through the REAL app. The acceptance: undo reverses the view's edit
@@ -32,6 +33,31 @@ async function seededCase(): Promise<string> {
   const out = irRun(caseDirOf(caseId), "TR-016", "bitcoin_address", WALLET, SIM);
   expect(out).toContain("transacted_with");
   return caseId;
+}
+
+/**
+ * D-058: wait for the CAMERA to settle, deterministically, instead of a fixed
+ * sleep. The camera state is mirrored onto the DOM (data-testid=graph-camera with
+ * data-x/data-y/data-ratio, updated on every camera "updated" event — P3-021).
+ * "Settled" = two consecutive animation frames show an IDENTICAL snapshot: while
+ * the «التركيز على العقدة» animation is in flight the drag's pointer lands on
+ * where the node is moving FROM, so the drag records no edit; on slow CI runners
+ * (run 39567448259) all three drag retries raced the animation and failed.
+ */
+async function waitForCameraSettle(page: import("@playwright/test").Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('[data-testid="graph-camera"]');
+      if (el === null) return false;
+      const snap = () => `${el.getAttribute("data-x")},${el.getAttribute("data-y")},${el.getAttribute("data-ratio")}`;
+      const first = snap();
+      return new Promise<boolean>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve(snap() === first)));
+      });
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
 }
 
 /** Selects the wallet's row (the keyboard entry points act on the SELECTION). */
@@ -134,9 +160,11 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
   // center is ON a node — the drag starts on the wallet itself, not on empty stage
   await page.keyboard.press("Shift+F10");
   await page.getByTestId("menu-node.focus").click();
-  // the camera move needs a rendered frame before the canvas's hit-testing reflects
-  // the new view (the pointer-to-node test uses the renderer's refreshed matrix)
-  await page.waitForTimeout(300);
+  // D-058: the camera move needs the animation to SETTLE before the canvas's
+  // hit-testing reflects the final view (the pointer-to-node test uses the
+  // renderer's refreshed matrix) — awaited deterministically via the DOM mirror,
+  // not a fixed sleep that a slow CI runner can outlast
+  await waitForCameraSettle(page);
 
   // the drag: from the canvas's center, a real travel, release. D-048: on slower
   // CI machines the camera move from «التركيز على العقدة» can still be settling
@@ -171,10 +199,11 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
     await page.getByTestId("command-palette-input").fill("التراجع");
     dragRecorded = await page.getByTestId("command-view.undo").isVisible();
     if (!dragRecorded) {
-      // close the palette and give the canvas another rendered frame before the retry
+      // close the palette and let the camera settle before the retry (D-058: the
+      // canvas gets a settled frame, not a fixed 300ms a loaded runner can outlast)
       await page.keyboard.press("Escape");
       await expect(page.getByTestId("command-palette")).toBeHidden();
-      await page.waitForTimeout(300);
+      await waitForCameraSettle(page);
     }
   }
   await expect(page.getByTestId("command-view.undo")).toBeVisible();
