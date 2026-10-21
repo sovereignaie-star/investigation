@@ -19,6 +19,13 @@ export interface Projection {
   networkLog: NetworkLog;
   /** P3-021: readable analyst notes in ledger order (unreadable payloads count but do not list). */
   notes: StoredNote[];
+  /**
+   * P4-005: the durable merge log — every `merge.decided` entry whose payload parses,
+   * in ledger order, with its `merge.reverted` state. The review UI serves the revert
+   * action from THIS list (the id it posts is the merge's own id); unreadable payloads
+   * still count in `counts.merges` but list no entry — the counter's meaning never changes.
+   */
+  mergeDecisions: StoredMerge[];
   issues: Issue[];
   counts: {
     entities: number;
@@ -32,6 +39,18 @@ export interface Projection {
   };
 }
 
+/** P4-005: one durable merge decision as the projection serves it. */
+export interface StoredMerge {
+  seq: number;
+  id: string;
+  entityIds: string[];
+  survivorId: string;
+  reasons: string[];
+  decidedBy: string;
+  decidedAt: string;
+  reverted: boolean;
+}
+
 export function view(p: Projector): Projection {
   const graph = graphView(p);
   return {
@@ -41,6 +60,16 @@ export function view(p: Projector): Projection {
     coverage: coverageView(p, graph),
     networkLog: networkLogView(p),
     notes: [...p.noteViews],
+    mergeDecisions: [...p.merges.values()].map((m) => ({
+      seq: m.seq,
+      id: m.id,
+      entityIds: [...m.entityIds],
+      survivorId: m.survivorId,
+      reasons: [...m.reasons],
+      decidedBy: m.decidedBy,
+      decidedAt: m.decidedAt,
+      reverted: m.reverted === true,
+    })),
     issues: [...p.issues],
     counts: {
       entities: p.entities.size,

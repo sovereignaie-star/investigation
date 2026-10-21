@@ -39,6 +39,8 @@ export interface CommandContext {
   /** Re-reads the opened case's own projection from the server; false when no case is open. */
   refreshCase: () => Promise<boolean>;
   openNoteDialog: (nodeId: string) => void;
+  /** P4-005: opens the merge-review panel (explicit request — the panel IS the request). */
+  openMergeReview: () => void;
   focusRunInput: () => void;
   cancelLiveRun: () => void;
   hasLiveRun: () => boolean;
@@ -142,6 +144,17 @@ export const COMMANDS: readonly WorkbenchCommand[] = [
       const focused = ctx.sigma?.focusNode(id) ?? false;
       if (!focused) ctx.toast(t("commands.focusUnavailable"));
     },
+  },
+  {
+    // «مراجعة الدمج» (P4-005, UC-11): the merge-review panel — suggestions on
+    // EXPLICIT request only, a human-accepted merge, and a revert that restores
+    // the case's semantic state. Needs an opened case (merges are durable case
+    // data, like notes). No node target — the panel reviews the whole case.
+    id: "case.mergeReview",
+    labelKey: "commands.mergeReview.title",
+    groupKey: "commands.group.node",
+    available: (ctx) => ctx.openedCase !== null,
+    run: (ctx) => ctx.openMergeReview(),
   },
   {
     id: "node.note",
