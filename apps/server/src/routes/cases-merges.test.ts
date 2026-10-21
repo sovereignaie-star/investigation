@@ -12,6 +12,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { verify } from "@ir/ledger";
 import { openCase } from "@ir/store";
 import { ulidFactory } from "@ir/core";
 import { createApp } from "../app";
@@ -218,6 +219,8 @@ describe("P4-005 merge review API (UC-11)", () => {
     try {
       expect(c.entries().filter((e) => e.kind === "merge.decided")).toHaveLength(1);
       expect(c.entries().filter((e) => e.kind === "merge.reverted")).toHaveLength(1);
+      // the whole chain — including BOTH merge events — is a valid ledger
+      expect(verify(c.entries()).ok).toBe(true);
     } finally {
       c.close();
     }
