@@ -137,6 +137,8 @@ export function generateBenchGraph(nodeCount: number, edgeCount: number, seed = 
       confidence: 0.3 + 0.65 * rng(),
       validFrom: null,
       validTo: null,
+      occurredFrom: null,
+      occurredTo: null,
       explanation: "bench-synthetic-claim",
       evidenceIds: [],
       observations: [],

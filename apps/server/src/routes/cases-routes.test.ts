@@ -26,6 +26,45 @@ function withAdmin(init: RequestInit = {}): RequestInit {
   return { ...init, headers };
 }
 
+// L-53 (P4-007): the per-route cases limiter must honor IR_CASES_RATE_LIMIT. What the
+// CI failure artifact PROVED is that case-open received HTTP 429; which limiter
+// (this one or the global one) rejected it is not conclusively distinguishable.
+// Production keeps the default; the override makes the ceiling a deployment decision.
+it("the cases limiter honors IR_CASES_RATE_LIMIT (env-configurable, default unchanged)", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "ir-cases-rate-"));
+  roots.push(root);
+  const app = createApp(casesRouter(() => root, { env: { ...ENABLED, IR_CASES_RATE_LIMIT: "2" } }));
+  const server = app.listen(0, "127.0.0.1");
+  servers.push(server);
+  await new Promise((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+  const statuses: number[] = [];
+  for (let i = 0; i < 4; i += 1) {
+    statuses.push((await fetch(`${base}/cases`, withAdmin())).status);
+  }
+  expect(statuses.slice(0, 2)).toEqual([200, 200]);
+  expect(statuses.slice(2)).toEqual([429, 429]);
+});
+
+// L-53 (P4-007): the default ceiling is UNCHANGED by the override capability — 60/min
+// in a fixed window: the first 60 pass, the 61st is rejected. This guards the production
+// default against accidental drift while the override exists.
+it("the cases limiter default stays 60/min when no override is set", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "ir-cases-rate-default-"));
+  roots.push(root);
+  const app = createApp(casesRouter(() => root, { env: ENABLED }));
+  const server = app.listen(0, "127.0.0.1");
+  servers.push(server);
+  await new Promise((r) => server.once("listening", r));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
+  const statuses: number[] = [];
+  for (let i = 0; i < 61; i += 1) {
+    statuses.push((await fetch(`${base}/cases`, withAdmin())).status);
+  }
+  expect(statuses.slice(0, 60)).not.toContain(429);
+  expect(statuses[60]).toBe(429);
+});
+
 async function start() {
   const root = mkdtempSync(path.join(tmpdir(), "ir-cases-"));
   roots.push(root);

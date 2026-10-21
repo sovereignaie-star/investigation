@@ -52,6 +52,7 @@ function fixture(seed = 7) {
     predicate: string,
     object: { objectId: string } | { value: string | number | boolean },
     validity: { validFrom?: string | null; validTo?: string | null } = {},
+    occurrence: { occurredFrom?: string | null; occurredTo?: string | null } = {},
   ) => {
     const c = {
       id: id(),
@@ -62,6 +63,8 @@ function fixture(seed = 7) {
       explanation: "test",
       validFrom: validity.validFrom ?? null,
       validTo: validity.validTo ?? null,
+      occurredFrom: occurrence.occurredFrom ?? null,
+      occurredTo: occurrence.occurredTo ?? null,
     };
     add("claim.added", c);
     return c.id;
@@ -288,6 +291,44 @@ describe("P4-006 — bitemporal projections (T-TIME)", () => {
     const cell = p.coverage.cells.find((c) => c.entityId === a);
     expect(cell?.lastAt).toBe("2026-01-01T00:00:00.0000000009Z");
     expect(cell?.last).toBe("error");
+  });
+
+  describe("P4-007/ADR-33 — occurrence window in projections", () => {
+    it("a relation claim carries its occurrence window on the edge — independent of validity and observation times", () => {
+      const f = fixture();
+      const a = f.entity("person", "a");
+      const b = f.entity("person", "b");
+      // three clocks, all different: validity 2019, occurrence 2018, observation March 2026
+      const rel = f.claim(
+        a,
+        "knows",
+        { objectId: b },
+        { validFrom: "2019-06-01T00:00:00Z", validTo: "2020-06-01T00:00:00Z" },
+        { occurredFrom: "2018-03-01T00:00:00Z", occurredTo: "2018-03-31T23:59:59Z" },
+      );
+      const ev = f.evidence();
+      f.observe({ claimId: rel }, "positive", ev, "2026-03-01T10:00:00Z");
+      const p = project(f.ledger.entries());
+      const edge = p.graph.edges.find((e) => e.id === rel);
+      expect(edge).toBeDefined();
+      expect(edge?.occurredFrom).toBe("2018-03-01T00:00:00Z");
+      expect(edge?.occurredTo).toBe("2018-03-31T23:59:59Z");
+      // the three clocks stay separate — none substitutes for another
+      expect(edge?.validFrom).toBe("2019-06-01T00:00:00Z");
+      expect((edge?.observations as ClaimObservation[])[0]?.observedAt).toBe("2026-03-01T10:00:00Z");
+    });
+
+    it("a literal claim carries its occurrence window on the node attribute, including the open-start form", () => {
+      const f = fixture();
+      const a = f.entity("person", "a");
+      // open start: «قبل 2020-03» — occurredFrom null, occurredTo set
+      const lit = f.claim(a, "job", { value: "مهندس" }, {}, { occurredTo: "2020-03-01T00:00:00Z" });
+      const p = project(f.ledger.entries());
+      const attr = p.graph.nodes.find((n) => n.id === a)?.attributes.find((x) => x.claimId === lit);
+      expect(attr).toBeDefined();
+      expect(attr?.occurredFrom).toBeNull();
+      expect(attr?.occurredTo).toBe("2020-03-01T00:00:00Z");
+    });
   });
 
   it("T-TIME-005: a snapshot at an earlier seq never leaks a later-appended observation even when its observedAt is old (existing upTo behavior, verified)", () => {

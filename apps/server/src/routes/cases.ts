@@ -116,7 +116,13 @@ function lockedSummaryOf(fp: CaseFingerprint): CaseWireSummary {
 export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessEnv } = {}): IRouter {
   const router: IRouter = Router();
   const admin = requireAdmin(opts.env ?? process.env);
-  const limiter = rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false });
+  // L-53: the ceiling is env-configurable (default unchanged — production keeps 60/min).
+  // What the CI failure artifact PROVED is that case-open received HTTP 429; which of
+  // the two /api limiters (this one or the global one) rejected it is not conclusively
+  // distinguishable from the artifact. The override makes the ceiling a deployment
+  // decision; raising it for the e2e suite is mitigation, not proof of the cause.
+  const routeRateLimit = Number((opts.env ?? process.env)["IR_CASES_RATE_LIMIT"] ?? 60);
+  const limiter = rateLimit({ windowMs: 60_000, limit: routeRateLimit, standardHeaders: "draft-8", legacyHeaders: false });
 
   /**
    * Lists case directories, skipping staging dirs (they start with a dot). The directory

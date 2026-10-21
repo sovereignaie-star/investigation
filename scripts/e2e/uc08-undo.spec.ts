@@ -197,7 +197,23 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
     await page.keyboard.press("Control+k");
     await expect(page.getByTestId("command-palette")).toBeVisible();
     await page.getByTestId("command-palette-input").fill("التراجع");
-    dragRecorded = await page.getByTestId("command-view.undo").isVisible();
+    // the sync point must WAIT, not glance: fill() resolves when the input holds
+    // the text, but the palette's FILTERED list renders in later frames — under
+    // CPU starvation (CI runs 39631847884/39635339270; reproduced locally with 6x
+    // CDP throttling: red before this wait, green after) an instant isVisible()
+    // reads a list that may not be rendered yet, and the retry's cleanup then
+    // closes the palette so the final strict assertion would judge a CLOSED
+    // palette (a misleading failure that hides the real diagnosis). A bounded
+    // 3s wait keeps the retry honest without loosening the final assertion —
+    // the full root cause of the CI flake (incl. the openCase banner timeout)
+    // remains UNRESOLVED and is documented as such (L-53).
+    dragRecorded = await page
+      .getByTestId("command-view.undo")
+      .waitFor({ state: "visible", timeout: 3_000 })
+      .then(
+        () => true,
+        () => false,
+      );
     if (!dragRecorded) {
       // close the palette and let the camera settle before the retry (D-058: the
       // canvas gets a settled frame, not a fixed 300ms a loaded runner can outlast)
@@ -205,6 +221,15 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
       await expect(page.getByTestId("command-palette")).toBeHidden();
       await waitForCameraSettle(page);
     }
+  }
+  if (!dragRecorded) {
+    // the last cleanup closed the palette — reopen it so the final STRICT
+    // assertion judges the OPEN palette; a failure here is then the honest
+    // diagnosis (no recorded edit after all retries), not a closed-palette
+    // artifact that hides what actually happened.
+    await page.keyboard.press("Control+k");
+    await expect(page.getByTestId("command-palette")).toBeVisible();
+    await page.getByTestId("command-palette-input").fill("التراجع");
   }
   await expect(page.getByTestId("command-view.undo")).toBeVisible();
   // the palette's exit animation keeps its search input mounted (and focused) for a

@@ -289,6 +289,14 @@ export const ar = {
   "workbench.nodeDetail.notesHeading": "ملاحظات المحلل",
   "workbench.nodeDetail.noNotes": "لا ملاحظات على هذه العقدة",
   "workbench.nodeDetail.noteBy": "{actor} · {at}",
+  // ---- timeline view (P4-007/UC-08 — ADR-33)
+  "workbench.timeline.ariaLabel": "الخط الزمني",
+  "workbench.timeline.heading": "الخط الزمني (ثنائي البعد: الحدوث والرصد)",
+  "workbench.timeline.noObservations": "لا رصد",
+  "workbench.timeline.kind.positive": "رصد إيجابي",
+  "workbench.timeline.kind.negative": "رصد سلبي",
+  "workbench.timeline.kind.error": "رصد خطأ",
+  "workbench.timeline.evidenceTitle": "دليل: {id}",
   // ---- node detail panel (P3-008)
   "workbench.nodeDetail.noEvidence": "لا دليل مسجل",
   "workbench.nodeDetail.evidenceTitle": "الدليل {id}",

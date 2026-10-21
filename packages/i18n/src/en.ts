@@ -294,6 +294,14 @@ export const en = {
   "workbench.nodeDetail.notesHeading": "Analyst notes",
   "workbench.nodeDetail.noNotes": "No notes on this node",
   "workbench.nodeDetail.noteBy": "{actor} · {at}",
+  // ---- timeline view (P4-007/UC-08 — ADR-33)
+  "workbench.timeline.ariaLabel": "Timeline",
+  "workbench.timeline.heading": "Timeline (bitemporal: occurrence and observation)",
+  "workbench.timeline.noObservations": "no observations",
+  "workbench.timeline.kind.positive": "positive observation",
+  "workbench.timeline.kind.negative": "negative observation",
+  "workbench.timeline.kind.error": "error observation",
+  "workbench.timeline.evidenceTitle": "evidence: {id}",
   // ---- node detail panel (P3-008)
   "workbench.nodeDetail.noEvidence": "no recorded evidence",
   "workbench.nodeDetail.evidenceTitle": "Evidence {id}",

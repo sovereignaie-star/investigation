@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { Confidence, LocalizedLabel, Slug, Timestamp, Ulid, Admiralty } from "./primitives.ts";
+import { Confidence, LocalizedLabel, Slug, Timestamp, Ulid, Admiralty, compareTimestamps } from "./primitives.ts";
 
 /** canonicalKey = "<type>:<normalized value>" (fixes D-020, D-021: one key per real-world identifier). */
 export const CanonicalKey = z.string().regex(/^[a-z][a-z0-9_.-]*:.+$/, "<type>:<normalized>");
@@ -44,7 +44,12 @@ export const Observation = z
   .refine((o) => (o.entityId === undefined) !== (o.claimId === undefined), { message: "exactly one of entityId or claimId" });
 export type Observation = z.infer<typeof Observation>;
 
-/** An edge is a Claim with a typed predicate (fixes D-025). Object is either another entity or a literal value. */
+/** An edge is a Claim with a typed predicate (fixes D-025). Object is either another entity or a literal value.
+ *  ADR-33: `occurredFrom/occurredTo` is the OCCURRENCE window (نافذة الحدوث) — when the event
+ *  is believed to have happened, uncertainty expressed as an interval («تقريباً 2019» = the
+ *  whole year, «قبل 2020-03» = open start). It is INDEPENDENT of `validFrom/validTo` (how long
+ *  the claim was true in the world) and of the observation's `observedAt`; the three clocks
+ *  never substitute for one another. */
 export const Claim = z
   .object({
     id: Ulid,
@@ -54,14 +59,20 @@ export const Claim = z
     value: z.union([z.string(), z.number(), z.boolean()]).optional(),
     validFrom: Timestamp.nullable().default(null),
     validTo: Timestamp.nullable().default(null),
+    occurredFrom: Timestamp.nullable().default(null),
+    occurredTo: Timestamp.nullable().default(null),
     confidence: Confidence,
     admiralty: Admiralty.optional(),
     explanation: z.string().min(1),
   })
   .refine((c) => (c.objectId === undefined) !== (c.value === undefined), { message: "exactly one of objectId or value" })
-  .refine((c) => !c.validFrom || !c.validTo || Date.parse(c.validFrom) <= Date.parse(c.validTo), {
+  .refine((c) => !c.validFrom || !c.validTo || compareTimestamps(c.validFrom, c.validTo) <= 0, {
     message: "validFrom <= validTo",
     path: ["validTo"],
+  })
+  .refine((c) => !c.occurredFrom || !c.occurredTo || compareTimestamps(c.occurredFrom, c.occurredTo) <= 0, {
+    message: "occurredFrom <= occurredTo",
+    path: ["occurredTo"],
   });
 export type Claim = z.infer<typeof Claim>;
 

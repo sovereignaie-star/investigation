@@ -4,6 +4,34 @@ import { z } from "zod/v4";
 export const Ulid = z.string().regex(/^[0-7][0-9A-HJKMNP-TV-Z]{25}$/, "ULID");
 export const Sha256 = z.string().regex(/^[0-9a-f]{64}$/, "lowercase hex SHA-256");
 export const Timestamp = z.iso.datetime({ offset: true });
+
+/**
+ * ADR-33: the single full-precision moment comparator — pure (regex + Date.parse only),
+ * browser-safe, shared by the schema's refines, the ledger's projections and the web's
+ * timeline (never duplicated). The schema accepts fractional seconds of ANY length
+ * (verified: 20 digits pass `z.iso.datetime({ offset: true })`, which also accepts a
+ * missing-seconds `T00:00Z` form), which Date.parse collapses — so the whole-second
+ * instant is compared via Date.parse and the fraction as FULL DECIMAL TEXT
+ * (right-padded to the longer fraction, never truncated, never a number):
+ * `.1` equals `.10`, `.01` sorts before both, every accepted precision is preserved.
+ */
+const ISO_MOMENT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}(?::\d{2})?)(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
+export function compareTimestamps(a: string, b: string): number {
+  const ka = ISO_MOMENT.exec(a);
+  const kb = ISO_MOMENT.exec(b);
+  if (!ka || !kb) {
+    // defensive only: every form the schema accepts matches ISO_MOMENT (zod source audit,
+    // v4/core/regexes.js — dateSource/timeSource/datetime)
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+  const msA = Date.parse(`${ka[1]}T${ka[2]}${ka[4]}`);
+  const msB = Date.parse(`${kb[1]}T${kb[2]}${kb[4]}`);
+  if (msA !== msB) return msA - msB;
+  const n = Math.max(ka[3]?.length ?? 0, kb[3]?.length ?? 0);
+  const fa = (ka[3] ?? "").padEnd(n, "0");
+  const fb = (kb[3] ?? "").padEnd(n, "0");
+  return fa < fb ? -1 : fa > fb ? 1 : 0;
+}
 export const Confidence = z.number().min(0).max(1);
 
 /** Admiralty code (D2): source reliability A-F, information credibility 1-6. */
