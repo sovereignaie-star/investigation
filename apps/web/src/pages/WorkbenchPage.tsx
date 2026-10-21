@@ -17,6 +17,7 @@ import { IdentifierSelector } from "./workbench/IdentifierSelector";
 import { InvestigationGraph, type SigmaHandle } from "./workbench/InvestigationGraph";
 import { EntityTableContainer } from "./workbench/EntityTable";
 import { NodeDetailPanelContainer } from "./workbench/NodeDetailPanel";
+import { TimelineViewContainer } from "./workbench/TimelineView";
 import { RunPanel } from "./workbench/RunPanel";
 import { SearchBar } from "./workbench/SearchBar";
 import { OpenedCaseBanner, SavedInvestigations } from "./workbench/SavedInvestigations";
@@ -233,6 +234,9 @@ export function WorkbenchPage({
         />
       </div>
       <NodeDetailPanelContainer graph={graph} notes={openedCase?.notes ?? []} />
+      {/* P4-007/UC-08: the same projection as a bitemporal timeline — occurrence window
+          (ADR-33) on one dimension, observation times on the other; honest intervals. */}
+      <TimelineViewContainer graph={graph} />
       {/* P3-009: the entities of the same projection in a virtualized table
           (default sort + filter; 100,000 rows render only the visible window). */}
       <EntityTableContainer
