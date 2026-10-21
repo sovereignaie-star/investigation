@@ -141,6 +141,39 @@ describe("case directory (P1-013)", () => {
 });
 
 // P3-003 (طلب أ): the J-17 listing primitive and the J-16 archive field at the store level.
+describe("appendIfSeq (P4-005 — one atomic write scope)", () => {
+  it("two handles on one head version: one append wins, the other is refused with NO extra event, chain stays valid", () => {
+    const dir = tmp();
+    const c = clock();
+    const a = openCase(dir, { actor: "analyst", clock: c, create: CREATE });
+    const b = openCase(dir, { actor: "analyst", clock: c });
+    // both handles see the SAME head (the case-created chain) and both carry a
+    // payload validated against that head — the merge-accept race in miniature.
+    const head = a.entries().at(-1)?.seq ?? -1;
+    expect(b.entries().at(-1)?.seq).toBe(head); // both handles see the same chain head
+    const first = a.appendIfSeq("note.added", { text: "الفائز" }, head);
+    expect(first).not.toBeNull();
+    // the second writer's expected seq is now stale: the head moved when the
+    // first transaction committed. The head is re-read INSIDE the write
+    // transaction (never a value cached at open), so this is a clean null —
+    // not a duplicate event and not a corrupted chain.
+    const second = b.appendIfSeq("note.added", { text: "الخاسر" }, head);
+    expect(second).toBeNull();
+    b.close();
+    a.close();
+    // exactly one note event was appended; the chain is still valid.
+    const after = openCase(dir, { actor: "verifier", readOnly: true });
+    try {
+      const notes = after.entries().filter((e) => e.kind === "note.added");
+      expect(notes).toHaveLength(1);
+      expect((notes[0].payload as { text?: string }).text).toBe("الفائز");
+      expect(verify(after.ledger.entries()).ok).toBe(true);
+    } finally {
+      after.close();
+    }
+  });
+});
+
 describe("caseFingerprint (P3-003, J-17)", () => {
   it("reads identifier and timestamps from a locked case without a passphrase — and nothing more", () => {
     const dir = tmp();
