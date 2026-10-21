@@ -18,6 +18,7 @@ import { InvestigationGraph, type SigmaHandle } from "./workbench/InvestigationG
 import { EntityTableContainer } from "./workbench/EntityTable";
 import { NodeDetailPanelContainer } from "./workbench/NodeDetailPanel";
 import { TimelineViewContainer } from "./workbench/TimelineView";
+import { CoverageMapContainer } from "./workbench/CoverageMap";
 import { RunPanel } from "./workbench/RunPanel";
 import { SearchBar } from "./workbench/SearchBar";
 import { OpenedCaseBanner, SavedInvestigations } from "./workbench/SavedInvestigations";
@@ -237,6 +238,11 @@ export function WorkbenchPage({
       {/* P4-007/UC-08: the same projection as a bitemporal timeline — occurrence window
           (ADR-33) on one dimension, observation times on the other; honest intervals. */}
       <TimelineViewContainer graph={graph} />
+      {/* P4-010/UC-21: the same case's coverage map — what was checked and what
+          wasn't. It reads the opened case's OWN snapshot (the FULL case graph,
+          never the hidden-filtered one): hiding a node is view state and never
+          erases its coverage. */}
+      <CoverageMapContainer openedCase={openedCase} />
       {/* P3-009: the entities of the same projection in a virtualized table
           (default sort + filter; 100,000 rows render only the visible window). */}
       <EntityTableContainer

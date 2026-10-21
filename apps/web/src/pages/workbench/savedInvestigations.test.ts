@@ -68,6 +68,9 @@ const opened = (): OpenedCase =>
     seq: 4,
     sha256: "a".repeat(64),
     graph: { nodes: (SNAPSHOT.graph as { nodes: unknown[] }).nodes as never[], edges: [] },
+    // P4-010: the body this fixture serves has no coverage field — the parser
+    // reads that as null (unavailable), so the opened case carries null too.
+    coverage: null,
   });
 
 const renderView = (props: Partial<Parameters<typeof SavedInvestigationsView>[0]> = {}): string =>
