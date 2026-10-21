@@ -824,6 +824,8 @@ importers:
         specifier: 'catalog:'
         version: 25.6.2
 
+  packages/organs: {}
+
   packages/sandbox:
     devDependencies:
       '@ir/egress':

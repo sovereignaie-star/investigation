@@ -91,7 +91,14 @@ export async function openCase(page: Page, caseId: string): Promise<void> {
   const banner = page.getByTestId("opened-case-banner");
   for (let attempt = 0; attempt < 5; attempt += 1) {
     if (await banner.isVisible()) return;
-    await page.getByTestId(`open-case-${caseId}`).click();
+    // The open button is refreshed BEFORE the click and the row is scrolled into
+    // view: with the list rendered above the open button, Playwright's click
+    // auto-scroll can land the pointer on the saved-token field's row (the click
+    // then hits the token input — a re-render race, not an app bug).
+    const openButton = page.getByTestId(`open-case-${caseId}`);
+    await openButton.scrollIntoViewIfNeeded();
+    await openButton.click({ trial: true });
+    await openButton.click();
     // a swallowed click shows nothing — wait a beat before judging, then retry
     await banner.waitFor({ timeout: 5_000 }).then(
       () => undefined,
