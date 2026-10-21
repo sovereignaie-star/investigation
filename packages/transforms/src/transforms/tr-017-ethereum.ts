@@ -28,6 +28,12 @@ export const ethereumAddress = defineTransform<{ address: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "normal",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 3,
+      rationale: "Etherscan مفهرس تجاري لسلسلة الإيثيريوم — مشتقات (أرصدة/تحويلات) من سلسلة قابلة للتحقق عبر وسيط غير رسمي",
+    },
   },
   async (input, ctx) => {
     const address = input.address.trim();

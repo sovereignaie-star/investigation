@@ -95,6 +95,12 @@ export const nominatimGeocode = defineTransform<{ address?: string; point?: stri
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 4,
+      rationale: "Nominatim/بيانات OpenStreetMap مجتمعية التحرير — تغطية جغرافية ممتازة نسبياً مع أخطاء تحرير فردية واردة",
+    },
   },
   async (input, ctx) => {
     const address = requireAddress(input.address);

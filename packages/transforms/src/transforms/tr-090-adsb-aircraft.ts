@@ -85,6 +85,12 @@ export const adsbAircraft = defineTransform<AdsbAircraftInput>(
     limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "F",
+      credibility: 4,
+      rationale: "استيراد محلي من لقطة readsb/dump1090 — بيانات مستقبَلة محلياً من جهاز المستخدم، وموثقية المصدر متوقفة على تجهيزه",
+    },
   },
   async (input: AdsbAircraftInput, _ctx: TransformContext) => {
     const rec = requireRecord(input);

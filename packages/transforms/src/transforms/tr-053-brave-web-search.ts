@@ -103,6 +103,12 @@ export const braveWebSearch = defineTransform<Tr053Input>(
     // TR-051 precedent: the gate is the transform's, whatever the subject kind).
     sensitivity: "natural_person_gate",
     license: "LC-D",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 4,
+      rationale: "بحث Brave التجاري العام — روابط نتائج فعلية، لكن الترتيب والشمول تجاريان وليسا ادعاءات واقعية",
+    },
     // The owner decision 2026-10-17: Brave's terms forbid storing Search Results — the runner
     // keeps the raw response out of the records (a sha256 envelope instead).
     restrictedEvidence: true,

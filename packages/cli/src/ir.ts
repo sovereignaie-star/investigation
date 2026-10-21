@@ -658,6 +658,9 @@ function printSourceList(c: Case, json: boolean, out: (s: string) => void): void
       ...(e.transform.manifest.secrets.length > 0 && e.keyUrl ? { keyUrl: e.keyUrl } : {}),
       state: s?.disabled ? "disabled" : "enabled",
       ...(s?.disabled ? { reason: s.reason } : {}),
+      // P4-002: the documented Admiralty grade (D2/5.13) — reliability of the source,
+      // the default credibility of its findings, and the written rationale.
+      admiralty: e.transform.manifest.admiralty,
     };
   });
   if (json) {
@@ -665,7 +668,10 @@ function printSourceList(c: Case, json: boolean, out: (s: string) => void): void
     return;
   }
   const lines = ["ir source: registered sources for this case:"];
-  for (const r of rows) lines.push(`  ${r.transformId}: ${r.state}${r.state === "disabled" && r.reason ? ` — ${r.reason}` : ""}`);
+  for (const r of rows)
+    lines.push(
+      `  ${r.transformId}: ${r.state} — r=${r.admiralty.reliability} k=${r.admiralty.credibility}${r.state === "disabled" && r.reason ? ` — ${r.reason}` : ""}`,
+    );
   out(lines.join("\n"));
 }
 

@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { Sensitivity, Sha256, Slug, Timestamp, Ulid, LicenseClass } from "./primitives.ts";
+import { Sensitivity, Sha256, Slug, Timestamp, Ulid, LicenseClass, Admiralty } from "./primitives.ts";
 
 /** Header names that must never be persisted (5.5 privacy). */
 export const REDACTED_HEADERS = ["authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key", "api-key"] as const;
@@ -147,6 +147,17 @@ export const TransformManifest = z.object({
   }),
   sensitivity: Sensitivity,
   license: LicenseClass,
+  /**
+   * P4-002 (D2 / 5.13): the transform's Admiralty source grade — the documented
+   * basis the confidence model consumes. `reliability` grades the SOURCE (the
+   * provider behind the transform, A=0.95 … E=0.30, F=0.50 unknown);
+   * `credibility` is the DEFAULT grade of the information this transform emits
+   * (1=0.95 … 5=0.20, 6=0.50 unknown; a single observation may override it);
+   * `rationale` documents WHY these grades — no grade without a written reason.
+   */
+  admiralty: Admiralty.extend({
+    rationale: z.string().min(10),
+  }),
   /**
    * P2-026 (owner decision 2026-10-17 — TR-053): restricted evidence storage. A provider whose
    * terms forbid storing its results (Brave's Search API terms: "shall not ... store, cache, or

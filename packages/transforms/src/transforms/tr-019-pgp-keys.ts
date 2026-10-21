@@ -26,6 +26,12 @@ export const pgpKeys = defineTransform<{ email?: string; fingerprint?: string }>
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 4,
+      rationale: "خادم مفاتيح openpgp العام — المفاتيح منشورة من أصحابها لكن النشر مفتوح وغير مُدقق",
+    },
   },
   async (input, ctx) => {
     const findings: TransformFinding[] = [];

@@ -32,6 +32,13 @@ export const certTransparency = defineTransform<{ domain: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 2,
+      rationale:
+        "crt.sh يجمع سجلات CT العامة — الشهادات نفسها موقعة تشفيرياً من سجلات CT الموثوقة، لكن الخدمة وسيط تجميعي تعاني أحياناً بطءاً وتوافراً متقلباً",
+    },
   },
   async (input, ctx) => {
     const domain = normalizeDomain(input.domain);

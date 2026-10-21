@@ -73,6 +73,12 @@ export const pdfMetadata = defineTransform<{ content: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 14_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "F",
+      credibility: 3,
+      rationale: "تحليل محلي لملف PDF كما هو — مصدر الملف غير معروف؛ البيانات الوصفية مستخرجة بنيوياً من الملف",
+    },
   },
   async (input) => {
     const content = input?.content;

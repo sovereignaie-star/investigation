@@ -28,6 +28,12 @@ export const shodanHost = defineTransform<{ ip: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "normal",
     license: "LC-D",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale: "Shodan مسح منهجي واسع تجاري — ملاحظات فعلية لخدمات مكشوفة في لحظة المسح، موثوقة تشغيلياً مع تحدّث مستمر",
+    },
   },
   async (input, ctx) => {
     const ip = input.ip.trim();

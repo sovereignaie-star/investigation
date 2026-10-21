@@ -27,6 +27,12 @@ export const githubProfile = defineTransform<{ username: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale: "واجهة GitHub الرسمية — بيانات المنصة عن المستودعات والحسابات العامة دقيقة لحظة الاستعلام",
+    },
   },
   async (input, ctx) => {
     const username = input.username.trim();

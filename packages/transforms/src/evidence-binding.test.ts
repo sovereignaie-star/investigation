@@ -21,6 +21,7 @@ const MANIFEST = {
   limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 },
   sensitivity: "normal" as const,
   license: "LC-B",
+  admiralty: { reliability: "B", credibility: 3, rationale: "وسيط موثوق نسبياً — تثبيت اختبار" },
 };
 
 /** A transport whose responses settle after a per-URL delay (so completion order != issue order). */

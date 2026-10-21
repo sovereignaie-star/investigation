@@ -38,6 +38,13 @@ export const httpScan = defineTransform<HttpScanInput>(
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale:
+        "قياس مباشر ذاتي الاستضافة: الطلب يذهب إلى الخادم الهدف نفسه عبر البوابة — الاستجابة حقيقية من الهدف لكن بلا تحقق هوية مسبق",
+    },
   },
   async (input, ctx: TransformContext) => {
     // T-RULE-02: URLs are built with URL only.

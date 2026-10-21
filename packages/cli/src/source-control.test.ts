@@ -400,3 +400,31 @@ describe("P2-029 keyUrl: the verified link to each provider's key page", () => {
     expect(by("TR-001")?.keyUrl).toBeUndefined();
   });
 });
+
+describe("P4-002 ir source list: the documented Admiralty grade of every transform", () => {
+  it("T-P4002-001: every listed source carries its admiralty grade (json) and the human surface shows it (text)", async () => {
+    const dir = tempDir();
+    await cli(["run", dir, "TR-010", "url", "https://example.com", ...CASE_ARGS]); // create the case
+    const list = await cli(["source", dir, "list", "--json"]);
+    expect(list.code).toBe(0);
+    expect(list.rows).toBeDefined();
+    // every registered row carries the documented grade with its written rationale
+    const ungraded = (list.rows ?? []).filter((r) => {
+      const a = r.admiralty as { reliability?: unknown; credibility?: unknown; rationale?: unknown } | undefined;
+      return !(
+        a !== undefined &&
+        typeof a.reliability === "string" &&
+        typeof a.credibility === "number" &&
+        typeof a.rationale === "string" &&
+        a.rationale.length >= 10
+      );
+    });
+    expect(ungraded.map((r) => r.transformId)).toEqual([]);
+    // the documented anchor case: Google DoH is a B-grade source with default credibility 3
+    expect(list.rows?.find((r) => r.transformId === "TR-001")?.admiralty).toMatchObject({ reliability: "B", credibility: 3 });
+    // the human-readable surface shows the grade next to the state
+    const text = await cli(["source", dir, "list"]);
+    expect(text.code).toBe(0);
+    expect(text.out).toMatch(/TR-001: enabled — r=B k=3/);
+  });
+});

@@ -150,6 +150,8 @@ export const otxPulses = defineTransform<Tr046Input>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: { reliability: "C", credibility: 4, rationale: "OTX تبادل مؤشرات تهديد مجتمعي — المؤشرات مساهمات فردية بجودة متفاوتة" },
   },
   async (input, ctx) => {
     const subject = otxSubject(input);

@@ -36,6 +36,12 @@ export const phoneAnalysis = defineTransform<{ phone: string }>(
     limits: { rps: 1, timeoutMs: 1_000, maxBytes: 1_000 },
     sensitivity: "natural_person_gate",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 2,
+      rationale: "تحليل محلي بمكتبة libphonenumber وبيانات Google الكاملة — اشتقاق بنيوي حتمي (دولة/نوع/E.164) من الرقم نفسه",
+    },
   },
   async (input) => {
     const raw = input?.phone?.trim() ?? "";

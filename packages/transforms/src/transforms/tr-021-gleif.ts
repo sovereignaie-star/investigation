@@ -68,6 +68,12 @@ export const gleifEntity = defineTransform<{ lei?: string; name?: string }>(
     limits: { rps: 1, timeoutMs: 15_000, maxBytes: 2_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 1,
+      rationale: "GLEIF المشغل الرسمي لمنظومة معرفات LEI العالمية — سجل مرجعي أولي بمنهجية تحقق موثقة",
+    },
   },
   async (input, ctx) => {
     const lei = requireLei(input.lei);

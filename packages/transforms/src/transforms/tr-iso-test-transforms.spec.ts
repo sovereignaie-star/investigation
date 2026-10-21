@@ -14,6 +14,7 @@ const BASE = {
   secrets: [],
   sensitivity: "normal",
   license: "LC-B",
+  admiralty: { reliability: "B", credibility: 3, rationale: "وسيط موثوق نسبياً — تثبيت اختبار" },
 } as const;
 
 /** TR-ISO-001: a transform that makes one request and returns a finding. */

@@ -38,6 +38,13 @@ export const rdapDomain = defineTransform<{ domain: string }>(
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 2,
+      rationale:
+        "RDAP الرسمي عبر جدول إقلاع IANA — بيانات سجلات أسماء النطاقات الرسمية من المشغلين المفوضين؛ الاشتقاق (المسجل/الحالة/الخوادم) من السجل الرسمي مباشرة",
+    },
   },
   async (input, ctx) => {
     const domain = normalizeDomain(input.domain);

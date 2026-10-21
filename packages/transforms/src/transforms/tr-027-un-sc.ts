@@ -25,6 +25,8 @@ export const unScConsolidated = defineTransform<{ name: string }>(
     limits: { rps: 1, timeoutMs: 60_000, maxBytes: 8_000_000 },
     sensitivity: "natural_person_gate",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: { reliability: "A", credibility: 1, rationale: "قائمة مجلس الأمن الدولي الموحدة الرسمية — مصدر أولي ملزم دولياً" },
   },
   async (input, ctx) => {
     const name = input.name.trim();

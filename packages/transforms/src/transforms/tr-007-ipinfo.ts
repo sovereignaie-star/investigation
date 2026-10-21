@@ -26,6 +26,12 @@ export const ipInfo = defineTransform<{ ip: string }>(
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 4,
+      rationale: "ipinfo.io نقطة النهاية العامة — تجميع تجاري لبيانات جغرافية وتنظيمية للعناوين بطبيعة تقديرية معروفة الحدود",
+    },
   },
   async (input, ctx) => {
     const ip = input.ip.trim();

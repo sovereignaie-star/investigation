@@ -30,6 +30,12 @@ export const savePageNow = defineTransform<{ url: string }>(
     limits: { rps: 1, timeoutMs: 30_000, maxBytes: 2_000_000 },
     sensitivity: "normal",
     license: "LC-C",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "C",
+      credibility: 4,
+      rationale: "خدمة حفظ الصفحات العامة في أرشيف الإنترنت — نتيجة الحفظ عرضة لطوابير الخدمة ولا تضمن اكتمال اللقطة",
+    },
   },
   async (input, ctx) => {
     let target: string;

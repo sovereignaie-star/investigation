@@ -146,6 +146,13 @@ export const exifMetadata = defineTransform<{ content: string }>(
     limits: { rps: 1, timeoutMs: 10_000, maxBytes: 14_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "F",
+      credibility: 3,
+      rationale:
+        "تحليل محلي لملف صورة كما هو — المصدر (المُنتج الأصلي للملف) غير قابل للحكم عليه مسبقاً؛ البيانات الوصفية مستخرجة بنيوياً من الملف نفسه",
+    },
   },
   async (input) => {
     const content = input?.content;

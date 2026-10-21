@@ -27,6 +27,12 @@ export const ripestat = defineTransform<{ resource: string }>(
     limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-B",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "B",
+      credibility: 3,
+      rationale: "RIPEstat أداة RIPE NCC الرسمية — بيانات التوجيه والاشتقاقات الإحصائية موثوقة لكنها مشتقات اجتهادية لا سجلات أولية",
+    },
   },
   async (input, ctx) => {
     const raw = input.resource.trim();

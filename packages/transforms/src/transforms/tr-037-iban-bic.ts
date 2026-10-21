@@ -52,6 +52,12 @@ export const ibanBic = defineTransform<{ iban?: string; bic?: string }>(
     limits: { rps: 100, timeoutMs: 10_000, maxBytes: 1_000_000 },
     sensitivity: "normal",
     license: "LC-A",
+    // P4-002: the documented Admiralty source grade (D2/5.13) — the basis the confidence model consumes.
+    admiralty: {
+      reliability: "A",
+      credibility: 1,
+      rationale: "تحقق بنيوي محلي ضد سجل SWIFT IBAN المشمول في النواة — تحقق ISO 13616 mod-97 حتمي لا اجتهاد فيه",
+    },
   },
   (input, _ctx) => {
     const findings: TransformFinding[] = [];

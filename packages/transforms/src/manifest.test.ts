@@ -17,6 +17,7 @@ const VALID_MANIFEST = {
   limits: { rps: 2, timeoutMs: 10_000, maxBytes: 1_000_000 },
   sensitivity: "normal",
   license: "LC-B",
+  admiralty: { reliability: "B", credibility: 3, rationale: "وسيط موثوق نسبياً — تثبيت اختبار" },
 };
 
 function fakeTransport(responses: Array<{ status: number; body?: string; headers?: Record<string, string> }> = []): HttpTransport {
