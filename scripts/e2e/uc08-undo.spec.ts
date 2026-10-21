@@ -14,6 +14,14 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { caseDirOf, createCaseViaApi, fixturesDir, irRun, openCase } from "./helpers.ts";
 
+// D-048: every uc08 test seeds its case through the REAL CLI engine (a sandboxed
+// process that takes ~20s locally and more on CI-class hardware) before the UI
+// journey starts. The suite's 60s default cannot hold both the engine run and the
+// multi-step view interactions on CI — the timeout was exceeded on main's CI runs
+// (39530378837, 39544385425). 180s keeps the guard (a hung test still fails) while
+// matching the documented, measured cost of the real engine.
+test.setTimeout(180_000);
+
 const SIM = path.join(fixturesDir, "uc05-sim.json");
 const WALLET = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
 const COUNTERPARTY = "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2";
@@ -130,29 +138,45 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
   // the new view (the pointer-to-node test uses the renderer's refreshed matrix)
   await page.waitForTimeout(300);
 
-  // the drag: from the canvas's center, a real travel, release
+  // the drag: from the canvas's center, a real travel, release. D-048: on slower
+  // CI machines the camera move from «التركيز على العقدة» can still be settling
+  // when the pointer goes down — the drag lands on empty stage and records no
+  // edit. Instead of a fixed sleep, RETRY the drag until the history honestly
+  // reflects it (the palette's undo command becoming available is the sync point).
+  // The final assertion below stays exactly as strict as before: no recorded
+  // edit after the retries = a real failure, never a silently-passing test.
   const canvas = page.getByTestId("investigation-graph");
   // the row clicks above may have scrolled the page (the entity table lives below
   // the canvas) — the canvas must be fully back in the viewport or the pointer
   // events land on nothing (the drag would silently record no edit)
   await page.evaluate("document.querySelector('[data-testid=investigation-graph]')?.scrollIntoView({ block: 'start' })");
-  const box = await canvas.boundingBox();
-  if (box === null) throw new Error("the graph canvas must have a bounding box");
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  await page.mouse.move(cx, cy);
-  await page.mouse.down();
-  await page.mouse.move(cx + 120, cy + 80, { steps: 8 });
-  await page.mouse.up();
+  let dragRecorded = false;
+  for (let attempt = 0; attempt < 3 && !dragRecorded; attempt++) {
+    const box = await canvas.boundingBox();
+    if (box === null) throw new Error("the graph canvas must have a bounding box");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 120, cy + 80, { steps: 8 });
+    await page.mouse.up();
 
-  // the move was RECORDED: the undo command is now available and Ctrl+Z runs it.
-  // The drag's pointer-up lands on the canvas; the palette opens on the workbench's
-  // global shortcut, so wait for the palette to be ready before typing (a fast CI
-  // can still be settling the canvas hit-testing when Ctrl+K arrives — the palette
-  // opening is the sync point, not a fixed sleep).
-  await page.keyboard.press("Control+k");
-  await expect(page.getByTestId("command-palette")).toBeVisible();
-  await page.getByTestId("command-palette-input").fill("التراجع");
+    // the move was RECORDED: the undo command is now available and Ctrl+Z runs it.
+    // The drag's pointer-up lands on the canvas; the palette opens on the workbench's
+    // global shortcut, so wait for the palette to be ready before typing (a fast CI
+    // can still be settling the canvas hit-testing when Ctrl+K arrives — the palette
+    // opening is the sync point, not a fixed sleep).
+    await page.keyboard.press("Control+k");
+    await expect(page.getByTestId("command-palette")).toBeVisible();
+    await page.getByTestId("command-palette-input").fill("التراجع");
+    dragRecorded = await page.getByTestId("command-view.undo").isVisible();
+    if (!dragRecorded) {
+      // close the palette and give the canvas another rendered frame before the retry
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("command-palette")).toBeHidden();
+      await page.waitForTimeout(300);
+    }
+  }
   await expect(page.getByTestId("command-view.undo")).toBeVisible();
   // the palette's exit animation keeps its search input mounted (and focused) for a
   // moment — a Ctrl+Z racing it is text-entry, not a command (docs/shortcuts.md);
@@ -160,5 +184,7 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("command-palette")).toBeHidden();
   await page.keyboard.press("Control+z");
-  await expect(page.getByText("تم التراجع عن آخر عملية عرض")).toBeVisible();
+  // D-048: the toast is transient feedback — on a slow CI it can render late,
+  // so the wait is explicit (the acceptance stays: the feedback NAMES the undo).
+  await expect(page.getByText("تم التراجع عن آخر عملية عرض")).toBeVisible({ timeout: 10_000 });
 });
