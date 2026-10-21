@@ -104,4 +104,74 @@ describe("parseProjection (P3-015 — fail-closed parse of the served snapshot)"
     expect(parseProjection(null)).toBeNull();
     expect(parseProjection("nope")).toBeNull();
   });
+
+  // P4-010/UC-21 red first: the served projection carries the coverage map
+  // (cells/transforms/untouched — P2-017), and "every empty transform shows"
+  // starts with the parser not dropping it. A transform whose only result is
+  // negative ("searched, found nothing" — D3) is coverage, never untouched.
+  it("keeps the served coverage — a transform whose only result is negative is carried, not dropped", () => {
+    const coverage = {
+      cells: [
+        {
+          entityId: "n1",
+          transformId: "tr-dns",
+          positive: 0,
+          negative: 1,
+          error: 0,
+          last: "negative",
+          lastAt: "2026-10-10T08:00:00.000Z",
+        },
+      ],
+      transforms: ["tr-dns"],
+      untouched: ["n2"],
+    };
+    const opened = parseProjection({ ...SNAPSHOT, coverage } as unknown as Record<string, unknown>);
+    expect(opened).not.toBeNull();
+    expect((opened as OpenedCase & { coverage?: unknown }).coverage).toEqual(coverage);
+  });
+
+  // P4-010 strengthening (pass on this implementation — documented as coverage
+  // strengthening, not red): the fail-closed contract around the coverage field.
+  it("absent or corrupt coverage reads as null (unavailable) — never a fabricated empty map", () => {
+    // absent (an older server): the case still opens, coverage honestly unavailable
+    const noField = parseProjection({ ...SNAPSHOT, coverage: undefined } as unknown as Record<string, unknown>);
+    expect(noField).not.toBeNull();
+    expect((noField as OpenedCase).coverage).toBeNull();
+    // corrupt cells: the whole field is rejected as one, never partially kept
+    const badCells = parseProjection({
+      ...SNAPSHOT,
+      coverage: {
+        cells: [{ entityId: "n1", transformId: "t", positive: 0, negative: 1, error: 0, last: "negative", lastAt: "x" }, { entityId: 42 }],
+        transforms: ["t"],
+        untouched: [],
+      },
+    } as unknown as Record<string, unknown>);
+    expect(badCells).not.toBeNull();
+    expect((badCells as OpenedCase).coverage).toBeNull();
+    // non-integer/negative counts are rejected
+    const badCount = parseProjection({
+      ...SNAPSHOT,
+      coverage: {
+        cells: [{ entityId: "n1", transformId: "t", positive: -1, negative: 0, error: 0, last: "positive", lastAt: "x" }],
+        transforms: ["t"],
+        untouched: [],
+      },
+    } as unknown as Record<string, unknown>);
+    expect(badCount).not.toBeNull();
+    expect((badCount as OpenedCase).coverage).toBeNull();
+  });
+
+  it("a valid EMPTY coverage is a Coverage object — distinct from null (unavailable)", () => {
+    const empty = parseProjection({
+      ...SNAPSHOT,
+      coverage: { cells: [], transforms: [], untouched: ["n1", "n2"] },
+    } as unknown as Record<string, unknown>);
+    expect(empty).not.toBeNull();
+    const cov = (empty as OpenedCase).coverage;
+    expect(cov).not.toBeNull();
+    if (cov === null) throw new Error("unreachable");
+    expect(cov.cells).toEqual([]);
+    expect(cov.transforms).toEqual([]);
+    expect(cov.untouched).toEqual(["n1", "n2"]);
+  });
 });

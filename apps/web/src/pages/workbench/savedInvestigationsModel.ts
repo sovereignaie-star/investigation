@@ -1,5 +1,5 @@
 import type { CaseSummary } from "@workspace/api-client-react";
-import type { Graph as ProjectionGraph } from "@ir/ledger/projections";
+import type { Coverage, Graph as ProjectionGraph } from "@ir/ledger/projections";
 
 /**
  * P3-015: the saved-investigations model — «فتح قضية بعد إعادة التشغيل». The
@@ -17,6 +17,14 @@ export interface ProjectionSnapshot {
   graph: ProjectionGraph;
   /** P3-021: the readable analyst notes carried by the projection (ledger order). */
   notes: StoredNote[];
+  /**
+   * P4-010 (UC-21): the case's coverage map as the served projection carries it
+   * (P2-017 — cells/transforms/untouched). `null` means the coverage is NOT
+   * available: the field was absent (an older server) or failed validation — the
+   * view says so honestly instead of fabricating an empty map. A VALID empty
+   * coverage (no cells at all) is a Coverage object, distinct from `null`.
+   */
+  coverage: Coverage | null;
 }
 
 /** A case opened into the workbench: its identity plus its own graph. */
@@ -27,6 +35,8 @@ export interface OpenedCase {
   sha256: string;
   graph: ProjectionGraph;
   notes: StoredNote[];
+  /** P4-010: the coverage map of the opened case — `null` = unavailable, never a fabricated empty map. */
+  coverage: Coverage | null;
 }
 
 /** P3-021: a readable note as the case's projection carries it (see @ir/ledger). */
@@ -48,6 +58,53 @@ export function canOpenCase(c: CaseSummary): boolean {
 }
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
+
+function isCount(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0;
+}
+
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
+
+/** One cell — strict: anything malformed rejects the cell (and with it the whole field). */
+function parseCoverageCell(raw: unknown): Coverage["cells"][number] | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const b = raw as Record<string, unknown>;
+  if (typeof b.entityId !== "string" || typeof b.transformId !== "string") return null;
+  if (!isCount(b.positive) || !isCount(b.negative) || !isCount(b.error)) return null;
+  if (b.last !== "positive" && b.last !== "negative" && b.last !== "error") return null;
+  if (typeof b.lastAt !== "string") return null;
+  return {
+    entityId: b.entityId,
+    transformId: b.transformId,
+    positive: b.positive,
+    negative: b.negative,
+    error: b.error,
+    last: b.last,
+    lastAt: b.lastAt,
+  };
+}
+
+/**
+ * P4-010 (UC-21): strict validation of the served coverage map. The whole field
+ * is taken or rejected as one — a partially corrupt map is NEVER shown as a
+ * complete coverage picture (that would hide unchecked entities behind a green
+ * facade). `null` means "unavailable", which the view states honestly; a valid
+ * empty map (zero cells) is a Coverage object, not `null`.
+ */
+function parseCoverage(raw: unknown): Coverage | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const c = raw as Record<string, unknown>;
+  if (!Array.isArray(c.cells) || !isStringArray(c.transforms) || !isStringArray(c.untouched)) return null;
+  const cells: Coverage["cells"] = [];
+  for (const cell of c.cells) {
+    const parsed = parseCoverageCell(cell);
+    if (parsed === null) return null;
+    cells.push(parsed);
+  }
+  return { cells, transforms: [...c.transforms], untouched: [...c.untouched] };
+}
 
 /**
  * Validates the served snapshot's load-bearing fields (fail-closed): an
@@ -81,6 +138,9 @@ export function parseProjection(body: unknown): ProjectionSnapshot | null {
     sha256: b.sha256,
     graph: { nodes: graph.nodes as ProjectionGraph["nodes"], edges: graph.edges as ProjectionGraph["edges"] },
     notes,
+    // P4-010: the coverage map rides along or the view states "unavailable" — a
+    // corrupt field never becomes a fabricated empty map (fail-closed, like notes).
+    coverage: parseCoverage(b.coverage),
   };
 }
 
