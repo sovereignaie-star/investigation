@@ -49,3 +49,11 @@ jobs:
 
       - name: Run E2E (UC-01..UC-06 on the simulation world)
         run: pnpm e2e
+
+      - name: Attach failure evidence (L-53)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-context
+          path: scripts/test-results/
+          if-no-files-found: ignore
