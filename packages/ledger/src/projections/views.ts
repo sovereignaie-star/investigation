@@ -17,16 +17,31 @@ export interface ClaimObservation {
 }
 
 /** P4-006 — observations sort by MOMENT, not by text: ISO strings with mixed timezone offsets
- *  ("2026-01-01T10:00:00-05:00" = 15:00Z) make text order lie about which came first. */
+ *  ("2026-01-01T10:00:00-05:00" = 15:00Z) make text order lie about which came first.
+ *  The schema also accepts fractional seconds beyond milliseconds (verified: 7-digit fractions pass
+ *  `z.iso.datetime({ offset: true })`), which Date.parse collapses — so the moment key compares the
+ *  whole-second instant via Date.parse PLUS the sub-millisecond fraction as nanoseconds.
+ *  Precision bound: nanoseconds (digits beyond nine are ignored). */
+const ISO_MOMENT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
+const momentKey = (t: string): { ms: number; frac: number } => {
+  const m = ISO_MOMENT.exec(t);
+  if (!m) return { ms: Date.parse(t), frac: 0 };
+  return { ms: Date.parse(`${m[1]}T${m[2]}${m[4]}`), frac: Number((m[3] ?? "").padEnd(9, "0").slice(0, 9)) };
+};
+const byObservedMoment = (a: string, b: string): number => {
+  const ka = momentKey(a);
+  const kb = momentKey(b);
+  return ka.ms !== kb.ms ? ka.ms - kb.ms : ka.frac - kb.frac;
+};
 const byMoment = (a: { id: string; observedAt: string }, b: { id: string; observedAt: string }) => {
-  const d = Date.parse(a.observedAt) - Date.parse(b.observedAt);
+  const d = byObservedMoment(a.observedAt, b.observedAt);
   return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 };
 const claimObservations = (obs: StoredObservation[] = []): ClaimObservation[] =>
   obs
     .map((o) => ({ observationId: o.id, evidenceId: o.evidenceId, observedAt: o.observedAt, kind: o.kind }))
     .sort((a, b) => {
-      const d = Date.parse(a.observedAt) - Date.parse(b.observedAt);
+      const d = byObservedMoment(a.observedAt, b.observedAt);
       return d !== 0 ? d : a.observationId < b.observationId ? -1 : a.observationId > b.observationId ? 1 : 0;
     });
 
@@ -397,7 +412,7 @@ export function coverageView(p: Projector, graph: Graph = graphView(p)): Coverag
       lastAt: o.observedAt,
     };
     c[o.kind]++;
-    if (Date.parse(o.observedAt) >= Date.parse(c.lastAt)) {
+    if (byObservedMoment(o.observedAt, c.lastAt) >= 0) {
       c.last = o.kind;
       c.lastAt = o.observedAt;
     }

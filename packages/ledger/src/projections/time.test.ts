@@ -16,6 +16,9 @@ import { project } from "./index.ts";
  *
  * صادق الأدلة: T-TIME-001/002/004 حمراء (سلوك جديد/خلل كامن)، T-TIME-003/005 تتحقق من
  * سلوك قائم جزئياً — موسومة بذلك في متنها، والتشغيل الفعلي موثق في WORKLOG قبل أي تنفيذ.
+ * T-TIME-004b كُتب أحمر بعد جولة مراجعة التحقق: المخطط يقبل كسور ثانية دون الملي ثانية
+ * (متحقق: 7 خانات تمرّ) بينما Date.parse يدمجها — أُصلح المقارن بعده (دقة نانوثانية معلنة).
+ * T-TIME-001b تغطية تكميلية معلنة لسلوك قائم (كسر التعادل بالمعرّف + نوع error)، ليست دليلاً أحمر أصلياً.
  */
 
 const T0 = "2026-10-10T08:00:00.000Z";
@@ -154,8 +157,10 @@ describe("P4-006 — bitemporal projections (T-TIME)", () => {
       observationId: obs,
       observedAt: "2026-03-01T10:00:00Z",
     });
-    // the same claim re-appended later in the ledger keeps its 2019 validity — append order never rewrites validity
-    expect(edge?.validFrom).toBe("2019-06-01T00:00:00Z");
+    // the ledger append time is a THIRD clock: the observation's own entry was appended at a
+    // T0-based time, distinct from both its observedAt (March 2026) and the claim's validity (2019)
+    const entry = f.ledger.entries().find((e) => e.kind === "observation.added");
+    expect(entry?.at).toBe("2026-10-10T08:00:05.000Z"); // T0 + 5 advances of 1s: entity, entity, claim, evidence, observation
   });
 
   it("T-TIME-004: first/last observed and coverage lastAt follow MOMENT order with mixed timezone offsets — not text order (latent text-sort defect)", () => {
@@ -178,6 +183,67 @@ describe("P4-006 — bitemporal projections (T-TIME)", () => {
     expect(cell).toBeDefined();
     expect(cell?.lastAt).toBe("2026-01-01T10:00:00-05:00"); // the LATER moment
     expect(cell?.last).toBe("negative"); // the observation that actually came last in time
+  });
+
+  it("T-TIME-004b: sub-millisecond fractional seconds keep TRUE moment order — the schema accepts them and Date.parse collapses them (red before the comparator fix)", () => {
+    const f = fixture();
+    const a = f.entity("person", "a");
+    const b = f.entity("person", "b");
+    const rel = f.claim(a, "knows", { objectId: b });
+    const ev1 = f.evidence();
+    const ev2 = f.evidence();
+    // .0009Z is the LATER moment but appended FIRST; .0001Z is EARLIER but appended last.
+    // Date.parse truncates both to the same millisecond — the tie must NOT fall to the id.
+    const obsLate = f.observe({ claimId: rel }, "error", ev1, "2026-01-01T00:00:00.0009Z");
+    const obsEarly = f.observe({ claimId: rel }, "negative", ev2, "2026-01-01T00:00:00.0001Z");
+    // entity-targeted observations with the same sub-ms pair: first/lastObservedAt and coverage read these
+    f.observe({ entityId: a }, "error", ev1, "2026-01-01T00:00:00.0009Z");
+    f.observe({ entityId: a }, "negative", ev2, "2026-01-01T00:00:00.0001Z");
+    const p = project(f.ledger.entries());
+
+    const edge = p.graph.edges.find((e) => e.id === rel);
+    expect(edge).toBeDefined();
+    const eo = (edge?.observations ?? []) as ClaimObservation[];
+    expect(eo.map((o) => o.observationId)).toEqual([obsEarly, obsLate]); // TRUE moment order
+
+    const row = p.table.find((r) => r.id === a);
+    expect(row?.firstObservedAt).toBe("2026-01-01T00:00:00.0001Z");
+    expect(row?.lastObservedAt).toBe("2026-01-01T00:00:00.0009Z");
+
+    const cell = p.coverage.cells.find((c) => c.entityId === a);
+    expect(cell?.lastAt).toBe("2026-01-01T00:00:00.0009Z");
+    expect(cell?.last).toBe("error");
+  });
+
+  it("T-TIME-001b (supplementary, existing behavior): equal moments in different representations tie-break by observationId, not append order — and error kind is served like any other", () => {
+    const f = fixture();
+    const a = f.entity("person", "a");
+    const b = f.entity("person", "b");
+    const rel = f.claim(a, "knows", { objectId: b });
+    const ev = f.evidence();
+    // 12:00Z and 07:00-05:00 are the SAME moment; ids crafted so id order opposes append order
+    const late = {
+      id: "7" + "Z".repeat(25),
+      claimId: rel,
+      transformId: "tr-dns",
+      evidenceId: ev,
+      observedAt: "2026-01-01T12:00:00Z",
+      kind: "positive" as const,
+    };
+    const early = {
+      id: "0".repeat(26),
+      claimId: rel,
+      transformId: "tr-dns",
+      evidenceId: ev,
+      observedAt: "2026-01-01T07:00:00-05:00",
+      kind: "error" as const,
+    };
+    f.add("observation.added", late);
+    f.add("observation.added", early);
+    const p = project(f.ledger.entries());
+    const eo = (p.graph.edges.find((e) => e.id === rel)?.observations ?? []) as ClaimObservation[];
+    expect(eo.map((o) => o.observationId)).toEqual([early.id, late.id]); // id tie-break, not append order
+    expect(eo.map((o) => o.kind)).toEqual(["error", "positive"]); // error kind served like any other
   });
 
   it("T-TIME-005: a snapshot at an earlier seq never leaks a later-appended observation even when its observedAt is old (existing upTo behavior, verified)", () => {
