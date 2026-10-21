@@ -53,9 +53,15 @@ describe("P3-025: self-hosted Arabic/Latin fonts", () => {
     const html = readFileSync(path.join(webRoot, "index.html"), "utf-8");
     const sources = [html, indexCss];
     for (const src of sources) {
-      expect(src).not.toMatch(/fonts\.googleapis\.com/);
-      expect(src).not.toMatch(/fonts\.gstatic\.com/);
-      expect(src).not.toMatch(/https?:\/\/[^"']*\.woff2?/);
+      // Extract every URL and judge it by its PARSED host/path — never by substring
+      // matching on raw text (CodeQL js/incomplete-url-substring-sanitization).
+      const urls = [...src.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map((m) => m[0]);
+      for (const raw of urls) {
+        const url = new URL(raw);
+        expect(url.hostname).not.toBe("fonts.googleapis.com");
+        expect(url.hostname).not.toBe("fonts.gstatic.com");
+        expect(url.pathname.endsWith(".woff2") || url.pathname.endsWith(".woff")).toBe(false);
+      }
     }
   });
 });
