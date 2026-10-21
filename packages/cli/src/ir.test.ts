@@ -5,8 +5,9 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { manualClock, seededRandom, systemClock, ulidFactory } from "@ir/core";
 import { checkpoint, generateInstallationKey, signCheckpoint } from "@ir/ledger";
+import type { RunTransformResult } from "@ir/transforms";
 import { CASE_DB, openCase, verifyCase } from "@ir/store";
-import { claimCheck, main, monitorSleep } from "./ir.ts";
+import { claimCheck, commitMonitorSuccess, main, monitorSleep } from "./ir.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -997,6 +998,147 @@ describe("ir monitor (P4-009)", () => {
       // exactly ONE started event is on the chain — no duplicate attempt
       const started = cA.auditTrail().filter((e) => e.action === "monitor.check.started");
       expect(started).toHaveLength(1);
+    } finally {
+      cA.close();
+      cB.close();
+    }
+  });
+
+  it("claimCheck (no injected head) reads the attempt state from a STALE snapshot and is still refused when the case changed under it", async () => {
+    // coverage strengthening for the round-6 head-first fix (per the advisor: not a pre-implementation red —
+    // it verifies the PRODUCTION read order, where the head is captured before the attempt state)
+    const { dir } = await monitoredCase("5");
+    const list = await monitors(dir);
+    const m = list[0];
+    const asCaseMonitor = {
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    };
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    try {
+      // the pre-B snapshot A's attempt-state read will return (captured before B claims)
+      const realTrail = cA.auditTrail.bind(cA);
+      const preB = realTrail();
+      let intercepted = false;
+      cA.auditTrail = () => {
+        if (intercepted) return realTrail();
+        intercepted = true;
+        // B claims the SAME monitor while A holds its stale snapshot — the head moves under A
+        const b = claimCheck(cB, asCaseMonitor, systemClock);
+        expect("error" in b).toBe(false);
+        return preB; // A's read: the pre-B state (no in-flight guard, the id B already took)
+      };
+      const a = claimCheck(cA, asCaseMonitor, systemClock);
+      cA.auditTrail = realTrail;
+      // A's claim from the stale snapshot must be REFUSED by the head check — never a duplicate attempt id
+      expect("error" in a).toBe(true);
+      const started = cA.auditTrail().filter((e) => e.action === "monitor.check.started");
+      expect(started).toHaveLength(1); // only B's claim landed
+    } finally {
+      cA.close();
+      cB.close();
+    }
+  });
+
+  it("the result commit is CONDITIONAL: an attempt that read its decision before a newer claim never prints a second ALERT", async () => {
+    const { dir, id } = await monitoredCase("5");
+    const rules = simRules(dir, "nginx");
+    // baseline #1: the first successful check (nginx)
+    const first = await run(["monitor", dir, "check", id, "--sim", rules]);
+    expect(first.text).toContain("baseline established");
+    // A = attempt #2, suspended 11 minutes ago (stale — its claim predates everything below)
+    const pastAt = new Date(Date.now() - 11 * 60_000).toISOString();
+    const c0 = openCase(dir, { actor: "ir-cli", clock: manualClock(pastAt) });
+    c0.audit("monitor.check.started", `${id}#2`, { monitorId: id, transformId: "TR-010", at: pastAt });
+    c0.close();
+    // the change both attempts see: apache instead of nginx
+    writeFileSync(
+      rules,
+      JSON.stringify([
+        {
+          match: "https://example.com/",
+          response: { status: 200, headers: { "content-type": "text/html", server: "apache" }, body: "<html>ok</html>" },
+        },
+      ]),
+    );
+    // A's run result (what its suspended transform returned before the pause)
+    const aResult: RunTransformResult = {
+      output: {
+        findings: [
+          {
+            predicate: "has_technology",
+            objectType: "http",
+            objectValue: "example.com",
+            objectId: "apache",
+            confidence: 1,
+            explanation: "server header",
+            derivedFrom: "input",
+          },
+        ],
+      },
+      requestCount: 0,
+      evidence: [],
+    };
+    const list = await monitors(dir);
+    const m = list[0];
+    const asCaseMonitor = {
+      id: m.id,
+      transformId: m.transformId,
+      subjectType: m.subjectType,
+      subjectValue: m.subjectValue,
+      subjectKey: m.subjectKey,
+      intervalMinutes: m.intervalMinutes,
+    };
+    const cA = openCase(dir, { actor: "ir-cli" });
+    const cB = openCase(dir, { actor: "ir-cli" });
+    try {
+      // the snapshot A's decision read will see (captured BEFORE B claims — A read its decision first)
+      const realTrail = cA.auditTrail.bind(cA);
+      const preB = realTrail();
+      let reads = 0;
+      cA.auditTrail = () => {
+        if (reads >= 2) return realTrail(); // after A's decision reads: the real trail (its retry)
+        reads++;
+        if (reads === 1) {
+          // while A is between its decision read and its write: B claims the newer attempt (A's #2 is
+          // 11 minutes stale) and commits its finished result — the head moves under A's decision
+          const b = claimCheck(cB, asCaseMonitor, systemClock);
+          expect("error" in b).toBe(false);
+          cB.audit("monitor.check.result", (b as { checkId: string }).checkId, {
+            monitorId: id,
+            status: "success",
+            at: new Date().toISOString(),
+            findingsCount: 1,
+            changed: true,
+            alert: { added: ["has_technology|http|example.com|apache"], removed: [], changed: [] },
+            state: [
+              {
+                predicate: "has_technology",
+                objectType: "http",
+                objectValue: "example.com",
+                objectId: "apache",
+                confidence: 1,
+                explanation: "server header",
+              },
+            ],
+          });
+        }
+        return preB; // BOTH of A's decision reads (supersession + baseline) see the pre-B snapshot
+      };
+      const lines: string[] = [];
+      commitMonitorSuccess(cA, asCaseMonitor, `${id}#2`, 5, aResult, systemClock, (s) => lines.push(s));
+      cA.auditTrail = realTrail;
+      // A's late commit must NOT print an ALERT: its pre-read decision is void — it recomputes,
+      // sees B's newer attempt, and lands as a logged-superseded result
+      expect(lines.filter((l) => l.includes("ALERT"))).toHaveLength(0);
+      expect(lines.join("\n")).toContain("SUPERSEDED");
+      // and the chain keeps exactly one alert (B's)
+      expect((await monitors(dir))[0].alertCount).toBe(1);
     } finally {
       cA.close();
       cB.close();

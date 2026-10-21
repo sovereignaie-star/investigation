@@ -1300,8 +1300,8 @@ function headSeq(c: Case): number {
   return last === undefined ? -1 : last.seq;
 }
 
-/** Commits a SUCCESSFUL check: compares the run's normalized findings against the last successful state and writes the ONE result event (the alert decision and the new baseline together). */
-function commitMonitorSuccess(
+/** Commits a SUCCESSFUL check: compares the run's normalized findings against the last successful state and writes the ONE result event (the alert decision and the new baseline together). Exported for its direct tests (P4-009 round 7). */
+export function commitMonitorSuccess(
   c: Case,
   monitor: CaseMonitor,
   checkId: string,
@@ -1312,53 +1312,88 @@ function commitMonitorSuccess(
 ): void {
   // the comparison state is THIS RUN's findings, normalized — never the whole case projection.
   const state = monitorFindingState(result.output.findings);
-  // SUPERSESSION GATE (P4-009 round 5): if a NEWER attempt of this monitor is already on the chain
-  // (a suspended attempt resuming after a newer claim), this result is logged but VOID — no alert
-  // decision, no baseline change. The read-time supersession filter in monitorChecks enforces the
-  // same invariant for anything that lands on the chain regardless of who wrote it.
-  const superseded = checksOfMonitor(monitorChecks(c), monitor.id).some((k) => attemptNumberOf(k.checkId) > attemptNumberOf(checkId));
-  if (superseded) {
-    c.audit("monitor.check.result", checkId, {
-      monitorId: monitor.id,
-      status: "success",
-      at: isoNow(clock),
-      fromSeq,
-      findingsCount: result.output.findings.length,
-      superseded: true,
-      state,
-    });
-    out(
-      `ir monitor: check ${checkId} ${monitor.transformId} findings ${result.output.findings.length} — SUPERSEDED (a newer attempt exists): logged without changing the baseline`,
+  // CONDITIONAL result commit (P4-009 round 7): the chain head is captured BEFORE the supersession and
+  // baseline reads, and the result is committed via auditIfSeq on that SAME head. If the case changed
+  // under the attempt (a newer claim landed between the read and the write), the commit returns null
+  // and the decision is RE-READ and recomputed — the ALERT is printed only after the conditional
+  // commit succeeds, so an attempt whose decision predates a newer claim can never print a second
+  // alert: it recomputes, sees the newer attempt, and lands as a logged-superseded result.
+  for (let tries = 0; ; tries++) {
+    const head = headSeq(c);
+    const own = checksOfMonitor(monitorChecks(c), monitor.id);
+    if (own.some((k) => attemptNumberOf(k.checkId) > attemptNumberOf(checkId))) {
+      // SUPERSEDED: the result is logged but VOID — no alert decision, no baseline change. The
+      // read-time supersession filter in monitorChecks enforces the same invariant for anything
+      // that lands on the chain regardless of who wrote it.
+      c.audit("monitor.check.result", checkId, {
+        monitorId: monitor.id,
+        status: "success",
+        at: isoNow(clock),
+        fromSeq,
+        findingsCount: result.output.findings.length,
+        superseded: true,
+        state,
+      });
+      out(
+        `ir monitor: check ${checkId} ${monitor.transformId} findings ${result.output.findings.length} — SUPERSEDED (a newer attempt exists): logged without changing the baseline`,
+      );
+      return;
+    }
+    const baseline = lastSuccessfulCheck(c, monitor.id)?.state;
+    const d = baseline === undefined ? undefined : compareFindingStates(baseline, state);
+    const changed = d !== undefined && !d.equal;
+    // ONE conditional write commits the result, the alert decision and the new baseline together —
+    // only on the head the decision was read against.
+    const committed = c.auditIfSeq(
+      "monitor.check.result",
+      checkId,
+      {
+        monitorId: monitor.id,
+        status: "success",
+        at: isoNow(clock),
+        fromSeq,
+        findingsCount: result.output.findings.length,
+        changed,
+        ...(baseline === undefined ? { first: true } : {}),
+        ...(d !== undefined && !d.equal ? { alert: d } : {}),
+        state,
+      },
+      head,
     );
-    return;
-  }
-  const baseline = lastSuccessfulCheck(c, monitor.id)?.state;
-  const d = baseline === undefined ? undefined : compareFindingStates(baseline, state);
-  const changed = d !== undefined && !d.equal;
-  // ONE write commits the result, the alert decision and the new baseline together.
-  c.audit("monitor.check.result", checkId, {
-    monitorId: monitor.id,
-    status: "success",
-    at: isoNow(clock),
-    fromSeq,
-    findingsCount: result.output.findings.length,
-    changed,
-    ...(baseline === undefined ? { first: true } : {}),
-    ...(d !== undefined && !d.equal ? { alert: d } : {}),
-    state,
-  });
-  const head = `ir monitor: check ${checkId} ${monitor.transformId} ${monitor.subjectKey} findings ${result.output.findings.length}`;
-  if (baseline === undefined) {
-    out(`${head} — baseline established (no alert on the first success)`);
-  } else if (!changed) {
-    out(`${head} — no change`);
-  } else if (d !== undefined) {
-    out(`${head} — CHANGED (+${d.added.length} -${d.removed.length} ~${d.changed.length})`);
-    out(`ALERT ${checkId}: added [${d.added.join(", ")}], removed [${d.removed.join(", ")}], changed [${d.changed.join(", ")}]`);
+    if (committed !== null) {
+      // printed only AFTER the conditional commit succeeded
+      const line = `ir monitor: check ${checkId} ${monitor.transformId} ${monitor.subjectKey} findings ${result.output.findings.length}`;
+      if (baseline === undefined) {
+        out(`${line} — baseline established (no alert on the first success)`);
+      } else if (!changed) {
+        out(`${line} — no change`);
+      } else if (d !== undefined) {
+        out(`${line} — CHANGED (+${d.added.length} -${d.removed.length} ~${d.changed.length})`);
+        out(`ALERT ${checkId}: added [${d.added.join(", ")}], removed [${d.removed.join(", ")}], changed [${d.changed.join(", ")}]`);
+      }
+      return;
+    }
+    if (tries >= 5) {
+      // the case kept changing under this attempt (a hostile concurrent writer): log the result VOID
+      // and let the NEXT scheduled check re-derive the change — never a racing alert.
+      c.audit("monitor.check.result", checkId, {
+        monitorId: monitor.id,
+        status: "success",
+        at: isoNow(clock),
+        fromSeq,
+        findingsCount: result.output.findings.length,
+        superseded: true,
+        state,
+      });
+      out(
+        `ir monitor: check ${checkId} ${monitor.transformId} — the case kept changing under this check: logged without an alert decision (the next check re-derives the change)`,
+      );
+      return;
+    }
+    // the case changed under the decision: loop — re-read the state and recompute the decision
   }
 }
 
-/** A resolved run route (the non-error half of what `runRoute` returns). */
 type MonitorRoute = {
   transport: HttpTransport;
   origin: "network" | "sim";
