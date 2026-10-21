@@ -81,6 +81,27 @@ export interface Graph {
   edges: GraphEdge[];
 }
 
+/**
+ * P4-008 (UC-09): one claim of the case inventory — content only, subject/target
+ * resolved through merges, evidence accrual deliberately excluded (accruing evidence
+ * is not a content change).
+ */
+export interface ServedClaim {
+  claimId: string;
+  predicate: string;
+  /** canonicalKey of the subject, resolved through merges. */
+  subjectKey: string;
+  /** Relation: canonicalKey of the target, resolved. Attribute: null. */
+  targetKey: string | null;
+  /** Attribute: the literal value. Relation: null. */
+  value: string | number | boolean | null;
+  validFrom: string | null;
+  validTo: string | null;
+  occurredFrom: string | null;
+  occurredTo: string | null;
+  confidence: number;
+}
+
 function push<K, V>(m: Map<K, V[]>, k: K, v: V): void {
   const a = m.get(k);
   if (a) a.push(v);

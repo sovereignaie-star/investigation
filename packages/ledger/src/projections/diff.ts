@@ -1,6 +1,7 @@
+import { canonicalize } from "../jcs.ts";
 import type { Entry } from "../ledger.ts";
 import type { Projection } from "./index.ts";
-import type { GraphEdge, GraphNode } from "./views.ts";
+import type { GraphNode, ServedClaim } from "./views.ts";
 
 /**
  * P4-008 — الفرق بين لقطتين من سلسلة القضية بالمفاتيح القانونية (ROADMAP 5.15/UC-09).
@@ -15,32 +16,15 @@ import type { GraphEdge, GraphNode } from "./views.ts";
  *  - «تغيّر» الادعاء = اختلاف محتواه المُقدَّم (المسند/الهدف/القيمة/الصلاحية/نافذة
  *    الحدوث/الثقة). تراكم الملاحظات والأدلة (evidenceIds/observations) ليس تغيّراً
  *    للمحتوى بل تورّع أدلة — خارج تعريف «التغيّر» هنا.
- *  - في نموذج الأحداث الحالي الادعاءات إلحاقية (claim.added بلا تحديث)، فلا «ادعاء
- *    محذوف/مغيّر» عملياً بعد الإضافة — التعريف عام للمستقبل وموثق بذلك. حالة موثقة:
- *    ادعاء علاقة طرفاه دُمجا في عقدة واحدة يختفي كحافة من الرسم (حلقة ذاتية
- *    مستبعدة بالتصميم) فيُبلَّغ «محذوفاً» — لم يُحذف من السجل (إلحاقي) وبقي في عدّاد
- *    الجدول؛ «المحذوف» هنا = اختفى من الإسقاط المُقدَّم حصراً.
- *  - الادعاءات التي لا تُقدَّم في الإسقاط (كياناتها غير معروفة) لا تدخل المقارنة —
- *    الإسقاط نفسه يستبعيها من الرسم، والمقارنة على المُقدَّم حصراً.
+ *  - في نموذج الأحداث الحالي الادعاءات إلحاقية (claim.added بلا تحديث) — التعريف
+ *    عام للمستقبل وموثق بذلك. مقارنة الادعاءات تجري على مخزون ادعاءات الإسقاط
+ *    (Projection.claims، المضاف في هذه الجولة): كل ادعاء كياناته معروفة، محلول
+ *    عبر الدمج — ومنه ادعاء العلاقة الذي صار حلقة ذاتية بعد دمج طرفيه: يبقى في
+ *    المخزون ويُبلَّغ «مغيّراً» (تمثيله المُقدَّم تغيّر: الهدف حلّ إلى عقدة أخرى)،
+ *    لا «محذوفاً» — القضية احتفظت به.
+ *  - الادعاءات التي لا تُقدَّم في المخزون (كياناتها غير معروفة) لا تدخل المقارنة —
+ *    الإسقاط نفسه يستبعدها، والمقارنة على المُقدَّم حصراً.
  */
-
-/** An attribute claim as the diff compares it — served content, evidence accrual excluded. */
-export interface DiffClaim {
-  claimId: string;
-  kind: "relation" | "attribute";
-  /** canonicalKey of the subject node (resolved through merges). */
-  subjectKey: string;
-  predicate: string;
-  /** Relation: canonicalKey of the object node. Attribute: null. */
-  targetKey: string | null;
-  /** Attribute: the literal value. Relation: null. */
-  value: string | number | boolean | null;
-  validFrom: string | null;
-  validTo: string | null;
-  occurredFrom: string | null;
-  occurredTo: string | null;
-  confidence: number;
-}
 
 export interface EntityChange {
   key: string;
@@ -50,8 +34,8 @@ export interface EntityChange {
 
 export interface ClaimChange {
   id: string;
-  before: DiffClaim;
-  after: DiffClaim;
+  before: ServedClaim;
+  after: ServedClaim;
 }
 
 export interface CaseDiff {
@@ -63,8 +47,8 @@ export interface CaseDiff {
     changed: EntityChange[];
   };
   claims: {
-    added: DiffClaim[];
-    removed: DiffClaim[];
+    added: ServedClaim[];
+    removed: ServedClaim[];
     changed: ClaimChange[];
   };
   counts: {
@@ -73,68 +57,27 @@ export interface CaseDiff {
   };
 }
 
-/** The identity content of a node as the diff compares it — labels, props, aliases (sorted). */
+/**
+ * The identity content of a node as the diff compares it — labels, props, aliases —
+ * in JCS canonical form so key ORDER never fabricates a change (T-TIME-012).
+ */
 function nodeIdentity(n: GraphNode): string {
-  return JSON.stringify([n.id, n.type, n.canonicalKey, n.labels, n.props, [...n.aliases].sort()]);
+  return canonicalize({
+    id: n.id,
+    type: n.type,
+    canonicalKey: n.canonicalKey,
+    labels: n.labels,
+    props: n.props,
+    aliases: [...n.aliases].sort(),
+  });
 }
 
-/** The served content of a claim as the diff compares it — evidence accrual excluded. */
-function claimContent(c: DiffClaim): string {
-  return JSON.stringify([
-    c.claimId,
-    c.kind,
-    c.subjectKey,
-    c.predicate,
-    c.targetKey,
-    c.value,
-    c.validFrom,
-    c.validTo,
-    c.occurredFrom,
-    c.occurredTo,
-    c.confidence,
-  ]);
-}
-
-/** Every claim the projection serves (relation edges + node attributes), keyed by claimId. */
-function servedClaims(p: Projection): Map<string, DiffClaim> {
-  const byId = new Map<string, GraphNode>();
-  for (const n of p.graph.nodes) byId.set(n.id, n);
-  const claims = new Map<string, DiffClaim>();
-  for (const n of p.graph.nodes) {
-    for (const a of n.attributes) {
-      claims.set(a.claimId, {
-        claimId: a.claimId,
-        kind: "attribute",
-        subjectKey: n.canonicalKey,
-        predicate: a.predicate,
-        targetKey: null,
-        value: a.value,
-        validFrom: a.validFrom,
-        validTo: a.validTo,
-        occurredFrom: a.occurredFrom,
-        occurredTo: a.occurredTo,
-        confidence: a.confidence,
-      });
-    }
-  }
-  for (const e of p.graph.edges as GraphEdge[]) {
-    const subject = byId.get(e.source);
-    const target = byId.get(e.target);
-    claims.set(e.id, {
-      claimId: e.id,
-      kind: "relation",
-      subjectKey: subject?.canonicalKey ?? "",
-      predicate: e.predicate,
-      targetKey: target?.canonicalKey ?? "",
-      value: null,
-      validFrom: e.validFrom,
-      validTo: e.validTo,
-      occurredFrom: e.occurredFrom,
-      occurredTo: e.occurredTo,
-      confidence: e.confidence,
-    });
-  }
-  return claims;
+/**
+ * The served content of a claim as the diff compares it — JCS canonical form (key order
+ * never fabricates a change), evidence accrual excluded by the inventory's definition.
+ */
+function claimContent(c: ServedClaim): string {
+  return canonicalize(c);
 }
 
 /**
@@ -155,10 +98,12 @@ export function diffProjections(a: Projection, b: Projection): CaseDiff {
   }
   for (const [key, node] of aNodes) if (!bNodes.has(key)) removed.push(node);
 
-  const aClaims = servedClaims(a);
-  const bClaims = servedClaims(b);
-  const claimsAdded: DiffClaim[] = [];
-  const claimsRemoved: DiffClaim[] = [];
+  // P4-008: the claim inventory (Projection.claims) is the comparison source — it
+  // serves EVERY known claim, including merge self-loops the graph excludes.
+  const aClaims = new Map(a.claims.map((c) => [c.claimId, c] as const));
+  const bClaims = new Map(b.claims.map((c) => [c.claimId, c] as const));
+  const claimsAdded: ServedClaim[] = [];
+  const claimsRemoved: ServedClaim[] = [];
   const claimsChanged: ClaimChange[] = [];
   for (const [id, claim] of bClaims) {
     const before = aClaims.get(id);

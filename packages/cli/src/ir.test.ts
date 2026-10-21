@@ -231,7 +231,7 @@ describe("ir diff (P4-008)", () => {
     expect(a.code).toBe(0);
     expect(a.text).toContain(`diff seq ${fromSeq} -> ${toSeq}`);
     expect(a.text).toMatch(/entities \+1 -1 ~1/);
-    expect(a.text).toMatch(/claims \+1 -1 ~0/);
+    expect(a.text).toMatch(/claims \+1 -0 ~1/);
   });
 
   it("diffing a snapshot against itself reports an empty diff", async () => {

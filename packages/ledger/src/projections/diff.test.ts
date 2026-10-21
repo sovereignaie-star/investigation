@@ -124,6 +124,60 @@ describe("P4-008 snapshot at seq (T-TIME-006 — verification of existing upTo b
   });
 });
 
+/**
+ * جولة المراجعة (round 2): العيوب المحددة تُختبر أحمر قبل إصلاحها — لا أحمر رجعياً.
+ *  - T-TIME-011 (أحمر): مخزون الادعاءات — ادعاء طرفاه دُمجا في عقدة واحدة يجب أن
+ *    يبقى مُقدَّماً في إسقاط القضية (اليوم يختفي من كل المُقدَّم ما عدا العدّاد).
+ *  - T-TIME-012 (أحمر): مساواة المحتوى قانونية لا حساسة لترتيب المفاتيح — لقطتان
+ *    متطابقتان دلالياً بترتيب مفاتيح مختلف في props/labels يجب أن تنتجا فرقاً فارغاً.
+ *  - T-TIME-013 (تحقق): ادعاء يُعاد توجيه أحد طرفيه بالدمج دون حلقة ذاتية يُبلَّغ
+ *    «مغيّراً» — مسار claims.changed بتوقع غير صفري.
+ */
+describe("P4-008 review round 2 (T-TIME-011..013)", () => {
+  it("T-TIME-011: a claim whose ends merged into one node is still served by the case projection", () => {
+    const c = caseFixture();
+    const entries = [...c.f.ledger.entries()];
+    const atB = project(entries, { upTo: c.seqB });
+    // الادعاء «تعرف أليس بوب» ما زال في القضية (counts.claims يشمله) — يجب أن يُقدَّم
+    // محتواه في مخزون ادعاءات الإسقاط، وهدفه محلول عبر الدمج (alice بعد أن كان bob)
+    const served = atB.claims.find((x) => x.claimId === c.knows);
+    expect(served).toBeDefined();
+    expect(served?.subjectKey).toBe("person:alice");
+    expect(served?.targetKey).toBe("person:alice"); // حل الدمج: bob صار ضمن alice
+  });
+
+  it("T-TIME-012: identical content with different props/labels key order produces an empty entity diff", () => {
+    // عقد المقارنة يُختبر مباشرة: إسقاطان مُركّبان يدوياً بمحتوى واحد وترتيب مفاتيح مختلف
+    const node = (props: Record<string, unknown>, labels: Record<string, string>) =>
+      ({
+        id: "n1",
+        type: "person",
+        canonicalKey: "person:x",
+        labels,
+        props,
+        aliases: [],
+        attributes: [],
+        observations: { positive: 0, negative: 0, error: 0 },
+        evidenceIds: [],
+      }) as never;
+    const a = { seq: 1, claims: [], graph: { nodes: [node({ a: 1, b: 2 }, { ar: "س", en: "x" })], edges: [] } } as never;
+    const b = { seq: 1, claims: [], graph: { nodes: [node({ b: 2, a: 1 }, { en: "x", ar: "س" })], edges: [] } } as never;
+    const d = diffProjections(a, b);
+    expect(d.entities.changed).toHaveLength(0);
+    expect(d.counts.entities).toEqual({ added: 0, removed: 0, changed: 0 });
+  });
+
+  it("T-TIME-013: a claim whose subject is retargeted by a merge (no self-loop) is reported as changed", () => {
+    const c = caseFixture();
+    const entries = [...c.f.ledger.entries()];
+    // في هذه الحالة: ادعاء «تعرف أليس بوب» — بعد الدمج يُحلّ الهدف من bob إلى alice
+    // فيصبح الادعاء «مغيّراً» (تمثيله المُقدَّم تغيّر) لا «محذوفاً» — القضية احتفظت به
+    const d = diffProjections(project(entries, { upTo: c.seqA }), project(entries, { upTo: c.seqB }));
+    expect(d.claims.changed.map((x) => x.id)).toEqual([c.knows]);
+    expect(d.claims.removed).toHaveLength(0);
+  });
+});
+
 describe("P4-008 diff by legal keys (T-TIME-007..010)", () => {
   it("T-TIME-007: entities and claims added after the first snapshot are reported as added", () => {
     const c = caseFixture();
@@ -141,11 +195,11 @@ describe("P4-008 diff by legal keys (T-TIME-007..010)", () => {
     const d = diffProjections(project(entries, { upTo: c.seqA }), project(entries, { upTo: c.seqB }));
     expect(d.entities.removed.map((n) => n.canonicalKey)).toEqual(["person:bob"]);
     expect(d.counts.entities.removed).toBe(1);
-    // الادعاء «تعرف أليس بوب» لم يُحذف من السجل (السجل إلحاقي)، لكن طرفيه دُمجا في
-    // عقدة واحدة فلم يُعد يُقدَّم كحافة في الرسم (حلقة ذاتية مستبعدة بالتصميم) —
-    // المقارنة على المُقدَّم حصراً فيُبلَّغ «محذوفاً» بالمعنى الموثق: اختفى من
-    // الإسقاط المُقدَّم، وبقي في السجل وعدّاد الجدول
-    expect(d.claims.removed.map((x) => x.claimId)).toEqual([c.knows]);
+    // الادعاء «تعرف أليس بوب» لم يُحذف من السجل (السجل إلحاقي) وبقي في مخزون
+    // ادعاءات الإسقاط (T-TIME-011) — طرفاه دُمجا في عقدة واحدة فحُلّ هدفه من bob
+    // إلى alice فيُبلَّغ «مغيّراً» لا «محذوفاً» (القضية احتفظت به — انظر T-TIME-013)
+    expect(d.claims.removed).toHaveLength(0);
+    expect(d.claims.changed.map((x) => x.id)).toEqual([c.knows]);
   });
 
   it("T-TIME-009: the merge survivor is reported as changed (its aliases grew)", () => {
@@ -178,7 +232,7 @@ describe("P4-008 diff by legal keys (T-TIME-007..010)", () => {
     const full = diffProjections(project(entries, { upTo: c.seqA }), project(entries, { upTo: c.seqB }));
     expect(full.counts).toEqual({
       entities: { added: 1, removed: 1, changed: 1 },
-      claims: { added: 1, removed: 1, changed: 0 },
+      claims: { added: 1, removed: 0, changed: 1 },
     });
     expect(full.fromSeq).toBe(c.seqA);
     expect(full.toSeq).toBe(c.seqB);
