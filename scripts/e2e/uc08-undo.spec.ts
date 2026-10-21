@@ -145,8 +145,13 @@ test("UC-08: dragging a node is a recorded edit — Ctrl+Z names it and undoes i
   await page.mouse.move(cx + 120, cy + 80, { steps: 8 });
   await page.mouse.up();
 
-  // the move was RECORDED: the undo command is now available and Ctrl+Z runs it
+  // the move was RECORDED: the undo command is now available and Ctrl+Z runs it.
+  // The drag's pointer-up lands on the canvas; the palette opens on the workbench's
+  // global shortcut, so wait for the palette to be ready before typing (a fast CI
+  // can still be settling the canvas hit-testing when Ctrl+K arrives — the palette
+  // opening is the sync point, not a fixed sleep).
   await page.keyboard.press("Control+k");
+  await expect(page.getByTestId("command-palette")).toBeVisible();
   await page.getByTestId("command-palette-input").fill("التراجع");
   await expect(page.getByTestId("command-view.undo")).toBeVisible();
   // the palette's exit animation keeps its search input mounted (and focused) for a
