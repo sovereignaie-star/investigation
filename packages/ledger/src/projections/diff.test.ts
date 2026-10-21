@@ -168,13 +168,50 @@ describe("P4-008 review round 2 (T-TIME-011..013)", () => {
   });
 
   it("T-TIME-013: a claim whose subject is retargeted by a merge (no self-loop) is reported as changed", () => {
+    // سيناريو من ثلاث كيانات: ادعاء alice→bob، ثم دمج alice في carol (carol ≠ bob) —
+    // الحافة تبقى (carol→bob ليست حلقة ذاتية) والادعاء نفسه يُبلَّغ «مغيّراً» لأن
+    // طرفه المحلول تغيّر (person:alice → person:carol)، لا مضافاً ولا محذوفاً.
+    // (تصحيح جولة المراجعة 3: الجولة السابقة استخدمت سيناريو الحلقة الذاتية نفسه —
+    // هذا السيناريو الفعلي بلا حلقة. اجتاز مباشرة فيوثق كتغطية لسلوك قائم.)
+    const f = fixture();
+    const alice = f.entity("person", "alice");
+    const bob = f.entity("person", "bob");
+    const knows = f.relation(alice, "knows", bob);
+    const seqA = lastSeq(f.ledger.entries());
+    const carol = f.entity("person", "carol");
+    f.add("merge.decided", {
+      id: f.id(),
+      entityIds: [alice, carol],
+      survivorId: carol,
+      reasons: ["same person per analyst review"],
+      decidedBy: "analyst",
+      decidedAt: T0,
+      reverted: false,
+    });
+    const seqB = lastSeq(f.ledger.entries());
+    const entries = [...f.ledger.entries()];
+    const atB = project(entries, { upTo: seqB });
+    // الحافة بقيت مُقدَّمة (لا حلقة ذاتية): carol→bob
+    expect(atB.graph.edges.map((e) => e.id)).toContain(knows);
+    const d = diffProjections(project(entries, { upTo: seqA }), atB);
+    expect(d.claims.added).toHaveLength(0);
+    expect(d.claims.removed).toHaveLength(0);
+    expect(d.claims.changed.map((x) => x.id)).toEqual([knows]);
+    expect(d.claims.changed[0].before.subjectKey).toBe("person:alice");
+    expect(d.claims.changed[0].after.subjectKey).toBe("person:carol");
+  });
+
+  it("T-TIME-014: reversing the diff direction reports the added claim as removed (core function)", () => {
+    // دالة النواة تقبل المقارنة بأي اتجاه (منع from>to هو على مستوى CLI فقط) —
+    // الادعاء الذي أُضيف بين اللقطتين يظهر ضمن removed عند عكس الاتجاه، وهذا
+    // يغطي مسار claims.removed بتوقع غير صفري دون انتظار أحداث حذف مستقبلية.
     const c = caseFixture();
     const entries = [...c.f.ledger.entries()];
-    // في هذه الحالة: ادعاء «تعرف أليس بوب» — بعد الدمج يُحلّ الهدف من bob إلى alice
-    // فيصبح الادعاء «مغيّراً» (تمثيله المُقدَّم تغيّر) لا «محذوفاً» — القضية احتفظت به
-    const d = diffProjections(project(entries, { upTo: c.seqA }), project(entries, { upTo: c.seqB }));
-    expect(d.claims.changed.map((x) => x.id)).toEqual([c.knows]);
-    expect(d.claims.removed).toHaveLength(0);
+    const forward = diffProjections(project(entries, { upTo: c.seqA }), project(entries, { upTo: c.seqB }));
+    expect(forward.claims.added.map((x) => x.claimId)).toEqual([c.daveName]);
+    const backward = diffProjections(project(entries, { upTo: c.seqB }), project(entries, { upTo: c.seqA }));
+    expect(backward.claims.removed.map((x) => x.claimId)).toEqual([c.daveName]);
+    expect(backward.counts.claims.removed).toBe(1);
   });
 });
 
