@@ -3,10 +3,11 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
-import { caseFingerprint, openCase, type CaseFingerprint, type CaseInit } from "@ir/store";
-import { projectionHash } from "@ir/ledger/projections";
+import { caseFingerprint, openCase, type Case, type CaseFingerprint, type CaseInit } from "@ir/store";
+import { ER_MODEL_VERSION, ER_MODEL_WEIGHTS, resolveEntities, scorePair, toErRecord, ulidFactory } from "@ir/core";
+import { projectionHash, type GraphNode } from "@ir/ledger/projections";
 import { isTextualMime } from "@ir/schema";
-import { AddCaseNoteBody, CreateCaseBody, UpdateCaseLifecycleBody } from "@workspace/api-zod";
+import { AcceptCaseMergeBody, AddCaseNoteBody, CreateCaseBody, UpdateCaseLifecycleBody } from "@workspace/api-zod";
 import { requireAdmin } from "../lib/admin";
 import { logger } from "../lib/logger";
 
@@ -458,6 +459,243 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       const entry = c.append("note.added", { nodeId, text });
       c.audit("note.added", id, { nodeId, seq: entry.seq });
       res.status(201).json({ seq: entry.seq, nodeId, text, at: entry.at, actor: entry.actor });
+    } finally {
+      c.close();
+    }
+  });
+
+  // GET /cases/:id/merge-suggestions — P4-005 (UC-11): the merge-review data path.
+  // An EXPLICIT request — no background job ever computes suggestions. The records
+  // come from the case's OWN projection (its graph nodes are the CURRENT nodes:
+  // already-merged pairs are not separate nodes, so they are excluded by construction)
+  // through the thin adapter (a fixed documented policy — labels.ar ?? labels.en ??
+  // canonicalKey; props read only when actually present). Scoring uses the PINNED
+  // model er-model/1 — frozen weights with a documented training origin; the cases
+  // are unlabeled so the model is never estimated from production data. The response
+  // carries the model version and the case version stamp (the projection seq) —
+  // the accept request MUST echo both. The score is a match score (log-odds), NOT
+  // a calibrated confidence; a strong suggestion is still a SUGGESTION (D9: no
+  // automatic merge). Read-only: this route never mutates the case.
+  router.get("/cases/:id/merge-suggestions", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    if (found.fp.encrypted) {
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const c = openCase(found.dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const p = c.projection();
+      const records = p.graph.nodes.map(toErRecord);
+      const suggestions = resolveEntities(records, ER_MODEL_WEIGHTS);
+      res.json({ modelVersion: ER_MODEL_VERSION, caseVersion: p.seq, suggestions });
+    } finally {
+      c.close();
+    }
+  });
+
+  // GET /cases/:id/merges — P4-005: the durable merge log (every merge.decided with
+  // its revert state, in ledger order). The review UI serves the revert action
+  // from THIS list — the id it posts is the merge's own id.
+  router.get("/cases/:id/merges", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    if (found.fp.encrypted) {
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const c = openCase(found.dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const p = c.projection();
+      res.json({ merges: p.mergeDecisions });
+    } finally {
+      c.close();
+    }
+  });
+
+  // POST /cases/:id/merges — P4-005 (UC-11): the human-accepted merge — a
+  // `merge.decided` entry in the case's own hash-chained ledger. EXACTLY two
+  // entities (binary merge) of COMPATIBLE types — the declared compatibility
+  // table is initially: SAME TYPE ONLY (an empty extension table; extending it
+  // is an explicit owner decision, never a silent behavior). The server NEVER
+  // trusts client-sent scores/reasons: it re-derives the reasons itself by
+  // re-scoring the pair with the pinned model. The body echoes the
+  // modelVersion and caseVersion of the answered suggestion — the check and
+  // the append run in ONE atomic write scope (appendIfSeq), so a stale stamp
+  // can never append on top of a changed case (409, no partial write). The
+  // entities must be CURRENT distinct nodes of the case's own projection; a
+  // pair already merged is a 409; an id the case never contained is a 422 —
+  // never a silently orphaned event.
+  /**
+   * P4-005: the accept-merge entity validation (extracted to keep the route handler
+   * simple). Returns the two CURRENT nodes on success, or the error response
+   * (status + message) the route answers with: an already-merged pair is a 409;
+   * an id the case's own projection never contained is a 422 — never an orphaned
+   * event; incompatible types are a 422 (the declared table: same type only).
+   */
+  const validateMergeEntities = (
+    p: ReturnType<Case["projection"]>,
+    entityIds: [string, string],
+    survivorId: string,
+  ): { status: number; error: string } | { nodes: [GraphNode, GraphNode] } => {
+    const [a, b] = entityIds;
+    if (a === b) return { status: 422, error: "entityIds must be two DISTINCT entities" };
+    const nodes = new Map(p.graph.nodes.map((n) => [n.id, n]));
+    // the node each id is CURRENTLY shown under: a current node is itself; a
+    // merged-away (or canonical-key duplicate) id resolves to its survivor node
+    const knownAlias = new Map<string, string>();
+    for (const n of p.graph.nodes) for (const x of n.aliases) knownAlias.set(x, n.id);
+    const resolveOf = (x: string): string | undefined => (nodes.has(x) ? x : knownAlias.get(x));
+    const ra = resolveOf(a);
+    const rb = resolveOf(b);
+    if (ra !== undefined && rb !== undefined && ra === rb) {
+      // both ids are the SAME current node — the pair is already merged (409)
+      return { status: 409, error: "this pair is already merged" };
+    }
+    if (ra === undefined || rb === undefined) {
+      return { status: 422, error: "no entity with this id in this case" };
+    }
+    const na = nodes.get(ra);
+    const nb = nodes.get(rb);
+    if (!na || !nb) return { status: 422, error: "no entity with this id in this case" };
+    if (na.type !== nb.type) {
+      // the declared compatibility table: same type only (see the route doc)
+      return { status: 422, error: `incompatible types (${na.type} vs ${nb.type}) — the declared table allows same-type merges only` };
+    }
+    if (!entityIds.includes(survivorId)) return { status: 422, error: "survivor must be one of entityIds" };
+    return { nodes: [na, nb] };
+  };
+
+  router.post("/cases/:id/merges", limiter, admin, (req, res) => {
+    const parsed = AcceptCaseMergeBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid merge input", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) });
+      return;
+    }
+    const { entityIds, survivorId, modelVersion, caseVersion } = parsed.data;
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const { dir, fp } = found;
+    if (fp.encrypted) {
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    if (modelVersion !== ER_MODEL_VERSION) {
+      // the pinned model is part of the contract — an unknown version is never silently accepted
+      res.status(409).json({ error: `unknown model version ${modelVersion} — the pinned model is ${ER_MODEL_VERSION}` });
+      return;
+    }
+    const c = openCase(dir, { actor: "web" });
+    try {
+      const info = c.info() as CaseRecordShape;
+      if (info.archivedAt) {
+        res.status(409).json({ error: "القضية مؤرشفة — لا كتابة على المؤرشف (J-16)" });
+        return;
+      }
+      const p = c.projection();
+      const validated = validateMergeEntities(p, entityIds as [string, string], survivorId);
+      if ("status" in validated) {
+        res.status(validated.status).json({ error: validated.error });
+        return;
+      }
+      const [na, nb] = validated.nodes;
+      // SERVER-derived reasons: re-score the pair with the pinned model — the
+      // human's acceptance is itself a reason (UC-11: دمج بأسباب), so the list is
+      // never empty even when the model alone scores the pair "none".
+      const scored = scorePair(toErRecord(na), toErRecord(nb), ER_MODEL_WEIGHTS);
+      const reasons = ["دمج مقبول بشرياً (UC-11)", ...scored.reasons.map((r) => `${r.detail} (وزن ${r.weight.toFixed(2)})`)];
+      const mergeId = ulidFactory()();
+      const decidedAt = new Date().toISOString(); // the decision's own timestamp (the entry's `at` is the append's)
+      // ONE atomic write scope: the stale check and the append cannot interleave
+      // with another writer (appendIfSeq) — a stale suggestion never writes.
+      const entry = c.appendIfSeq(
+        "merge.decided",
+        { id: mergeId, entityIds, survivorId, reasons, decidedBy: "web", decidedAt, reverted: false },
+        caseVersion,
+      );
+      if (!entry) {
+        res.status(409).json({ error: "the case changed since the suggestion — refresh and review again" });
+        return;
+      }
+      c.audit("merge.decided", id, { mergeId, seq: entry.seq });
+      res.status(201).json({ id: mergeId, entityIds, survivorId, reasons, decidedBy: "web", decidedAt, seq: entry.seq });
+    } finally {
+      c.close();
+    }
+  });
+
+  // POST /cases/:id/merges/:mergeId/revert — P4-005 (UC-11): the revert. A
+  // merge.reverted EVENT (never a deletion — both events stay in the valid
+  // ledger) that restores the case's contract-covered semantic state to its
+  // prior sequence. A repeated revert is an idempotent 200 with NO new event.
+  // The merge id comes from the case's own merge log; an unknown id is a 404.
+  router.post("/cases/:id/merges/:mergeId/revert", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    const mergeId = param(req.params["mergeId"]);
+    if (!id || !mergeId) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const { dir, fp } = found;
+    if (fp.encrypted) {
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const c = openCase(dir, { actor: "web" });
+    try {
+      const info = c.info() as CaseRecordShape;
+      if (info.archivedAt) {
+        res.status(409).json({ error: "القضية مؤرشفة — لا كتابة على المؤرشف (J-16)" });
+        return;
+      }
+      const p = c.projection();
+      const merge = p.mergeDecisions.find((m) => m.id === mergeId);
+      if (!merge) {
+        res.status(404).json({ error: "no merge with this id in this case" });
+        return;
+      }
+      if (merge.reverted) {
+        // idempotent: the state is already reverted — no new event
+        res.json(merge);
+        return;
+      }
+      const entry = c.appendIfSeq("merge.reverted", { mergeId }, p.seq);
+      if (!entry) {
+        res.status(409).json({ error: "the case changed — refresh and retry" });
+        return;
+      }
+      c.audit("merge.reverted", id, { mergeId, seq: entry.seq });
+      const after = c.projection().mergeDecisions.find((m) => m.id === mergeId);
+      res.json(after ?? { ...merge, reverted: true });
     } finally {
       c.close();
     }

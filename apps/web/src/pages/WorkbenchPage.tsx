@@ -9,6 +9,7 @@ import type { Graph as ProjectionGraph, GraphNode } from "@ir/ledger/projections
 import { CommandPalette } from "../commands/CommandPalette";
 import { NodeContextMenu, type MenuTarget } from "../commands/NodeContextMenu";
 import { NoteDialog } from "../commands/NoteDialog";
+import { MergeReview } from "../commands/MergeReview";
 import { runCommand, type CommandContext } from "../commands/registry";
 import { isTextEntryTarget, matchShortcut } from "../commands/shortcuts";
 import { FileUploader } from "./workbench/FileUploader";
@@ -63,6 +64,7 @@ export function WorkbenchPage({
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [menuTarget, setMenuTarget] = React.useState<MenuTarget | null>(null);
   const [noteTarget, setNoteTarget] = React.useState<string | null>(null);
+  const [mergeReviewOpen, setMergeReviewOpen] = React.useState(false);
   const [sigma, setSigma] = React.useState<SigmaHandle | null>(null);
   // The node sigma last reported under the right-click cursor (cleared when the
   // right-click lands on the empty stage — the menu never targets a stale node).
@@ -147,6 +149,7 @@ export function WorkbenchPage({
       },
       refreshCase,
       openNoteDialog: (nodeId) => setNoteTarget(nodeId),
+      openMergeReview: () => setMergeReviewOpen(true),
       focusRunInput: () => {
         document.querySelector<HTMLInputElement>('[data-testid="run-input-input"]')?.focus();
       },
@@ -253,6 +256,18 @@ export function WorkbenchPage({
           toast(ok ? t("commands.note.saved") : t("commands.note.saveFailed"));
         }}
       />
+      {/* P4-005: the merge-review panel — suggestions on explicit request, accept + revert. */}
+      {mergeReviewOpen ? (
+        <MergeReview
+          caseId={openedCase?.id ?? null}
+          nodeNames={new Map(rawGraph.nodes.map((n) => [n.id, n.labels?.ar ?? n.labels?.en ?? n.canonicalKey]))}
+          onClose={() => setMergeReviewOpen(false)}
+          onSaved={async () => {
+            const ok = await refreshCase();
+            toast(ok ? t("commands.mergeReview.saved") : t("commands.mergeReview.loadFailed"));
+          }}
+        />
+      ) : null}
       <SonnerToaster position="bottom-left" richColors />
     </div>
   );

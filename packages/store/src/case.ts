@@ -44,6 +44,16 @@ export interface Case {
   readonly locked: boolean;
   /** Appends an entry; in encrypted cases the payload is sealed first. */
   append(kind: Kind, payload: unknown): Entry;
+  /**
+   * P4-005 (UC-11): optimistic-concurrency append — appends ONLY if the ledger's
+   * head seq still equals `expectedSeq`, ALL inside one SQLite IMMEDIATE
+   * transaction (the read of the head, the check and the write are atomic wrt
+   * every other writer). Returns the entry, or null when the head moved — the
+   * caller's pre-append validation is then outdated and must be rejected
+   * WITHOUT any partial write. This is the primitive the merge/revert routes
+   * use so a stale suggestion can never append on top of a changed case.
+   */
+  appendIfSeq(kind: Kind, payload: unknown, expectedSeq: number): Entry | null;
   /** Entries with readable payloads (throws if the case is locked or a sealed payload fails authentication). */
   entries(): Entry[];
   /** Like entries(), but reports payloads that fail to open instead of throwing (verification). */
@@ -275,6 +285,14 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
       projector?.apply({ ...entry, payload: JSON.parse(canonicalize(payload)) as unknown });
       return entry;
     };
+    // P4-005: check-the-head and append in ONE atomic write scope (see the interface doc).
+    const appendIfSeq = (kind: Kind, payload: unknown, expectedSeq: number): Entry | null =>
+      transaction(() => {
+        const all = ledger.entries();
+        const lastSeq = all[all.length - 1]?.seq ?? -1;
+        if (lastSeq !== expectedSeq) return null; // stale: the head moved since the caller's validation
+        return append(kind, payload);
+      });
     const insertAudit = db.prepare(
       "INSERT INTO audit_events (id, at, actor, action, target, purpose_ref, detail) VALUES (?, ?, ?, ?, ?, ?, ?)",
     );
@@ -288,6 +306,7 @@ export function openCase(dir: string, opts: OpenCaseOptions): Case {
       encrypted,
       locked,
       append,
+      appendIfSeq,
       entries() {
         if (!encrypted) return [...ledger.entries()];
         if (!key) throw new CaseLockedError();

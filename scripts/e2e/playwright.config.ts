@@ -33,7 +33,7 @@ const port = 18720;
 
 export default defineConfig({
   testDir: ".",
-  testMatch: /uc0\d.*\.spec\.ts/,
+  testMatch: /uc\d{2}.*\.spec\.ts/,
   timeout: 60_000,
   // one server, one data root — sequential keeps the world deterministic
   workers: 1,

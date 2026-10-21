@@ -9,6 +9,8 @@
     "e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
+    "@ir/core": "workspace:*",
+    "@ir/store": "workspace:*",
     "@types/node": "catalog:",
     "tsx": "catalog:",
     "@playwright/test": "1.64.1"

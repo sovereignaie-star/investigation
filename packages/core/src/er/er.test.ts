@@ -17,6 +17,11 @@ import {
   generateReferenceSet,
   type ErRecord,
   type FsWeights,
+  ER_MODEL_VERSION,
+  ER_MODEL_WEIGHTS,
+  ER_MODEL_THRESHOLDS,
+  STRONG_THRESHOLD,
+  REVIEW_THRESHOLD,
 } from "./index.ts";
 
 describe("P4-004: comparison primitives (5.14 المقارنة)", () => {
@@ -241,11 +246,30 @@ describe("P4-004: resolution end-to-end (D9 — F1 ≥ 0.9 على مجموعة �
     const w = estimateWeights(train);
     // matches with name present: 2 (A-B agree, C-D disagree); non-matches: 4 (all disagree)
     // m(agree) = (1+1)/(2+3) = 2/5;  u(agree) = (0+1)/(4+3) = 1/7
-    expect(w.name).toBeCloseTo(Math.log((2 / 5) / (1 / 7)), 12);
+    expect(w.name).toBeCloseTo(Math.log(2 / 5 / (1 / 7)), 12);
     // m(disagree) = (1+1)/(2+3) = 2/5;  u(disagree) = (4+1)/(4+3) = 5/7
-    expect(w.nameDisagree).toBeCloseTo(Math.log((2 / 5) / (5 / 7)), 12);
+    expect(w.nameDisagree).toBeCloseTo(Math.log(2 / 5 / (5 / 7)), 12);
     // m(partial) = (0+1)/(2+3) = 1/5;  u(partial) = (0+1)/(4+3) = 1/7
-    expect(w.namePartial).toBeCloseTo(Math.log((1 / 5) / (1 / 7)), 12);
+    expect(w.namePartial).toBeCloseTo(Math.log(1 / 5 / (1 / 7)), 12);
+  });
+
+  it("T-MODEL-001: er-model/1 — the frozen weights match the reference TRAIN derivation; thresholds equal the declared scoring constants", () => {
+    // The pinned production model must be a FROZEN measurement, not a runtime
+    // estimate. If the generator ever changes, this breaks VISIBLY and forces a
+    // version bump — never a silent drift of the production model.
+    const derived = estimateWeights(generateReferenceSet(42).train);
+    expect(derived.name).toBeCloseTo(ER_MODEL_WEIGHTS.name, 12);
+    expect(derived.namePartial).toBeCloseTo(ER_MODEL_WEIGHTS.namePartial, 12);
+    expect(derived.nameDisagree).toBeCloseTo(ER_MODEL_WEIGHTS.nameDisagree, 12);
+    expect(derived.date).toBeCloseTo(ER_MODEL_WEIGHTS.date, 12);
+    expect(derived.datePartial).toBeCloseTo(ER_MODEL_WEIGHTS.datePartial, 12);
+    expect(derived.dateDisagree).toBeCloseTo(ER_MODEL_WEIGHTS.dateDisagree, 12);
+    expect(derived.address).toBeCloseTo(ER_MODEL_WEIGHTS.address, 12);
+    expect(derived.addressDisagree).toBeCloseTo(ER_MODEL_WEIGHTS.addressDisagree, 12);
+    // the model's threshold reference IS what the scoring path consumes
+    expect(ER_MODEL_THRESHOLDS.strong).toBe(STRONG_THRESHOLD);
+    expect(ER_MODEL_THRESHOLDS.review).toBe(REVIEW_THRESHOLD);
+    expect(ER_MODEL_VERSION).toBe("er-model/1");
   });
 
   it("T-ER-007: decisions follow the two thresholds — strong / review / none, and NO automatic merge", () => {

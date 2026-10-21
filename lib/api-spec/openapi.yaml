@@ -460,6 +460,202 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /cases/{id}/merge-suggestions:
+    get:
+      operationId: getCaseMergeSuggestions
+      tags: [cases]
+      summary: Compute entity-resolution merge suggestions for the case (P4-005, UC-11)
+      description: >-
+        The merge-review data path — an EXPLICIT request (no background job): builds
+        ErRecords from the case's own projection (graph nodes: labels + props, thin
+        adapter, fixed policy) and scores candidate pairs with the PINNED model
+        (er-model/1 — frozen weights with a documented training origin; the cases
+        are unlabeled so the model is never estimated from production data). Pairs
+        whose nodes are already merged are excluded. The response carries the
+        model version and the case version stamp it was computed at — the accept
+        request MUST echo BOTH; a stale stamp is rejected (409) with no partial
+        write. The route opens the case read-only and NEVER mutates it.
+        Locked: 403. The score is a match score (log-odds), NOT a calibrated
+        confidence; a strong suggestion is still a SUGGESTION — no automatic merge.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The pinned model's suggestions with the case version stamp.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeSuggestions"
+        "404":
+          description: Unknown case.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Locked case (J-17) or missing admin boundary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cases/{id}/merges:
+    get:
+      operationId: listCaseMerges
+      tags: [cases]
+      summary: The durable merge log with revert state (P4-005 — serves the revert action)
+      description: >-
+        Every merge.decided entry of the case in ledger order, with its merge.reverted
+        state — the review UI's merge log. The revert action posts one of THESE ids.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The merge log (ledger order).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeList"
+        "404":
+          description: Unknown case.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Locked case (J-17).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: acceptCaseMerge
+      tags: [cases]
+      summary: Accept one merge suggestion (P4-005 — a merge.decided ledger event)
+      description: >-
+        The human-accepted merge: EXACTLY two entities of COMPATIBLE types (the
+        declared compatibility table — initially: same type only) and a survivor
+        among them. The server NEVER trusts client-sent scores/reasons: it re-derives
+        the reasons itself by re-scoring the pair with the pinned model. The body
+        echoes the modelVersion and caseVersion of the suggestion it answers —
+        a stale stamp (the case changed in between) is a 409 with NO partial write
+        (the check and the append are one atomic write scope). The target entities
+        must exist in the case's own projection (422 — never an orphaned event),
+        the pair must not already be merged (409), and the case must be writable
+        (locked 403, archived 409). The projection reflects the merge on the next
+        read (fewer nodes; the survivor's id persists).
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptMergeInput"
+      responses:
+        "201":
+          description: The recorded merge decision as the projection will carry it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeDecisionWire"
+        "400":
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown case.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Locked case (J-17).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Archived case (J-16), stale caseVersion, unknown modelVersion, or the pair is already merged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Entities not in this case's projection, wrong cardinality, bad survivor, or incompatible types.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cases/{id}/merges/{mergeId}/revert:
+    post:
+      operationId: revertCaseMerge
+      tags: [cases]
+      summary: Revert one merge — restores the case's semantic state (P4-005, UC-11)
+      description: >-
+        Appends a merge.reverted event for the case's own merge (the id comes from
+        the merge log). The revert is an EVENT, not a deletion — both events stay
+        in the valid ledger, and the case's contract-covered semantic state
+        (graph, table, coverage, counts, notes) returns to its prior sequence.
+        A repeated revert is an idempotent 200 with NO new event. Locked 403,
+        archived 409, unknown merge 404.
+      security:
+        - adminAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: mergeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The merge's state after the revert (idempotent on repeat).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoredMerge"
+        "404":
+          description: Unknown case or unknown merge id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Locked case (J-17).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Archived case (J-16).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cases/{id}/export/{format}:
     get:
       operationId: getCaseExport
@@ -835,6 +1031,137 @@ components:
         sha256:
           type: string
           description: The projection hash (JCS SHA-256) of this exact snapshot — the file carries its own integrity fingerprint.
+    MatchReasonWire:
+      type: object
+      required: [feature, weight, detail]
+      properties:
+        feature:
+          type: string
+          description: The feature that fired (identifier, name, namePartial, date, datePartial, address, or a disagreement term).
+        weight:
+          type: number
+          description: The reason's log-odds weight — the suggestion's score is EXACTLY the sum of weights.
+        detail:
+          type: string
+          description: Human-readable detail (Arabic).
+    MatchSuggestionWire:
+      type: object
+      required: [aId, bId, score, decision, reasons]
+      properties:
+        aId:
+          type: string
+          description: The first entity's permanent id (ULID).
+        bId:
+          type: string
+          description: The second entity's permanent id (ULID).
+        score:
+          type: number
+          description: >-
+            The match score (sum of reason log-odds weights). NOT a calibrated
+            confidence — a strong suggestion is still a SUGGESTION; no automatic merge (D9).
+        decision:
+          type: string
+          enum: [strong, review, none]
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchReasonWire"
+    MergeSuggestions:
+      type: object
+      required: [modelVersion, caseVersion, suggestions]
+      properties:
+        modelVersion:
+          type: string
+          description: The pinned ER model's version (er-model/1) — part of the accept contract.
+        caseVersion:
+          type: integer
+          description: The projection seq the suggestions were computed at — the accept request MUST echo it (stale = 409).
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSuggestionWire"
+    AcceptMergeInput:
+      type: object
+      required: [entityIds, survivorId, modelVersion, caseVersion]
+      properties:
+        entityIds:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: string
+            minLength: 26
+            maxLength: 26
+          description: EXACTLY two distinct entity ids from the case's own projection (UC-11 binary merge).
+        survivorId:
+          type: string
+          minLength: 26
+          maxLength: 26
+          description: The surviving entity's id — must be one of entityIds.
+        modelVersion:
+          type: string
+          description: The suggestion's modelVersion, echoed — a mismatch is 409.
+        caseVersion:
+          type: integer
+          description: The suggestion's caseVersion (projection seq), echoed — stale is 409 (no partial write).
+    MergeDecisionWire:
+      type: object
+      required: [id, entityIds, survivorId, reasons, decidedBy, decidedAt, seq]
+      properties:
+        id:
+          type: string
+          description: The merge decision's ULID — the revert action posts THIS id.
+        entityIds:
+          type: array
+          items:
+            type: string
+        survivorId:
+          type: string
+        reasons:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: SERVER-derived reasons (the model's explanation with weights) — never trusted from the client.
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+        seq:
+          type: integer
+          description: The ledger seq of the merge.decided entry.
+    StoredMerge:
+      type: object
+      required: [seq, id, entityIds, survivorId, reasons, decidedBy, decidedAt, reverted]
+      properties:
+        seq:
+          type: integer
+        id:
+          type: string
+        entityIds:
+          type: array
+          items:
+            type: string
+        survivorId:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        decidedBy:
+          type: string
+        decidedAt:
+          type: string
+        reverted:
+          type: boolean
+    MergeList:
+      type: object
+      required: [merges]
+      properties:
+        merges:
+          type: array
+          items:
+            $ref: "#/components/schemas/StoredMerge"
     CreateNoteInput:
       type: object
       required: [nodeId, text]

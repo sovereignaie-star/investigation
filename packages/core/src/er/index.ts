@@ -1,3 +1,4 @@
+export * from "./model.ts";
 /**
  * P4-004 (ROADMAP 5.14 / D9) — entity resolution: blocking, comparison, weights.
  * Suggestion engine ONLY — no automatic merge (D9/GA: human confirmation, P4-005).
