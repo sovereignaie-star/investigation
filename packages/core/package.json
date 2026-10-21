@@ -17,6 +17,7 @@
   "devDependencies": {
     "@ir/schema": "workspace:*",
     "@types/node": "catalog:",
+    "fast-check": "^4.10.2",
     "yaml": "^2.9.1"
   }
 }
