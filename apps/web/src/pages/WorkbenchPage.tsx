@@ -18,6 +18,7 @@ import { InvestigationGraph, type SigmaHandle } from "./workbench/InvestigationG
 import { EntityTableContainer } from "./workbench/EntityTable";
 import { NodeDetailPanelContainer } from "./workbench/NodeDetailPanel";
 import { TimelineViewContainer } from "./workbench/TimelineView";
+import { AttackMatrixView } from "./workbench/AttackMatrixView";
 import { MapViewContainer } from "./workbench/MapView";
 import { CoverageMapContainer } from "./workbench/CoverageMap";
 import { RunPanel } from "./workbench/RunPanel";
@@ -239,6 +240,10 @@ export function WorkbenchPage({
       {/* P4-007/UC-08: the same projection as a bitemporal timeline — occurrence window
           (ADR-33) on one dimension, observation times on the other; honest intervals. */}
       <TimelineViewContainer graph={graph} />
+      {/* P4-020: the case's ATT&CK matrix — the same graph's `uses_technique`
+          tags joined with the frozen LOCAL STIX knowledge (bundled, offline by
+          construction); every entry carries its claim and evidence. */}
+      <AttackMatrixView graph={graph} />
       {/* P4-012: the same projection's geographic points on a MapLibre map —
           isolated by default (no external tiles: the case's own points render
           over a clean background, zero network egress), with optional
