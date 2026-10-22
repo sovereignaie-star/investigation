@@ -176,3 +176,150 @@ describe("buildNodeDetail (P3-008)", () => {
     expect(out.relations[0].explanation).toBe("test"); // the edge's explanation, verbatim
   });
 });
+
+describe("buildNodeDetail contradictions (P4-017 — الادعاءات المتناقضة)", () => {
+  it("same predicate with two different values is ONE contradiction carrying both claims side by side", () => {
+    const graph: Graph = {
+      nodes: [
+        node(N1, [
+          { claimId: "c-a", predicate: "whois.registrar", value: "Example Registrar", confidence: 0.8, evidenceIds: ["ev-1"] },
+          { claimId: "c-b", predicate: "whois.registrar", value: "Other Registrar", confidence: 0.6, evidenceIds: ["ev-2"] },
+        ]),
+        node(N2),
+      ],
+      edges: [],
+    };
+    const detail = buildNodeDetail(graph, N1);
+    expect(detail).not.toBeNull();
+    expect(detail?.contradictions).toHaveLength(1);
+    const contradiction = detail?.contradictions[0];
+    expect(contradiction?.predicate).toBe("whois.registrar");
+    expect(contradiction?.claims.map((c) => c.value)).toEqual(["Example Registrar", "Other Registrar"]);
+    expect(contradiction?.claims.map((c) => c.claimId)).toEqual(["c-a", "c-b"]);
+    // كل طرف يحمل أدلته وثقته — لا يُخفى طرف لصالح آخر
+    expect(contradiction?.claims[0]).toMatchObject({ confidence: 0.8, evidenceIds: ["ev-1"] });
+    expect(contradiction?.claims[1]).toMatchObject({ confidence: 0.6, evidenceIds: ["ev-2"] });
+  });
+
+  it("same predicate with the SAME value twice is not a contradiction", () => {
+    const graph: Graph = {
+      nodes: [
+        node(N1, [
+          { claimId: "c-a", predicate: "whois.registrar", value: "Example Registrar", confidence: 0.8, evidenceIds: ["ev-1"] },
+          { claimId: "c-b", predicate: "whois.registrar", value: "Example Registrar", confidence: 0.6, evidenceIds: ["ev-2"] },
+        ]),
+        node(N2),
+      ],
+      edges: [],
+    };
+    expect(buildNodeDetail(graph, N1)?.contradictions).toEqual([]);
+  });
+
+  it('different predicates are never contradictions, and number 7 is not string "7"', () => {
+    const graph: Graph = {
+      nodes: [
+        node(N1, [
+          { claimId: "c-a", predicate: "dns.ttl", value: 7, confidence: 0.8, evidenceIds: [] },
+          { claimId: "c-b", predicate: "dns.ttl", value: "7", confidence: 0.6, evidenceIds: [] },
+          { claimId: "c-c", predicate: "whois.registrar", value: "Example Registrar", confidence: 0.7, evidenceIds: [] },
+          { claimId: "c-d", predicate: "whois.created", value: "2020-01-01", confidence: 0.7, evidenceIds: [] },
+        ]),
+        node(N2),
+      ],
+      edges: [],
+    };
+    const contradictions = buildNodeDetail(graph, N1)?.contradictions ?? [];
+    expect(contradictions).toHaveLength(1);
+    expect(contradictions[0]?.predicate).toBe("dns.ttl");
+    expect(contradictions[0]?.claims.map((c) => c.value)).toEqual([7, "7"]);
+  });
+
+  it("relations (edges) with the same predicate to different targets are NOT contradictions", () => {
+    const graph: Graph = {
+      nodes: [node(N1), node(N2), { ...node("n3"), id: "n3", canonicalKey: "n3" }],
+      edges: [
+        {
+          id: "e1",
+          source: N1,
+          target: N2,
+          predicate: "resolves_to",
+          confidence: 0.9,
+          validFrom: null,
+          validTo: null,
+          explanation: "test",
+          evidenceIds: [],
+        },
+        {
+          id: "e2",
+          source: N1,
+          target: "n3",
+          predicate: "resolves_to",
+          confidence: 0.8,
+          validFrom: null,
+          validTo: null,
+          explanation: "test",
+          evidenceIds: [],
+        },
+      ],
+    };
+    expect(buildNodeDetail(graph, N1)?.contradictions).toEqual([]);
+  });
+
+  it("contradictions are ordered deterministically: predicate then claimId", () => {
+    const graph: Graph = {
+      nodes: [
+        node(N1, [
+          { claimId: "c-z", predicate: "zz.last", value: 1, confidence: 0.5, evidenceIds: [] },
+          { claimId: "c-y", predicate: "aa.first", value: 1, confidence: 0.5, evidenceIds: [] },
+          { claimId: "c-x", predicate: "aa.first", value: 2, confidence: 0.5, evidenceIds: [] },
+          { claimId: "c-w", predicate: "zz.last", value: 2, confidence: 0.5, evidenceIds: [] },
+        ]),
+        node(N2),
+      ],
+      edges: [],
+    };
+    const contradictions = buildNodeDetail(graph, N1)?.contradictions ?? [];
+    expect(contradictions.map((c) => c.predicate)).toEqual(["aa.first", "zz.last"]);
+    expect(contradictions[0]?.claims.map((c) => c.claimId)).toEqual(["c-y", "c-x"]);
+  });
+
+  it("contradictions surface from a real Projector projection too, not just hand-built graphs", () => {
+    const clock = manualClock("2026-10-22T08:00:00.000Z");
+    const newId = ulidFactory(clock, seededRandom(11));
+    const ledger = new Ledger({ actor: "analyst", clock });
+    const append = (kind: Parameters<Ledger["append"]>[0], payload: unknown) => {
+      clock.advance(1000);
+      return ledger.append(kind, payload);
+    };
+    append("case.created", {
+      id: newId(),
+      createdAt: "2026-10-22T08:00:00.000Z",
+      title: "قضية",
+      purpose: "غرض التحقيق النظامي",
+      legalBasis: "due_diligence",
+    });
+    const subject = newId();
+    append("entity.added", { id: subject, type: "domain", canonicalKey: "domain:example.com", labels: { en: "example.com" }, props: {} });
+    const claim = (value: string) =>
+      append("claim.added", {
+        id: newId(),
+        subjectId: subject,
+        predicate: "whois.registrar",
+        value,
+        validFrom: null,
+        validTo: null,
+        occurredFrom: null,
+        occurredTo: null,
+        confidence: 0.8,
+        explanation: "اختبار تناقض",
+      });
+    claim("Example Registrar");
+    claim("Other Registrar");
+    const view = project(ledger.entries()).graph;
+    const nodeId = view.nodes.find((n) => n.canonicalKey === "domain:example.com")?.id;
+    expect(nodeId).toBeDefined();
+    const contradictions = buildNodeDetail(view, nodeId ?? "")?.contradictions ?? [];
+    expect(contradictions).toHaveLength(1);
+    expect(contradictions[0]?.claims.map((c) => String(c.value)).sort()).toEqual(["Example Registrar", "Other Registrar"]);
+  });
+});
