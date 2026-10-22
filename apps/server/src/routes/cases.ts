@@ -4,6 +4,7 @@ import path from "node:path";
 import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { caseFingerprint, openCase, type Case, type CaseFingerprint, type CaseInit } from "@ir/store";
+import { ATTACK_KNOWLEDGE, buildAttackMatrix, type TechniqueTag } from "@ir/interop";
 import { ER_MODEL_VERSION, ER_MODEL_WEIGHTS, resolveEntities, scorePair, toErRecord, ulidFactory } from "@ir/core";
 import { projectionHash, type GraphNode } from "@ir/ledger/projections";
 import { isTextualMime } from "@ir/schema";
@@ -702,6 +703,45 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
       c.audit("merge.reverted", id, { mergeId, seq: entry.seq });
       const after = c.projection().mergeDecisions.find((m) => m.id === mergeId);
       res.json(after ?? { ...merge, reverted: true });
+    } finally {
+      c.close();
+    }
+  });
+
+  // P4-020 — the case's ATT&CK matrix from LOCAL STIX knowledge: the frozen
+  // generated bundle is compiled into the server (offline by construction — no
+  // network, no runtime file reads). The case side is the typed claim
+  // `uses_technique` (object = technique id); the matrix never loses the
+  // referral: every technique entry carries its claim and that claim's evidence
+  // ids ("كل وسم تقنية يحيل إلى الملاحظة التي اقتضته"). Unknown technique ids
+  // are reported, never dropped. J-17: a locked case fails closed.
+  router.get("/cases/:id/attack-matrix", limiter, admin, (req, res) => {
+    const id = caseIdParam(req.params["id"]);
+    if (!id) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    const found = findCaseDir(id);
+    if (!found) {
+      res.status(404).json({ error: "no case with this id" });
+      return;
+    }
+    if (found.fp.encrypted) {
+      res.status(403).json({ error: LOCKED_MESSAGE });
+      return;
+    }
+    const { dir } = found;
+    const c = openCase(dir, { readOnly: true, skipChainCheck: true, actor: "system" });
+    try {
+      const tags: TechniqueTag[] = [];
+      for (const node of c.projection().graph.nodes) {
+        for (const attr of node.attributes) {
+          if (attr.predicate === "uses_technique") {
+            tags.push({ claimId: attr.claimId, techniqueId: String(attr.value), evidenceIds: attr.evidenceIds });
+          }
+        }
+      }
+      res.json(buildAttackMatrix(tags, ATTACK_KNOWLEDGE));
     } finally {
       c.close();
     }

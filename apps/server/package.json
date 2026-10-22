@@ -13,6 +13,8 @@
     "@ir/core": "workspace:*",
     "@ir/egress": "workspace:*",
     "@ir/engine": "workspace:*",
+    "@ir/interop": "workspace:*",
+    "@ir/ledger": "workspace:*",
     "@ir/schema": "workspace:*",
     "@ir/store": "workspace:*",
     "@workspace/api-zod": "workspace:*",
@@ -23,8 +25,7 @@
     "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
     "pino": "^9.14.0",
-    "pino-http": "^10.5.0",
-    "@ir/ledger": "workspace:*"
+    "pino-http": "^10.5.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
