@@ -33,7 +33,10 @@ const port = 18720;
 
 export default defineConfig({
   testDir: ".",
-  testMatch: /uc\d{2}.*\.spec\.ts/,
+  // P4-012: the geo map view has no numbered UC (it is a workbench screen,
+  // roadmap 938) — its e2e spec is named map-view.spec.ts and joins the match
+  // explicitly. Every other spec stays bound to its UC number (ucNN-…).
+  testMatch: /uc\d{2}.*\.spec\.ts|map-view\.spec\.ts/,
   timeout: 60_000,
   // one server, one data root — sequential keeps the world deterministic
   workers: 1,
