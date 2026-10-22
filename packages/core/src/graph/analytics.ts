@@ -380,3 +380,162 @@ function requireNode(adj: Adjacency, id: string, role: string): number {
   }
   return i;
 }
+
+// --- P4-018: cut vertices, bridges, bounded all-paths and grouping ---
+
+/**
+ * P4-018 — articulation points (cut vertices): iterative low-link DFS
+ * (Tarjan). A node is a cut vertex when it is the DFS root with ≥ 2 tree
+ * children, or a non-root whose subtree has `low[child] ≥ disc[node]`.
+ * Matches `nx.articulation_points` on the frozen reference. Order: sorted ids.
+ */
+export function articulationPoints(g: GraphAnalyticsInput): string[] {
+  const adj = buildAdjacency(g);
+  const { found } = lowLink(adj);
+  return [...found].map((i) => adj.order[i]).sort();
+}
+
+/**
+ * P4-018 — bridges: an edge is a bridge when the subtree below it cannot
+ * reach above it (`low[child] > disc[parent]`). Matches `nx.bridges` on the
+ * frozen reference. Each pair is sorted (source < target by id) and the list
+ * is sorted — the reference's canonical order.
+ */
+export function bridges(g: GraphAnalyticsInput): [string, string][] {
+  const { bridges: found } = lowLink(buildAdjacency(g));
+  return found.map((e) => (e[0] < e[1] ? [e[0], e[1]] : [e[1], e[0]]) as [string, string]).sort();
+}
+
+/** Shared iterative DFS: disc/low computation for both cut vertices and bridges. */
+function lowLink(adj: Adjacency): { found: Set<number>; bridges: [string, string][] } {
+  const n = adj.order.length;
+  const disc = new Int32Array(n).fill(-1);
+  const low = new Int32Array(n);
+  const parent = new Int32Array(n).fill(-1);
+  const rootChildren = new Int32Array(n);
+  const found = new Set<number>();
+  const foundBridges: [string, string][] = [];
+  let timer = 0;
+  for (let start = 0; start < n; start++) {
+    if (disc[start] !== -1) continue;
+    const stack: { node: number; cursor: number }[] = [{ node: start, cursor: 0 }];
+    disc[start] = low[start] = timer++;
+    while (stack.length > 0) {
+      const top = stack[stack.length - 1];
+      const neighbors = adj.neighbors[top.node];
+      if (top.cursor < neighbors.length) {
+        const next = neighbors[top.cursor++];
+        if (next === parent[top.node]) continue; // the single tree edge to the parent
+        if (disc[next] === -1) {
+          parent[next] = top.node;
+          disc[next] = low[next] = timer++;
+          if (top.node === start) rootChildren[start]++;
+          stack.push({ node: next, cursor: 0 });
+        } else {
+          low[top.node] = Math.min(low[top.node], disc[next]); // back edge
+        }
+      } else {
+        stack.pop(); // done with this node — propagate low to the parent
+        const above = stack[stack.length - 1];
+        if (above !== undefined) {
+          const p = above.node;
+          low[p] = Math.min(low[p], low[top.node]);
+          if (low[top.node] > disc[p]) foundBridges.push([adj.order[p], adj.order[top.node]]);
+          if (p !== start && low[top.node] >= disc[p]) found.add(p);
+        }
+      }
+    }
+    if (rootChildren[start] >= 2) found.add(start);
+  }
+  return { found, bridges: foundBridges };
+}
+
+/** Element-wise path comparison — the reference lists are sorted this way (Python list order). */
+function comparePaths(a: readonly string[], b: readonly string[]): number {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    if (a[i] < b[i]) return -1;
+    if (a[i] > b[i]) return 1;
+  }
+  return a.length - b.length;
+}
+
+/**
+ * P4-018 — every simple path from `from` to `to` with at most `maxLength`
+ * edges (`nx.all_simple_paths` with `cutoff`): `from === to` yields just
+ * `[from]`; a length bound that excludes the only path yields `[]`. The
+ * result is sorted (the reference's canonical order). Enumeration is bounded
+ * by the cutoff, never by hope.
+ */
+export function allPaths(g: GraphAnalyticsInput, from: string, to: string, maxLength: number): string[][] {
+  const adj = buildAdjacency(g);
+  if (!adj.index.has(from) || !adj.index.has(to)) return [];
+  if (from === to) return [[from]];
+  const start = adj.index.get(from) ?? 0;
+  const goal = adj.index.get(to) ?? 0;
+  const found: string[][] = [];
+  const path: number[] = [start];
+  const onPath = new Set<number>([start]);
+  const visit = (node: number): void => {
+    if (node === goal) {
+      found.push(path.map((i) => adj.order[i]));
+      return;
+    }
+    if (path.length - 1 >= maxLength) return; // edge budget spent
+    for (const next of adj.neighbors[node]) {
+      if (onPath.has(next)) continue;
+      path.push(next);
+      onPath.add(next);
+      visit(next);
+      path.pop();
+      onPath.delete(next);
+    }
+  };
+  visit(start);
+  return found.sort(comparePaths);
+}
+
+/** P4-018 — grouping input: a node may carry a type; an edge may carry the
+ * source transform that recorded it and its timestamp. Missing values are
+ * aggregated under an explicit `unknown` bucket — never dropped. */
+export interface GroupableNode {
+  id: string;
+  type?: string;
+}
+export interface GroupableEdge {
+  source: string;
+  target: string;
+  transformId?: string;
+  at?: string;
+}
+
+const tally = (key: string, map: Map<string, number>): void => {
+  map.set(key, (map.get(key) ?? 0) + 1);
+};
+
+/** P4-018 — group the nodes by their type (missing type → `unknown`). */
+export function groupNodesByType(nodes: readonly GroupableNode[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const n of nodes) tally(n.type ?? "unknown", out);
+  return out;
+}
+
+/** P4-018 — group the edges by the source transform that recorded them. */
+export function groupEdgesBySource(edges: readonly GroupableEdge[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const e of edges) tally(e.transformId ?? "unknown", out);
+  return out;
+}
+
+/** P4-018 — group the edges by period: `day` → YYYY-MM-DD, `month` → YYYY-MM.
+ * A timestamp that is missing or not an ISO instant aggregates under `unknown`. */
+export function groupEdgesByPeriod(edges: readonly GroupableEdge[], bucket: "day" | "month"): Map<string, number> {
+  const out = new Map<string, number>();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})T/;
+  for (const e of edges) {
+    const m = iso.exec(e.at ?? "");
+    const key = m === null ? "unknown" : bucket === "month" ? `${m[1]}-${m[2]}` : `${m[1]}-${m[2]}-${m[3]}`;
+    tally(key, out);
+  }
+  return out;
+}
