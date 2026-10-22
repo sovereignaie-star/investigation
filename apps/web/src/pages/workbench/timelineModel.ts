@@ -1,3 +1,14 @@
+import {
+  activityPeriods,
+  escalations,
+  repetitions,
+  suddenSilences,
+  type ActivityPeriod,
+  type Escalation,
+  type Repetition,
+  type SuddenSilence,
+  type TimePatternEvent,
+} from "@ir/core";
 import type { ClaimObservation, Graph, GraphEdge, GraphNode } from "@ir/ledger/projections";
 import { compareTimestamps } from "@ir/schema";
 
@@ -155,3 +166,45 @@ export function occurrenceLabel(item: Pick<TimelineItem, "occurredFrom" | "occur
               ];
   return { text, full, segments };
 }
+
+/**
+ * P4-019 — the timeline's detected patterns (فترات النشاط، الصمت المفاجئ،
+ * التصاعد، التكرار). The atoms are the items' OBSERVATIONS (their observedAt
+ * is the honest event time — the occurrence window is an interval, not a
+ * point), each carrying its evidence id, and the repetition key is the observed
+ * value. Parameters are the module's documented defaults — identical to the
+ * frozen reference timeline's (fixtures/time/reference-timeline.json) — so the
+ * displayed patterns are exactly the tested semantics.
+ */
+export interface TimelinePatterns {
+  activityPeriods: ActivityPeriod[];
+  suddenSilences: SuddenSilence[];
+  escalations: Escalation[];
+  repetitions: Repetition[];
+}
+
+export function buildTimelinePatterns(items: readonly TimelineItem[]): TimelinePatterns {
+  const events: TimePatternEvent[] = items.flatMap((item) =>
+    item.observations.map((o) => ({
+      at: o.observedAt,
+      value: item.objectLabel,
+      evidenceIds: [o.evidenceId],
+    })),
+  );
+  return {
+    activityPeriods: activityPeriods(events, { gapMs: TIMELINE_PATTERN_PARAMS.gapMs }),
+    suddenSilences: suddenSilences(events, { quietMs: TIMELINE_PATTERN_PARAMS.quietMs }),
+    escalations: escalations(events, { bucketMs: TIMELINE_PATTERN_PARAMS.bucketMs, factor: TIMELINE_PATTERN_PARAMS.factor }),
+    repetitions: repetitions(events, { withinMs: TIMELINE_PATTERN_PARAMS.withinMs, minTimes: TIMELINE_PATTERN_PARAMS.minTimes }),
+  };
+}
+
+/** P4-019 — the display defaults; the same values the frozen reference is tested with. */
+export const TIMELINE_PATTERN_PARAMS = {
+  gapMs: 6 * 3600_000,
+  quietMs: 72 * 3600_000,
+  bucketMs: 86_400_000,
+  factor: 2,
+  withinMs: 3600_000,
+  minTimes: 3,
+} as const;

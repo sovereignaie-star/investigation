@@ -150,3 +150,65 @@ describe("TimelineView (P4-007/UC-08) — الخط الزمني ثنائي ال�
     expect(rendered).toContain("غير محدد");
   });
 });
+
+describe("TimelineView patterns (P4-019 — كل نمط يُعرض مع أدلته)", () => {
+  const patternItems = sortTimelineItems([
+    {
+      claimId: "c-a",
+      subjectId: "a",
+      subjectLabel: "عقدة a",
+      predicate: "status",
+      objectLabel: "up",
+      validFrom: null,
+      validTo: null,
+      occurredFrom: "2026-10-01T09:00:00Z",
+      occurredTo: null,
+      observations: [
+        { observationId: "o1", evidenceId: "ev-a1", observedAt: "2026-10-01T09:00:00Z", kind: "positive" },
+        { observationId: "o2", evidenceId: "ev-a2", observedAt: "2026-10-01T10:00:00Z", kind: "positive" },
+      ],
+    },
+    {
+      claimId: "c-b",
+      subjectId: "a",
+      subjectLabel: "عقدة a",
+      predicate: "status",
+      objectLabel: "up",
+      validFrom: null,
+      validTo: null,
+      occurredFrom: "2026-10-10T09:00:00Z",
+      occurredTo: null,
+      observations: [{ observationId: "o3", evidenceId: "ev-b1", observedAt: "2026-10-10T09:00:00Z", kind: "positive" }],
+    },
+  ]);
+
+  it("renders the detected patterns with their evidence — a sudden silence carries its bounding evidence", () => {
+    const html = renderToStaticMarkup(React.createElement(TimelineView, { items: patternItems }));
+    expect(html).toContain('data-testid="timeline-patterns"');
+    // صمت مفاجئ بين 10-01 و10-10 (9 أيام ≥ 72 ساعة) بأدلة الحدّين
+    expect(html).toMatch(/2026-10-01T09:00:00Z/);
+    expect(html).toContain("ev-a2");
+    expect(html).toContain("ev-b1");
+    // فترتا نشاط (10-01 ساعتان متتاليتان، و10-10 وحدها)
+    expect((html.match(/data-testid="timeline-pattern-activity"/g) ?? []).length).toBe(2);
+  });
+
+  it("hides the patterns section when no pattern is detectable — no invented patterns", () => {
+    const single = [
+      {
+        claimId: "c-x",
+        subjectId: "x",
+        subjectLabel: "عقدة x",
+        predicate: "p",
+        objectLabel: "v",
+        validFrom: null,
+        validTo: null,
+        occurredFrom: "2026-10-01T09:00:00Z",
+        occurredTo: null,
+        observations: [], // بلا رصد لا أحداث ولا أنماط — لا اختراع
+      },
+    ];
+    const html = renderToStaticMarkup(React.createElement(TimelineView, { items: single }));
+    expect(html).not.toContain('data-testid="timeline-patterns"');
+  });
+});

@@ -1,5 +1,6 @@
 export * from "./confidence/index.ts";
 export * from "./graph/analytics.ts";
+export * from "./time/patterns.ts";
 export * from "./er/index.ts";
 export * from "./clock.ts";
 export * from "./ulid.ts";

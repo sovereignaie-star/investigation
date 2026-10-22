@@ -299,6 +299,11 @@ export const en = {
   "workbench.nodeDetail.noteBy": "{actor} · {at}",
   // ---- timeline view (P4-007/UC-08 — ADR-33)
   "workbench.timeline.ariaLabel": "Timeline",
+  "workbench.timeline.patterns": "Detected time patterns",
+  "workbench.timeline.patternActivity": "Activity period {start} → {end} ({count} events) — evidence:",
+  "workbench.timeline.patternSilence": "Sudden silence {from} → {to} — bounding evidence:",
+  "workbench.timeline.patternEscalation": "Escalation {from} → {to} ({previousCount} → {count} events) — evidence:",
+  "workbench.timeline.patternRepetition": 'Value "{value}" repeated {times} times between {from} and {to} — evidence:',
   "workbench.timeline.heading": "Timeline (bitemporal: occurrence and observation)",
   "workbench.timeline.noObservations": "no observations",
   "workbench.timeline.kind.positive": "positive observation",

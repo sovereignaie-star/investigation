@@ -1,0 +1,155 @@
+{
+  "generator": "tools/time/reference_timeline.py",
+  "params": {
+    "gapMs": 21600000,
+    "quietMs": 259200000,
+    "bucketMs": 86400000,
+    "factor": 2,
+    "withinMs": 3600000,
+    "minTimes": 3
+  },
+  "events": [
+    {
+      "at": "2026-10-01T09:00:00.000Z",
+      "evidenceIds": ["ev-01"]
+    },
+    {
+      "at": "2026-10-01T10:00:00.000Z",
+      "evidenceIds": ["ev-02"]
+    },
+    {
+      "at": "2026-10-01T11:00:00.000Z",
+      "evidenceIds": ["ev-03"]
+    },
+    {
+      "at": "2026-10-02T09:00:00.000Z",
+      "evidenceIds": ["ev-04"]
+    },
+    {
+      "at": "2026-10-02T10:00:00.000Z",
+      "evidenceIds": ["ev-05"]
+    },
+    {
+      "at": "2026-10-10T09:00:00.000Z",
+      "evidenceIds": ["ev-06"]
+    },
+    {
+      "at": "2026-10-11T09:00:00.000Z",
+      "evidenceIds": ["ev-07"]
+    },
+    {
+      "at": "2026-10-11T15:00:00.000Z",
+      "evidenceIds": ["ev-08"]
+    },
+    {
+      "at": "2026-10-12T09:00:00.000Z",
+      "value": "login-failed",
+      "evidenceIds": ["ev-09"]
+    },
+    {
+      "at": "2026-10-12T09:05:00.000Z",
+      "value": "login-failed",
+      "evidenceIds": ["ev-10"]
+    },
+    {
+      "at": "2026-10-12T09:20:00.000Z",
+      "value": "login-failed",
+      "evidenceIds": ["ev-11"]
+    },
+    {
+      "at": "2026-10-12T09:40:00.000Z",
+      "value": "login-failed",
+      "evidenceIds": ["ev-12"]
+    },
+    {
+      "at": "2026-10-12T11:00:00.000Z",
+      "evidenceIds": ["ev-13"]
+    },
+    {
+      "at": "2026-10-12T12:00:00.000Z",
+      "evidenceIds": ["ev-14"]
+    },
+    {
+      "at": "2026-10-12T13:00:00.000Z",
+      "evidenceIds": ["ev-15"]
+    },
+    {
+      "at": "2026-10-12T14:00:00.000Z",
+      "evidenceIds": ["ev-16"]
+    }
+  ],
+  "expected": {
+    "activityPeriods": [
+      {
+        "start": "2026-10-01T09:00:00.000Z",
+        "end": "2026-10-01T11:00:00.000Z",
+        "count": 3,
+        "evidenceIds": ["ev-01", "ev-02", "ev-03"]
+      },
+      {
+        "start": "2026-10-02T09:00:00.000Z",
+        "end": "2026-10-02T10:00:00.000Z",
+        "count": 2,
+        "evidenceIds": ["ev-04", "ev-05"]
+      },
+      {
+        "start": "2026-10-10T09:00:00.000Z",
+        "end": "2026-10-10T09:00:00.000Z",
+        "count": 1,
+        "evidenceIds": ["ev-06"]
+      },
+      {
+        "start": "2026-10-11T09:00:00.000Z",
+        "end": "2026-10-11T09:00:00.000Z",
+        "count": 1,
+        "evidenceIds": ["ev-07"]
+      },
+      {
+        "start": "2026-10-11T15:00:00.000Z",
+        "end": "2026-10-11T15:00:00.000Z",
+        "count": 1,
+        "evidenceIds": ["ev-08"]
+      },
+      {
+        "start": "2026-10-12T09:00:00.000Z",
+        "end": "2026-10-12T14:00:00.000Z",
+        "count": 8,
+        "evidenceIds": ["ev-09", "ev-10", "ev-11", "ev-12", "ev-13", "ev-14", "ev-15", "ev-16"]
+      }
+    ],
+    "suddenSilences": [
+      {
+        "from": "2026-10-02T10:00:00.000Z",
+        "to": "2026-10-10T09:00:00.000Z",
+        "gapMs": 687600000,
+        "beforeEvidenceIds": ["ev-05"],
+        "afterEvidenceIds": ["ev-06"]
+      }
+    ],
+    "escalations": [
+      {
+        "from": "2026-10-10T09:00:00.000Z",
+        "to": "2026-10-11T09:00:00.000Z",
+        "previousCount": 1,
+        "count": 2,
+        "evidenceIds": ["ev-06", "ev-07", "ev-08"]
+      },
+      {
+        "from": "2026-10-11T09:00:00.000Z",
+        "to": "2026-10-12T09:00:00.000Z",
+        "previousCount": 2,
+        "count": 8,
+        "evidenceIds": ["ev-07", "ev-08", "ev-09", "ev-10", "ev-11", "ev-12", "ev-13", "ev-14", "ev-15", "ev-16"]
+      }
+    ],
+    "repetitions": [
+      {
+        "value": "login-failed",
+        "times": 4,
+        "from": "2026-10-12T09:00:00.000Z",
+        "to": "2026-10-12T09:40:00.000Z",
+        "evidenceIds": ["ev-09", "ev-10", "ev-11", "ev-12"]
+      }
+    ]
+  }
+}
