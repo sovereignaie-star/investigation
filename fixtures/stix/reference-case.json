@@ -1,0 +1,200 @@
+{
+  "description": "P4-014 reference case for the STIX 2.1 export/import round-trip",
+  "graph": {
+    "nodes": [
+      {
+        "id": "p1",
+        "type": "person",
+        "canonicalKey": "person:p1",
+        "labels": {
+          "ar": "أحمد المكي"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [
+          {
+            "claimId": "p1-a0",
+            "predicate": "nationality",
+            "value": "sa",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-p1-0"],
+            "observations": []
+          }
+        ],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "c1",
+        "type": "company",
+        "canonicalKey": "company:c1",
+        "labels": {
+          "ar": "شركة المثل القابضة"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [
+          {
+            "claimId": "c1-a0",
+            "predicate": "jurisdiction",
+            "value": "sa",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-c1-0"],
+            "observations": []
+          }
+        ],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "d1",
+        "type": "domain",
+        "canonicalKey": "domain:d1",
+        "labels": {
+          "ar": "holdings.example"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "ip1",
+        "type": "ipv4",
+        "canonicalKey": "ipv4:ip1",
+        "labels": {
+          "ar": "192.0.2.7"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "h1",
+        "type": "sha256_hash",
+        "canonicalKey": "sha256_hash:h1",
+        "labels": {
+          "ar": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "e1",
+        "type": "email",
+        "canonicalKey": "email:e1",
+        "labels": {
+          "ar": "info@holdings.example"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      }
+    ],
+    "edges": [
+      {
+        "id": "p1-owns-c1",
+        "source": "p1",
+        "target": "c1",
+        "predicate": "ownership",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "reference claim",
+        "evidenceIds": ["ev-p1-owns-c1"],
+        "observations": []
+      },
+      {
+        "id": "d1-resolves-ip1",
+        "source": "d1",
+        "target": "ip1",
+        "predicate": "resolves_to",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "reference claim",
+        "evidenceIds": ["ev-d1-resolves-ip1"],
+        "observations": []
+      },
+      {
+        "id": "p1-knows-c1",
+        "source": "p1",
+        "target": "c1",
+        "predicate": "knows",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "reference claim",
+        "evidenceIds": ["ev-p1-knows-c1"],
+        "observations": []
+      }
+    ]
+  },
+  "exportedNodeIds": ["p1", "c1", "d1", "ip1", "h1", "e1"],
+  "exportedEdges": [
+    {
+      "id": "p1-owns-c1",
+      "predicate": "ownership",
+      "source": "p1",
+      "target": "c1"
+    },
+    {
+      "id": "d1-resolves-ip1",
+      "predicate": "resolves_to",
+      "source": "d1",
+      "target": "ip1"
+    },
+    {
+      "id": "p1-knows-c1",
+      "predicate": "knows",
+      "source": "p1",
+      "target": "c1"
+    }
+  ]
+}

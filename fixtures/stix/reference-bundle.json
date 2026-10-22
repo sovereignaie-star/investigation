@@ -1,0 +1,107 @@
+{
+  "type": "bundle",
+  "id": "bundle--9180a583-eab3-5207-9eb6-28cb8509fcee",
+  "objects": [
+    {
+      "type": "identity",
+      "id": "identity--46a56464-074f-5ca4-b2d0-8cffcab10c59",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "x_ir_id": "p1",
+      "name": "أحمد المكي",
+      "identity_class": "individual"
+    },
+    {
+      "type": "identity",
+      "id": "identity--17b4fd33-066e-53d0-8c52-80a2bcba26bb",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "x_ir_id": "c1",
+      "name": "شركة المثل القابضة",
+      "identity_class": "organization"
+    },
+    {
+      "type": "indicator",
+      "id": "indicator--7daac68b-fb89-5d35-868d-018c9e20ce69",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "x_ir_id": "d1",
+      "name": "holdings.example",
+      "pattern": "[domain-name:value = 'holdings.example']",
+      "pattern_type": "stix",
+      "valid_from": "2026-10-22T00:00:00.000Z"
+    },
+    {
+      "type": "indicator",
+      "id": "indicator--6d526b36-81df-527c-abd4-7d1776506d73",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "x_ir_id": "ip1",
+      "name": "192.0.2.7",
+      "pattern": "[ipv4-addr:value = '192.0.2.7']",
+      "pattern_type": "stix",
+      "valid_from": "2026-10-22T00:00:00.000Z"
+    },
+    {
+      "type": "indicator",
+      "id": "indicator--601e062b-afaa-5f10-b9ad-d32ac3cdf178",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "x_ir_id": "h1",
+      "name": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pattern": "[file:hashes.'SHA-256' = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855']",
+      "pattern_type": "stix",
+      "valid_from": "2026-10-22T00:00:00.000Z"
+    },
+    {
+      "type": "indicator",
+      "id": "indicator--a4adb2bb-34aa-59a3-96d2-48ca77d2cf82",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "x_ir_id": "e1",
+      "name": "info@holdings.example",
+      "pattern": "[email-addr:value = 'info@holdings.example']",
+      "pattern_type": "stix",
+      "valid_from": "2026-10-22T00:00:00.000Z"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--0c522d79-ac88-5bd5-85f5-b4dabc6260fb",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "relationship_type": "ownership",
+      "source_ref": "identity--46a56464-074f-5ca4-b2d0-8cffcab10c59",
+      "target_ref": "identity--17b4fd33-066e-53d0-8c52-80a2bcba26bb",
+      "x_ir_id": "p1-owns-c1"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--cd082f54-3284-5732-848e-7cf142ec6bf9",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "relationship_type": "resolves-to",
+      "source_ref": "indicator--7daac68b-fb89-5d35-868d-018c9e20ce69",
+      "target_ref": "indicator--6d526b36-81df-527c-abd4-7d1776506d73",
+      "x_ir_id": "d1-resolves-ip1"
+    },
+    {
+      "type": "relationship",
+      "id": "relationship--8f87e8e9-427e-57fe-9806-f1c001bb5842",
+      "spec_version": "2.1",
+      "created": "2026-10-22T00:00:00.000Z",
+      "modified": "2026-10-22T00:00:00.000Z",
+      "relationship_type": "knows",
+      "source_ref": "identity--46a56464-074f-5ca4-b2d0-8cffcab10c59",
+      "target_ref": "identity--17b4fd33-066e-53d0-8c52-80a2bcba26bb",
+      "x_ir_id": "p1-knows-c1"
+    }
+  ]
+}
