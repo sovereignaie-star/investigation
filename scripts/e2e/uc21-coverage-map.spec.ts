@@ -89,7 +89,9 @@ async function seededCase(): Promise<string> {
     // verbatim from the audit chain — «محظور بسياسة» is a recorded decision,
     // never guessed from the absence of an observation
     c.audit("investigate.not_run", "domain:coverage-e.example", {
-      transform: "tr-dns",
+      // a transform with NO observation anywhere: the universe must keep it
+      // from this record alone (round 7) — and the blocked decision shows
+      transform: "tr-blocked",
       reason: "disabled: policy — source disabled on this case",
     });
   } finally {
@@ -112,7 +114,7 @@ test("UC-21: coverage map — what was checked and what wasn't; every empty tran
   // listed unchecked — «ما لم يُفحص» is visible on the checked row too
   const rowA = rows.filter({ hasText: "موقع أ" });
   await expect(rowA).toContainText("فُحص بنتيجة");
-  await expect(rowA).toContainText("لا فحص مسجل: tr-empty");
+  await expect(rowA).toContainText("لا فحص مسجل: tr-blocked، tr-empty");
 
   // THE ACCEPTANCE — «كل محوّل فارغ يظهر»: the transform whose only result is
   // negative stays visible with its honest state, never filtered
@@ -128,7 +130,7 @@ test("UC-21: coverage map — what was checked and what wasn't; every empty tran
   // the untouched entity says so honestly — nothing has been tried on it yet
   const rowD = rows.filter({ hasText: "موقع د" });
   await expect(rowD).toContainText("لا فحص مسجل بعد");
-  await expect(rowD).toContainText("لا فحص مسجل: tr-dns، tr-empty");
+  await expect(rowD).toContainText("لا فحص مسجل: tr-blocked، tr-dns، tr-empty");
 
   // E — policy-blocked: «محظور بسياسة» from its own audited record, with the
   // engine's verbatim reason — and NOT badged untouched (a decision was recorded)
@@ -172,7 +174,7 @@ test("UC-21: «تحديث بيانات القضية» re-reads the projection �
   // elsewhere in the case but never on B, so it is honestly LISTED unchecked
   const rowB = page.getByTestId("coverage-row").filter({ hasText: "موقع ب" });
   await expect(rowB).toContainText("فُحص بلا نتيجة");
-  await expect(rowB).toContainText("لا فحص مسجل: tr-dns");
+  await expect(rowB).toContainText("لا فحص مسجل: tr-blocked، tr-dns");
 
   // a check runs on B while the case is open (the store's write path — the
   // same path a real engine run takes through the server)

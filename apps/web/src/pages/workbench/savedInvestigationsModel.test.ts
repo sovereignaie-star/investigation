@@ -145,6 +145,7 @@ describe("parseProjection (P3-015 — fail-closed parse of the served snapshot)"
         cells: [{ entityId: "n1", transformId: "t", positive: 0, negative: 1, error: 0, last: "negative", lastAt: "x" }, { entityId: 42 }],
         transforms: ["t"],
         untouched: [],
+        notRun: [],
       },
     } as unknown as Record<string, unknown>);
     expect(badCells).not.toBeNull();
@@ -156,6 +157,7 @@ describe("parseProjection (P3-015 — fail-closed parse of the served snapshot)"
         cells: [{ entityId: "n1", transformId: "t", positive: -1, negative: 0, error: 0, last: "positive", lastAt: "x" }],
         transforms: ["t"],
         untouched: [],
+        notRun: [],
       },
     } as unknown as Record<string, unknown>);
     expect(badCount).not.toBeNull();

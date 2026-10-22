@@ -319,6 +319,7 @@ export const en = {
   "workbench.coverage.lastKind.error": "error",
   "workbench.coverage.blocked.policy": "blocked by policy",
   "workbench.coverage.blocked.operational": "not run — operational reason",
+  "workbench.coverage.blocked.unclassified": "not run — reason as recorded",
   "workbench.coverage.unavailable": "Coverage map unavailable for this case",
   "workbench.coverage.noCase": "Open a saved case to view its coverage map",
   // ---- node detail panel (P3-008)

@@ -35,27 +35,29 @@ export function cellState(cell: CoverageCellView): CellState {
 
 /**
  * One never-run pair as the web shows it — the audit record plus its honest
- * classification. `policy` = the engine's own decision (source disabled on the
- * case, excluded by the operator, input refused — D3's «محظور بسياسة»);
- * `operational` = a stop outside anyone's policy (depth/budget/cancelled).
+ * classification. `policy` = the engine's own decision (source disabled on
+ * the case, excluded by the operator — D3's «محظور بسياسة»);
+ * `operational` = a stop condition (depth/budget/cancelled);
+ * `unclassified` = anything else — the reason is shown verbatim and its
+ * category is never guessed (refused inputs, future reasons).
  */
-export type BlockedCell = NotRunCell & { kind: "policy" | "operational" };
+export type BlockedCell = NotRunCell & { kind: "policy" | "operational" | "unclassified" };
 
 /**
  * Classifies a not_run record from its VERBATIM recorded reason — the reasons
  * are the engine's own strings (packages/cli/src/investigate.ts), matched
- * conservatively: anything unrecognized stays operational, never fabricated as
- * a policy decision it may not be.
+ * conservatively: only what the producer actually says is classified, and
+ * anything unrecognized falls back to `unclassified` — never guessed into a
+ * category (a refused input is neither the operator's policy nor a budget stop).
  */
-export function notRunKind(cell: NotRunCell): "policy" | "operational" {
-  if (
-    cell.reason.startsWith("disabled:") ||
-    cell.reason.startsWith("excluded by the operator") ||
-    cell.reason.startsWith("input refused")
-  ) {
+export function notRunKind(cell: NotRunCell): "policy" | "operational" | "unclassified" {
+  if (cell.reason.startsWith("disabled:") || cell.reason.startsWith("excluded by the operator")) {
     return "policy";
   }
-  return "operational";
+  if (/^depth \d+ > maxDepth /.test(cell.reason) || cell.reason.startsWith("budget:") || cell.reason === "cancelled") {
+    return "operational";
+  }
+  return "unclassified";
 }
 
 /** One entity's row in the map: what ran on it, what was blocked, and what has no record. */
@@ -90,7 +92,6 @@ const labelOf = (n: GraphNode): string => n.labels.ar ?? n.labels.en ?? n.canoni
  * counts — a negative-only transform stays visible (the acceptance).
  */
 export function buildCoverageRows(graph: Graph, coverage: Coverage): CoverageMap {
-  const transforms = [...new Set(coverage.transforms)].sort();
   const nodes = new Map(graph.nodes.map((n) => [n.id, n] as const));
   const byKey = new Map(graph.nodes.map((n) => [n.canonicalKey, n] as const));
   const byEntity = new Map<string, CoverageCellView[]>();
@@ -109,6 +110,10 @@ export function buildCoverageRows(graph: Graph, coverage: Coverage): CoverageMap
     list.push({ ...record, kind: notRunKind(record) });
     blockedByEntity.set(entityId, list);
   }
+  // P4-010 round 7: the DISPLAYED universe is observed AND audit-recorded — a
+  // transform known only from a not_run decision (a case with zero
+  // observations) stays in the universe, never dropped from the map.
+  const universe = [...new Set([...coverage.transforms, ...coverage.notRun.map((r) => r.transformId)])].sort();
   const entityIds = [...new Set([...nodes.keys(), ...byEntity.keys(), ...blockedByEntity.keys()])].sort();
   const rows: CoverageRow[] = entityIds.map((entityId) => {
     const node = nodes.get(entityId);
@@ -127,8 +132,8 @@ export function buildCoverageRows(graph: Graph, coverage: Coverage): CoverageMap
       untouched: checked.length === 0 && blocked.length === 0,
       checked,
       blocked,
-      unchecked: transforms.filter((t) => !recorded.has(t)),
+      unchecked: universe.filter((t) => !recorded.has(t)),
     };
   });
-  return { rows, transforms };
+  return { rows, transforms: universe };
 }

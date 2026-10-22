@@ -219,13 +219,43 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
     expect(r.checked.map((c) => c.transformId)).toEqual(["tr-a"]);
   });
 
-  it("notRunKind classifies honestly from the recorded reason — policy vs operational, never guessed", () => {
+  it("notRunKind classifies only what the engine actually says — an unrecognized reason is never guessed into a category", () => {
+    // the producer's verified strings (packages/cli/src/investigate.ts):
+    // policy = `disabled: ...` / `excluded by the operator (--exclude)`;
+    // operational stops = `depth N > maxDepth N` / `budget: ...` / `cancelled`.
+    // Everything else — input refused, setup refused, any future reason — is
+    // NOT ours to classify: a neutral fallback, never a guessed category.
     expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "disabled: no reason recorded" }))).toBe("policy");
     expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "excluded by the operator (--exclude)" }))).toBe("policy");
-    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "input refused: unsupported value" }))).toBe("policy");
     expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "depth 3 > maxDepth 2" }))).toBe("operational");
     expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "budget: requests" }))).toBe("operational");
     expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "cancelled" }))).toBe("operational");
+    // refused inputs are NOT the operator's policy and NOT a budget stop — the
+    // engine's own words are shown verbatim, never asserted into a category
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "input refused: unsupported value" }))).toBe("unclassified");
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "setup refused: --network: TR-043 requires" }))).toBe("unclassified");
+    // a reason the engine never said (a future string) — neutral, never guessed
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "something the engine never said" }))).toBe("unclassified");
+  });
+
+  it("a transform known ONLY from its not_run record stays in the universe — the blocked decision is never invisible", () => {
+    // a case where the only record of tr-disabled is a not_run decision: the
+    // displayed universe must include it (count 1, not 0), the blocked entity
+    // shows its recorded decision, and the other entity lists the transform
+    // under «لا فحص مسجل» — dropping it would hide the decision from the map
+    const coverage: Coverage = {
+      cells: [],
+      transforms: [],
+      untouched: [],
+      notRun: [notRunOf({ key: "domain:n1", transformId: "tr-disabled" })],
+    };
+    const { rows, transforms } = buildCoverageRows(graphOf(node("n1"), node("n2")), coverage);
+    expect(transforms).toEqual(["tr-disabled"]);
+    const r1 = rowFor(rows, "n1");
+    expect(r1.blocked).toHaveLength(1);
+    expect(r1.unchecked).toEqual([]);
+    const r2 = rowFor(rows, "n2");
+    expect(r2.unchecked).toEqual(["tr-disabled"]);
   });
 
   it("an entity whose only record is a not_run decision is NOT badged untouched — a decision was recorded against it", () => {

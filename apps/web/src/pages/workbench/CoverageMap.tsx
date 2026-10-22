@@ -81,7 +81,13 @@ function BlockedChip({ blocked }: { blocked: CoverageRow["blocked"][number] }) {
             : "rounded bg-muted px-1.5 font-medium"
         }
       >
-        {t(blocked.kind === "policy" ? "workbench.coverage.blocked.policy" : "workbench.coverage.blocked.operational")}
+        {t(
+          blocked.kind === "policy"
+            ? "workbench.coverage.blocked.policy"
+            : blocked.kind === "operational"
+              ? "workbench.coverage.blocked.operational"
+              : "workbench.coverage.blocked.unclassified",
+        )}
       </span>
       <span dir="ltr" className="whitespace-nowrap font-medium">
         {blocked.transformId}

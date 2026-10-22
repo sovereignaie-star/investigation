@@ -314,6 +314,7 @@ export const ar = {
   "workbench.coverage.lastKind.error": "خطأ",
   "workbench.coverage.blocked.policy": "محظور بسياسة",
   "workbench.coverage.blocked.operational": "لم يُشغَّل — سبب تشغيلي",
+  "workbench.coverage.blocked.unclassified": "لم يُشغَّل — السبب كما سُجّل",
   "workbench.coverage.unavailable": "خريطة التغطية غير متاحة لهذه القضية",
   "workbench.coverage.noCase": "افتح قضية محفوظة لعرض خريطة التغطية",
   // ---- node detail panel (P3-008)
