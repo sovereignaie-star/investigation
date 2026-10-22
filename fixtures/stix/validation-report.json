@@ -1,0 +1,16 @@
+{
+  "valid": true,
+  "validator": "stix2-validator 3.3.1 (OASIS) with the official cti-stix2-json-schemas",
+  "bundleSha256": "7d50281e14072ed087f4739f1cf6919adeef4d05ea4bf7197f5e7cca30df1b30",
+  "exitCode": 0,
+  "errors": [],
+  "warningsCount": 26,
+  "warningsSample": [
+    "[!] Warning: bundle--9180a583-eab3-5207-9eb6-28cb8509fcee: {103} Given ID value bundle--9180a583-eab3-5207-9eb6-28cb8509fcee is not a valid UUIDv4 ID.",
+    "[!] Warning: identity--46a56464-074f-5ca4-b2d0-8cffcab10c59: {103} Given ID value identity--46a56464-074f-5ca4-b2d0-8cffcab10c59 is not a valid UUIDv4 ID.",
+    "[!] Warning: identity--46a56464-074f-5ca4-b2d0-8cffcab10c59: {401} Custom property 'x_ir_id' should be implemented using an extension with an 'extension_type' of 'property-extension' or 'toplevel-property-extension'.",
+    "[!] Warning: identity--17b4fd33-066e-53d0-8c52-80a2bcba26bb: {103} Given ID value identity--17b4fd33-066e-53d0-8c52-80a2bcba26bb is not a valid UUIDv4 ID.",
+    "[!] Warning: identity--17b4fd33-066e-53d0-8c52-80a2bcba26bb: {401} Custom property 'x_ir_id' should be implemented using an extension with an 'extension_type' of 'property-extension' or 'toplevel-property-extension'.",
+    "[!] Warning: indicator--7daac68b-fb89-5d35-868d-018c9e20ce69: {103} Given ID value indicator--7daac68b-fb89-5d35-868d-018c9e20ce69 is not a valid UUIDv4 ID."
+  ]
+}

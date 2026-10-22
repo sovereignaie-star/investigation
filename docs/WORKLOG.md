@@ -5152,3 +5152,12 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #319 دُمج squash في main عند `eccc9ea` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل فحوص PR ناجحة — governance، CodeQL، analyze، build، docker، e2e، gitleaks، gates، security-review-advisory، test، zap.
 - **المصدر/المرجع:** docs/STATUS.md (P4-013 → done مع أدلة الدمج)؛ PR #319؛ إيداع الدمج `eccc9ea`.
+
+## 2026-10-22 — P4-014 تصدير/استيراد STIX 2.1 — يمر بالمدقق [P4-014]
+
+- **الأحمر أولاً:** `packages/interop/src/stix/stix.test.ts` (10 اختبارات) كتب قبل أي تنفيذ وشُغل أحمراً (Cannot find module)؛ الدليل الحرفي مع ثلاث عيوب حقيقية: `docs/evidence/2026-10-22-P4-014-red.md`.
+- **معيار القبول تحقق — المدقق الرسمي:** stix2-validator 3.3.1 (OASIS) قال `STIX JSON: Valid` على الحزمة المجمدة؛ الحكم مجمد في `fixtures/stix/validation-report.json` (مع أداة ونسخة وتجزئة الحزمة ووضع --check محلي). CI يثبت آلياً: التصدير الحي مطابق حرفياً للحزمة المباركة + الدورة بلا فقد + البنية.
+- **التنفيذ:** `src/stix/stix.ts` — تعيين مقيس على المخططات الرسمية (person/company→Identity بidentity_class، domain/ipv4/sha256_hash/email→Indicator بنمط STIX مشتق من نوع العقدة، الحواف→Relationship بrelationship_type محول `_`→`-` تقابلياً)، معرّف STIX = UUIDv5 حتمي من معرفنا + `x_ir_id` للدورة الكاملة، الطوابع الزمنية من معطى صريح (لا ساعة مخفية)، فشل-مغلق على كل مجهول، وما لا تمثيل له يُبلَّغ في skipped (نفس عرف FtM).
+- **الدورة:** `stixImport(stixExport(g).bundle)` يعيد بناء العقد والحواف بمعرّفاتها المصدرية — مُثبت على قضية المرجع (9 كائنات: 6 SDOs + 3 SROs) ولا اختراع كائنات.
+- **الجودة:** 10 اختبارات جديدة؛ الحزمة الكاملة 2625 ناجحاً/0 فاشلاً/6 متخطاة (قبل: 2615/6)؛ lint/typecheck/build/governance exit 0. الحد المعلن: L-62 (حدود تمثيل STIX مقيسة على المدقق الرسمي).
+- **المصدر/المرجع:** docs/ROADMAP.md (P4-014، T-IO-002)؛ docs/STATUS.md (P4-014 → done، المرحلة 4: 12/24)؛ docs/evidence/2026-10-22-P4-014-red.md.
