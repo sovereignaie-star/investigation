@@ -302,6 +302,15 @@ export const en = {
   "workbench.timeline.kind.negative": "negative observation",
   "workbench.timeline.kind.error": "error observation",
   "workbench.timeline.evidenceTitle": "evidence: {id}",
+  // ---- geo map (P4-012 — MapLibre, configurable tiles)
+  "workbench.map.ariaLabel": "Geographic map",
+  "workbench.map.heading": "Geographic map (MapLibre — configurable tiles)",
+  "workbench.map.noPoints": "No geographic points in this projection",
+  "workbench.map.tilesLabel": "Tiles URL (optional)",
+  "workbench.map.tilesPlaceholder": "https://…/{z}/{x}/{y}.png",
+  "workbench.map.tilesApply": "Apply",
+  "workbench.map.unavailable": "WebGL is unavailable in this browser — the points list fully works without the interactive map",
+  "workbench.map.evidenceTitle": "Evidence: {ids}",
   // ---- coverage map (P4-010/UC-21)
   "workbench.coverage.ariaLabel": "Coverage map",
   "workbench.coverage.heading": "Coverage map (checked and unchecked)",

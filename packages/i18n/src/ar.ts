@@ -297,6 +297,15 @@ export const ar = {
   "workbench.timeline.kind.negative": "رصد سلبي",
   "workbench.timeline.kind.error": "رصد خطأ",
   "workbench.timeline.evidenceTitle": "دليل: {id}",
+  // ---- geo map (P4-012 — MapLibre، بلاطات قابلة للتهيئة)
+  "workbench.map.ariaLabel": "الخريطة الجغرافية",
+  "workbench.map.heading": "الخريطة الجغرافية (MapLibre — بلاطات قابلة للتهيئة)",
+  "workbench.map.noPoints": "لا نقاط جغرافية في هذا الإسقاط",
+  "workbench.map.tilesLabel": "رابط البلاطات (اختياري)",
+  "workbench.map.tilesPlaceholder": "https://…/{z}/{x}/{y}.png",
+  "workbench.map.tilesApply": "تطبيق",
+  "workbench.map.unavailable": "WebGL غير متاح في هذا المتصفح — قائمة النقاط تعمل كاملة دون الخريطة التفاعلية",
+  "workbench.map.evidenceTitle": "الأدلة: {ids}",
   // ---- coverage map (P4-010/UC-21)
   "workbench.coverage.ariaLabel": "خريطة التغطية",
   "workbench.coverage.heading": "خريطة التغطية (ما فُحص وما لم يُفحص)",
