@@ -19,9 +19,15 @@ import { describe, expect, it } from "vitest";
 
 import type { GraphAnalyticsInput } from "./analytics.ts";
 import {
+  allPaths,
+  articulationPoints,
   betweennessCentrality,
+  bridges,
   closenessCentrality,
   degreeCentrality,
+  groupEdgesByPeriod,
+  groupEdgesBySource,
+  groupNodesByType,
   labelPropagationCommunities,
   pageRank,
   shortestPath,
@@ -40,6 +46,16 @@ const reference = JSON.parse(readFileSync(join(root, "fixtures", "graph", "netwo
     communities: string[][];
     shortestPathLengths: Record<string, Record<string, number>>;
     shortestPaths: { source: string; target: string; path: string[] | null }[];
+    allSimplePaths: { source: string; target: string; cutoff: number; paths: string[][] }[];
+  };
+  p4018: {
+    nodes: string[];
+    edges: [string, string][];
+    expected: {
+      articulationPoints: string[];
+      bridges: [string, string][];
+      allSimplePaths: { source: string; target: string; cutoff: number; paths: string[][] }[];
+    };
   };
 };
 
@@ -351,5 +367,111 @@ describe("P4-011 — input normalization (self-loops, duplicates, unknown endpoi
     const got = degreeCentrality(g);
     expect(got.get("a")).toBe(1);
     expect(got.has("ghost")).toBe(false);
+  });
+});
+
+describe("P4-018 — cut vertices, bridges, bounded all-paths and grouping", () => {
+  // The P4-018 section of the reference: a deterministic graph built to HAVE cut
+  // vertices and bridges (two K5 cliques joined by one bridge, a hanging chain,
+  // an isolated node), plus the main dense graph's bounded all-simple-paths.
+  const p18 = reference.p4018 as {
+    nodes: string[];
+    edges: [string, string][];
+    expected: {
+      articulationPoints: string[];
+      bridges: [string, string][];
+      allSimplePaths: { source: string; target: string; cutoff: number; paths: string[][] }[];
+    };
+  };
+  const main = {
+    nodes: reference.nodes.map((id) => ({ id })),
+    edges: reference.edges.map(([source, target]) => ({ source, target })),
+  } as GraphAnalyticsInput;
+
+  const p18input = { nodes: p18.nodes.map((id) => ({ id })), edges: p18.edges.map(([source, target]) => ({ source, target })) };
+  it("articulation points match NetworkX on the dedicated reference (and none on the dense graph)", () => {
+    expect(articulationPoints(p18input)).toEqual(p18.expected.articulationPoints);
+    expect(articulationPoints(main)).toEqual([]);
+  });
+
+  it("bridges match NetworkX on the dedicated reference (and none on the dense graph)", () => {
+    expect(bridges(p18input)).toEqual(p18.expected.bridges);
+    expect(bridges(main)).toEqual([]);
+  });
+
+  it("all bounded simple paths match NetworkX on both graphs, in the same sorted order", () => {
+    for (const spec of p18.expected.allSimplePaths) {
+      const got = allPaths(p18input, spec.source, spec.target, spec.cutoff);
+      expect(got).toEqual(spec.paths);
+    }
+    const mainPairs = (reference.expected as { allSimplePaths: typeof p18.expected.allSimplePaths }).allSimplePaths;
+    for (const spec of mainPairs) {
+      const got = allPaths(main, spec.source, spec.target, spec.cutoff);
+      expect(got).toEqual(spec.paths);
+    }
+  });
+
+  it("allPaths respects the length bound and the normalization contract (self-loops, duplicates, unknown endpoints)", () => {
+    const g: GraphAnalyticsInput = {
+      nodes: [{ id: "x" }, { id: "y" }, { id: "z" }],
+      edges: [
+        { source: "x", target: "y" },
+        { source: "y", target: "z" },
+        { source: "x", target: "y" }, // duplicate
+        { source: "x", target: "x" }, // self-loop
+        { source: "x", target: "ghost" }, // unknown endpoint
+      ],
+    };
+    expect(allPaths(g, "x", "z", 1)).toEqual([]); // الحد يمنع المسار الوحيد طوله 2
+    expect(allPaths(g, "x", "z", 2)).toEqual([["x", "y", "z"]]);
+    expect(allPaths(g, "x", "ghost", 3)).toEqual([]);
+  });
+
+  it("allPaths with cutoff 0 returns [from] only when from === to, else nothing", () => {
+    const g: GraphAnalyticsInput = { nodes: [{ id: "a" }, { id: "b" }], edges: [{ source: "a", target: "b" }] };
+    expect(allPaths(g, "a", "a", 0)).toEqual([["a"]]);
+    expect(allPaths(g, "a", "b", 0)).toEqual([]);
+  });
+
+  it("grouping by node type, by source transform and by period — deterministic aggregation with an honest unknown bucket", () => {
+    const nodes = [
+      { id: "e1", type: "domain" },
+      { id: "e2", type: "domain" },
+      { id: "e3", type: "person" },
+    ];
+    const edges = [
+      { source: "e1", target: "e2", transformId: "tr-whois", at: "2026-10-01T10:00:00.000Z" },
+      { source: "e1", target: "e3", transformId: "tr-dns", at: "2026-10-22T11:00:00.000Z" },
+      { source: "e2", target: "e3", transformId: "tr-whois", at: "2026-11-02T12:00:00.000Z" },
+      { source: "e3", target: "e2" }, // بلا مصدر ولا زمن — «unknown» صادقة لا إسقاط
+    ];
+    expect(groupNodesByType(nodes)).toEqual(
+      new Map([
+        ["domain", 2],
+        ["person", 1],
+      ]),
+    );
+    expect(groupEdgesBySource(edges)).toEqual(
+      new Map([
+        ["tr-whois", 2],
+        ["tr-dns", 1],
+        ["unknown", 1],
+      ]),
+    );
+    expect(groupEdgesByPeriod(edges, "month")).toEqual(
+      new Map([
+        ["2026-10", 2],
+        ["2026-11", 1],
+        ["unknown", 1],
+      ]),
+    );
+    expect(groupEdgesByPeriod(edges, "day")).toEqual(
+      new Map([
+        ["2026-10-01", 1],
+        ["2026-10-22", 1],
+        ["2026-11-02", 1],
+        ["unknown", 1],
+      ]),
+    );
   });
 });

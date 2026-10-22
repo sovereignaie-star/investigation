@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""P4-011 — frozen NetworkX reference for the graph analytics module.
+"""P4-011/P4-018 — frozen NetworkX reference for the graph analytics module.
 
 Generates `fixtures/graph/networkx-reference.json`: a deterministic seeded
 graph (LCG, no external randomness) plus the NetworkX 3.7 results for every
 analytic the module must match (degree / betweenness / closeness centrality,
-PageRank, semi-synchronous label-propagation communities, shortest paths).
+PageRank, semi-synchronous label-propagation communities, shortest paths;
+P4-018 adds cut vertices, bridges and bounded-length all simple paths).
 
 The committed fixture is the reference of record; re-running this script must
 reproduce it byte-for-byte (checked by the test suite). The raw edge list in
@@ -91,6 +92,39 @@ def main():
     communities = [sorted(c) for c in nx.community.label_propagation_communities(G)]
     communities.sort()
 
+    # P4-018: bounded-length all simple paths on the main reference graph.
+    simple_pairs = [("n00", "n22"), ("n07", "n31"), ("n15", "n44"), ("n00", "n45")]
+    simple_paths = [
+        {"source": a, "target": b, "cutoff": 4, "paths": sorted(nx.all_simple_paths(G, a, b, cutoff=4))}
+        for a, b in simple_pairs
+    ]
+
+    # P4-018: a dedicated deterministic graph for cut vertices and bridges — the
+    # dense main graph has none, so this one is built to have both: two K5 cliques
+    # joined by a single bridge, a 3-node chain hanging off one clique (its edges
+    # are bridges and its inner nodes are cut vertices), plus one isolated node.
+    p18_nodes = [f"a{i}" for i in range(5)] + [f"b{i}" for i in range(5)] + [f"c{i}" for i in range(3)] + ["iso"]
+    p18_edges = (
+        [[f"a{i}", f"a{j}"] for i in range(5) for j in range(i + 1, 5)]
+        + [[f"b{i}", f"b{j}"] for i in range(5) for j in range(i + 1, 5)]
+        + [["a0", "b0"], ["a1", "c0"], ["c0", "c1"], ["c1", "c2"]]
+    )
+    H = nx.Graph()
+    H.add_nodes_from(p18_nodes)
+    H.add_edges_from(p18_edges)
+    p18 = {
+        "nodes": p18_nodes,
+        "edges": p18_edges,
+        "expected": {
+            "articulationPoints": sorted(nx.articulation_points(H)),
+            "bridges": sorted(list(sorted((u, v))) for u, v in nx.bridges(H)),
+            "allSimplePaths": [
+                {"source": a, "target": b, "cutoff": k, "paths": sorted(nx.all_simple_paths(H, a, b, cutoff=k))}
+                for a, b, k in [("a2", "b2", 5), ("a2", "c2", 6), ("a2", "iso", 3)]
+            ],
+        },
+    }
+
     sources = ["n00", "n07", "n23", "n45"]
     lengths = {s: nx.shortest_path_length(G, s) for s in sources}
     pairs = [("n00", "n22"), ("n07", "n31"), ("n15", "n44"), ("n02", "n45"), ("n23", "n07")]
@@ -117,7 +151,9 @@ def main():
             "communities": communities,
             "shortestPathLengths": lengths,
             "shortestPaths": paths,
+            "allSimplePaths": simple_paths,
         },
+        "p4018": p18,
     }
 
     if "--check" in sys.argv:
