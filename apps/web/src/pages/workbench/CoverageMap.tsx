@@ -31,7 +31,11 @@ const STATE_LABEL: Record<ReturnType<typeof cellState>, string> = {
 function CoverageCellChip({ cell }: { cell: CoverageRow["checked"][number] }) {
   const state = cellState(cell);
   return (
-    <li data-testid="coverage-cell" data-transform-id={cell.transformId} className={state}>
+    <li
+      data-testid="coverage-cell"
+      data-transform-id={cell.transformId}
+      className={`${state} flex flex-wrap items-baseline gap-x-2 gap-y-0.5`}
+    >
       <span dir="ltr" className="whitespace-nowrap font-medium">
         {cell.transformId}
       </span>
@@ -40,7 +44,9 @@ function CoverageCellChip({ cell }: { cell: CoverageRow["checked"][number] }) {
         {t("workbench.coverage.counts", { positive: cell.positive, negative: cell.negative, error: cell.error })}
       </span>
       {/* BiDi (visual QA precedent): the raw timestamp keeps its precision and its
-          direction — isolated and unbreakable inside the RTL row. */}
+          direction — isolated and unbreakable inside the RTL row. A separate flex
+          item (with its own gap) so the counts' trailing digit can never visually
+          merge into the timestamp's LTR island. */}
       <span dir="ltr" className="whitespace-nowrap text-muted-foreground">
         {cell.lastAt}
       </span>
