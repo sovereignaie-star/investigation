@@ -5175,3 +5175,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `src/formats/{gexf,graphml,csv,prov}.ts` — تصدير XML حتمي بمعرّفات مصدرية كاملة، CSV تصدير+استيراد (محلل RFC 4180 فشل-مغلق)، PROV-JSON للسجل المحاسبي (نشاط/كيان/فاعل، wasGeneratedBy وused لمصدرية الأدلة).
 - **الجودة:** 12 اختباراً؛ الحزمة الكاملة 2637/0/6 (+12)؛ lint/typecheck/build/governance exit 0. الحدود: L-63 وL-64.
 - **المصدر/المرجع:** docs/ROADMAP.md (P4-015، T-IO-003..005)؛ docs/STATUS.md (P4-015 → done، المرحلة 4: 13/24)؛ docs/evidence/2026-10-22-P4-015-red.md.
+
+## 2026-10-22 — P4-015 إغلاق الصف — الدمج والبوابات [P4-015]
+
+- **الدمج:** PR #323 دُمج squash في main عند `37e1596` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة — governance، CodeQL، analyze، build، docker، e2e، gitleaks، gates، security-review-advisory، test، zap.
+- **المصدر/المرجع:** docs/STATUS.md (P4-015 → done مع أدلة الدمج)؛ PR #323؛ إيداع الدمج `37e1596`.
