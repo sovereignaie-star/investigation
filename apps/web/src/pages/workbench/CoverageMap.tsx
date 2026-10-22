@@ -28,6 +28,13 @@ const STATE_LABEL: Record<ReturnType<typeof cellState>, string> = {
   mixed: t("workbench.coverage.state.mixed"),
 };
 
+/** The LAST observation's kind — displayed on its own beside its time (advisor round). */
+const LAST_KIND_LABEL: Record<"positive" | "negative" | "error", string> = {
+  positive: t("workbench.coverage.lastKind.positive"),
+  negative: t("workbench.coverage.lastKind.negative"),
+  error: t("workbench.coverage.lastKind.error"),
+};
+
 function CoverageCellChip({ cell }: { cell: CoverageRow["checked"][number] }) {
   const state = cellState(cell);
   return (
@@ -39,9 +46,18 @@ function CoverageCellChip({ cell }: { cell: CoverageRow["checked"][number] }) {
       <span dir="ltr" className="whitespace-nowrap font-medium">
         {cell.transformId}
       </span>
-      <span>{STATE_LABEL[state]}</span>
+      {/* The state badge on its own element (advisor round): the counts line
+          always contains «فشل» too, so asserting the row text proved nothing
+          about the badge — it is asserted (and colored) as its own span. */}
+      <span data-testid="coverage-cell-state">{STATE_LABEL[state]}</span>
       <span className="text-muted-foreground">
         {t("workbench.coverage.counts", { positive: cell.positive, negative: cell.negative, error: cell.error })}
+      </span>
+      {/* The LAST result's KIND — the aggregate state and counts cannot
+          distinguish two pairs whose last observation differs (advisor round);
+          shown on its own, next to (never merged into) its timestamp. */}
+      <span dir="auto" className="whitespace-nowrap text-muted-foreground">
+        {t("workbench.coverage.last", { kind: LAST_KIND_LABEL[cell.last] })}
       </span>
       {/* BiDi (visual QA precedent): the raw timestamp keeps its precision and its
           direction — isolated and unbreakable inside the RTL row. A separate flex
@@ -49,6 +65,32 @@ function CoverageCellChip({ cell }: { cell: CoverageRow["checked"][number] }) {
           merge into the timestamp's LTR island. */}
       <span dir="ltr" className="whitespace-nowrap text-muted-foreground">
         {cell.lastAt}
+      </span>
+    </li>
+  );
+}
+
+/** A never-run pair — «محظور بسياسة» (or operational) from its proven record (advisor round). */
+function BlockedChip({ blocked }: { blocked: CoverageRow["blocked"][number] }) {
+  return (
+    <li data-testid="coverage-blocked" className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+      <span
+        className={
+          blocked.kind === "policy"
+            ? "rounded bg-destructive/15 px-1.5 font-medium text-destructive"
+            : "rounded bg-muted px-1.5 font-medium"
+        }
+      >
+        {t(blocked.kind === "policy" ? "workbench.coverage.blocked.policy" : "workbench.coverage.blocked.operational")}
+      </span>
+      <span dir="ltr" className="whitespace-nowrap font-medium">
+        {blocked.transformId}
+      </span>
+      {/* the reason VERBATIM — the engine's own words, never paraphrased into a
+          claim it did not make; the operator judges the record, not our summary */}
+      <span dir="auto">{blocked.reason}</span>
+      <span dir="ltr" className="whitespace-nowrap text-muted-foreground">
+        {blocked.at}
       </span>
     </li>
   );
@@ -65,8 +107,19 @@ function CoverageRowView({ row, onSelect }: { row: CoverageRow; onSelect?: (node
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className="font-medium">{row.label}</span>
         {row.type !== "" ? <span className="text-xs text-muted-foreground">{row.type}</span> : null}
-        {row.untouched ? <span className="text-xs text-muted-foreground">{t("workbench.coverage.untouched")}</span> : null}
+        {row.untouched ? (
+          <span data-testid="coverage-untouched" className="text-xs text-muted-foreground">
+            {t("workbench.coverage.untouched")}
+          </span>
+        ) : null}
       </div>
+      {row.blocked.length > 0 ? (
+        <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          {row.blocked.map((b) => (
+            <BlockedChip key={`${b.transformId}:${b.at}`} blocked={b} />
+          ))}
+        </ul>
+      ) : null}
       {row.checked.length > 0 ? (
         <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           {row.checked.map((cell) => (

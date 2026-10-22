@@ -1,4 +1,4 @@
-import type { Coverage, CoverageCell, Graph, GraphNode } from "@ir/ledger/projections";
+import type { Coverage, CoverageCell, Graph, GraphNode, NotRunCell } from "@ir/ledger/projections";
 
 /**
  * P4-010 (UC-21): the coverage map's pure model — «ما فُحص وما لم يُفحص».
@@ -33,7 +33,32 @@ export function cellState(cell: CoverageCellView): CellState {
   return "no-results";
 }
 
-/** One entity's row in the map: what ran on it, and what never did. */
+/**
+ * One never-run pair as the web shows it — the audit record plus its honest
+ * classification. `policy` = the engine's own decision (source disabled on the
+ * case, excluded by the operator, input refused — D3's «محظور بسياسة»);
+ * `operational` = a stop outside anyone's policy (depth/budget/cancelled).
+ */
+export type BlockedCell = NotRunCell & { kind: "policy" | "operational" };
+
+/**
+ * Classifies a not_run record from its VERBATIM recorded reason — the reasons
+ * are the engine's own strings (packages/cli/src/investigate.ts), matched
+ * conservatively: anything unrecognized stays operational, never fabricated as
+ * a policy decision it may not be.
+ */
+export function notRunKind(cell: NotRunCell): "policy" | "operational" {
+  if (
+    cell.reason.startsWith("disabled:") ||
+    cell.reason.startsWith("excluded by the operator") ||
+    cell.reason.startsWith("input refused")
+  ) {
+    return "policy";
+  }
+  return "operational";
+}
+
+/** One entity's row in the map: what ran on it, what was blocked, and what has no record. */
 export interface CoverageRow {
   entityId: string;
   /** The node's label (ar ?? en ?? canonicalKey); a cell entity missing from the graph keeps its raw id. */
@@ -43,7 +68,9 @@ export interface CoverageRow {
   untouched: boolean;
   /** Cells of the transforms that ran on this entity, sorted by transformId. */
   checked: CoverageCellView[];
-  /** Transforms of the case's universe that never ran on this entity — «لم يُفحص». */
+  /** Never-run pairs recorded against this entity — «محظور بسياسة» from its proven record. */
+  blocked: BlockedCell[];
+  /** Transforms of the case's universe with NO record on this entity — «لا فحص مسجل». */
   unchecked: string[];
 }
 
@@ -65,26 +92,42 @@ const labelOf = (n: GraphNode): string => n.labels.ar ?? n.labels.en ?? n.canoni
 export function buildCoverageRows(graph: Graph, coverage: Coverage): CoverageMap {
   const transforms = [...new Set(coverage.transforms)].sort();
   const nodes = new Map(graph.nodes.map((n) => [n.id, n] as const));
+  const byKey = new Map(graph.nodes.map((n) => [n.canonicalKey, n] as const));
   const byEntity = new Map<string, CoverageCellView[]>();
   for (const c of coverage.cells) {
     const list = byEntity.get(c.entityId) ?? [];
     list.push(c);
     byEntity.set(c.entityId, list);
   }
-  const entityIds = [...new Set([...nodes.keys(), ...byEntity.keys()])].sort();
+  // P4-010: the not_run records — the audited key is the node's canonicalKey;
+  // a record that matches no graph node becomes its own row (never hidden).
+  const blockedByEntity = new Map<string, BlockedCell[]>();
+  for (const record of coverage.notRun) {
+    const node = byKey.get(record.key);
+    const entityId = node ? node.id : record.key;
+    const list = blockedByEntity.get(entityId) ?? [];
+    list.push({ ...record, kind: notRunKind(record) });
+    blockedByEntity.set(entityId, list);
+  }
+  const entityIds = [...new Set([...nodes.keys(), ...byEntity.keys(), ...blockedByEntity.keys()])].sort();
   const rows: CoverageRow[] = entityIds.map((entityId) => {
     const node = nodes.get(entityId);
     const checked = [...(byEntity.get(entityId) ?? [])].sort((a, b) =>
       a.transformId < b.transformId ? -1 : a.transformId > b.transformId ? 1 : 0,
     );
-    const checkedTransforms = new Set(checked.map((c) => c.transformId));
+    const blocked = [...(blockedByEntity.get(entityId) ?? [])].sort((a, b) =>
+      a.transformId < b.transformId ? -1 : a.transformId > b.transformId ? 1 : 0,
+    );
+    const recorded = new Set([...checked.map((c) => c.transformId), ...blocked.map((b) => b.transformId)]);
     return {
       entityId,
       label: node ? labelOf(node) : entityId,
       type: node ? node.type : "",
-      untouched: checked.length === 0,
+      // a recorded decision (blocked) is NOT "nothing has been tried yet"
+      untouched: checked.length === 0 && blocked.length === 0,
       checked,
-      unchecked: transforms.filter((t) => !checkedTransforms.has(t)),
+      blocked,
+      unchecked: transforms.filter((t) => !recorded.has(t)),
     };
   });
   return { rows, transforms };

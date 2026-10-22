@@ -124,6 +124,7 @@ describe("parseProjection (P3-015 — fail-closed parse of the served snapshot)"
       ],
       transforms: ["tr-dns"],
       untouched: ["n2"],
+      notRun: [],
     };
     const opened = parseProjection({ ...SNAPSHOT, coverage } as unknown as Record<string, unknown>);
     expect(opened).not.toBeNull();
@@ -159,12 +160,26 @@ describe("parseProjection (P3-015 — fail-closed parse of the served snapshot)"
     } as unknown as Record<string, unknown>);
     expect(badCount).not.toBeNull();
     expect((badCount as OpenedCase).coverage).toBeNull();
+    // advisor round (strengthening on this implementation, not red): a corrupt
+    // not_run record rejects the whole field — a map without its blocked pairs
+    // would present policy-blocked entities as merely unchecked (fabricated honesty)
+    const badNotRun = parseProjection({
+      ...SNAPSHOT,
+      coverage: {
+        cells: [],
+        transforms: [],
+        untouched: [],
+        notRun: [{ key: "domain:x", transformId: "tr-dns", reason: "disabled: source disabled", at: 42 }],
+      },
+    } as unknown as Record<string, unknown>);
+    expect(badNotRun).not.toBeNull();
+    expect((badNotRun as OpenedCase).coverage).toBeNull();
   });
 
   it("a valid EMPTY coverage is a Coverage object — distinct from null (unavailable)", () => {
     const empty = parseProjection({
       ...SNAPSHOT,
-      coverage: { cells: [], transforms: [], untouched: ["n1", "n2"] },
+      coverage: { cells: [], transforms: [], untouched: ["n1", "n2"], notRun: [] },
     } as unknown as Record<string, unknown>);
     expect(empty).not.toBeNull();
     const cov = (empty as OpenedCase).coverage;

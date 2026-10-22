@@ -94,7 +94,7 @@ describe("projections (P1-016)", () => {
     expect(p.seq).toBe(-1);
     expect(p.graph).toEqual({ nodes: [], edges: [] });
     expect(p.table).toEqual([]);
-    expect(p.coverage).toEqual({ cells: [], transforms: [], untouched: [] });
+    expect(p.coverage).toEqual({ cells: [], transforms: [], untouched: [], notRun: [] });
   });
 
   // P3-008 red-first: every field shown in the node detail panel must link to its

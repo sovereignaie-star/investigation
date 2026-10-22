@@ -19,7 +19,7 @@ export interface ProjectionSnapshot {
   notes: StoredNote[];
   /**
    * P4-010 (UC-21): the case's coverage map as the served projection carries it
-   * (P2-017 — cells/transforms/untouched). `null` means the coverage is NOT
+   * (P2-017 — cells/transforms/untouched + notRun, advisor round). `null` means the coverage is NOT
    * available: the field was absent (an older server) or failed validation — the
    * view says so honestly instead of fabricating an empty map. A VALID empty
    * coverage (no cells at all) is a Coverage object, distinct from `null`.
@@ -86,6 +86,19 @@ function parseCoverageCell(raw: unknown): Coverage["cells"][number] | null {
   };
 }
 
+/** One never-run record — the projection's `investigate.not_run` audit row (advisor round). */
+function parseNotRunCell(raw: unknown): Coverage["notRun"][number] | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const b = raw as Record<string, unknown>;
+  if (typeof b.key !== "string" || typeof b.transformId !== "string" || typeof b.reason !== "string" || typeof b.at !== "string") {
+    return null;
+  }
+  // the reason is taken VERBATIM — never trimmed or paraphrased; empty reasons
+  // are still records (the projection filters them, but a nonempty check here
+  // would silently drop a legitimate record on a stricter server)
+  return { key: b.key, transformId: b.transformId, reason: b.reason, at: b.at };
+}
+
 /**
  * P4-010 (UC-21): strict validation of the served coverage map. The whole field
  * is taken or rejected as one — a partially corrupt map is NEVER shown as a
@@ -97,13 +110,23 @@ function parseCoverage(raw: unknown): Coverage | null {
   if (typeof raw !== "object" || raw === null) return null;
   const c = raw as Record<string, unknown>;
   if (!Array.isArray(c.cells) || !isStringArray(c.transforms) || !isStringArray(c.untouched)) return null;
+  // the not_run records are part of the same taken-or-rejected whole: a corrupt
+  // record is a corrupt map, not a map without its blocked pairs (that would
+  // present policy-blocked entities as merely unchecked — a fabricated honesty)
+  if (!Array.isArray(c.notRun)) return null;
   const cells: Coverage["cells"] = [];
   for (const cell of c.cells) {
     const parsed = parseCoverageCell(cell);
     if (parsed === null) return null;
     cells.push(parsed);
   }
-  return { cells, transforms: [...c.transforms], untouched: [...c.untouched] };
+  const notRun: Coverage["notRun"] = [];
+  for (const record of c.notRun) {
+    const parsed = parseNotRunCell(record);
+    if (parsed === null) return null;
+    notRun.push(parsed);
+  }
+  return { cells, transforms: [...c.transforms], untouched: [...c.untouched], notRun };
 }
 
 /**

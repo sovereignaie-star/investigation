@@ -411,6 +411,22 @@ export interface Coverage {
   transforms: string[];
   /** Nodes with no observation at all: nothing has been tried on them yet. */
   untouched: string[];
+  /**
+   * P4-010 (UC-21/D3): pairs the engine recorded as never-run — `investigate.not_run`
+   * audit events (P2-029: source disabled on the case, excluded by the operator,
+   * input refused, or an operational stop like depth/budget/cancelled). The
+   * recorded reason rides along VERBATIM — «محظور بسياسة» is served from its
+   * proven record, never inferred from the absence of an observation.
+   */
+  notRun: NotRunCell[];
+}
+
+/** One never-run pair as the audit chain recorded it — the target is the node's canonicalKey. */
+export interface NotRunCell {
+  key: string;
+  transformId: string;
+  reason: string;
+  at: string;
 }
 
 /** Which transform ran on which node and what came back; "searched, found nothing" counts as coverage (D3). */
@@ -439,9 +455,25 @@ export function coverageView(p: Projector, graph: Graph = graphView(p)): Coverag
   }
   const list = [...cells.values()].sort((a, b) => (a.entityId + a.transformId < b.entityId + b.transformId ? -1 : 1));
   const touched = new Set(list.map((c) => c.entityId));
+  // P4-010: the engine's own never-run records — `investigate.not_run` audit events
+  // (P2-029) with their verbatim reason. Deterministic order (key, then transform).
+  const notRun = p.audits
+    .filter((a) => a.action === "investigate.not_run")
+    .map((a) => {
+      const detail = a.detail as { transform?: unknown; reason?: unknown } | undefined;
+      return {
+        key: a.target,
+        transformId: typeof detail?.transform === "string" ? detail.transform : "",
+        reason: typeof detail?.reason === "string" ? detail.reason : "",
+        at: a.at,
+      };
+    })
+    .filter((c) => c.transformId !== "" && c.reason !== "")
+    .sort((a, b) => (a.key + a.transformId < b.key + b.transformId ? -1 : 1));
   return {
     cells: list,
     transforms: sorted(list.map((c) => c.transformId)),
     untouched: graph.nodes.map((n) => n.id).filter((id) => !touched.has(id)),
+    notRun,
   };
 }

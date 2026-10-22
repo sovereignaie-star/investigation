@@ -1,7 +1,7 @@
-import type { Coverage, CoverageCell, Graph, GraphNode } from "@ir/ledger/projections";
+import type { Coverage, CoverageCell, Graph, GraphNode, NotRunCell } from "@ir/ledger/projections";
 import { describe, expect, it } from "vitest";
 
-import { buildCoverageRows, cellState, type CoverageRow } from "./coverageModel";
+import { buildCoverageRows, cellState, notRunKind, type CoverageRow } from "./coverageModel";
 
 /**
  * P4-010 (UC-21): خريطة التغطية — معيار القبول: «ما فُحص وما لم يُفحص» و«كل
@@ -64,6 +64,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       cells: [cell({ entityId: "n1", transformId: "tr-dns", positive: 2, last: "positive", lastAt: T2 })],
       transforms: ["tr-dns"],
       untouched: ["n2"],
+      notRun: [],
     };
     const { rows, transforms } = buildCoverageRows(graphOf(node("n1"), node("n2")), coverage);
     expect(transforms).toEqual(["tr-dns"]);
@@ -79,6 +80,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       cells: [cell({ entityId: "n1", transformId: "tr-empty", negative: 3, last: "negative", lastAt: T1 })],
       transforms: ["tr-empty"],
       untouched: [],
+      notRun: [],
     };
     const { rows, transforms } = buildCoverageRows(graphOf(node("n1")), coverage);
     // the transform stays in the universe and its cell stays on the row
@@ -94,6 +96,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       cells: [cell({ entityId: "n1", transformId: "tr-x", error: 1, last: "error", lastAt: T1 })],
       transforms: ["tr-x"],
       untouched: [],
+      notRun: [],
     };
     const { rows } = buildCoverageRows(graphOf(node("n1")), coverage);
     expect(rowFor(rows, "n1").checked[0]).toMatchObject({ error: 1, last: "error" });
@@ -105,6 +108,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       cells: [cell({ entityId: "n1", transformId: "tr-a", positive: 1 })],
       transforms: ["tr-a", "tr-b"],
       untouched: ["n2"],
+      notRun: [],
     };
     const { rows } = buildCoverageRows(graphOf(node("n1"), node("n2")), coverage);
     const r = rowFor(rows, "n2");
@@ -119,6 +123,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       cells: [cell({ entityId: "n1", transformId: "tr-a", positive: 1 })],
       transforms: ["tr-a", "tr-b"],
       untouched: ["n2"],
+      notRun: [],
     };
     const { rows } = buildCoverageRows(graphOf(node("n1"), node("n2")), coverage);
     // tr-b ran on the case (universe) but never on n1 — n1 must show it as unchecked
@@ -133,6 +138,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       ],
       transforms: ["tr-m"],
       untouched: [],
+      notRun: [],
     };
     const { rows } = buildCoverageRows(graphOf(node("n1")), coverage);
     const c = rowFor(rows, "n1").checked[0];
@@ -149,6 +155,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       ],
       transforms: ["tr-b", "tr-a"],
       untouched: [],
+      notRun: [],
     };
     const { rows, transforms } = buildCoverageRows(graphOf(node("n2"), node("n1")), coverage);
     expect(rows.map((r) => r.entityId)).toEqual(["n1", "n2"]);
@@ -161,6 +168,7 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
       cells: [cell({ entityId: "ghost", transformId: "tr-a", positive: 1 })],
       transforms: ["tr-a"],
       untouched: [],
+      notRun: [],
     };
     const { rows } = buildCoverageRows(graphOf(node("n1")), coverage);
     const r = rowFor(rows, "ghost");
@@ -175,9 +183,74 @@ describe("buildCoverageRows (P4-010 — «ما فُحص وما لم يُفحص»
   });
 
   it("an empty coverage (valid, zero cells) yields untouched rows for every entity — distinct from unavailable", () => {
-    const coverage: Coverage = { cells: [], transforms: [], untouched: ["n1", "n2"] };
+    const coverage: Coverage = { cells: [], transforms: [], untouched: ["n1", "n2"], notRun: [] };
     const { rows } = buildCoverageRows(graphOf(node("n1"), node("n2")), coverage);
     expect(rows.map((r) => r.untouched)).toEqual([true, true]);
     expect(rows.every((r) => r.checked.length === 0 && r.unchecked.length === 0)).toBe(true);
+  });
+
+  // ---- P4-010 advisor round: not_run pairs — «محظور بسياسة» from its proven record
+
+  const notRunOf = (over: Partial<NotRunCell> & { key: string; transformId: string }): NotRunCell => ({
+    reason: "disabled: policy — source disabled on this case",
+    at: T1,
+    ...over,
+  });
+
+  it("a policy-blocked pair lands on its entity's row as its own state — never in the unchecked list", () => {
+    // the audited key is the node's canonicalKey — the model resolves it to the entity
+    const coverage: Coverage = {
+      cells: [cell({ entityId: "n1", transformId: "tr-a", positive: 1 })],
+      transforms: ["tr-a", "tr-disabled"],
+      untouched: [],
+      notRun: [notRunOf({ key: "domain:n1", transformId: "tr-disabled" })],
+    };
+    const { rows } = buildCoverageRows(graphOf(node("n1")), coverage);
+    const r = rowFor(rows, "n1");
+    expect(r.blocked).toHaveLength(1);
+    expect(r.blocked[0]).toMatchObject({
+      transformId: "tr-disabled",
+      reason: "disabled: policy — source disabled on this case",
+      kind: "policy",
+    });
+    // the blocked pair is NOT listed as unchecked — a decision was recorded for it
+    expect(r.unchecked).toEqual([]);
+    // and it is not a checked cell either — nothing ran
+    expect(r.checked.map((c) => c.transformId)).toEqual(["tr-a"]);
+  });
+
+  it("notRunKind classifies honestly from the recorded reason — policy vs operational, never guessed", () => {
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "disabled: no reason recorded" }))).toBe("policy");
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "excluded by the operator (--exclude)" }))).toBe("policy");
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "input refused: unsupported value" }))).toBe("policy");
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "depth 3 > maxDepth 2" }))).toBe("operational");
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "budget: requests" }))).toBe("operational");
+    expect(notRunKind(notRunOf({ key: "k", transformId: "t", reason: "cancelled" }))).toBe("operational");
+  });
+
+  it("an entity whose only record is a not_run decision is NOT badged untouched — a decision was recorded against it", () => {
+    const coverage: Coverage = {
+      cells: [],
+      transforms: [],
+      untouched: ["n1"],
+      notRun: [notRunOf({ key: "domain:n1", transformId: "tr-disabled" })],
+    };
+    const { rows } = buildCoverageRows(graphOf(node("n1")), coverage);
+    const r = rowFor(rows, "n1");
+    expect(r.untouched).toBe(false); // a decision exists — «لم يُفحص بعد» would be false for it
+    expect(r.blocked).toHaveLength(1);
+  });
+
+  it("a not_run record whose key matches no graph node still appears — the record is never hidden", () => {
+    const coverage: Coverage = {
+      cells: [],
+      transforms: [],
+      untouched: [],
+      notRun: [notRunOf({ key: "domain:ghost", transformId: "tr-x" })],
+    };
+    const { rows } = buildCoverageRows(graphOf(node("n1")), coverage);
+    const ghost = rowFor(rows, "domain:ghost");
+    expect(ghost.blocked).toHaveLength(1);
+    expect(ghost.untouched).toBe(false);
   });
 });

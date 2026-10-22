@@ -15,8 +15,10 @@
  *
  * Beyond the acceptance: hiding a node is VIEW state — the coverage map reads
  * the opened case's OWN full snapshot, so a hidden node's coverage never
- * disappears; and «تحديث بيانات القضية» re-reads the projection and the map
- * reflects a check that ran while the case was open.
+ * disappears; «تحديث بيانات القضية» re-reads the projection and the map
+ * reflects a check that ran while the case was open; and a pair the engine
+ * recorded as never-run (P2-029 — «محظور بسياسة») appears from its own record,
+ * never guessed from absence.
  */
 import { expect, test } from "@playwright/test";
 import { openCase as openCaseStore } from "@ir/store";
@@ -26,6 +28,7 @@ const A = "01AAAAAAAAAAAAAAAAAAAAAAAA";
 const B = "01BBBBBBBBBBBBBBBBBBBBBBBB";
 const C = "01CCCCCCCCCCCCCCCCCCCCCCCC";
 const D = "01DDDDDDDDDDDDDDDDDDDDDDDD";
+const E = "01EGGGGGGGGGGGGGGGGGGGGGG1";
 const EVIDENCE = "01EEEEEEEEEEEEEEEEEEEEEEEE";
 
 /** Creates a case and seeds the coverage map's known truth. */
@@ -38,6 +41,7 @@ async function seededCase(): Promise<string> {
       [B, "domain:coverage-b.example", "موقع ب"],
       [C, "domain:coverage-c.example", "موقع ج"],
       [D, "domain:coverage-d.example", "موقع د"],
+      [E, "domain:coverage-e.example", "موقع هـ"],
     ] as const) {
       c.append("entity.added", { id, type: "domain", canonicalKey: key, labels: { ar: label }, props: {} });
     }
@@ -81,6 +85,13 @@ async function seededCase(): Promise<string> {
       kind: "error",
     });
     // D — untouched: no observation at all
+    // E — policy-blocked (P2-029): the engine's own never-run record, taken
+    // verbatim from the audit chain — «محظور بسياسة» is a recorded decision,
+    // never guessed from the absence of an observation
+    c.audit("investigate.not_run", "domain:coverage-e.example", {
+      transform: "tr-dns",
+      reason: "disabled: policy — source disabled on this case",
+    });
   } finally {
     c.close();
   }
@@ -95,13 +106,13 @@ test("UC-21: coverage map — what was checked and what wasn't; every empty tran
   await expect(map).toBeVisible();
 
   const rows = page.getByTestId("coverage-row");
-  await expect(rows).toHaveCount(4);
+  await expect(rows).toHaveCount(5);
 
   // A — checked with results; the pair with no observation (tr-empty) is
   // listed unchecked — «ما لم يُفحص» is visible on the checked row too
   const rowA = rows.filter({ hasText: "موقع أ" });
   await expect(rowA).toContainText("فُحص بنتيجة");
-  await expect(rowA).toContainText("لم يُفحص: tr-empty");
+  await expect(rowA).toContainText("لا فحص مسجل: tr-empty");
 
   // THE ACCEPTANCE — «كل محوّل فارغ يظهر»: the transform whose only result is
   // negative stays visible with its honest state, never filtered
@@ -109,14 +120,22 @@ test("UC-21: coverage map — what was checked and what wasn't; every empty tran
   await expect(rowB).toContainText("tr-empty");
   await expect(rowB).toContainText("فُحص بلا نتيجة");
 
-  // failure is never mixed with emptiness — its own cell says «فشل»
+  // failure is never mixed with emptiness — the state badge itself says «فشل»
+  // (asserted on its own element: the counts line contains «فشل» too)
   const rowC = rows.filter({ hasText: "موقع ج" });
-  await expect(rowC).toContainText("فشل");
+  await expect(rowC.getByTestId("coverage-cell-state")).toHaveText("فشل");
 
   // the untouched entity says so honestly — nothing has been tried on it yet
   const rowD = rows.filter({ hasText: "موقع د" });
-  await expect(rowD).toContainText("لم يُفحص بعد");
-  await expect(rowD).toContainText("لم يُفحص: tr-dns، tr-empty");
+  await expect(rowD).toContainText("لا فحص مسجل بعد");
+  await expect(rowD).toContainText("لا فحص مسجل: tr-dns، tr-empty");
+
+  // E — policy-blocked: «محظور بسياسة» from its own audited record, with the
+  // engine's verbatim reason — and NOT badged untouched (a decision was recorded)
+  const rowE = rows.filter({ hasText: "موقع هـ" });
+  await expect(rowE).toContainText("محظور بسياسة");
+  await expect(rowE).toContainText("disabled: policy — source disabled on this case");
+  await expect(rowE).not.toContainText("لا فحص مسجل بعد");
 
   // the row is the selection affordance — clicking it selects the node
   // and the detail panel opens (the real interaction)
@@ -138,9 +157,9 @@ test("UC-21: hiding a node is view state — its coverage never disappears from 
   // the view (the table) no longer shows it…
   await expect(page.getByTestId("entity-table")).not.toContainText("موقع د");
   // …but the coverage map reads the case's OWN full snapshot: D's row — and its
-  // honest «لم يُفحص بعد» — is still there. Hiding a node never erases coverage.
+  // honest «لا فحص مسجل بعد» — is still there. Hiding a node never erases coverage.
   await expect(map).toContainText("موقع د");
-  await expect(map).toContainText("لم يُفحص بعد");
+  await expect(map).toContainText("لا فحص مسجل بعد");
 });
 
 test("UC-21: «تحديث بيانات القضية» re-reads the projection — the map reflects a check that ran while the case was open", async ({
@@ -153,7 +172,7 @@ test("UC-21: «تحديث بيانات القضية» re-reads the projection �
   // elsewhere in the case but never on B, so it is honestly LISTED unchecked
   const rowB = page.getByTestId("coverage-row").filter({ hasText: "موقع ب" });
   await expect(rowB).toContainText("فُحص بلا نتيجة");
-  await expect(rowB).toContainText("لم يُفحص: tr-dns");
+  await expect(rowB).toContainText("لا فحص مسجل: tr-dns");
 
   // a check runs on B while the case is open (the store's write path — the
   // same path a real engine run takes through the server)
@@ -182,7 +201,7 @@ test("UC-21: «تحديث بيانات القضية» re-reads the projection �
   // tr-dns (the unchecked list drops it) — and the empty transform's negative
   // cell is still visible too
   await expect(rowB).toContainText("فُحص بنتيجة");
-  await expect(rowB).not.toContainText("لم يُفحص: tr-dns");
+  await expect(rowB).not.toContainText("لا فحص مسجل: tr-dns");
   await expect(rowB).toContainText("tr-empty");
   await expect(rowB).toContainText("فُحص بلا نتيجة");
 });

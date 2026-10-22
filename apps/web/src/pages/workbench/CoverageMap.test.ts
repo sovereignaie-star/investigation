@@ -17,9 +17,10 @@ import type { CoverageRow } from "./coverageModel";
  */
 
 const T1 = "2026-10-10T08:00:00.000Z";
+const T2 = "2026-10-10T09:00:00.000Z";
 
 function rowOf(over: Partial<CoverageRow> & { entityId: string }): CoverageRow {
-  return { label: over.entityId, type: "domain", untouched: false, checked: [], unchecked: [], ...over };
+  return { label: over.entityId, type: "domain", untouched: false, checked: [], unchecked: [], blocked: [], ...over };
 }
 
 const ROWS: CoverageRow[] = [
@@ -30,10 +31,24 @@ const ROWS: CoverageRow[] = [
       { entityId: "n1", transformId: "tr-dns", positive: 2, negative: 0, error: 0, last: "positive", lastAt: T1 },
       { entityId: "n1", transformId: "tr-empty", positive: 0, negative: 3, error: 0, last: "negative", lastAt: T1 },
       { entityId: "n1", transformId: "tr-whois", positive: 1, negative: 1, error: 2, last: "error", lastAt: T1 },
+      { entityId: "n1", transformId: "tr-err", positive: 0, negative: 0, error: 1, last: "error", lastAt: T1 },
     ],
     unchecked: ["tr-mx"],
   }),
   rowOf({ entityId: "n2", label: "عقدة ٢", untouched: true, unchecked: ["tr-dns", "tr-empty", "tr-mx"] }),
+  rowOf({
+    entityId: "n3",
+    label: "عقدة ٣",
+    blocked: [
+      {
+        key: "domain:n3",
+        transformId: "tr-disabled",
+        reason: "disabled: policy — source disabled on this case",
+        at: T1,
+        kind: "policy",
+      },
+    ],
+  }),
 ];
 
 function render(status: "ready" = "ready"): string {
@@ -85,20 +100,66 @@ describe("CoverageMap (P4-010/UC-21) — خريطة التغطية", () => {
   });
 
   it("unchecked transforms are listed on the row — «ما لم يُفحص» is visible, not hidden", () => {
-    expect(html).toContain("لم يُفحص: tr-mx");
+    expect(html).toContain("لا فحص مسجل: tr-mx");
     // the untouched row lists the whole universe
-    expect(html).toContain("لم يُفحص: tr-dns");
+    expect(html).toContain("لا فحص مسجل: tr-dns");
   });
 
   it("an untouched entity is marked honestly — nothing has been tried on it yet", () => {
     const n2 = html.slice(html.indexOf('data-node-id="n2"'));
-    expect(n2).toContain("لم يُفحص بعد");
+    expect(n2).toContain("لا فحص مسجل بعد");
   });
 
   it("ISO timestamps are directionally isolated (dir=ltr, no mid-string wrap) inside the RTL context", () => {
     // the contract is the isolation itself (dir=ltr + whitespace-nowrap), not the
     // exact class string — the span may carry color utilities alongside it.
     expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap[^"]*">\s*2026-10-10T08:00:00\.000Z\s*<\/span>/);
+  });
+
+  it("THE LAST RESULT IS SHOWN BY ITS KIND — two cells with identical counts and timestamp but different `last` render DIFFERENTLY", () => {
+    // advisor round: the aggregate state and counts alone cannot distinguish a
+    // pair whose last check succeeded from one whose last check failed — the
+    // LAST observation's kind is displayed on its own, next to its time.
+    const twin = renderToStaticMarkup(
+      React.createElement(CoverageMap, {
+        rows: [
+          rowOf({
+            entityId: "x",
+            label: "التوأم ١",
+            checked: [{ entityId: "x", transformId: "tr-twin", positive: 2, negative: 0, error: 1, last: "positive", lastAt: T2 }],
+          }),
+          rowOf({
+            entityId: "y",
+            label: "التوأم ٢",
+            checked: [{ entityId: "y", transformId: "tr-twin", positive: 2, negative: 0, error: 1, last: "error", lastAt: T2 }],
+          }),
+        ],
+        transforms: ["tr-twin"],
+        status: "ready",
+      }),
+    );
+    const first = twin.slice(twin.indexOf('data-node-id="x"'), twin.indexOf('data-node-id="y"'));
+    const second = twin.slice(twin.indexOf('data-node-id="y"'));
+    expect(first).toContain("آخر رصد: إيجابي");
+    expect(second).toContain("آخر رصد: خطأ");
+  });
+
+  it("an error-only cell shows the «فشل» STATE BADGE itself — not merely the word inside the counts line", () => {
+    // advisor round: asserting the row text contains «فشل» passes even when the
+    // badge is wrong (the counts line always contains «فشل: 1») — the badge is
+    // asserted on its own element.
+    const errCell = html.slice(
+      html.indexOf('data-transform-id="tr-err"'),
+      html.indexOf("</li>", html.indexOf('data-transform-id="tr-err"')),
+    );
+    expect(errCell).toMatch(/data-testid="coverage-cell-state"[^>]*>\s*فشل\s*</);
+  });
+
+  it("a policy-blocked pair renders «محظور بسياسة» with its verbatim recorded reason", () => {
+    const blocked = html.slice(html.indexOf('data-node-id="n3"'));
+    expect(blocked).toContain("محظور بسياسة");
+    expect(blocked).toContain("disabled: policy — source disabled on this case");
+    expect(blocked).toContain("tr-disabled");
   });
 
   it("unavailable coverage says so honestly — no fabricated rows", () => {
