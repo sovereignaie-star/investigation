@@ -1,0 +1,848 @@
+{
+  "source": "followthemoney==4.11.1 (wheel schema YAML)",
+  "generator": "tools/ftm/model_reference.py",
+  "schemas": {
+    "Person": {
+      "extends": ["LegalEntity"],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "secondName": {
+          "type": "string"
+        },
+        "middleName": {
+          "type": "string"
+        },
+        "fatherName": {
+          "type": "string"
+        },
+        "motherName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "nameSuffix": {
+          "type": "string"
+        },
+        "birthDate": {
+          "type": "date"
+        },
+        "birthPlace": {
+          "type": "string"
+        },
+        "birthCountry": {
+          "type": "country"
+        },
+        "deathDate": {
+          "type": "date"
+        },
+        "position": {
+          "type": "string"
+        },
+        "biography": {
+          "type": "text"
+        },
+        "nationality": {
+          "type": "country"
+        },
+        "citizenship": {
+          "type": "country"
+        },
+        "passportNumber": {
+          "type": "identifier"
+        },
+        "socialSecurityNumber": {
+          "type": "identifier"
+        },
+        "gender": {
+          "type": "gender"
+        },
+        "ethnicity": {
+          "type": "string"
+        },
+        "height": {
+          "type": "number"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "eyeColor": {
+          "type": "string"
+        },
+        "hairColor": {
+          "type": "string"
+        },
+        "appearance": {
+          "type": "string"
+        },
+        "religion": {
+          "type": "string"
+        },
+        "political": {
+          "type": "string"
+        },
+        "profession": {
+          "type": "string"
+        },
+        "education": {
+          "type": "string"
+        },
+        "spokenLanguage": {
+          "type": "language"
+        }
+      },
+      "required": ["name"]
+    },
+    "Company": {
+      "extends": ["Organization", "Asset"],
+      "properties": {
+        "capital": {
+          "type": "number"
+        },
+        "voenCode": {
+          "type": "identifier"
+        },
+        "coatoCode": {
+          "type": "identifier"
+        },
+        "irsCode": {
+          "type": "identifier"
+        },
+        "ipoCode": {
+          "type": "identifier"
+        },
+        "cikCode": {
+          "type": "identifier"
+        },
+        "jibCode": {
+          "type": "identifier"
+        },
+        "mbsCode": {
+          "type": "identifier"
+        },
+        "caemCode": {
+          "type": "string"
+        },
+        "kppCode": {
+          "type": "identifier"
+        },
+        "okopfCode": {
+          "type": "string"
+        },
+        "fnsCode": {
+          "type": "identifier"
+        },
+        "fssCode": {
+          "type": "string"
+        },
+        "bikCode": {
+          "type": "identifier"
+        },
+        "pfrNumber": {
+          "type": "identifier"
+        },
+        "oksmCode": {
+          "type": "string"
+        },
+        "isinCode": {
+          "type": "identifier"
+        },
+        "ticker": {
+          "type": "identifier"
+        },
+        "ricCode": {
+          "type": "identifier"
+        }
+      },
+      "required": ["name"]
+    },
+    "Email": {
+      "extends": ["Folder", "PlainText", "HyperText"],
+      "properties": {
+        "subject": {
+          "type": "string"
+        },
+        "threadTopic": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "cc": {
+          "type": "string"
+        },
+        "bcc": {
+          "type": "string"
+        },
+        "emitters": {
+          "type": "entity",
+          "range": "LegalEntity"
+        },
+        "recipients": {
+          "type": "entity",
+          "range": "LegalEntity"
+        },
+        "inReplyTo": {
+          "type": "string"
+        },
+        "inReplyToEmail": {
+          "type": "entity",
+          "range": "Email"
+        },
+        "headers": {
+          "type": "json"
+        }
+      },
+      "required": []
+    },
+    "CryptoWallet": {
+      "extends": ["Thing", "Value"],
+      "properties": {
+        "publicKey": {
+          "type": "identifier"
+        },
+        "cryptoAddress": {
+          "type": "identifier"
+        },
+        "privateKey": {
+          "type": "string"
+        },
+        "accountId": {
+          "type": "identifier"
+        },
+        "creationDate": {
+          "type": "date"
+        },
+        "currencySymbol": {
+          "type": "string"
+        },
+        "blockchain": {
+          "type": "string"
+        },
+        "managingExchange": {
+          "type": "string"
+        },
+        "holder": {
+          "type": "entity",
+          "range": "LegalEntity"
+        },
+        "balance": {
+          "type": "number"
+        },
+        "balanceDate": {
+          "type": "date"
+        },
+        "custodyType": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "Ownership": {
+      "extends": ["Interest"],
+      "properties": {
+        "owner": {
+          "type": "entity",
+          "range": "LegalEntity"
+        },
+        "asset": {
+          "type": "entity",
+          "range": "Asset"
+        },
+        "percentage": {
+          "type": "string"
+        },
+        "sharesCount": {
+          "type": "string"
+        },
+        "sharesValue": {
+          "type": "string"
+        },
+        "sharesCurrency": {
+          "type": "string"
+        },
+        "sharesType": {
+          "type": "string"
+        },
+        "legalBasis": {
+          "type": "string"
+        },
+        "ownershipType": {
+          "type": "string"
+        }
+      },
+      "required": ["owner", "asset"],
+      "edge": {
+        "source": "owner",
+        "label": "owns",
+        "target": "asset",
+        "directed": true,
+        "caption": ["percentage"]
+      }
+    },
+    "Directorship": {
+      "extends": ["Interest"],
+      "properties": {
+        "director": {
+          "type": "entity",
+          "range": "LegalEntity"
+        },
+        "organization": {
+          "type": "entity",
+          "range": "Organization"
+        },
+        "secretary": {
+          "type": "string"
+        }
+      },
+      "required": ["director", "organization"],
+      "edge": {
+        "source": "director",
+        "label": "directs",
+        "target": "organization",
+        "directed": true,
+        "caption": ["role"]
+      }
+    },
+    "Membership": {
+      "extends": ["Interest"],
+      "properties": {
+        "member": {
+          "type": "entity",
+          "range": "LegalEntity"
+        },
+        "organization": {
+          "type": "entity",
+          "range": "Organization"
+        }
+      },
+      "required": ["member", "organization"],
+      "edge": {
+        "source": "member",
+        "label": "belongs to",
+        "target": "organization",
+        "directed": true,
+        "caption": ["role"]
+      }
+    },
+    "Associate": {
+      "extends": ["Interval"],
+      "properties": {
+        "person": {
+          "type": "entity",
+          "range": "Person"
+        },
+        "associate": {
+          "type": "entity",
+          "range": "Person"
+        },
+        "relationship": {
+          "type": "string"
+        }
+      },
+      "required": ["person", "associate"],
+      "edge": {
+        "source": "person",
+        "label": "associated with",
+        "target": "associate",
+        "directed": false,
+        "caption": ["relationship"]
+      }
+    },
+    "Family": {
+      "extends": ["Interval"],
+      "properties": {
+        "person": {
+          "type": "entity",
+          "range": "Person"
+        },
+        "relative": {
+          "type": "entity",
+          "range": "Person"
+        },
+        "relationship": {
+          "type": "string"
+        }
+      },
+      "required": ["person", "relative"],
+      "edge": {
+        "source": "person",
+        "label": "related to",
+        "target": "relative",
+        "directed": false,
+        "caption": ["relationship"]
+      }
+    },
+    "UnknownLink": {
+      "extends": ["Interest"],
+      "properties": {
+        "subject": {
+          "type": "entity",
+          "range": "Thing"
+        },
+        "object": {
+          "type": "entity",
+          "range": "Thing"
+        }
+      },
+      "required": ["subject", "object"],
+      "edge": {
+        "source": "subject",
+        "label": "linked to",
+        "target": "object",
+        "directed": false,
+        "caption": ["role"]
+      }
+    },
+    "LegalEntity": {
+      "extends": ["Thing"],
+      "properties": {
+        "abbreviation": {
+          "type": "name"
+        },
+        "email": {
+          "type": "email"
+        },
+        "phone": {
+          "type": "phone"
+        },
+        "website": {
+          "type": "url"
+        },
+        "legalForm": {
+          "type": "string"
+        },
+        "incorporationDate": {
+          "type": "date"
+        },
+        "dissolutionDate": {
+          "type": "date"
+        },
+        "taxStatus": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "sector": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "registrationNumber": {
+          "type": "identifier"
+        },
+        "idNumber": {
+          "type": "identifier"
+        },
+        "taxNumber": {
+          "type": "identifier"
+        },
+        "licenseNumber": {
+          "type": "identifier"
+        },
+        "vatCode": {
+          "type": "identifier"
+        },
+        "jurisdiction": {
+          "type": "country"
+        },
+        "mainCountry": {
+          "type": "country"
+        },
+        "opencorporatesUrl": {
+          "type": "url"
+        },
+        "bvdId": {
+          "type": "identifier"
+        },
+        "sayariId": {
+          "type": "identifier"
+        },
+        "brightQueryId": {
+          "type": "identifier"
+        },
+        "brightQueryOrgId": {
+          "type": "identifier"
+        },
+        "uscCode": {
+          "type": "identifier"
+        },
+        "icijId": {
+          "type": "string"
+        },
+        "okpoCode": {
+          "type": "identifier"
+        },
+        "innCode": {
+          "type": "identifier"
+        },
+        "ogrnCode": {
+          "type": "identifier"
+        },
+        "okvedCode": {
+          "type": "identifier"
+        },
+        "leiCode": {
+          "type": "identifier"
+        },
+        "dunsCode": {
+          "type": "identifier"
+        },
+        "uniqueEntityId": {
+          "type": "identifier"
+        },
+        "npiCode": {
+          "type": "identifier"
+        },
+        "swiftBic": {
+          "type": "identifier"
+        },
+        "parent": {
+          "type": "entity",
+          "range": "LegalEntity"
+        }
+      },
+      "required": ["name"]
+    },
+    "Organization": {
+      "extends": ["LegalEntity"],
+      "properties": {
+        "cageCode": {
+          "type": "identifier"
+        },
+        "permId": {
+          "type": "identifier"
+        },
+        "imoNumber": {
+          "type": "identifier"
+        },
+        "giiNumber": {
+          "type": "identifier"
+        }
+      },
+      "required": ["name"]
+    },
+    "Asset": {
+      "extends": ["Thing", "Value"],
+      "properties": {},
+      "required": []
+    },
+    "Folder": {
+      "extends": ["Document"],
+      "properties": {},
+      "required": []
+    },
+    "PlainText": {
+      "extends": ["Document"],
+      "properties": {},
+      "required": []
+    },
+    "HyperText": {
+      "extends": ["Document"],
+      "properties": {
+        "bodyHtml": {
+          "type": "html"
+        }
+      },
+      "required": []
+    },
+    "Thing": {
+      "extends": [],
+      "properties": {
+        "name": {
+          "type": "name"
+        },
+        "alias": {
+          "type": "name"
+        },
+        "previousName": {
+          "type": "name"
+        },
+        "weakAlias": {
+          "type": "name"
+        },
+        "country": {
+          "type": "country"
+        },
+        "summary": {
+          "type": "text"
+        },
+        "notes": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "sourceUrl": {
+          "type": "url"
+        },
+        "publisher": {
+          "type": "string"
+        },
+        "publisherUrl": {
+          "type": "url"
+        },
+        "alephUrl": {
+          "type": "url"
+        },
+        "wikipediaUrl": {
+          "type": "url"
+        },
+        "wikidataId": {
+          "type": "identifier"
+        },
+        "keywords": {
+          "type": "string"
+        },
+        "topics": {
+          "type": "topic"
+        },
+        "address": {
+          "type": "address"
+        },
+        "addressEntity": {
+          "type": "entity",
+          "range": "Address"
+        },
+        "program": {
+          "type": "string"
+        },
+        "programId": {
+          "type": "identifier"
+        },
+        "proof": {
+          "type": "entity",
+          "range": "Document"
+        },
+        "riskSource": {
+          "type": "entity",
+          "range": "Thing"
+        },
+        "indexText": {
+          "type": "text"
+        },
+        "createdAt": {
+          "type": "date"
+        },
+        "modifiedAt": {
+          "type": "date"
+        },
+        "retrievedAt": {
+          "type": "date"
+        }
+      },
+      "required": ["name"]
+    },
+    "Value": {
+      "extends": [],
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "amountUsd": {
+          "type": "number"
+        },
+        "amountEur": {
+          "type": "number"
+        }
+      },
+      "required": []
+    },
+    "Interest": {
+      "extends": ["Interval"],
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "Interval": {
+      "extends": [],
+      "properties": {
+        "startDate": {
+          "type": "date"
+        },
+        "endDate": {
+          "type": "date"
+        },
+        "date": {
+          "type": "date"
+        },
+        "summary": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "recordId": {
+          "type": "string"
+        },
+        "sourceUrl": {
+          "type": "url"
+        },
+        "proof": {
+          "type": "entity",
+          "range": "Document"
+        },
+        "publisher": {
+          "type": "string"
+        },
+        "publisherUrl": {
+          "type": "url"
+        },
+        "alephUrl": {
+          "type": "url"
+        },
+        "namesMentioned": {
+          "type": "name"
+        },
+        "indexText": {
+          "type": "text"
+        },
+        "modifiedAt": {
+          "type": "date"
+        },
+        "retrievedAt": {
+          "type": "date"
+        }
+      },
+      "required": []
+    },
+    "Document": {
+      "extends": ["Thing", "Analyzable"],
+      "properties": {
+        "contentHash": {
+          "type": "checksum"
+        },
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "generator": {
+          "type": "string"
+        },
+        "crawler": {
+          "type": "string"
+        },
+        "fileSize": {
+          "type": "number"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "extension": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "bodyText": {
+          "type": "text"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "mimeType": {
+          "type": "mimetype"
+        },
+        "language": {
+          "type": "language"
+        },
+        "translatedLanguage": {
+          "type": "language"
+        },
+        "translatedText": {
+          "type": "text"
+        },
+        "date": {
+          "type": "date"
+        },
+        "authoredAt": {
+          "type": "date"
+        },
+        "publishedAt": {
+          "type": "date"
+        },
+        "parent": {
+          "type": "entity",
+          "range": "Folder"
+        },
+        "ancestors": {
+          "type": "entity",
+          "range": "Folder"
+        },
+        "processingStatus": {
+          "type": "string"
+        },
+        "processingError": {
+          "type": "string"
+        },
+        "processingAgent": {
+          "type": "string"
+        },
+        "processedAt": {
+          "type": "date"
+        }
+      },
+      "required": ["fileName"]
+    },
+    "Analyzable": {
+      "extends": [],
+      "properties": {
+        "detectedLanguage": {
+          "type": "language"
+        },
+        "detectedCountry": {
+          "type": "country"
+        },
+        "namesMentioned": {
+          "type": "name"
+        },
+        "peopleMentioned": {
+          "type": "name"
+        },
+        "companiesMentioned": {
+          "type": "name"
+        },
+        "ibanMentioned": {
+          "type": "identifier"
+        },
+        "ipMentioned": {
+          "type": "ip"
+        },
+        "locationMentioned": {
+          "type": "address"
+        },
+        "phoneMentioned": {
+          "type": "phone"
+        },
+        "emailMentioned": {
+          "type": "email"
+        }
+      },
+      "required": []
+    }
+  }
+}
