@@ -150,3 +150,68 @@ describe("NodeDetailPanel (P3-008)", () => {
     expect(html).toContain("dns.google: A record of example.com");
   });
 });
+
+describe("NodeDetailPanel contradictions (P4-017 — المناقض ظاهر جنباً إلى جنب)", () => {
+  const contradictionDetail = (): ReturnType<typeof buildNodeDetail> =>
+    buildNodeDetail(
+      {
+        nodes: [
+          {
+            ...node("n1", [
+              { claimId: "c-a", predicate: "whois.registrar", value: "Example Registrar", confidence: 0.8, evidenceIds: ["ev-1"] },
+              { claimId: "c-b", predicate: "whois.registrar", value: "Other Registrar", confidence: 0.6, evidenceIds: ["ev-2"] },
+            ]),
+          },
+          node("n2"),
+        ],
+        edges: [],
+      },
+      "n1",
+    );
+
+  it("renders the contradiction with BOTH values side by side in one group, each with its evidence", () => {
+    const detail = contradictionDetail();
+    expect(detail).not.toBeNull();
+    const html = renderToStaticMarkup(
+      React.createElement(NodeDetailPanel, {
+        detail: detail ?? undefined,
+        evidenceDetail: null,
+        onSelectEvidence: noop,
+        onCloseEvidence: noop,
+      }),
+    );
+    // القيمتان المتناقضتان جنباً إلى جنب في مجموعة واحدة
+    expect(html).toContain("Example Registrar");
+    expect(html).toContain("Other Registrar");
+    expect(html).toMatch(/contradiction/);
+    // كل طرف يحيل إلى دليله — لا يُخفى طرف
+    const group = html.match(/contradiction[^>]*/)?.[0];
+    void group;
+    expect((html.match(/data-testid="contradiction-group"/g) ?? []).length).toBe(1);
+    expect((html.match(/data-testid="contradiction-side"/g) ?? []).length).toBe(2);
+  });
+
+  it("renders no contradiction section when the node has no conflicting claims", () => {
+    const detail = buildNodeDetail(
+      {
+        nodes: [
+          node("n1", [
+            { claimId: "c-a", predicate: "whois.registrar", value: "Example Registrar", confidence: 0.8, evidenceIds: ["ev-1"] },
+          ]),
+          node("n2"),
+        ],
+        edges: [],
+      },
+      "n1",
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(NodeDetailPanel, {
+        detail: detail ?? undefined,
+        evidenceDetail: null,
+        onSelectEvidence: noop,
+        onCloseEvidence: noop,
+      }),
+    );
+    expect(html).not.toMatch(/contradiction-group/);
+  });
+});

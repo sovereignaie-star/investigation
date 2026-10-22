@@ -288,6 +288,8 @@ export const ar = {
   "commands.mergeReview.saved": "نُفّذ الدمج في سجل القضية",
   "workbench.nodeDetail.notesHeading": "ملاحظات المحلل",
   "workbench.nodeDetail.noNotes": "لا ملاحظات على هذه العقدة",
+  "workbench.nodeDetail.contradictions": "تناقضات (قيم متعارضة)",
+  "workbench.nodeDetail.contradictionHint": "ادعاءان أو أكثر على نفس الحقل بقيم مختلفة — تُعرض جنباً إلى جنب ولا يُطرح أي منها (ADR-12)",
   "workbench.nodeDetail.noteBy": "{actor} · {at}",
   // ---- timeline view (P4-007/UC-08 — ADR-33)
   "workbench.timeline.ariaLabel": "الخط الزمني",

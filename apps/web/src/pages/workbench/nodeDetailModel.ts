@@ -29,6 +29,18 @@ export interface NodeDetailRelation {
   evidenceIds: string[];
 }
 
+/**
+ * P4-017 — one contradiction: claims on the SAME predicate of this node with
+ * DIFFERENT literal values, shown side by side (المناقض ظاهر جنباً إلى جنب). Each
+ * side keeps its own confidence and evidence ids — no side is hidden for the other
+ * (ADR-12: contradictions are displayed, never subtracted). Relations to different
+ * targets under one predicate are NOT contradictions (multiple targets are legal).
+ */
+export interface NodeDetailContradiction {
+  predicate: string;
+  claims: NodeDetailAttribute[];
+}
+
 export interface NodeDetail {
   id: string;
   type: string;
@@ -38,7 +50,24 @@ export interface NodeDetail {
   observations: { positive: number; negative: number; error: number };
   attributes: NodeDetailAttribute[];
   relations: NodeDetailRelation[];
+  /** P4-017: the node's conflicting claims, one group per predicate. */
+  contradictions: NodeDetailContradiction[];
   evidenceIds: string[];
+}
+
+/** P4-017: groups the node's literal claims by predicate; a group with more than one
+ * distinct value is a contradiction. JSON keys keep 7 and "7" distinct (no type guessing). */
+function contradictionsOf(attributes: readonly NodeDetailAttribute[]): NodeDetailContradiction[] {
+  const byPredicate = new Map<string, NodeDetailAttribute[]>();
+  for (const a of attributes) {
+    const list = byPredicate.get(a.predicate) ?? [];
+    list.push(a);
+    byPredicate.set(a.predicate, list);
+  }
+  return [...byPredicate.entries()]
+    .filter(([, list]) => new Set(list.map((a) => JSON.stringify(a.value))).size > 1)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([predicate, claims]) => ({ predicate, claims }));
 }
 
 function labelOf(labels: { ar?: string; en?: string }, fallback: string): string {
@@ -78,6 +107,7 @@ export function buildNodeDetail(graph: Graph, nodeId: string): NodeDetail | null
     observations: node.observations,
     attributes: node.attributes,
     relations,
+    contradictions: contradictionsOf(node.attributes),
     evidenceIds: node.evidenceIds,
   };
 }

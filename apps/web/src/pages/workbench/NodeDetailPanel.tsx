@@ -122,6 +122,37 @@ export function NodeDetailPanel({
         </div>
       ) : null}
 
+      {detail.contradictions.length > 0 ? (
+        <div className="mt-3" data-testid="contradictions-section">
+          <h4 className="mb-1 font-medium">{t("workbench.nodeDetail.contradictions")}</h4>
+          <p className="mb-1 text-[11px] text-muted-foreground">{t("workbench.nodeDetail.contradictionHint")}</p>
+          <ul className="space-y-2 text-[12px]">
+            {detail.contradictions.map((c) => (
+              <li key={c.predicate} data-testid="contradiction-group" className="rounded border border-destructive/40 bg-destructive/5 p-1">
+                <span className="font-mono text-[11px]">{c.predicate}</span>
+                <div className="mt-1 flex flex-wrap items-start gap-2">
+                  {c.claims.map((claim) => (
+                    <span
+                      key={claim.claimId}
+                      data-testid="contradiction-side"
+                      className="flex-1 basis-40 rounded border bg-background px-2 py-1"
+                    >
+                      <span className="block break-all font-medium">{String(claim.value)}</span>
+                      <span className="mt-0.5 flex items-center justify-between gap-2">
+                        <span className="font-mono text-[11px] text-muted-foreground" data-testid="claim-confidence">
+                          {claim.confidence.toFixed(2)}
+                        </span>
+                        <EvidenceLinks evidenceIds={claim.evidenceIds} onSelectEvidence={onSelectEvidence} />
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <div className="mt-3">
         <h4 className="mb-1 font-medium">{t("workbench.nodeDetail.attributes")}</h4>
         {detail.attributes.length === 0 ? (

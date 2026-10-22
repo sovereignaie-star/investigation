@@ -293,6 +293,9 @@ export const en = {
   "commands.mergeReview.saved": "The merge was recorded in the case ledger",
   "workbench.nodeDetail.notesHeading": "Analyst notes",
   "workbench.nodeDetail.noNotes": "No notes on this node",
+  "workbench.nodeDetail.contradictions": "Contradictions (conflicting values)",
+  "workbench.nodeDetail.contradictionHint":
+    "Two or more claims on the same field with different values — shown side by side; none is subtracted (ADR-12)",
   "workbench.nodeDetail.noteBy": "{actor} · {at}",
   // ---- timeline view (P4-007/UC-08 — ADR-33)
   "workbench.timeline.ariaLabel": "Timeline",
