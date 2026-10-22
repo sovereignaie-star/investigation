@@ -110,6 +110,10 @@ test("UC-21: coverage map — what was checked and what wasn't; every empty tran
   const rows = page.getByTestId("coverage-row");
   await expect(rows).toHaveCount(5);
 
+  // the universe includes a transform known ONLY from its not_run record —
+  // the count line is the direct check (round 7): 3, not 2
+  await expect(map).toContainText("المحوّلات: 3");
+
   // A — checked with results; the pair with no observation (tr-empty) is
   // listed unchecked — «ما لم يُفحص» is visible on the checked row too
   const rowA = rows.filter({ hasText: "موقع أ" });
@@ -203,7 +207,10 @@ test("UC-21: «تحديث بيانات القضية» re-reads the projection �
   // tr-dns (the unchecked list drops it) — and the empty transform's negative
   // cell is still visible too
   await expect(rowB).toContainText("فُحص بنتيجة");
-  await expect(rowB).not.toContainText("لا فحص مسجل: tr-dns");
+  // tr-dns actually LEFT the unchecked list: the exact remaining list is
+  // asserted (the old not.toContainText passed before the refresh too — the
+  // pre-refresh list was «لا فحص مسجل: tr-blocked، tr-dns» — test repair)
+  await expect(rowB.getByText("لا فحص مسجل: tr-blocked", { exact: true })).toBeVisible();
   await expect(rowB).toContainText("tr-empty");
   await expect(rowB).toContainText("فُحص بلا نتيجة");
 });
