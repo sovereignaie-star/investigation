@@ -5137,3 +5137,12 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #316 دُمج squash في main عند `f5d812e` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل فحوص PR ناجحة — governance، CodeQL، analyze، build، docker، e2e، gitleaks، gates، security-review-advisory، test، zap؛ e2e شملت المواصفتين الجديدتين على بيئة CI (26/26).
 - **المصدر/المرجع:** docs/STATUS.md (P4-012 → done مع أدلة الدمج)؛ PR #316؛ إيداع الدمج `f5d812e`.
+
+## 2026-10-22 — P4-013 تصدير/استيراد FollowTheMoney — دورة بلا فقد [P4-013]
+
+- **الأحمر أولاً:** `packages/interop/src/ftm/ftm.test.ts` (11 اختباراً) كُتب قبل أي تنفيذ وشُغّل أحمراً (Cannot find module)؛ الدليل الحرفي مع ثلاث عيوب حقيقية: `docs/evidence/2026-10-22-P4-013-red.md`.
+- **المرجعان المجمدان:** `fixtures/ftm/reference-case.json` (قضية مرجع صادقة: أنواع بلا تمثيل وحافة معلقة) و`fixtures/ftm/model-ref.json` — 22 مخططاً مستخرجة بـ`tools/ftm/model_reference.py` من ملفات مخططات `followthemoney==4.11.1` الحقيقية ذاتها (الإغلاق الانتقالي لextends محسوب من العجلة لا يدوياً — القائمة اليدوية الأولى نسيت آباء Email فكشفها الفشل-المغلق)؛ وضع `--check` يتحقق محلياً من إعادة الإنتاج.
+- **التنفيذ:** حزمة جديدة `@ir/interop` + `src/ftm/ftm.ts` — تعيين مقيس للنموذج الحقيقي (person→Person، company→Company، email→Email، bitcoin/ethereum→CryptoWallet؛ ownership→Ownership، directorship→Directorship، membership→Membership، knows→Associate، والبقية UnknownLink بدور role يحفظ الـpredicate فتستعيده الدورة)، فشل-مغلق على كل مجهول (مخطط/خاصية/دور حافة)، وما لا تمثيل له يُبلَّغ في `skipped` صراحة لا يُسقط صامتاً (عقد بلا مخطط/صفات بلا خاصية/حواف معلقة).
+- **الدورة (T-IO-001):** `ftmImport(ftmExport(g))` يعيد بناء العقد والحواف والخصائص بمعرّفاتها المصدرية — مُثبت على قضية المرجع (9 كيانات: 5 عقد + 4 حواف معروفة + UnknownLink عامة)، ولا يظهر ما لم يُصدَّر شيئاً مبتدعاً.
+- **الجودة:** 11 اختباراً جديداً؛ الحزمة الكاملة 2615 ناجحاً/0 فاشلاً/6 متخطاة (قبل: 2604/6)؛ lint/typecheck/build/governance exit 0. الحدود: L-60 (حدود تمثيل FtM مقيسة) وL-61 (تحقق بنيوي ضد مرجع مجمد لا مكتبة تشغيل — PyICU غير قابل للبناء في CI).
+- **المصدر/المرجع:** docs/ROADMAP.md (P4-013، T-IO-001)؛ docs/STATUS.md (P4-013 → done، المرحلة 4: 11/24)؛ docs/evidence/2026-10-22-P4-013-red.md.

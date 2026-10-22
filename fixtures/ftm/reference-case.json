@@ -1,0 +1,336 @@
+{
+  "description": "P4-013 reference case for the FtM export/import round-trip",
+  "graph": {
+    "nodes": [
+      {
+        "id": "p1",
+        "type": "person",
+        "canonicalKey": "person:p1",
+        "labels": {
+          "ar": "أحمد المكي"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [
+          {
+            "claimId": "p1-a0",
+            "predicate": "nationality",
+            "value": "sa",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-p1-0"],
+            "observations": []
+          },
+          {
+            "claimId": "p1-a1",
+            "predicate": "birthDate",
+            "value": "1985-04-12",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-p1-1"],
+            "observations": []
+          },
+          {
+            "claimId": "p1-a2",
+            "predicate": "email",
+            "value": "a@example.com",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-p1-2"],
+            "observations": []
+          },
+          {
+            "claimId": "p1-a3",
+            "predicate": "job",
+            "value": "مهندس",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-p1-3"],
+            "observations": []
+          }
+        ],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "c1",
+        "type": "company",
+        "canonicalKey": "company:c1",
+        "labels": {
+          "ar": "شركة المثل القابضة"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [
+          {
+            "claimId": "c1-a0",
+            "predicate": "jurisdiction",
+            "value": "sa",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-c1-0"],
+            "observations": []
+          },
+          {
+            "claimId": "c1-a1",
+            "predicate": "registrationNumber",
+            "value": "1010123456",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-c1-1"],
+            "observations": []
+          },
+          {
+            "claimId": "c1-a2",
+            "predicate": "incorporationDate",
+            "value": "2015-03-01",
+            "confidence": 0.9,
+            "validFrom": null,
+            "validTo": null,
+            "occurredFrom": null,
+            "occurredTo": null,
+            "evidenceIds": ["ev-c1-2"],
+            "observations": []
+          }
+        ],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "p2",
+        "type": "person",
+        "canonicalKey": "person:p2",
+        "labels": {
+          "ar": "سارة العلي"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "e1",
+        "type": "email",
+        "canonicalKey": "email:e1",
+        "labels": {
+          "ar": "info@holdings.example"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "w1",
+        "type": "bitcoin",
+        "canonicalKey": "bitcoin:w1",
+        "labels": {
+          "ar": "bc1qexampleaddress000000"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "d1",
+        "type": "domain",
+        "canonicalKey": "domain:d1",
+        "labels": {
+          "ar": "holdings.example"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "ip1",
+        "type": "ipv4",
+        "canonicalKey": "ipv4:ip1",
+        "labels": {
+          "ar": "192.0.2.7"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 1,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      }
+    ],
+    "edges": [
+      {
+        "id": "p1-owns-c1",
+        "source": "p1",
+        "target": "c1",
+        "predicate": "ownership",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "e2e reference claim",
+        "evidenceIds": ["ev-p1-owns-c1"],
+        "observations": []
+      },
+      {
+        "id": "p1-directs-c1",
+        "source": "p1",
+        "target": "c1",
+        "predicate": "directorship",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "e2e reference claim",
+        "evidenceIds": ["ev-p1-directs-c1"],
+        "observations": []
+      },
+      {
+        "id": "p2-member-c1",
+        "source": "p2",
+        "target": "c1",
+        "predicate": "membership",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "e2e reference claim",
+        "evidenceIds": ["ev-p2-member-c1"],
+        "observations": []
+      },
+      {
+        "id": "p1-knows-p2",
+        "source": "p1",
+        "target": "p2",
+        "predicate": "knows",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "e2e reference claim",
+        "evidenceIds": ["ev-p1-knows-p2"],
+        "observations": []
+      },
+      {
+        "id": "p1-mentions-p2",
+        "source": "p1",
+        "target": "p2",
+        "predicate": "mentions",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "e2e reference claim",
+        "evidenceIds": ["ev-p1-mentions-p2"],
+        "observations": []
+      },
+      {
+        "id": "p1-refs-d1",
+        "source": "p1",
+        "target": "d1",
+        "predicate": "references",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "e2e reference claim",
+        "evidenceIds": ["ev-p1-refs-d1"],
+        "observations": []
+      }
+    ]
+  },
+  "exportedNodeIds": ["p1", "c1", "p2", "e1", "w1"],
+  "exportedEdges": [
+    {
+      "id": "p1-owns-c1",
+      "schema": "Ownership",
+      "predicate": "ownership",
+      "source": "p1",
+      "target": "c1"
+    },
+    {
+      "id": "p1-directs-c1",
+      "schema": "Directorship",
+      "predicate": "directorship",
+      "source": "p1",
+      "target": "c1"
+    },
+    {
+      "id": "p2-member-c1",
+      "schema": "Membership",
+      "predicate": "membership",
+      "source": "p2",
+      "target": "c1"
+    },
+    {
+      "id": "p1-knows-p2",
+      "schema": "Associate",
+      "predicate": "knows",
+      "source": "p1",
+      "target": "p2"
+    },
+    {
+      "id": "p1-mentions-p2",
+      "schema": "UnknownLink",
+      "predicate": "mentions",
+      "source": "p1",
+      "target": "p2"
+    }
+  ]
+}
