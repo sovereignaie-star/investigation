@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { manualClock, seededRandom, systemClock, ulidFactory } from "@ir/core";
 import { checkpoint, generateInstallationKey, signCheckpoint } from "@ir/ledger";
 import type { RunTransformResult } from "@ir/transforms";
-import { CASE_DB, openCase, verifyCase } from "@ir/store";
+import { buildIrpack, CASE_DB, openCase, parseIrpack, verifyCase } from "@ir/store";
 import { claimCheck, commitMonitorSuccess, main, monitorSleep } from "./ir.ts";
 
 const dirs: string[] = [];
@@ -40,7 +40,7 @@ function makeCase() {
   writeFileSync(keyFile, key.publicKeyPem);
   writeFileSync(cpFile, JSON.stringify(published));
   dirs.push(keyFile, cpFile);
-  return { dir, keyFile, cpFile };
+  return { dir, keyFile, cpFile, key };
 }
 /** The seq of the last entry — the fixture chain is never empty, and the check says so. */
 function lastSeq(entries: readonly { seq: number }[]): number {
@@ -1377,5 +1377,82 @@ describe("monitorSleep (P4-009 — the scheduler's default wait)", () => {
     const controller = new AbortController();
     controller.abort();
     await monitorSleep(60_000, controller.signal); // hangs (and times the test out) if it waits the full ms
+  });
+});
+
+describe("ir pack / ir unpack — the signed .irpack case package (P4-016, T-IO-006)", () => {
+  it("pack then unpack then verify: the full CLI cycle restores an intact case", async () => {
+    const { dir, key } = makeCase();
+    const priv = path.join(dir, "..", `${path.basename(dir)}.priv.pem`);
+    const pub = path.join(dir, "..", `${path.basename(dir)}.pack.pub`);
+    writeFileSync(priv, key.privateKeyPem);
+    writeFileSync(pub, key.publicKeyPem);
+    const packPath = path.join(dir, "..", `${path.basename(dir)}.irpack`);
+    dirs.push(priv, pub, packPath);
+
+    const packed = await run(["pack", dir, packPath, "--key", priv]);
+    expect(packed.code).toBe(0);
+    expect(packed.text).toMatch(new RegExp(`wrote ${packPath.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}: \\d+ bytes`));
+    expect(packed.text).toMatch(new RegExp(`signed by ${key.keyId}`));
+
+    const dest = mkdtempSync(path.join(tmpdir(), "ir-unpack-"));
+    dirs.push(dest);
+    const unpacked = await run(["unpack", packPath, dest]);
+    expect(unpacked.code).toBe(0);
+    expect(unpacked.text).toContain("PASS");
+
+    // the restored case verifies green through the SAME `ir verify` surface, checkpoints included
+    const verified = await run(["verify", dest, "--key", pub]);
+    expect(verified.code).toBe(0);
+    expect(verified.text).toContain("PASS");
+  });
+
+  it("a tampered pack is refused with exit 1 (hash mismatch — the manifest catches the edit)", async () => {
+    const { dir } = makeCase();
+    const key = generateInstallationKey();
+    const priv = path.join(dir, "..", "tamper.priv.pem");
+    writeFileSync(priv, key.privateKeyPem);
+    const packPath = path.join(dir, "..", "tamper.irpack");
+    dirs.push(priv, packPath);
+    expect((await run(["pack", dir, packPath, "--key", priv])).code).toBe(0);
+
+    const { manifest, files } = parseIrpack(new Uint8Array(readFileSync(packPath)));
+    const chain = new Uint8Array(files.get("chain.ndjson") ?? new Uint8Array());
+    chain[chain.length - 5] ^= 0x01; // a single byte in the raw chain
+    const tampered = new Map(files);
+    tampered.set("chain.ndjson", chain);
+    writeFileSync(packPath, buildIrpack(tampered, manifest));
+
+    const dest = mkdtempSync(path.join(tmpdir(), "ir-unpack-tamper-"));
+    dirs.push(dest);
+    const result = await run(["unpack", packPath, dest]);
+    expect(result.code).toBe(1);
+    expect(result.text).toMatch(/hash mismatch/);
+  });
+
+  it("an unsigned pack attempt is a usage error: --key is required", async () => {
+    const { dir } = makeCase();
+    const result = await run(["pack", dir, path.join(dir, "..", "no-key.irpack")]);
+    expect(result.code).toBe(2);
+    expect(result.text).toMatch(/--key/);
+  });
+
+  it("unpack with a pinned --key from another installation is refused with exit 1", async () => {
+    const { dir } = makeCase();
+    const key = generateInstallationKey();
+    const priv = path.join(dir, "..", "pin.priv.pem");
+    writeFileSync(priv, key.privateKeyPem);
+    const packPath = path.join(dir, "..", "pin.irpack");
+    dirs.push(priv, packPath);
+    expect((await run(["pack", dir, packPath, "--key", priv])).code).toBe(0);
+
+    const otherPub = path.join(dir, "..", "other.pub");
+    writeFileSync(otherPub, generateInstallationKey().publicKeyPem);
+    dirs.push(otherPub);
+    const dest = mkdtempSync(path.join(tmpdir(), "ir-unpack-pin-"));
+    dirs.push(dest);
+    const result = await run(["unpack", packPath, dest, "--key", otherPub]);
+    expect(result.code).toBe(1);
+    expect(result.text).toMatch(/different installation key/);
   });
 });
