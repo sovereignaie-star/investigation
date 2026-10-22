@@ -293,6 +293,11 @@ export const ar = {
   "workbench.nodeDetail.noteBy": "{actor} · {at}",
   // ---- timeline view (P4-007/UC-08 — ADR-33)
   "workbench.timeline.ariaLabel": "الخط الزمني",
+  "workbench.timeline.patterns": "أنماط زمنية مكتشفة",
+  "workbench.timeline.patternActivity": "فترة نشاط من {start} إلى {end} ({count} حدثاً) — الأدلة:",
+  "workbench.timeline.patternSilence": "صمت مفاجئ من {from} إلى {to} — أدلة الحدّين:",
+  "workbench.timeline.patternEscalation": "تصاعد من {from} إلى {to} ({previousCount} ← {count} حدثاً) — الأدلة:",
+  "workbench.timeline.patternRepetition": "تكرار القيمة «{value}» {times} مرة بين {from} و{to} — الأدلة:",
   "workbench.timeline.heading": "الخط الزمني (ثنائي البعد: الحدوث والرصد)",
   "workbench.timeline.noObservations": "لا رصد",
   "workbench.timeline.kind.positive": "رصد إيجابي",

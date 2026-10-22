@@ -1,7 +1,7 @@
 import * as React from "react";
 import { t } from "@ir/i18n";
 import { useSelection } from "../../store/selectionStore";
-import { buildTimelineItems, occurrenceLabel, sortTimelineItems, type TimelineItem } from "./timelineModel";
+import { buildTimelineItems, buildTimelinePatterns, occurrenceLabel, sortTimelineItems, type TimelineItem } from "./timelineModel";
 import type { Graph } from "@ir/ledger/projections";
 
 /**
@@ -67,6 +67,11 @@ function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeI
 }
 
 export function TimelineView({ items, onSelectSubject }: { items: readonly TimelineItem[]; onSelectSubject?: (nodeId: string) => void }) {
+  // P4-019: the timeline's detected patterns — pure function of the items, so
+  // presentational rendering stays identical headless and in the browser.
+  const patterns = buildTimelinePatterns(items);
+  const hasPatterns =
+    patterns.activityPeriods.length + patterns.suddenSilences.length + patterns.escalations.length + patterns.repetitions.length > 0;
   return (
     <section aria-label={t("workbench.timeline.ariaLabel")} data-testid="timeline" className="rounded-md border border-border p-3">
       <h3 className="mb-2 text-sm font-semibold">{t("workbench.timeline.heading")}</h3>
@@ -75,6 +80,37 @@ export function TimelineView({ items, onSelectSubject }: { items: readonly Timel
           <TimelineRow key={item.claimId} item={item} onSelect={onSelectSubject} />
         ))}
       </ol>
+      {hasPatterns ? (
+        <div className="mt-3 border-t border-border pt-2" data-testid="timeline-patterns">
+          <h4 className="mb-1 text-xs font-semibold">{t("workbench.timeline.patterns")}</h4>
+          <ul className="space-y-1 text-[11px]">
+            {patterns.activityPeriods.map((p, i) => (
+              <li key={`activity-${i}`} data-testid="timeline-pattern-activity">
+                {t("workbench.timeline.patternActivity", { start: p.start, end: p.end, count: p.count })}{" "}
+                <span className="font-mono text-muted-foreground">{p.evidenceIds.join(" ")}</span>
+              </li>
+            ))}
+            {patterns.suddenSilences.map((s, i) => (
+              <li key={`silence-${i}`} data-testid="timeline-pattern-silence">
+                {t("workbench.timeline.patternSilence", { from: s.from, to: s.to })}{" "}
+                <span className="font-mono text-muted-foreground">{[...s.beforeEvidenceIds, ...s.afterEvidenceIds].join(" ")}</span>
+              </li>
+            ))}
+            {patterns.escalations.map((e, i) => (
+              <li key={`escalation-${i}`} data-testid="timeline-pattern-escalation">
+                {t("workbench.timeline.patternEscalation", { from: e.from, to: e.to, previousCount: e.previousCount, count: e.count })}{" "}
+                <span className="font-mono text-muted-foreground">{e.evidenceIds.join(" ")}</span>
+              </li>
+            ))}
+            {patterns.repetitions.map((r, i) => (
+              <li key={`repetition-${i}`} data-testid="timeline-pattern-repetition">
+                {t("workbench.timeline.patternRepetition", { value: r.value, times: r.times, from: r.from, to: r.to })}{" "}
+                <span className="font-mono text-muted-foreground">{r.evidenceIds.join(" ")}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }
