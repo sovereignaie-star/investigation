@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <key id="type" for="node" attr.name="type" attr.type="string"/>
+  <key id="predicate" for="edge" attr.name="predicate" attr.type="string"/>
+  <graph id="case" edgedefault="directed">
+    <node id="p1"><data key="type">person</data></node>
+    <node id="c1"><data key="type">company</data></node>
+    <node id="d1"><data key="type">domain</data></node>
+    <node id="ip1"><data key="type">ipv4</data></node>
+    <edge id="p1-owns-c1" source="p1" target="c1"><data key="predicate">ownership</data></edge>
+    <edge id="d1-resolves-ip1" source="d1" target="ip1"><data key="predicate">resolves_to</data></edge>
+  </graph>
+</graphml>
