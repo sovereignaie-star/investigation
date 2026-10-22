@@ -5190,3 +5190,4 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `packages/store/src/pack.ts` (packCase/unpackCase/parseIrpack/buildIrpack + ZIP مصغّر حتمي) + أوامر `ir pack`/`ir unpack` في CLI (التوقيع بمفتاح التثبيت الخاص إلزامي للحزمة، والتثبيت عند الاستيراد بـ--key اختياري).
 - **الجودة:** 2650/0/6 (+13)؛ lint/typecheck/build/governance exit 0. الحدود: L-65، L-66، L-67.
 - **المصدر/المرجع:** docs/ROADMAP.md (P4-016، T-IO-006، NFR-18)؛ docs/STATUS.md (P4-016 → done، المرحلة 4: 14/24)؛ docs/evidence/2026-10-22-P4-016-red.md.
+- **إصلاح معماري (G-12) [P4-016]:** إعادة بناء قاعدة البيانات في unpack تمر عبر `openDb` المصدَّرة من وحدة القضية — منشئ قواعد بيانات القضايا الوحيد يبقى في case.ts (كشفه بواب gates في CI وعولج قبل الدمج).

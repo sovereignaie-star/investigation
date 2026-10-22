@@ -17,17 +17,16 @@
  */
 import { createHash, createPublicKey, verify as cryptoVerify } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import { crc32 } from "node:zlib";
 import { isoNow, systemClock, type Clock } from "@ir/core";
 import { canonicalize, keyIdOf, merkleRoot, verify as verifyChain, type Entry, type InstallationKey } from "@ir/ledger";
 import { AuditEvent, Evidence, LedgerEntry } from "@ir/schema";
-import { LATEST_VERSION, migrate } from "./migrations.ts";
+import { LATEST_VERSION } from "./migrations.ts";
 import { sqliteLedgerStore } from "./sqlite-ledger.ts";
 import { openCase } from "./case.ts";
 import { verifyCase, type CaseReport } from "./verify-case.ts";
-import { CASE_KEY, startsWithPurpose } from "./case.ts";
+import { CASE_KEY, openDb, startsWithPurpose } from "./case.ts";
 import { isEnvelope, unlockCaseKey, type CaseKeyFile } from "./crypto.ts";
 
 export const IRPACK_FORMAT = "irpack/1";
@@ -329,11 +328,8 @@ function payloadOpener(keyFile: CaseKeyFile | null, passphrase: string | undefin
 
 /** Rebuilds the database (the chain's projection) and the evidence/audit mirrors. */
 function restoreDb(dir: string, entries: readonly Entry[], keyFile: CaseKeyFile | null, opts: UnpackOptions): void {
-  const db = new DatabaseSync(path.join(dir, "case.sqlite"), { enableForeignKeyConstraints: true, timeout: 5000 });
+  const db = openDb(dir, false, opts.clock ?? systemClock);
   try {
-    db.exec("PRAGMA journal_mode = WAL");
-    db.exec("PRAGMA synchronous = FULL");
-    migrate(db, { clock: opts.clock ?? systemClock });
     const store = sqliteLedgerStore(db);
     for (const e of entries) store.append(e);
     const record = JSON.parse(new TextDecoder().decode(readFileSync(path.join(dir, "case.json")))) as {
@@ -350,7 +346,12 @@ function restoreDb(dir: string, entries: readonly Entry[], keyFile: CaseKeyFile 
   }
 }
 
-function rebuildMirrors(db: DatabaseSync, entries: readonly Entry[], keyFile: CaseKeyFile | null, opts: UnpackOptions): void {
+function rebuildMirrors(
+  db: import("node:sqlite").DatabaseSync,
+  entries: readonly Entry[],
+  keyFile: CaseKeyFile | null,
+  opts: UnpackOptions,
+): void {
   const open = payloadOpener(keyFile, opts.passphrase);
   const insertEvidence = db.prepare(
     "INSERT INTO evidence (id, sha256, mime, size, fetched_at, transform_id, ledger_seq) VALUES (?, ?, ?, ?, ?, ?, ?)",
