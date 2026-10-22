@@ -1,0 +1,84 @@
+{
+  "prefix": {
+    "ir": "https://sovereignaie-star.github.io/investigation/ns#"
+  },
+  "entity": {
+    "ir:n-p1": {
+      "ir:type": "person"
+    },
+    "ir:ev-ev1": {
+      "ir:sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ir:mime": "application/json",
+      "ir:transform": "tr-nominatim"
+    },
+    "ir:cl-cl1": {
+      "ir:predicate": "has_name"
+    }
+  },
+  "activity": {
+    "ir:a-0": {
+      "prov:type": {
+        "$": "ir:case.created",
+        "type": "xsd:string"
+      },
+      "prov:startTime": {
+        "$": "2026-10-22T00:00:00.000Z",
+        "type": "xsd:dateTime"
+      }
+    },
+    "ir:a-1": {
+      "prov:type": {
+        "$": "ir:entity.added",
+        "type": "xsd:string"
+      },
+      "prov:startTime": {
+        "$": "2026-10-22T00:01:00.000Z",
+        "type": "xsd:dateTime"
+      }
+    },
+    "ir:a-2": {
+      "prov:type": {
+        "$": "ir:evidence.stored",
+        "type": "xsd:string"
+      },
+      "prov:startTime": {
+        "$": "2026-10-22T00:02:00.000Z",
+        "type": "xsd:dateTime"
+      }
+    },
+    "ir:a-3": {
+      "prov:type": {
+        "$": "ir:claim.added",
+        "type": "xsd:string"
+      },
+      "prov:startTime": {
+        "$": "2026-10-22T00:03:00.000Z",
+        "type": "xsd:dateTime"
+      }
+    }
+  },
+  "agent": {
+    "ir:investigator-a": {},
+    "ir:transform-runner": {}
+  },
+  "wasGeneratedBy": {
+    "ir:g-0": {
+      "prov:entity": "ir:n-p1",
+      "prov:activity": "ir:a-1"
+    },
+    "ir:g-1": {
+      "prov:entity": "ir:cl-cl1",
+      "prov:activity": "ir:a-3"
+    }
+  },
+  "used": {
+    "ir:u-0": {
+      "prov:activity": "ir:a-2",
+      "prov:entity": "ir:ev-ev1"
+    },
+    "ir:u-1": {
+      "prov:activity": "ir:a-3",
+      "prov:entity": "ir:ev-ev1"
+    }
+  }
+}

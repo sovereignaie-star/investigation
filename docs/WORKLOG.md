@@ -5167,3 +5167,11 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #321 دُمج squash في main عند `e508d61` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل سير عمل PR ناجح (codeql/governance/secrets/e2e/zap-baseline/security-review وbuild/test/docker/gates/analyze/gitleaks)؛ دخول «CodeQL» المتقدم ظهر شبحاً فاشلاً بمرجع run غير موجود (404) بينما سير codeql الحقيقي ناجح — عابر لا يعكس الكود، والدليل محفوظ هنا.
 - **المصدر/المرجع:** docs/STATUS.md (P4-014 → done مع أدلة الدمج)؛ PR #321؛ إيداع الدمج `e508d61`.
+
+## 2026-10-22 — P4-015 GEXF وGraphML وCSV وPROV [P4-015]
+
+- **الأحمر أولاً:** `formats.test.ts` (12 اختباراً) كتب قبل أي تنفيذ وشُغل أحمراً؛ الدليل مع أربع عيوب حقيقية: `docs/evidence/2026-10-22-P4-015-red.md`.
+- **المعايير الرسمية:** GEXF 1.3 صالح ضد مخطط منظمة Gephi الرسمي؛ GraphML 1.0 صالح ضد مخطط graphdrawing.org الرسمي (مرايا موطنة — الموقع معطل)؛ PROV-JSON تحلّه حزمة prov الرسمية؛ CSV دورة RFC 4180 كاملة. الأحكام مجمدة في `validation-report.json` بتاح (lxml/prov) وCI يثبت التطابق الحرفي مع المخرجات المباركة.
+- **التنفيذ:** `src/formats/{gexf,graphml,csv,prov}.ts` — تصدير XML حتمي بمعرّفات مصدرية كاملة، CSV تصدير+استيراد (محلل RFC 4180 فشل-مغلق)، PROV-JSON للسجل المحاسبي (نشاط/كيان/فاعل، wasGeneratedBy وused لمصدرية الأدلة).
+- **الجودة:** 12 اختباراً؛ الحزمة الكاملة 2637/0/6 (+12)؛ lint/typecheck/build/governance exit 0. الحدود: L-63 وL-64.
+- **المصدر/المرجع:** docs/ROADMAP.md (P4-015، T-IO-003..005)؛ docs/STATUS.md (P4-015 → done، المرحلة 4: 13/24)؛ docs/evidence/2026-10-22-P4-015-red.md.

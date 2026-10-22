@@ -822,6 +822,9 @@ importers:
       '@ir/ledger':
         specifier: workspace:*
         version: link:../ledger
+      '@ir/schema':
+        specifier: workspace:*
+        version: link:../schema
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

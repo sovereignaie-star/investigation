@@ -1,0 +1,170 @@
+{
+  "description": "P4-015 reference case for GEXF/GraphML/CSV/PROV exports",
+  "graph": {
+    "nodes": [
+      {
+        "id": "p1",
+        "type": "person",
+        "canonicalKey": "person:p1",
+        "labels": {
+          "ar": "أحمد المكي"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 0,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "c1",
+        "type": "company",
+        "canonicalKey": "company:c1",
+        "labels": {
+          "ar": "شركة المثل القابضة"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 0,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "d1",
+        "type": "domain",
+        "canonicalKey": "domain:d1",
+        "labels": {
+          "ar": "holdings.example"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 0,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      },
+      {
+        "id": "ip1",
+        "type": "ipv4",
+        "canonicalKey": "ipv4:ip1",
+        "labels": {
+          "ar": "192.0.2.7"
+        },
+        "props": {},
+        "aliases": [],
+        "attributes": [],
+        "observations": {
+          "positive": 0,
+          "negative": 0,
+          "error": 0
+        },
+        "evidenceIds": []
+      }
+    ],
+    "edges": [
+      {
+        "id": "p1-owns-c1",
+        "source": "p1",
+        "target": "c1",
+        "predicate": "ownership",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "reference claim",
+        "evidenceIds": [],
+        "observations": []
+      },
+      {
+        "id": "d1-resolves-ip1",
+        "source": "d1",
+        "target": "ip1",
+        "predicate": "resolves_to",
+        "confidence": 0.8,
+        "validFrom": null,
+        "validTo": null,
+        "occurredFrom": null,
+        "occurredTo": null,
+        "explanation": "reference claim",
+        "evidenceIds": [],
+        "observations": []
+      }
+    ]
+  },
+  "ledger": [
+    {
+      "seq": 0,
+      "prevHash": null,
+      "entryHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "case.created",
+      "payload": {
+        "caseId": "cs1",
+        "title": "قضية مرجع"
+      },
+      "at": "2026-10-22T00:00:00.000Z",
+      "actor": "investigator-a"
+    },
+    {
+      "seq": 1,
+      "prevHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "entryHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "entity.added",
+      "payload": {
+        "id": "p1",
+        "type": "person",
+        "canonicalKey": "person:p1"
+      },
+      "at": "2026-10-22T00:01:00.000Z",
+      "actor": "investigator-a"
+    },
+    {
+      "seq": 2,
+      "prevHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "entryHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "kind": "evidence.stored",
+      "payload": {
+        "id": "ev1",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mime": "application/json",
+        "blobRef": "blobs/e3/e3b0c4",
+        "fetchedAt": "2026-10-22T00:02:00.000Z",
+        "request": {
+          "method": "LOCAL",
+          "url": "local://ref",
+          "headers": {}
+        },
+        "transformId": "tr-nominatim",
+        "version": "1"
+      },
+      "at": "2026-10-22T00:02:00.000Z",
+      "actor": "transform-runner"
+    },
+    {
+      "seq": 3,
+      "prevHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "entryHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "kind": "claim.added",
+      "payload": {
+        "id": "cl1",
+        "subjectId": "p1",
+        "predicate": "has_name",
+        "value": "أحمد المكي",
+        "confidence": 0.9,
+        "evidenceIds": ["ev1"]
+      },
+      "at": "2026-10-22T00:03:00.000Z",
+      "actor": "investigator-a"
+    }
+  ]
+}

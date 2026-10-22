@@ -1,0 +1,17 @@
+{
+  "gexf": {
+    "valid": true,
+    "sha256": "c8c40e84f9c1a8660346a50a5b0727b7dcf837bd6ddfb04b3153886b632c5f25",
+    "errors": []
+  },
+  "graphml": {
+    "valid": true,
+    "sha256": "6d3fcf2c440049c1d47128b4e11654b992d52212d207bffc6dd78f700c43549d",
+    "errors": []
+  },
+  "prov": {
+    "valid": true,
+    "sha256": "7006f7da0801143745defaec0228473a2f9fbf1f44e5f1fde40932d9741a5ecd",
+    "records": 13
+  }
+}
