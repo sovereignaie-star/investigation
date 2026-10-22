@@ -85,7 +85,17 @@ function projectionBody(notes: Array<{ seq: number; nodeId: string; text: string
   };
 }
 
-const OPENED: OpenedCase = { id: CASE_ID, title: "قضية اختبار", seq: 5, sha256: "a".repeat(64), graph: projectionBody().graph, notes: [] };
+// P4-010: this hand-built opened case matches what the parser produces for
+// projectionBody() — which serves no coverage field — so coverage is null (unavailable).
+const OPENED: OpenedCase = {
+  id: CASE_ID,
+  title: "قضية اختبار",
+  seq: 5,
+  sha256: "a".repeat(64),
+  graph: projectionBody().graph,
+  notes: [],
+  coverage: null,
+};
 
 let root: Root | null = null;
 const container = document.createElement("div");

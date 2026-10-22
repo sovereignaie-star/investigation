@@ -50,9 +50,43 @@ function fixture(seed = 1) {
  * Every transform that returns empty shows in the map; failure is never mixed with emptiness.
  */
 describe("coverage projection (P2-017 / T-COV)", () => {
+  it("T-COV-009 (red first — P4-010/UC-21): a policy-blocked pair is served as not_run with its recorded reason — never inferred from absence", () => {
+    // The REAL path the engine writes (P2-029): a source disabled on the case (or
+    // excluded by the operator, or its input refused) is never invoked and the
+    // CLI audits `investigate.not_run` with the reason on the case's chain. The
+    // coverage map must SERVE that proven record — D3's map shows «محظور بسياسة»
+    // as its own state; silence (an absent pair) must never stand for it.
+    const f = fixture();
+    f.entity("domain", "blocked.example");
+    f.add("audit.event", {
+      id: f.id(),
+      at: T0,
+      actor: "tester",
+      action: "investigate.not_run",
+      target: "domain:blocked.example",
+      purposeRef: f.id(),
+      detail: { transform: "tr-disabled", reason: "disabled: policy — source disabled on this case", depth: 0 },
+    });
+    const p = project(f.ledger.entries());
+    expect(p.coverage.notRun).toEqual([
+      {
+        key: "domain:blocked.example",
+        transformId: "tr-disabled",
+        reason: "disabled: policy — source disabled on this case",
+        at: T0,
+      },
+    ]);
+    // the pair is served as its OWN state — never folded into the observation-based
+    // cells — and the reason rides along verbatim, never paraphrased into a
+    // fabricated one. (untouched keeps P2-017's documented semantics — observation-
+    // based; the ROW-level badge logic is the web model's, proven in its tests.)
+    expect(p.coverage.cells.filter((c) => c.transformId === "tr-disabled")).toHaveLength(0);
+    expect(p.coverage.notRun).toHaveLength(1);
+  });
+
   it("T-COV-001: an empty chain projects to empty coverage", () => {
     const p = project([]);
-    expect(p.coverage).toEqual({ cells: [], transforms: [], untouched: [] });
+    expect(p.coverage).toEqual({ cells: [], transforms: [], untouched: [], notRun: [] });
   });
 
   it("T-COV-002: a positive observation is a checked cell, not untouched", () => {
