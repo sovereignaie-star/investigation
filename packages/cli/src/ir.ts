@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
-import type { ExpandResult } from "@ir/ledger";
+import { installationKeyFromPem, type ExpandResult } from "@ir/ledger";
 import { diffProjections, project, projectionHash, type Projection } from "@ir/ledger/projections";
-import { formatReport, openCase, readCheckpointFile, verifyCase, type Case } from "@ir/store";
+import { formatReport, openCase, packCase, readCheckpointFile, unpackCase, verifyCase, type Case } from "@ir/store";
 import { createSimServer, type SimRule } from "@ir/sim";
 import { runTransform, TransformRunError, type RunTransformResult, type Transform } from "@ir/transforms";
 import type { HttpTransport } from "@ir/engine";
@@ -76,6 +76,22 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
            list prints every registered source with its state for this case. Exit 0 on success, 2 on usage errors.
            The investigation also reports per-source statistics (outcomes, wall time, measured cost: requests +
            bytes) in its output and on the investigate.completed audit event.
+  pack (P4-016): writes the signed .irpack case package — the raw hash chain (sealed payloads
+           preserved), the evidence blob tree, the wrapped key and the case record, every file's
+           SHA-256 and the chain's length/head/Merkle root in an Ed25519-signed manifest (JCS).
+           The SQLite database is NOT in the pack: it is a projection of the chain, so the
+           importer rebuilds it at its own schema version (NFR-18 — a pack from a newer build
+           is refused, not half-opened). --key is the installation PRIVATE key (PKCS#8 PEM) and
+           is required: an unsigned pack is not a pack. A locked case is refused, not packed
+           half-read. Exit 0 on success, 2 on usage or I/O errors.
+  unpack (P4-016): verifies a .irpack (signature, every file hash, chain head/Merkle root),
+           refuses any tampering or a newer-build schema, rebuilds the case in the target
+           directory (which must be empty or absent) and re-runs the full case verification on
+           the restored case — a restored case that fails verification leaves NOTHING behind.
+           --key pins the installation PUBLIC key (like verify); without it the pack's own
+           embedded key is trusted and its keyId is printed. Encrypted packs need the
+           passphrase. Exit 0 intact, 1 integrity failure (tamper or failed re-verification),
+           2 usage or I/O errors.
   Encrypted cases: the passphrase is read from --passphrase-file or IR_CASE_PASSPHRASE, never from the command line.
   Exit codes: 0 intact, 1 integrity failure, 2 usage or I/O error.`;
 
@@ -196,7 +212,7 @@ function commandFor(
   err: (s: string) => void,
   opts: CliOptions,
 ): (() => number | Promise<number>) | undefined {
-  const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2, import: 2 };
+  const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2, import: 2, pack: 1, unpack: 1 };
   // P2-029: `ir source` takes up to 2 positionals after the case dir: the verb, then (for
   // disable/enable) the transform id.
   if (cmd === "source") {
@@ -219,6 +235,10 @@ function commandFor(
       return () => runTransformCommand(dir, rest[0], rest[1], rest[2], v, out, err, opts);
     case "import":
       return () => runImportCommand(dir, rest[0], rest[1], v, out, err, opts);
+    case "pack":
+      return () => runPackCommand(dir, rest[0], v, out, err);
+    case "unpack":
+      return () => runUnpackCommand(dir, rest[0], v, out, err);
     default:
       return () => runInvestigateCommand(dir, rest[0], rest[1], v, out, err, opts);
   }
@@ -234,6 +254,54 @@ type Values = {
   /** P4-009: `ir monitor run --once` — run every due check once, then exit. */
   once?: boolean | undefined;
 };
+
+/** P4-016: `ir pack <case-dir> <out.irpack>` — the signed case package. */
+function runPackCommand(dir: string, outPath: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
+  if (!v.key) {
+    err("ir pack: --key <installation-private.pem> is required — an unsigned pack is not a pack");
+    return 2;
+  }
+  try {
+    const key = installationKeyFromPem(readFileSync(v.key, "utf8"));
+    const bytes = packCase(dir, {
+      actor: "ir pack",
+      key,
+      appVersion: "0.0.0",
+      ...passphraseFrom(v["passphrase-file"]),
+    });
+    writeFileSync(outPath, bytes);
+    out(`wrote ${outPath}: ${bytes.length} bytes, signed by ${key.keyId}`);
+    return 0;
+  } catch (x) {
+    err(`ir pack: ${(x as Error).message}`);
+    return 2;
+  }
+}
+
+/** P4-016: `ir unpack <pack.irpack> <case-dir>` — verify, rebuild, re-verify. */
+function runUnpackCommand(packPath: string, dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
+  try {
+    const result = unpackCase(new Uint8Array(readFileSync(packPath)), dir, {
+      ...(v.key ? { expectedPublicKeyPem: readFileSync(v.key, "utf8") } : {}),
+      ...passphraseFrom(v["passphrase-file"]),
+    });
+    out(`unpacked ${packPath} into ${dir}`);
+    out(`case ${result.caseId}: chain length ${result.length}, head ${result.head}`);
+    // with --key the case's own checkpoints are judged too (verify semantics); without it
+    // they are reported as skipped, never as passed.
+    const report = v.key
+      ? verifyCase(dir, {
+          publicKeyPem: readFileSync(v.key, "utf8"),
+          ...passphraseFrom(v["passphrase-file"]),
+        })
+      : result.report;
+    out(formatReport(report));
+    return report.ok ? 0 : 1;
+  } catch (x) {
+    err(`ir unpack: ${(x as Error).message}`);
+    return (x as Error).name === "PackError" ? 1 : 2;
+  }
+}
 
 function runVerify(dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
   try {

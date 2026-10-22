@@ -182,8 +182,12 @@ function resolveKey(
   return { key, encrypted: key !== null, caseId, meta, keyFileCreated: key !== null };
 }
 
-/** Opens case.sqlite; writable opens use WAL, full fsync and the latest migrations. */
-function openDb(dir: string, readOnly: boolean, clock: Clock): DatabaseSync {
+/**
+ * Opens case.sqlite; writable opens use WAL, full fsync and the latest migrations.
+ * P4-016: also used by pack.ts to rebuild a case database from a verified .irpack chain —
+ * the ONLY constructor of case databases stays in this module (G-12).
+ */
+export function openDb(dir: string, readOnly: boolean, clock: Clock): DatabaseSync {
   if (!readOnly) mkdirSync(dir, { recursive: true });
   const db = new DatabaseSync(path.join(dir, CASE_DB), { readOnly, enableForeignKeyConstraints: true, timeout: 5000 });
   if (readOnly) return db;
