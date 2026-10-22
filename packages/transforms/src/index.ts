@@ -50,6 +50,8 @@ export * from "./transforms/tr-034-pdf-metadata.ts";
 export * from "./transforms/tr-036-phone-analysis.ts";
 export * from "./transforms/tr-039-username-presence.ts";
 export * from "./transforms/tr-089-eml-msg.ts";
+export * from "./transforms/tr-092-yara-scan.ts";
+export * from "./transforms/tr-093-sigma-match.ts";
 export * from "./transforms/tr-090-adsb-aircraft.ts";
 export * from "./transforms/tr-091-ais-vessel.ts";
 // P2-037: the input checks the transforms themselves apply, exported so the CLI refuses an invalid subject before
