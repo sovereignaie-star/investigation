@@ -1,4 +1,4 @@
-# Identifier catalog: Documents (53 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Identifier catalog: Documents (58 types). Schema: IdentifierSpec in @ir/schema (5.6).
 # Edit here, then run: pnpm --filter @ir/core run gen:data
 - id: eu_reference
   category: Documents
@@ -148,7 +148,7 @@
     positive:
       - "123456789"
     negative:
-      - 123456789#
+      - "123456789#"
   sensitivity: natural_person_gate
 - id: passport_uk
   category: Documents
@@ -165,7 +165,7 @@
     positive:
       - "123456789"
     negative:
-      - 123456789#
+      - "123456789#"
   sensitivity: natural_person_gate
 - id: passport_de
   category: Documents
@@ -223,34 +223,42 @@
   labels:
     en: Saudi National ID
     ar: هوية وطنية سعودية
-  description: Saudi Arabia national identity number
+  description: Saudi Arabia national identity number (10 digits, leading 1, public Luhn check digit — P5-005)
   icon: 🇸🇦
   color: green
   patterns:
-    - ^[12]\d{9}$
-  validator: null
+    - ^1\d{9}$
+  validator: saudi_id
   examples:
     positive:
-      - "1234567890"
+      - "1012345672"
+      - "1229136336"
     negative:
-      - 1234567890#
+      - "1234567890#"
+      - "1234567890"
+      - "2291363351"
+      - "229136335"
   sensitivity: natural_person_gate
 - id: iqama_sa
   category: Documents
   labels:
     en: Saudi Iqama Number
     ar: رقم إقامة سعودي
-  description: Saudi Arabia residency permit (Iqama)
+  description: Saudi Arabia residency permit (Iqama) number (10 digits, leading 2, public Luhn check digit — P5-005)
   icon: 🇸🇦
   color: green
   patterns:
-    - ^[2]\d{9}$
-  validator: null
+    - ^2\d{9}$
+  validator: saudi_id
   examples:
     positive:
-      - "2123456789"
+      - "2291363352"
+      - "2875132132"
     negative:
-      - 2123456789#
+      - "2123456789#"
+      - "2123456789"
+      - "2875132131"
+      - "28751321322"
   sensitivity: natural_person_gate
 - id: national_id_ae
   category: Documents
@@ -284,7 +292,7 @@
     positive:
       - "29901011234567"
     negative:
-      - 29901011234567#
+      - "29901011234567#"
   sensitivity: natural_person_gate
 - id: national_id_jo
   category: Documents
@@ -301,7 +309,7 @@
     positive:
       - "9876543210"
     negative:
-      - 9876543210#
+      - "9876543210#"
   sensitivity: natural_person_gate
 - id: national_id_ps
   category: Documents
@@ -318,7 +326,7 @@
     positive:
       - "123456789"
     negative:
-      - 123456789#
+      - "123456789#"
   sensitivity: natural_person_gate
 - id: national_id_iq
   category: Documents
@@ -335,7 +343,7 @@
     positive:
       - "123456789012"
     negative:
-      - 123456789012#
+      - "123456789012#"
   sensitivity: natural_person_gate
 - id: national_id_sy
   category: Documents
@@ -352,7 +360,7 @@
     positive:
       - "1234567890"
     negative:
-      - 1234567890#
+      - "1234567890#"
   sensitivity: natural_person_gate
 - id: national_id_ma
   category: Documents
@@ -386,7 +394,7 @@
     positive:
       - "12345678"
     negative:
-      - 12345678#
+      - "12345678#"
   sensitivity: natural_person_gate
 - id: national_id_dz
   category: Documents
@@ -403,7 +411,7 @@
     positive:
       - "123456789"
     negative:
-      - 123456789#
+      - "123456789#"
   sensitivity: natural_person_gate
 - id: national_id_ly
   category: Documents
@@ -420,7 +428,7 @@
     positive:
       - "123456789012"
     negative:
-      - 123456789012#
+      - "123456789012#"
   sensitivity: natural_person_gate
 - id: national_id_tr
   category: Documents
@@ -437,7 +445,7 @@
     positive:
       - "12345678901"
     negative:
-      - 12345678901#
+      - "12345678901#"
   sensitivity: natural_person_gate
 - id: national_id_ir
   category: Documents
@@ -454,7 +462,7 @@
     positive:
       - "1234567890"
     negative:
-      - 1234567890#
+      - "1234567890#"
   sensitivity: natural_person_gate
 - id: ssn_us
   category: Documents
@@ -522,7 +530,7 @@
     positive:
       - "12345678901"
     negative:
-      - 12345678901#
+      - "12345678901#"
   sensitivity: natural_person_gate
 - id: nif_es
   category: Documents
@@ -624,7 +632,7 @@
     positive:
       - "234567890123"
     negative:
-      - 234567890123#
+      - "234567890123#"
   sensitivity: natural_person_gate
 - id: pan_in
   category: Documents
@@ -692,7 +700,7 @@
     positive:
       - "1234567890123456"
     negative:
-      - 1234567890123456#
+      - "1234567890123456#"
   sensitivity: natural_person_gate
 - id: driving_license_us
   category: Documents
@@ -794,7 +802,7 @@
     positive:
       - "1234567890"
     negative:
-      - 1234567890#
+      - "1234567890#"
   sensitivity: natural_person_gate
 - id: nhif_ke
   category: Documents
@@ -811,7 +819,7 @@
     positive:
       - "12345678"
     negative:
-      - 12345678#
+      - "12345678#"
   sensitivity: natural_person_gate
 - id: national_id_ng
   category: Documents
@@ -828,7 +836,7 @@
     positive:
       - "12345678901"
     negative:
-      - 12345678901#
+      - "12345678901#"
   sensitivity: natural_person_gate
 - id: national_id_za
   category: Documents
@@ -845,7 +853,7 @@
     positive:
       - "9001014800088"
     negative:
-      - 9001014800088#
+      - "9001014800088#"
   sensitivity: natural_person_gate
 - id: national_id_ru
   category: Documents
@@ -896,7 +904,7 @@
     positive:
       - "123456789012"
     negative:
-      - 123456789012#
+      - "123456789012#"
   sensitivity: natural_person_gate
 - id: iin_kz
   category: Documents
@@ -913,7 +921,7 @@
     positive:
       - "900101300001"
     negative:
-      - 900101300001#
+      - "900101300001#"
   sensitivity: natural_person_gate
 - id: passport_cn
   category: Documents
@@ -964,7 +972,7 @@
     positive:
       - "123456789012"
     negative:
-      - 123456789012#
+      - "123456789012#"
   sensitivity: natural_person_gate
 - id: resident_reg_kr
   category: Documents
@@ -998,7 +1006,7 @@
     positive:
       - "2123456701"
     negative:
-      - 2123456701#
+      - "2123456701#"
   sensitivity: natural_person_gate
 - id: tfn_au
   category: Documents
@@ -1015,5 +1023,5 @@
     positive:
       - "123456789"
     negative:
-      - 123456789#
+      - "123456789#"
   sensitivity: natural_person_gate

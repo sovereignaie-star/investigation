@@ -1,4 +1,4 @@
-# Identifier catalog: Finance (22 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Identifier catalog: Finance (32 types). Schema: IdentifierSpec in @ir/schema (5.6).
 # Edit here, then run: pnpm --filter @ir/core run gen:data
 - id: iban
   category: Finance
@@ -49,7 +49,7 @@
     positive:
       - "4111111111111111"
     negative:
-      - 4111111111111111#
+      - "4111111111111111#"
   sensitivity: normal
 - id: visa_card
   category: Finance
@@ -66,7 +66,7 @@
     positive:
       - "4111111111111111"
     negative:
-      - 4111111111111111#
+      - "4111111111111111#"
   sensitivity: normal
 - id: mastercard
   category: Finance
@@ -83,7 +83,7 @@
     positive:
       - "5500005555555559"
     negative:
-      - 5500005555555559#
+      - "5500005555555559#"
   sensitivity: normal
 - id: amex_card
   category: Finance
@@ -100,7 +100,7 @@
     positive:
       - "378282246310005"
     negative:
-      - 378282246310005#
+      - "378282246310005#"
   sensitivity: normal
 - id: credit_card_bin
   category: Finance
@@ -117,7 +117,7 @@
     positive:
       - "411111"
     negative:
-      - 411111#
+      - "411111#"
   sensitivity: normal
 - id: routing_number_us
   category: Finance
@@ -134,7 +134,7 @@
     positive:
       - "021000021"
     negative:
-      - 021000021#
+      - "021000021#"
   sensitivity: normal
 - id: sort_code_uk
   category: Finance
@@ -236,7 +236,7 @@
     positive:
       - "1234567890"
     negative:
-      - 1234567890#
+      - "1234567890#"
   sensitivity: normal
 - id: moneygram_ref
   category: Finance
@@ -253,7 +253,7 @@
     positive:
       - "12345678"
     negative:
-      - 12345678#
+      - "12345678#"
   sensitivity: normal
 - id: coinbase_id
   category: Finance
@@ -287,7 +287,7 @@
     positive:
       - "123456789"
     negative:
-      - 123456789#
+      - "123456789#"
   sensitivity: normal
 - id: cik_us
   category: Finance
@@ -424,4 +424,162 @@
       - US0378331005
     negative:
       - US0378331005#
+  sensitivity: normal
+- id: iban_sa
+  category: Finance
+  labels:
+    en: Saudi IBAN
+    ar: رقم IBAN سعودي
+  description: "Saudi Arabia IBAN (SWIFT registry: 24 characters, SA + 2 check digits + 20-char BBAN — P5-005)"
+  icon: 🇸🇦
+  color: green
+  patterns:
+    - ^SA\d{2}[0-9A-Z]{20}$
+  validator: iban_sa
+  examples:
+    positive:
+      - SA0380000000608010167519
+    negative:
+      - SA0380000000608010167519#
+      - SA0380000000608010167518
+      - AE070331234567890123456
+  sensitivity: normal
+- id: iban_ae
+  category: Finance
+  labels:
+    en: UAE IBAN
+    ar: رقم IBAN إماراتي
+  description: "UAE IBAN (SWIFT registry: 23 characters, AE + 2 check digits + 19-digit BBAN — P5-005)"
+  icon: 🇦🇪
+  color: green
+  patterns:
+    - ^AE\d{2}[0-9]{19}$
+  validator: iban_ae
+  examples:
+    positive:
+      - AE070331234567890123456
+    negative:
+      - AE070331234567890123456#
+      - AE070331234567890123457
+      - SA0380000000608010167519
+  sensitivity: normal
+- id: iban_kw
+  category: Finance
+  labels:
+    en: Kuwait IBAN
+    ar: رقم IBAN كويتي
+  description: "Kuwait IBAN (SWIFT registry: 30 characters — P5-005)"
+  icon: 🇰🇼
+  color: green
+  patterns:
+    - ^KW\d{2}[A-Z0-9]{26}$
+  validator: iban_kw
+  examples:
+    positive:
+      - KW81CBKU0000000000001234560101
+    negative:
+      - KW81CBKU0000000000001234560101#
+      - KW81CBKU0000000000001234560102
+      - QA58DOHB00001234567890ABCDEFG
+  sensitivity: normal
+- id: iban_qa
+  category: Finance
+  labels:
+    en: Qatar IBAN
+    ar: رقم IBAN قطري
+  description: "Qatar IBAN (SWIFT registry: 29 characters — P5-005)"
+  icon: 🇶🇦
+  color: green
+  patterns:
+    - ^QA\d{2}[A-Z0-9]{25}$
+  validator: iban_qa
+  examples:
+    positive:
+      - QA58DOHB00001234567890ABCDEFG
+    negative:
+      - QA58DOHB00001234567890ABCDEFG#
+      - QA58DOHB00001234567890ABCDEFH
+      - KW81CBKU0000000000001234560101
+  sensitivity: normal
+- id: iban_bh
+  category: Finance
+  labels:
+    en: Bahrain IBAN
+    ar: رقم IBAN بحريني
+  description: "Bahrain IBAN (SWIFT registry: 22 characters — P5-005)"
+  icon: 🇧🇭
+  color: green
+  patterns:
+    - ^BH\d{2}[A-Z0-9]{18}$
+  validator: iban_bh
+  examples:
+    positive:
+      - BH67BMAG00001299123456
+    negative:
+      - BH67BMAG00001299123456#
+      - BH67BMAG00001299123455
+      - AE070331234567890123456
+  sensitivity: normal
+- id: iban_om
+  category: Finance
+  labels:
+    en: Oman IBAN
+    ar: رقم IBAN عماني
+  description: "Oman IBAN (SWIFT registry: 23 characters, OM + 2 check digits + 3-digit bank + 16-char account — P5-005)"
+  icon: 🇴🇲
+  color: green
+  patterns:
+    - ^OM\d{2}[0-9A-Z]{19}$
+  validator: iban_om
+  examples:
+    positive:
+      - OM810180000001299123456
+    negative:
+      - OM810180000001299123456#
+      - OM810180000001299123457
+      - BH67BMAG00001299123456
+  sensitivity: normal
+- id: cr_sa
+  category: Finance
+  labels:
+    en: Saudi Commercial Registration
+    ar: سجل تجاري سعودي
+  description: Saudi commercial registration number — unified 10-digit format prefixed 7 since 2025 (legacy chamber-coded numbers are out of scope; no public check digit — P5-005)
+  icon: 🇸🇦
+  color: blue
+  patterns:
+    - ^7\d{9}$
+  validator: cr_sa
+  examples:
+    positive:
+      - "7001234567"
+      - "7103456789"
+    negative:
+      - "1010123456"
+      - "70012345678"
+      - "0700123456"
+      - "0101234567"
+      - "101012345"
+      - "10101234567"
+  sensitivity: normal
+- id: vat_sa
+  category: Finance
+  labels:
+    en: Saudi VAT Number (TIN)
+    ar: الرقم الضريبي السعودي
+  description: Saudi Arabia VAT taxpayer identification number (15 digits starting and ending with 3 — ZATCA e-invoicing — P5-005)
+  icon: 🇸🇦
+  color: blue
+  patterns:
+    - ^3\d{13}3$
+  validator: vat_sa
+  examples:
+    positive:
+      - "310122393500003"
+      - "300000000000003"
+    negative:
+      - "310122393500003#"
+      - "410122393500003"
+      - "310122393500004"
+      - "31012239350000"
   sensitivity: normal

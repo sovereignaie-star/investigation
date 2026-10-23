@@ -7,8 +7,8 @@ import { IDENTIFIER_LIST } from "./identifierList";
 const source = readFileSync(fileURLToPath(new URL("./identifierList.ts", import.meta.url)), "utf8");
 
 describe("identifierList", () => {
-  it("T-IDL-001 contains exactly 387 types (+ sdn_uid, un_reference, eu_reference, country_code, line_type, perceptual_hash)", () => {
-    expect(IDENTIFIER_LIST).toHaveLength(387);
+  it("T-IDL-001 contains exactly 395 types (+ sdn_uid, un_reference, eu_reference, country_code, line_type, perceptual_hash)", () => {
+    expect(IDENTIFIER_LIST).toHaveLength(395);
   });
 
   it("T-IDL-002 every id is unique", () => {
