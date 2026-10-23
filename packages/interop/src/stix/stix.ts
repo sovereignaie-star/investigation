@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { v5 as uuidv5 } from "uuid";
 
 import type { Graph } from "@ir/ledger/projections";
 
@@ -85,20 +85,19 @@ const PATTERN_OF: Record<string, (value: string) => string> = {
   email: (v) => `[email-addr:value = '${v}']`,
 };
 
-/** A fixed namespace for deterministic UUIDv5 derivation (documented, not magic:
- *  any fixed UUID works; this one is generated once and frozen here). */
+/**
+ * A fixed namespace for deterministic UUIDv5 derivation (documented, not magic:
+ * any fixed UUID works; this one is generated once and frozen here).
+ * P5-022 (إصلاح حارس CodeQL): اشتقاق UUIDv5 بمعيار RFC 4122 عبر مكتبة uuid
+ * الرسمية — التدوير اليدوي السابق كان SHA-1 يدوياً (كشفه حارس CodeQL عالية
+ * الخطورة) والمكتبة تنفذ المعيار نفسه داخلها؛ المعرّفات تتغير تبعاً لذلك
+ * (التجميد المرجعي أُعيد توليده وباركه المدقق الرسمي مجدداً).
+ */
 const IR_UUID_NAMESPACE = "b9c8e7a4-3d6f-4a2b-8e5c-1f0a9b8d7c6e";
 
 /** Deterministic STIX UUID (v5) from a source id — same input, same UUID. */
 function stixIdFor(type: string, sourceId: string): string {
-  const digest = createHash("sha1")
-    .update(IR_UUID_NAMESPACE + sourceId, "utf8")
-    .digest();
-  // RFC 4122 §4.3: set version 5 and variant bits on the SHA-1 digest
-  digest[6] = (digest[6] & 0x0f) | 0x50;
-  digest[8] = (digest[8] & 0x3f) | 0x80;
-  const hex = digest.subarray(0, 16).toString("hex");
-  const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+  const uuid = uuidv5(sourceId, IR_UUID_NAMESPACE);
   return `${type}--${uuid}`;
 }
 

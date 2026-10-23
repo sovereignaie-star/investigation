@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@ir/ledger": "workspace:*",
-    "@ir/schema": "workspace:*"
+    "@ir/schema": "workspace:*",
+    "uuid": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:"

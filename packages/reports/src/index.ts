@@ -15,7 +15,8 @@
  */
 import { z } from "zod";
 import { Buffer } from "node:buffer";
-import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { Document, Header, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import type { ReportIdentity } from "./export.ts";
 import JSZip from "jszip";
 
 /* --------------------------------------------------------------- النموذج */
@@ -107,8 +108,19 @@ const renderStatement = (doc: ReportDocument, statement: ReportStatement): strin
 };
 
 /** قالب HTML حتمي — بلا طوابع زمنية؛ نفس التقرير يعطي نفس الملف. */
-export function renderReportHtml(doc: ReportDocument): string {
+export function renderReportHtml(doc: ReportDocument, identity?: ReportIdentity): string {
   const dir = doc.lang === "ar" ? "rtl" : "ltr";
+  // هوية التقرير (P5-022): علامة مائية في طبقة ثابتة تظهر في كل صفحة عند الطباعة،
+  // وتصنيف سرية معلن، ولون هوية، وشعار — بلا هوية يبقى القالب كما هو (توافق خلفي).
+  const identityStyles =
+    identity === undefined
+      ? ""
+      : `\n.watermark-layer { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 999; }\n.watermark-layer span { transform: rotate(-20deg); font-size: 3rem; color: rgba(0,0,0,0.08); font-weight: bold; }\n@media print { .watermark-layer { position: fixed; } .classification-banner { position: fixed; top: 0; left: 0; right: 0; } }`;
+  const identityBody =
+    identity === undefined
+      ? ""
+      : `\n  <div class="classification-banner" style="${identity.classification !== undefined ? `background:${escapeHtml(identity.primaryColor ?? "#1a5276")};color:#fff;padding:0.25rem 1rem;font-weight:bold` : ""}">${identity.classification !== undefined ? escapeHtml(identity.classification) : ""}${identity.logoDataUrl !== undefined ? ` <img src="${escapeHtml(identity.logoDataUrl)}" alt="logo" style="height:1.5rem;vertical-align:middle">` : ""}</div>\n  <div class="watermark-layer" aria-hidden="true"><span>${escapeHtml(identity.watermark ?? "")}</span></div>`;
+
   const sections = doc.sections
     .map(
       (section) => `    <section>
@@ -134,9 +146,10 @@ h2 { border-bottom: 1px solid #ccc; }
 sup.cite a { text-decoration: none; }
 .evidence { list-style: none; padding-inline-start: 0; }
 .evidence li { margin-block: 0.25rem; }
+${identityStyles}
 </style>
 </head>
-<body>
+<body>${identityBody}
   <h1>${escapeHtml(doc.title)}</h1>
   <p class="case">${doc.lang === "ar" ? "القضية" : "Case"}: ${escapeHtml(doc.caseRef)}</p>
 ${sections}
@@ -181,7 +194,7 @@ async function pinDocxTimestamps(buffer: Buffer): Promise<Buffer> {
 }
 
 /** قالب DOCX — عربي RTL مع إحالات [n] وملحق أدلة بالبصمات، حتمي بيتاً-بيتاً. */
-export async function renderReportDocx(doc: ReportDocument): Promise<Buffer> {
+export async function renderReportDocx(doc: ReportDocument, identity?: ReportIdentity): Promise<Buffer> {
   const rtl = doc.lang === "ar";
   const children: Paragraph[] = [
     new Paragraph({
@@ -236,11 +249,39 @@ export async function renderReportDocx(doc: ReportDocument): Promise<Buffer> {
       }),
     );
   }
+  // هوية التقرير (P5-022): التصنيف معلن في مقدمة الجسم
+  if (identity?.classification !== undefined) {
+    children.unshift(
+      new Paragraph({
+        bidirectional: rtl,
+        children: [new TextRun({ text: identity.classification, rightToLeft: rtl, bold: true })],
+      }),
+    );
+  }
   const document = new Document({
     title: doc.title,
     creator: "@ir/reports",
     description: `${rtl ? "قضية" : "Case"}: ${doc.caseRef}`,
-    sections: [{ properties: {}, children }],
+    sections: [
+      {
+        properties: {},
+        ...(identity?.watermark !== undefined
+          ? {
+              headers: {
+                default: new Header({
+                  children: [
+                    new Paragraph({
+                      bidirectional: rtl,
+                      children: [new TextRun({ text: identity.watermark, rightToLeft: rtl, color: "BBBBBB" })],
+                    }),
+                  ],
+                }),
+              },
+            }
+          : {}),
+        children,
+      },
+    ],
   });
   const raw = await Packer.toBuffer(document);
   return pinDocxTimestamps(Buffer.from(raw));
@@ -368,3 +409,6 @@ export function auditReportHtml(html: string): CitationAudit {
   }
   return { ok: issues.length === 0 && statementCount > 0, statementCount, citedCount, issues };
 }
+
+export { renderReportMarkdown, renderGraphSvg, renderGraphPng } from "./export.ts";
+export type { ReportIdentity, GraphData, GraphNode, GraphEdge } from "./export.ts";
