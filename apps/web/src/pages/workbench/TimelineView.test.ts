@@ -1,6 +1,6 @@
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { TimelineView } from "./TimelineView";
 import { buildTimelineItems, sortTimelineItems } from "./timelineModel";
@@ -109,10 +109,10 @@ describe("TimelineView (P4-007/UC-08) — الخط الزمني ثنائي ال�
     // Second catch (375px): a long timestamp may WRAP MID-STRING («...إلى -12-2019» then
     // «31T23:59:59Z») — so each isolated run must also refuse internal line breaks
     // (whitespace-nowrap: the timestamp wraps as one unit or not at all).
-    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2019-01-01T00:00:00Z\s*<\/span>/);
-    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2019-12-31T23:59:59Z\s*<\/span>/);
-    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2020-03-01T00:00:00Z\s*<\/span>/);
-    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap">\s*2026-03-01T10:00:00Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap"[^>]*>\s*2019-01-01T00:00:00Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap"[^>]*>\s*2019-12-31T23:59:59Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap"[^>]*>\s*2020-03-01T00:00:00Z\s*<\/span>/);
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap"[^>]*>\s*2026-03-01T10:00:00Z\s*<\/span>/);
   });
 
   it("buildTimelineItems feeds real graph shapes into the view (integration of model + view)", () => {
@@ -210,5 +210,46 @@ describe("TimelineView patterns (P4-019 — كل نمط يُعرض مع أدلت
     ];
     const html = renderToStaticMarkup(React.createElement(TimelineView, { items: single }));
     expect(html).not.toContain('data-testid="timeline-patterns"');
+  });
+});
+
+describe("TimelineView (P5-004) — صيغ عرض التواريخ: خام/ميلادي/هجري/كلاهما", () => {
+  beforeEach(async () => {
+    const store = await import("../../store/dateFormatStore");
+    store.setDateFormat("raw");
+  });
+
+  it("الافتراضي خام: أرقام ISO كما هي (لا تغيير على سلوك اليوم)", () => {
+    const html = renderToStaticMarkup(React.createElement(TimelineView, { items }));
+    expect(html).toMatch(/<span dir="ltr" class="whitespace-nowrap"[^>]*>\s*2019-01-01T00:00:00Z\s*<\/span>/);
+  });
+
+  it("هجري: التواريخ الهجرية (أم القرى) تظهر والخام يبقى في title — لا فقد دقة", async () => {
+    const store = await import("../../store/dateFormatStore");
+    store.setDateFormat("hijri");
+    const html = renderToStaticMarkup(React.createElement(TimelineView, { items }));
+    // 2019-01-01 = 25 ربيع الآخر 1440هـ
+    expect(html).toContain("25 ربيع الآخر 1440هـ");
+    // 2026-03-01 = 12 رمضان 1447هـ (وقت الرصد)
+    expect(html).toContain("12 رمضان 1447هـ");
+    // الخام لا يختفي: title يبقى يحمل النافذة كاملة
+    expect(html).toContain('title="2019-01-01T00:00:00Z ← 2019-12-31T23:59:59Z"');
+    store.setDateFormat("raw");
+  });
+
+  it("كلاهما: الميلادي والهجري معاً", async () => {
+    const store = await import("../../store/dateFormatStore");
+    store.setDateFormat("both");
+    const html = renderToStaticMarkup(React.createElement(TimelineView, { items }));
+    expect(html).toContain("1 يناير 2019 (25 ربيع الآخر 1440هـ)");
+    store.setDateFormat("raw");
+  });
+
+  it("مفتاح الصيغة ظاهر في رأس الخط الزمني بأربع حالات", () => {
+    const html = renderToStaticMarkup(React.createElement(TimelineView, { items }));
+    expect(html).toContain('data-testid="timeline-dateformat-raw"');
+    expect(html).toContain('data-testid="timeline-dateformat-greg"');
+    expect(html).toContain('data-testid="timeline-dateformat-hijri"');
+    expect(html).toContain('data-testid="timeline-dateformat-both"');
   });
 });

@@ -1,6 +1,8 @@
 import * as React from "react";
 import { t } from "@ir/i18n";
 import { useSelection } from "../../store/selectionStore";
+import { getDateFormat, setDateFormat, subscribeDateFormat } from "../../store/dateFormatStore";
+import { formatTimestamp, type DateDisplay } from "../../utils/dates";
 import { buildTimelineItems, buildTimelinePatterns, occurrenceLabel, sortTimelineItems, type TimelineItem } from "./timelineModel";
 import type { Graph } from "@ir/ledger/projections";
 
@@ -19,7 +21,7 @@ const KIND_LABEL: Record<TimelineItem["observations"][number]["kind"], string> =
   error: t("workbench.timeline.kind.error"),
 };
 
-function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeId: string) => void }) {
+function TimelineRow({ item, onSelect, fmt }: { item: TimelineItem; onSelect?: (nodeId: string) => void; fmt: (iso: string) => string }) {
   const label = occurrenceLabel(item);
   return (
     <li
@@ -39,8 +41,10 @@ function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeI
               // BiDi (visual QA): ISO timestamps scramble inside the RTL paragraph —
               // isolate each run directionally instead. whitespace-nowrap (375px): a
               // timestamp never breaks mid-string — it wraps as one unit or not at all.
-              <span key={i} dir="ltr" className="whitespace-nowrap">
-                {s.value}
+              // P5-004: with a formatted preference the raw ISO stays reachable in the
+              // title (no precision loss); the formatted run is one unbreakable unit too.
+              <span key={i} dir="ltr" className="whitespace-nowrap" title={s.value}>
+                {fmt(s.value)}
               </span>
             ) : (
               <span key={i}>{s.value}</span>
@@ -53,10 +57,14 @@ function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeI
       ) : (
         <ol className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           {item.observations.map((o) => (
-            <li key={o.observationId} title={t("workbench.timeline.evidenceTitle", { id: o.evidenceId })} className={o.kind}>
+            <li
+              key={o.observationId}
+              title={`${t("workbench.timeline.evidenceTitle", { id: o.evidenceId })} · ${o.observedAt}`}
+              className={o.kind}
+            >
               {KIND_LABEL[o.kind]} ·{" "}
-              <span dir="ltr" className="whitespace-nowrap">
-                {o.observedAt}
+              <span dir="ltr" className="whitespace-nowrap" title={o.observedAt}>
+                {fmt(o.observedAt)}
               </span>
             </li>
           ))}
@@ -66,7 +74,39 @@ function TimelineRow({ item, onSelect }: { item: TimelineItem; onSelect?: (nodeI
   );
 }
 
+/** The date-format preference control (P5-004): raw / Gregorian / Hijri / both. */
+function DateFormatControl({ pref }: { pref: DateDisplay }) {
+  const options: readonly { key: DateDisplay; label: string }[] = [
+    { key: "raw", label: t("workbench.timeline.dateFormat.raw") },
+    { key: "greg", label: t("workbench.timeline.dateFormat.greg") },
+    { key: "hijri", label: t("workbench.timeline.dateFormat.hijri") },
+    { key: "both", label: t("workbench.timeline.dateFormat.both") },
+  ];
+  return (
+    <span className="inline-flex items-center gap-1 text-xs" aria-label={t("workbench.timeline.dateFormat.label")}>
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          data-testid={`timeline-dateformat-${o.key}`}
+          aria-pressed={pref === o.key}
+          className={`rounded border px-1.5 py-0.5 ${
+            pref === o.key ? "border-primary bg-primary/10 font-medium" : "border-border text-muted-foreground"
+          }`}
+          onClick={() => setDateFormat(o.key)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 export function TimelineView({ items, onSelectSubject }: { items: readonly TimelineItem[]; onSelectSubject?: (nodeId: string) => void }) {
+  // P5-004: the date-display preference (raw default) — formatted Arabic / Hijri
+  // (Umm al-Qura) rendering is one click away; the raw ISO always stays in title.
+  const pref = React.useSyncExternalStore(subscribeDateFormat, getDateFormat, getDateFormat);
+  const fmt = React.useCallback((iso: string) => formatTimestamp(iso, pref), [pref]);
   // P4-019: the timeline's detected patterns — pure function of the items, so
   // presentational rendering stays identical headless and in the browser.
   const patterns = buildTimelinePatterns(items);
@@ -74,10 +114,13 @@ export function TimelineView({ items, onSelectSubject }: { items: readonly Timel
     patterns.activityPeriods.length + patterns.suddenSilences.length + patterns.escalations.length + patterns.repetitions.length > 0;
   return (
     <section aria-label={t("workbench.timeline.ariaLabel")} data-testid="timeline" className="rounded-md border border-border p-3">
-      <h3 className="mb-2 text-sm font-semibold">{t("workbench.timeline.heading")}</h3>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{t("workbench.timeline.heading")}</h3>
+        <DateFormatControl pref={pref} />
+      </div>
       <ol className="max-h-72 overflow-auto">
         {items.map((item) => (
-          <TimelineRow key={item.claimId} item={item} onSelect={onSelectSubject} />
+          <TimelineRow key={item.claimId} item={item} onSelect={onSelectSubject} fmt={fmt} />
         ))}
       </ol>
       {hasPatterns ? (

@@ -1,14 +1,15 @@
 # العربية واللغويات والترجمة (Arabic, linguistics & translation)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-23. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **266**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **267**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
 | TL-d4318dce | [1text](https://1text.com/) | أساسية | web | — | reachable | — | — |
 | TL-899e2b91 | [2lingual.com](https://2lingual.com/) | أساسية | web | — | reachable | — | google search in two languages simultaneously in one window |
 | TL-1a907365 | [3DFindit](https://3dfindit.com/textsearch) | أساسية | web | — | restricted | — | tool for searching 3D models by 3560 3D CAD (computer aided design) and BIM (Building Information Model) catalogs. |
+| TL-8afbfec9 | [@umalqura/core](https://github.com/umalqura/umalqura) | داعمة | oss | — | reachable | — | Zero-dependency Hijri (Umm al-Qura) calendar conversion library for JavaScript (MIT; adopted 2026-10-23 for P5-004 — official Umm al-Qura tables 1356..1500 AH,  |
 | TL-40a9a667 | [Accents](https://github.com/Aissaoui-Ahmed/accents/packages/88968) | داعمة | oss | — | restricted | — | Provides a simple package check or remove accents from a string use CLI or function, Support multi languages. |
 | TL-3e480d21 | [AHA Music](https://chrome.google.com/webstore/detail/aha-music-song-finder-for/dpacanjfikmhoddligfbehkpomnbgblf/related) | أساسية | web | — | reachable | — | A very simple tool that helps you determine what track is playing in the current browser tab. What I like best about it is that it works when the sound is turne |
 | TL-f48ff9f3 | [Albert-László Barabási’s review articles](https://barabasi.com/publications/1/review-articles) | داعمة | web | — | unreachable | — | — |
