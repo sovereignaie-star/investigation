@@ -40,51 +40,7 @@ export interface SummarizeOptions {
   readonly supportThreshold?: number;
 }
 
-/** كلمات وقف عربية ولاتينية دنيا — لا تدخل في قياس السند. */
-const STOPWORDS = new Set([
-  "في",
-  "من",
-  "إلى",
-  "على",
-  "عن",
-  "عند",
-  "منذ",
-  "مع",
-  "بين",
-  "هذا",
-  "هذه",
-  "التي",
-  "الذي",
-  "كل",
-  "لا",
-  "ما",
-  "إن",
-  "أن",
-  "أو",
-  "هو",
-  "هي",
-  "فيه",
-  "the",
-  "a",
-  "an",
-  "in",
-  "on",
-  "at",
-  "of",
-  "for",
-  "since",
-  "is",
-  "are",
-  "by",
-  "and",
-  "to",
-]);
-
-/** كلمات المحتوى: رموز عربية/لاتينية (تشمل النقاط الداخلية للنطاقات والعناوين). */
-function contentTokens(text: string): Set<string> {
-  const tokens = text.match(/[\p{L}\p{N}][\p{L}\p{N}._'’-]*/gu) ?? [];
-  return new Set(tokens.map((t) => t.toLowerCase()).filter((t) => t.length > 1 && !STOPWORDS.has(t)));
-}
+import { contentTokens } from "./support.ts";
 
 /** تقسيم الخلاصة إلى جمل — الفواصل العربية واللاتينية. */
 function splitSentences(summary: string): string[] {
