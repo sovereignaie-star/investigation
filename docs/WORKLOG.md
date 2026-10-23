@@ -5305,3 +5305,7 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **القصر الصادق:** Zingg غير قابل للتشغيل (لا Java)؛ ضبط splink معقول لا كامل؛ حد L-71.
 - **الجودة:** 2726/0/6 (+2)؛ lint/typecheck/build/governance exit 0. **المرحلة 4 مكتملة 24/24.**
 - **المصدر/المرجع:** docs/ROADMAP.md (P4-023)؛ docs/STATUS.md (P4-023 → done)؛ bench/er/report.md وreport.json؛ DECLARED_LIMITS L-71.
+
+## 2026-10-23 — P4-023 صف الحالة [P4-023]
+
+- إضافة صف P4-023 → done في STATUS (فشل المرجع الأول على "(S)" — النمط نفسه المعروف؛ القاعدة: المرجع يُقرأ من الملف لا يُتذكر).
