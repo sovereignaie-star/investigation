@@ -8,13 +8,11 @@
  * غير المدعومة تُقاس وتُعلن — لا أن تمر صامتة.
  */
 
-import type { AiProvider, ChatMessage } from "./index.ts";
+import type { AiProvider } from "./index.ts";
+import type { EvidenceStatement } from "./summarize-types.ts";
+import { buildSummarizeMessages, detectInjection } from "./injection.ts";
 
-/** عبارة دليل: نص + معرّف الدليل. */
-export interface EvidenceStatement {
-  readonly text: string;
-  readonly evidenceId: string;
-}
+export type { ChatMessage, EvidenceStatement } from "./summarize-types.ts";
 
 /** جملة خلاصة مُتحقق منها. */
 export interface SummaryClaim {
@@ -29,7 +27,9 @@ export interface SummarizeResult {
   /** الجمل غير المدعومة (نصها) — تُعلن لا أن تُمرر صامتة. */
   readonly unsupported: readonly string[];
   readonly unsupportedRatio: number;
-  /** معيار القبول: ≤ 2% غير مدعوم. */
+  /** صدى تعليمات مدسوسة في ناتج النموذج — يُكشف ويُعلن ولا يُنفذ إطلاقاً. */
+  readonly injectionEcho: boolean;
+  /** معيار القبول: ≤ 2% غير مدعوم وبلا صدى حقن. */
   readonly ok: boolean;
 }
 
@@ -119,17 +119,9 @@ function isSupported(text: string, citation: number | null, evidence: readonly E
  * الناتج: كل جملة بإحالة قائمة وسند في الدليل — والإجمالي ≤ 2% غير مدعوم.
  */
 export async function summarizeEvidence(evidence: readonly EvidenceStatement[], options: SummarizeOptions): Promise<SummarizeResult> {
-  const messages: readonly ChatMessage[] = [
-    {
-      role: "system",
-      content:
-        "أنت مساعد تحقيق. لخّص الأدلة في خلاصة عربية موجزة. القاعدة الملزمة: كل جملة في الخلاصة يجب أن تنتهي بإحالة إلى رقم الدليل بين قوسين مربعين مثل [1]، ولا تذكر أي معلومة ليست في الأدلة المعطاة — لا استنتاجات ولا معارف خارجية.",
-    },
-    {
-      role: "user",
-      content: `لخّص الأدلة التالية:\n` + evidence.map((e, i) => `[${i + 1}] (${e.evidenceId}) ${e.text}`).join("\n"),
-    },
-  ];
+  // P5-014: الحصر البنيوي — نصوص الأدلة تدخل داخل علامات «بيانات غير موثوقة"
+  // (buildSummarizeMessages) ولا تصعد أبداً إلى تعليمات النظام.
+  const messages = buildSummarizeMessages(evidence);
   const response = await options.provider.chat({
     model: options.model ?? "qwen2.5:7b",
     messages,
@@ -146,11 +138,13 @@ export async function summarizeEvidence(evidence: readonly EvidenceStatement[], 
     }
   }
   const ratio = claims.length === 0 ? 1 : unsupported.length / claims.length;
+  const injectionEcho = detectInjection(response.content).detected;
   return {
     summary: response.content,
     claims,
     unsupported,
     unsupportedRatio: ratio,
-    ok: claims.length > 0 && ratio <= 0.02,
+    injectionEcho,
+    ok: claims.length > 0 && ratio <= 0.02 && !injectionEcho,
   };
 }
