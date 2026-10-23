@@ -5400,3 +5400,15 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #353 دُمج squash في main عند `7b5bd2f` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
 - **المصدر/المرجع:** docs/STATUS.md (P5-006 → done مع أدلة الدمج)؛ PR #353؛ إيداع الدمج `7b5bd2f`.
+
+## 2026-10-23 — P5-007 محرك كتب الإجراءات (YAML + بوابات) [P5-007]
+
+- **الأحمر أولاً:** T-PLAY-001..004 قبل التنفيذ (Cannot find module './index.ts')؛ الدليل: `docs/evidence/2026-10-23-P5-007-red.md`.
+- **التنفيذ:** حزمة `@ir/playbooks` — مخطط YAML صارم (ADR-16)، بوابات بشرية فاشلة-مغلق، آلة حالة حتمية قابلة للاستئناف، أخلاقيات نطاق (E-02) قبل أي استدعاء.
+- **الجودة:** T-PLAY-001..004 (12 اختباراً) خضراء؛ الحزمة الكاملة 2861/0/6 (+12)؛ lint/typecheck/build/governance exit 0.
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-007)؛ docs/STATUS.md (P5-007 → done)؛ docs/evidence/2026-10-23-P5-007-red.md.
+
+## 2026-10-23 — P5-007 إصلاح CI — عزل أنواع Node [P5-007]
+
+- فشل بوابات build/docker/e2e/gates/zap في PR #355: `tsc` في CI لا يجد تعريفات 'node' للحزمة الجديدة (عزل pnpm لا يرفع الأنواع) — أُضيفت `@types/node` (catalog) اعتمادية تطوير للحزمة. محلياً كان يمر بالرفع العرضي.
+- **المصدر/المرجع:** سجل فشل build في PR #355؛ docs/STATUS.md (صف P5-007).
