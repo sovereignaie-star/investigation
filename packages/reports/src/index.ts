@@ -167,7 +167,12 @@ async function pinDocxTimestamps(buffer: Buffer): Promise<Buffer> {
     zip.file("docProps/core.xml", pinned, { date: FIXED_DATE });
   }
   for (const [name, entry] of Object.entries(zip.files)) {
-    if (entry.dir || name === "docProps/core.xml") continue;
+    if (name === "docProps/core.xml") continue;
+    if (entry.dir) {
+      // مجلدات OOXML (word/، docProps/...) تحمل «الآن» أيضاً — تُثبت مثل الملفات
+      zip.file(name, null, { date: FIXED_DATE, dir: true });
+      continue;
+    }
     const content = await entry.async("nodebuffer");
     zip.file(name, content, { date: FIXED_DATE });
   }
