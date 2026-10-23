@@ -1,0 +1,19 @@
+# PB-04 — توثيق صفحة قبل حذفها (الملحق C)
+# مدخل: رابط. خطوات أساسية: WARC محلي، Wayback، لقطة، تجزئة. لا بوابات بشرية.
+id: PB-04
+title: توثيق صفحة قبل حذفها
+description: توثيق محلي كامل لصفحة قبل حذفها — WARC ولقطة وتجزئة وأرشيف عام
+input: url
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: warc
+    transform: TR-012
+    input: playbook
+  - id: wayback-history
+    transform: TR-011
+    input: playbook
+  - id: save-page-now
+    transform: TR-013
+    input: playbook
+gates: []

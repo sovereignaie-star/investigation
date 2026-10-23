@@ -1,0 +1,21 @@
+# PB-06 — تحقق من فيديو (الملحق C)
+# مدخل: فيديو. خطوات أساسية: إطارات، تجزئات، بحث عكسي، مطابقة موقع.
+# بوابة بشرية: قبل أي رفع خارجي.
+id: PB-06
+title: تحقق من فيديو
+description: تحقق محلي من فيديو — إطارات وتجزئات، والبحث العكسي ببوابة بشرية
+input: video
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: frames
+    transform: TR-035
+    input: playbook
+  - id: reverse-search
+    transform: TR-033
+    input: frames
+gates:
+  - id: before-upload
+    before: reverse-search
+    reason: قبل أي رفع خارجي
+    requires: human_confirmation

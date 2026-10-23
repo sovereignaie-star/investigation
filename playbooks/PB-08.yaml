@@ -1,0 +1,20 @@
+# PB-08 — تتبع شبكة حسابات عامة لمؤسسة (الملحق C)
+# مدخل: اسم مؤسسة. خطوات أساسية: حسابات رسمية، روابط معلنة، أرشيف.
+# بوابة بشرية (نطاق): الأشخاص الطبيعيون خارج النطاق إلا بغرض.
+id: PB-08
+title: تتبع شبكة حسابات عامة لمؤسسة
+description: تتبع الحسابات العامة المعلنة لمؤسسة — الأشخاص الطبيعيون خارج النطاق إلا بغرض
+input: org
+scope:
+  natural_persons: requires_purpose
+steps:
+  - id: github
+    transform: TR-014
+    input: playbook
+  - id: gitlab
+    transform: TR-015
+    input: playbook
+  - id: wayback-history
+    transform: TR-011
+    input: playbook
+gates: []

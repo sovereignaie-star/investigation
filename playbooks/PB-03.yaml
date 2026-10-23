@@ -1,0 +1,21 @@
+# PB-03 — فحص عنوان محفظة (الملحق C)
+# مدخل: عنوان. خطوات أساسية: تحقق صيغة، معاملات، تجميع، عقوبات.
+# بوابة بشرية: قبل وسم عنوان بجهة (فحص العقوبات هو ما يعزو العنوان لجهة).
+id: PB-03
+title: فحص عنوان محفظة
+description: فحص عنوان محفظة رقمية — معاملاته وفحص العقوبات قبل أي وسم بجهة
+input: wallet
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: transactions
+    transform: TR-016
+    input: playbook
+  - id: sanctions
+    transform: TR-025
+    input: playbook
+gates:
+  - id: before-labeling
+    before: sanctions
+    reason: قبل وسم عنوان بجهة
+    requires: human_confirmation
