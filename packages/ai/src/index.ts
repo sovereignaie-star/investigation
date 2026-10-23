@@ -221,6 +221,16 @@ import type { ChatMessage } from "./summarize-types.ts";
 export { summarizeEvidence } from "./summarize.ts";
 export type { SummarizeResult, SummaryClaim, SummarizeOptions } from "./summarize.ts";
 export { detectInjection, buildSummarizeMessages, neutralizeMarkers } from "./injection.ts";
+export { suggestNextActions, PERSONAL_ENTITY_TYPES } from "./next-action.ts";
+export type {
+  CaseEntity,
+  CaseSnapshot,
+  NextAction,
+  NextActionResult,
+  NextActionOptions,
+  VerifiedSuggestion,
+  RejectedSuggestion,
+} from "./next-action.ts";
 export { suggestEntities, ENTITY_TYPES } from "./extract.ts";
 export type { EntitySuggestion, EntityType, ExtractResult, ExtractOptions } from "./extract.ts";
 export type { InjectionCheck } from "./injection.ts";
