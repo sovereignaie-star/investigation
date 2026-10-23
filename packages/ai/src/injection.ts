@@ -42,7 +42,7 @@ export function detectInjection(text: string): InjectionCheck {
 const OPEN_MARKER = "<<<UNTRUSTED_EVIDENCE";
 const CLOSE_MARKER = "END_OF_UNTRUSTED_EVIDENCE>>>";
 
-const neutralizeMarkers = (text: string): string => text.replace(/</g, "‹").replace(/>/g, "›");
+export const neutralizeMarkers = (text: string): string => text.replace(/</g, "‹").replace(/>/g, "›");
 
 /**
  * بناء رسائل التلخيص بحصر بنيوي: نصوص الأدلة بيانات غير موثوقة داخل العلامات،

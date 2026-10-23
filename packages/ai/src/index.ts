@@ -220,7 +220,9 @@ import type { ChatMessage } from "./summarize-types.ts";
 
 export { summarizeEvidence } from "./summarize.ts";
 export type { SummarizeResult, SummaryClaim, SummarizeOptions } from "./summarize.ts";
-export { detectInjection, buildSummarizeMessages } from "./injection.ts";
+export { detectInjection, buildSummarizeMessages, neutralizeMarkers } from "./injection.ts";
+export { suggestEntities, ENTITY_TYPES } from "./extract.ts";
+export type { EntitySuggestion, EntityType, ExtractResult, ExtractOptions } from "./extract.ts";
 export type { InjectionCheck } from "./injection.ts";
 export type { ChatMessage, EvidenceStatement } from "./summarize-types.ts";
 

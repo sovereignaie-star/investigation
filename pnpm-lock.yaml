@@ -734,6 +734,10 @@ importers:
         version: 0.31.11
 
   packages/ai:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
