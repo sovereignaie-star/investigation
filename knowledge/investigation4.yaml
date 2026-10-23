@@ -1,0 +1,88 @@
+# استُخرج آلياً من attached_assets/legacy/Investigation4.py (P5-009) — لا يُعدل يدوياً؛ عدّل scripts/gen-knowledge.mjs ثم أعد التوليد.
+# الأصل: 16 بنداً؛ بعد التنقية (إزالة التكرار): 16.
+
+source:
+  file: "Investigation4.py"
+  sha256: 9b39ab4249f0d8bf6d7a48327f040bd5a3acd9283764c592b85bbb972c36b4f3
+items:
+  - id: KN-049
+    title: "SymmetricEncryption"
+    description: "التشفير المتماثل - جميع الخوارزميات"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-050
+    title: "AsymmetricEncryption"
+    description: "التشفير غير المتماثل - جميع الخوارزميات"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-051
+    title: "HashFunctions"
+    description: "دوال التجزئة - جميع الخوارزميات"
+    classification: مقبول
+    reason: "دوال التجزئة — أداة تحقق وتوثيق سلامة أساسية في المنتج"
+    playbook: PB-04
+  - id: KN-052
+    title: "KeyDerivationFunctions"
+    description: "مشتقات المفاتيح"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-053
+    title: "CommunicationProtocols"
+    description: "بروتوكولات تشفير الاتصالات"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-054
+    title: "HardwareEncryption"
+    description: "تشفير الأجهزة والعتاد"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-055
+    title: "DataEncryption"
+    description: "تشفير البيانات بجميع حالاتها"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-056
+    title: "InformationEncryption"
+    description: "تشفير المعلومات - إخفاء، إثباتات، مشاركة"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-057
+    title: "FirewallEncryption"
+    description: "تشفير جدران الحماية"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-058
+    title: "MilitaryEncryption"
+    description: "التشفير العسكري والاستخباراتي"
+    classification: خارج الحدود
+    reason: "تشفير عسكري/تسليح — خارج نطاق المنتج المدني"
+  - id: KN-059
+    title: "QuantumEncryption"
+    description: "التشفير الكمومي وما بعد الكم"
+    classification: خارج الحدود
+    reason: "انضباط استخباراتي عدائي (IMINT/ELINT/MASINT/CYBINT/كمومي) — خارج نطاق أداة تحقيق دفاعية"
+  - id: KN-060
+    title: "BiologicalEncryption"
+    description: "التشفير البيولوجي والجيني"
+    classification: خارج الحدود
+    reason: "تشفير استشرافي (بيولوجي/عصبي/خيالي) — غير قابل للتعليم كمنهجية"
+  - id: KN-061
+    title: "NeuralEncryption"
+    description: "التشفير العصبي والإدراكي"
+    classification: خارج الحدود
+    reason: "تشفير استشرافي (بيولوجي/عصبي/خيالي) — غير قابل للتعليم كمنهجية"
+  - id: KN-062
+    title: "SciFiEncryption"
+    description: "تشفير الخيال العلمي والنظري البعيد"
+    classification: خارج الحدود
+    reason: "تشفير استشرافي (بيولوجي/عصبي/خيالي) — غير قابل للتعليم كمنهجية"
+  - id: KN-063
+    title: "DarkWebEncryption"
+    description: "تشفير الدارك ويب والديب ويب"
+    classification: خارج الحدود
+    reason: "تشفير دارك ويب — خارج نطاق المصادر العامة"
+  - id: KN-064
+    title: "CryptoAttacks"
+    description: "اختراق جميع أنظمة التشفير"
+    classification: خارج الحدود
+    reason: "هجمات كسر تشفير — معرفة هجومية خارج حدود المنتج الدفاعي"
