@@ -7,7 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "gen:names": "node scripts/gen-name-pairs.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:"
