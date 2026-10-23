@@ -27,7 +27,7 @@ export interface ReportIdentity {
 
 /* --------------------------------------------------------------- Markdown */
 
-const mdEscape = (s: string): string => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
+const mdEscape = (s: string): string => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 
 const evidenceNumberOf = (doc: ReportDocument, id: string): number => doc.evidence.findIndex((e) => e.id === id) + 1;
 
