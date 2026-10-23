@@ -411,4 +411,6 @@ export function auditReportHtml(html: string): CitationAudit {
 }
 
 export { renderReportMarkdown, renderGraphSvg, renderGraphPng } from "./export.ts";
+export { buildDossierReport, buildTimelineReport, buildComparisonReport } from "./templates.ts";
+export type { DossierInput, TimelineInput, TimelineEvent, ComparisonInput } from "./templates.ts";
 export type { ReportIdentity, GraphData, GraphNode, GraphEdge } from "./export.ts";
