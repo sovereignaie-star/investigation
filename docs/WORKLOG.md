@@ -5505,3 +5505,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `summarizeEvidence` — تعليم مقيد بالأدلة + تحقق حتمي مستقل (إحالة قائمة وسند مضمون بتراكب كلمات المحتوى) وقياس ≤ 2% غير مدعوم مع إعلان الجمل غير المدعومة.
 - **الجودة:** T-SUM-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2909/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-013)؛ docs/STATUS.md (P5-013 → done)؛ docs/evidence/2026-10-23-P5-013-red.md.
+
+## 2026-10-23 — P5-013 إغلاق الصف — الدمج والبوابات [P5-013]
+
+- **الدمج:** PR #369 دُمج squash في main عند `376ca3c` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
+- **المصدر/المرجع:** docs/STATUS.md (P5-013 → done مع أدلة الدمج)؛ PR #369؛ إيداع الدمج `376ca3c`.
