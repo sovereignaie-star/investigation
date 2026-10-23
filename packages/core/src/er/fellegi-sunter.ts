@@ -1,3 +1,4 @@
+import { latinMatchesArabic, normalizeArabicName } from "@ir/arabic";
 /**
  * P4-004 (ROADMAP 5.14 الأوزان / D9) — the simplified Fellegi-Sunter model.
  *
@@ -48,8 +49,20 @@ export function parseDate(s: string): { y: number; m?: number; d?: number } | un
   return undefined;
 }
 
-function nameLevel(a: ErRecord, b: ErRecord): Level {
+const ARABIC_RE = /[\u0600-\u06FF]/;
+
+/** P5-003: مستوى مقارنة الاسم — مُصدَّر لاختبارات التكامل العربي. */
+export function nameLevel(a: ErRecord, b: ErRecord): Level {
   if (!a.name || !b.name) return "missing";
+  // P5-003: عبر الكتابتين — مطابق P5-002 الراجع هو الحكم (ثنائي صادق:
+  // إما تُنتج الكتابةُ اللاتينية الاسمَ العربي أو لا؛ لا «تشابه جزئي» وهمياً)
+  const aAr = ARABIC_RE.test(a.name);
+  const bAr = ARABIC_RE.test(b.name);
+  if (aAr !== bAr) {
+    const latin = aAr ? b.name : a.name;
+    const arabic = aAr ? a.name : b.name;
+    return latinMatchesArabic(latin, normalizeArabicName(arabic)) ? "agree" : "disagree";
+  }
   const jw = jaroWinkler(erComparisonKey(a.name), erComparisonKey(b.name));
   if (jw >= NAME_AGREE) return "agree";
   if (jw >= NAME_PARTIAL) return "partial";
@@ -197,13 +210,6 @@ export function scorePair(a: ErRecord, b: ErRecord, weights: FsWeights): MatchSu
   // The guarantee lives in the DECISION RULE, not in the size of the constant
   // (T-ER-006b: disagreement weights can never cancel it). The score stays the
   // honest sum of reason weights; the suggestion is still a SUGGESTION.
-  const decision =
-    shared !== undefined
-      ? "strong"
-      : score >= STRONG_THRESHOLD
-        ? "strong"
-        : score >= REVIEW_THRESHOLD
-          ? "review"
-          : "none";
+  const decision = shared !== undefined ? "strong" : score >= STRONG_THRESHOLD ? "strong" : score >= REVIEW_THRESHOLD ? "review" : "none";
   return { aId: a.id, bId: b.id, score, decision, reasons };
 }

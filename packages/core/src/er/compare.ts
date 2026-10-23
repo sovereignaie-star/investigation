@@ -1,33 +1,25 @@
+import { normalizeArabicName } from "@ir/arabic";
+
 /**
  * P4-004 (ROADMAP 5.14) — comparison primitives: Jaro-Winkler and the Arabic
  * comparison key.
  *
  * The comparison key is DECLARED APPROXIMATE — it is a similarity aid, never an
  * identity (identity is `canonicalKey` from P1-007). The folds are the minimal
- * set 5.14 needs; the full Arabic normalization/transliteration program is
- * P5-002/P5-003 and is deliberately NOT preempted here.
+ * set 5.14 needs. P5-003: Arabic text now goes through the FULL P5-001
+ * normalization (`normalizeArabicName`) — the minimal fold is superseded.
  */
 
-/** Matches: a (globalized) Regex — the ranges of Arabic diacritics + tatweel. */
-const DIACRITICS = /[\u{064B}-\u{0652}\u{0670}\u{0640}]/gu;
-/** Alef variants fold to plain alef; taa marbuta to haa; alef maqsura to yaa. */
-const ALEF = /\u{0622}|\u{0623}|\u{0625}/gu;
+const ARABIC = /[\u0600-\u06FF]/;
 
 /**
- * The Arabic/Latin comparison key: strip diacritics and tatweel, fold alef
- * variants (أ إ آ → ا), taa marbuta (ة → ه), alef maqsura (ى → ي), lowercase
- * Latin, collapse whitespace. Pure and total.
+ * The Arabic/Latin comparison key: Arabic text goes through the FULL P5-001
+ * normalization (`normalizeArabicName` — the P4-004 minimal fold superseded);
+ * Latin text is lowercased. Whitespace collapsed, trimmed. Pure and total.
  */
 export function erComparisonKey(text: string): string {
-  return text
-    .normalize("NFKC")
-    .replace(DIACRITICS, "")
-    .replace(ALEF, "\u0627")
-    .replace(/\u0629/gu, "\u0647")
-    .replace(/\u0649/gu, "\u064A")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  const normalized = ARABIC.test(text) ? normalizeArabicName(text) : text.toLowerCase().replace(/\s+/g, " ").trim();
+  return normalized.replace(/\s+/g, " ").trim();
 }
 
 /** The Jaro transposition count over the matched flags. */

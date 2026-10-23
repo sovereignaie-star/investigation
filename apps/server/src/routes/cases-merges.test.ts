@@ -158,7 +158,7 @@ describe("P4-005 merge review API (UC-11)", () => {
     const res = await getSuggestions(call, caseId);
     expect(res.status).toBe(200);
     const body = res.body as SuggestionsWire;
-    expect(body.modelVersion).toBe("er-model/1");
+    expect(body.modelVersion).toBe("er-model/2"); // P5-003: ترقية معلنة للتطبيع العربي الكامل
     expect(body.caseVersion).toBeGreaterThan(0);
     const pair = body.suggestions.find((s) => [s.aId, s.bId].sort().join("|") === [a, b].sort().join("|"));
     expect(pair).toBeDefined();

@@ -1,3 +1,4 @@
+import { nameSkeleton } from "@ir/arabic";
 /**
  * P4-004 (ROADMAP 5.14 الحجب) — blocking: the candidate-pair generator.
  *
@@ -23,6 +24,13 @@ export function blockKeys(record: ErRecord): string[] {
   const k3 = erComparisonKey(record.name).slice(0, 3);
   if (k3.length > 0) {
     keys.push(`name3:${k3}:${(record.country ?? "").toLowerCase()}`);
+  }
+  // P5-003: الهيكل الصامت المحايد للكتابة — مفتاح الحجب العابر للكتابتين
+  // (محمد وMuhammad يشتركان في mhmd). خشن بقصد (الحجب يستبدل الدقة بالاستدعاء
+  // والمقيّم يرشّح) — يُضاف إلى مفاتيح الأصل لا يستبدلها.
+  const skel = nameSkeleton(record.name).replace(/\s+/g, "").slice(0, 3);
+  if (skel.length > 0) {
+    keys.push(`skel3:${skel}:${(record.country ?? "").toLowerCase()}`);
   }
   return keys;
 }
