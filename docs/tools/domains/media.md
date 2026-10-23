@@ -1,8 +1,8 @@
 # الصور والفيديو والتحقق البصري (Image, video & visual verification)
 
-> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-10. لا تحرّر هذا الملف يدوياً.
+> مُولَّد آلياً بواسطة `tools/catalog/build.py` بتاريخ 2026-10-23. لا تحرّر هذا الملف يدوياً.
 
-عدد الأدوات: **920**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
+عدد الأدوات: **922**. الإدراج هنا ترشيح لا اعتماد؛ انظر `docs/tools/README.md`.
 
 | المعرّف | الأداة | الطبقة | النوع | الحساسية | حالة الرابط | المصادقة | الوصف |
 |---|---|---|---|---|---|---|---|
@@ -199,6 +199,7 @@
 | TL-900dc7ae | [ExifCleaner](https://github.com/szTheory/exifcleaner) | داعمة | oss | — | reachable | — | Removes metadata from images and documents. |
 | TL-d74b8594 | [ExifEditor](https://exifeditor.io) | أساسية | web | — | reachable | — | — |
 | TL-08972ab1 | [exifLooter](https://github.com/aydinnyunus/exifLooter) | أساسية | oss | — | restricted | — | Quick #go tool to automate work with EXIF data |
+| TL-f6a3c4db | [ExifReader](https://github.com/mattiasw/ExifReader) | داعمة | oss | — | unchecked | — | JavaScript EXIF/XMP/GPS metadata parser for images (MPL-2.0; adopted by owner decision 2026-10-16 for TR-031). |
 | TL-645c328d | [ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool) | أساسية | web | — | reachable | — | — |
 | TL-d91b674b | [ExifTool (T)](https://exiftool.org/) | أساسية | web | — | reachable | — | Extract metadata (EXIF, GPS, timestamps) from photos and videos. |
 | TL-96a6a81c | [ExifViewer](https://www.exifviewer.org/) | أساسية | web | — | reachable | — | — |
@@ -433,6 +434,7 @@
 | TL-0b65cf1b | [Izitru](http://www.izitru.com/) | أساسية | web | — | reachable | — | — |
 | TL-f146f0db | [Jeffrey's Exif Viewer](https://regex.info/blog/) | أساسية | web | — | reachable | — | — |
 | TL-ac7369e0 | [Jeffreys Image Metadata Viewer](http://regex.info//exif.cgi) | أساسية | web | — | unreachable | — | — |
+| TL-060b80df | [jimp](https://github.com/jimp-dev/jimp) | داعمة | oss | — | unchecked | — | Image processing library written entirely in JavaScript (MIT; adopted by owner decision 2026-10-16 for TR-032 — pure JS, bundles into the sandbox eval source; r |
 | TL-a3a8b555 | [jimpl](https://jimpl.com/) | أساسية | web | — | reachable | — | Simple online tool for checking image metadata (no install required). |
 | TL-bae62679 | [JPEGsnoop](https://sourceforge.net/projects/jpegsnoop) | أساسية | web | — | restricted | — | — |
 | TL-c92f60c1 | [JPEGsnoop (T)](https://www.impulseadventure.com/photo/jpeg-snoop.html) | أساسية | web | — | reachable | — | — |

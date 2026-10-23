@@ -315,6 +315,11 @@ export const en = {
   "workbench.timeline.kind.negative": "negative observation",
   "workbench.timeline.kind.error": "error observation",
   "workbench.timeline.evidenceTitle": "evidence: {id}",
+  "workbench.timeline.dateFormat.label": "Date format",
+  "workbench.timeline.dateFormat.raw": "Raw (ISO)",
+  "workbench.timeline.dateFormat.greg": "Gregorian",
+  "workbench.timeline.dateFormat.hijri": "Hijri",
+  "workbench.timeline.dateFormat.both": "Both",
   // ---- geo map (P4-012 — MapLibre, configurable tiles)
   "workbench.map.ariaLabel": "Geographic map",
   "workbench.map.heading": "Geographic map (MapLibre — configurable tiles)",

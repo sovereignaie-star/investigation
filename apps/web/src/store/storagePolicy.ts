@@ -1,10 +1,10 @@
 /**
  * Browser storage policy (P1-021, D-033): no case data in localStorage or sessionStorage. Older builds persisted the
  * whole graph under "investigation-store" (Zustand persist); it is deleted once at start-up. Only UI preferences may
- * ever be stored locally, under keys listed in UI_PREFERENCE_KEYS (none today).
+ * ever be stored locally, under keys listed in UI_PREFERENCE_KEYS (P5-004: the date-display preference).
  */
 export const LEGACY_CASE_STORAGE_KEYS = ["investigation-store"] as const;
-export const UI_PREFERENCE_KEYS: readonly string[] = [];
+export const UI_PREFERENCE_KEYS: readonly string[] = ["ir.ui.date-format"];
 
 type MinimalStorage = Pick<Storage, "getItem" | "removeItem">;
 

@@ -445,6 +445,9 @@ importers:
       '@fontsource-variable/noto-sans-arabic':
         specifier: ^5.3.0
         version: 5.3.0
+      '@ir/arabic':
+        specifier: workspace:*
+        version: link:../../packages/arabic
       '@ir/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -731,6 +734,10 @@ importers:
         version: 0.31.11
 
   packages/arabic:
+    dependencies:
+      '@umalqura/core':
+        specifier: 0.0.7
+        version: 0.0.7
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -2717,6 +2724,9 @@ packages:
   '@typescript-eslint/visitor-keys@8.72.0':
     resolution: {integrity: sha512-E2mroviasaWecDzTGiGMtuEguuLVOeRggnrIn93CJuxYJzQBHbyymlT08aVQydbBal5538o+JkBKXh2sRuCyIA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@umalqura/core@0.0.7':
+    resolution: {integrity: sha512-o8G1J2KRzM/Hal5Taln1QHzhfJsE4+8hQH087Pl6C0ZjPhmw7tjjuejjbgj++Lc2BP4kRDswTJ3J5TuGGybA2Q==}
 
   '@vitejs/plugin-react@6.1.2':
     resolution: {integrity: sha512-fhJNGUdscQa4HkI0xFxwonWyhnVReCPDbXI7FH7jmzpnVCrFQI7PRrhWecO263610vOrs9tr2Y4xcf8uAdFxbw==}
@@ -6686,6 +6696,8 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.72.0
       eslint-visitor-keys: 5.0.1
+
+  '@umalqura/core@0.0.7': {}
 
   '@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@25.6.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:

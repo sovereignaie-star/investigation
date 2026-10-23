@@ -309,6 +309,11 @@ export const ar = {
   "workbench.timeline.kind.negative": "رصد سلبي",
   "workbench.timeline.kind.error": "رصد خطأ",
   "workbench.timeline.evidenceTitle": "دليل: {id}",
+  "workbench.timeline.dateFormat.label": "صيغة التاريخ",
+  "workbench.timeline.dateFormat.raw": "خام (ISO)",
+  "workbench.timeline.dateFormat.greg": "ميلادي",
+  "workbench.timeline.dateFormat.hijri": "هجري",
+  "workbench.timeline.dateFormat.both": "الاثنان",
   // ---- geo map (P4-012 — MapLibre، بلاطات قابلة للتهيئة)
   "workbench.map.ariaLabel": "الخريطة الجغرافية",
   "workbench.map.heading": "الخريطة الجغرافية (MapLibre — بلاطات قابلة للتهيئة)",

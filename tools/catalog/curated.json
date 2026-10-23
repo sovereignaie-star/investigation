@@ -460,5 +460,11 @@
     "url": "https://github.com/jimp-dev/jimp",
     "cat": "Images / Metadata",
     "desc": "Image processing library written entirely in JavaScript (MIT; adopted by owner decision 2026-10-16 for TR-032 — pure JS, bundles into the sandbox eval source; replaces the stopped sharp round: L-18)."
+  },
+  {
+    "name": "@umalqura/core",
+    "url": "https://github.com/umalqura/umalqura",
+    "cat": "Text / Language",
+    "desc": "Zero-dependency Hijri (Umm al-Qura) calendar conversion library for JavaScript (MIT; adopted 2026-10-23 for P5-004 — official Umm al-Qura tables 1356..1500 AH, see L-72)."
   }
 ]

@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:"
+  },
+  "dependencies": {
+    "@umalqura/core": "0.0.7"
   }
 }

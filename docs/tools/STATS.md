@@ -1,16 +1,16 @@
 # إحصاءات كتالوج الأدوات
 
-> مُولَّد آلياً بتاريخ 2026-10-10 (فحص الروابط: لا، أُعيد استعمال النتيجة السابقة). لا تحرّر يدوياً.
+> مُولَّد آلياً بتاريخ 2026-10-23 (فحص الروابط: لا، أُعيد استعمال النتيجة السابقة). لا تحرّر يدوياً.
 
 | المقياس | القيمة |
 |---|---|
-| إجمالي الأدوات الفريدة (بعد إزالة التكرار) | **10881** |
-| روابط تستجيب (2xx/3xx) | 7285 |
+| إجمالي الأدوات الفريدة (بعد إزالة التكرار) | **10884** |
+| روابط تستجيب (2xx/3xx) | 7286 |
 | روابط موجودة لكنها مقيّدة للفحص الآلي (401/403/429…) | 2473 |
-| المجموع القابل للمتابعة (تستجيب + مقيّدة) | **9758** |
+| المجموع القابل للمتابعة (تستجيب + مقيّدة) | **9759** |
 | روابط لم تستجب وقت الفحص | 1123 |
 | طبقة أساسية (من قوائم OSINT المتخصصة) | 6557 |
-| طبقة داعمة (واجهات وجغرافيا وتحليل شبكات وأمن) | 4324 |
+| طبقة داعمة (واجهات وجغرافيا وتحليل شبكات وأمن) | 4327 |
 | مستبعدة بسياسة المنتج (أدوات هجومية أو مراقبة أشخاص) | 199 |
 | مستبعدة لعدم الصلة (فئات واجهات ترفيهية وغيرها) | 591 |
 | موسومة ببوابة الأشخاص الطبيعيين | 1869 |
@@ -21,7 +21,7 @@
 |---|---|---|---|
 | `geo` | الجغرافيا والخرائط والأقمار الصناعية | 1689 | [domains/geo.md](domains/geo.md) |
 | `general` | عام ومتنوع | 1400 | [domains/general.md](domains/general.md) |
-| `media` | الصور والفيديو والتحقق البصري | 920 | [domains/media.md](domains/media.md) |
+| `media` | الصور والفيديو والتحقق البصري | 922 | [domains/media.md](domains/media.md) |
 | `social` | وسائل التواصل الاجتماعي والمراسلة | 775 | [domains/social.md](domains/social.md) |
 | `domain` | النطاقات وIP وDNS والشهادات | 600 | [domains/domain.md](domains/domain.md) |
 | `threat` | استخبارات التهديدات والبرمجيات الخبيثة | 520 | [domains/threat.md](domains/threat.md) |
@@ -34,7 +34,7 @@
 | `email_phone` | البريد الإلكتروني والهاتف | 346 | [domains/email_phone.md](domains/email_phone.md) |
 | `forensics` | الجنائيات الرقمية والاستجابة للحوادث | 345 | [domains/forensics.md](domains/forensics.md) |
 | `people` | الأشخاص وأسماء المستخدمين | 270 | [domains/people.md](domains/people.md) |
-| `language` | العربية واللغويات والترجمة | 266 | [domains/language.md](domains/language.md) |
+| `language` | العربية واللغويات والترجمة | 267 | [domains/language.md](domains/language.md) |
 | `news` | الأخبار والإعلام والتحقق من المعلومات | 258 | [domains/news.md](domains/news.md) |
 | `crypto` | العملات الرقمية وسلاسل الكتل | 248 | [domains/crypto.md](domains/crypto.md) |
 | `darkweb` | الويب المظلم وTor | 224 | [domains/darkweb.md](domains/darkweb.md) |
@@ -47,7 +47,7 @@
 | النوع | المعنى | العدد |
 |---|---|---|
 | `web` | خدمة ويب | 6735 |
-| `oss` | مستودع مفتوح المصدر | 2537 |
+| `oss` | مستودع مفتوح المصدر | 2540 |
 | `api` | واجهة برمجية | 1475 |
 | `dataset` | مجموعة بيانات | 134 |
 
@@ -68,7 +68,7 @@
 | [iipc/awesome-web-archiving](https://github.com/iipc/awesome-web-archiving) | 177 |
 | [cugu/awesome-forensics](https://github.com/cugu/awesome-forensics) | 164 |
 | [01walid/awesome-arabic](https://github.com/01walid/awesome-arabic) | 113 |
-| [investigation-room/curated](https://github.com/sovereignaie-star/investigation/blob/main/tools/catalog/curated.json) | 75 |
+| [investigation-room/curated](https://github.com/sovereignaie-star/investigation/blob/main/tools/catalog/curated.json) | 78 |
 | [Curated-Awesome-Lists/awesome-arabic-nlp](https://github.com/Curated-Awesome-Lists/awesome-arabic-nlp) | 51 |
 | [jbmusso/awesome-graph](https://github.com/jbmusso/awesome-graph) | 50 |
 | [jivoi/awesome-osint](https://github.com/jivoi/awesome-osint) | 34 |

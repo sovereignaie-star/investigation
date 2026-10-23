@@ -79,6 +79,7 @@
   "dependencies": {
     "@fontsource-variable/noto-sans-arabic": "^5.3.0",
     "@ir/core": "workspace:*",
+    "@ir/arabic": "workspace:*",
     "@ir/i18n": "workspace:*",
     "@ir/interop": "workspace:*",
     "@ir/schema": "workspace:*",
