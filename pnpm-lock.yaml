@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@resvg/resvg-js':
+      specifier: ^2.6.2
+      version: 2.6.2
     '@tailwindcss/vite':
       specifier: ^4.3.3
       version: 4.3.3
@@ -999,6 +1002,9 @@ importers:
       '@ir/transform-sandbox':
         specifier: workspace:*
         version: link:../sandbox
+      '@resvg/resvg-js':
+        specifier: 'catalog:'
+        version: 2.6.2
       esbuild:
         specifier: 0.28.2
         version: 0.28.2

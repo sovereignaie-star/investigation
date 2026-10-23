@@ -7,7 +7,7 @@
     "ir": "./dist/ir.mjs"
   },
   "scripts": {
-    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --external:esbuild --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __irCreateRequire } from 'node:module';\nconst require = __irCreateRequire(import.meta.url);\" && node -e \"require('node:fs').copyFileSync('../sandbox/src/seccomp-launcher.c','dist/seccomp-launcher.c')\"",
+    "build": "esbuild src/ir.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ir.mjs --external:esbuild --external:@resvg/resvg-js --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __irCreateRequire } from 'node:module';\nconst require = __irCreateRequire(import.meta.url);\" && node -e \"require('node:fs').copyFileSync('../sandbox/src/seccomp-launcher.c','dist/seccomp-launcher.c')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

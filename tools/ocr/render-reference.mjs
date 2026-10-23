@@ -25,7 +25,7 @@ const { Resvg } = require("@resvg/resvg-js");
 const AR_FONT = join(repo, "packages", "transforms", "ocr", "fonts", "NotoNaskhArabic-Regular.ttf");
 const EN_FONT = join(repo, "packages", "transforms", "ocr", "fonts", "NotoSans-Regular.ttf");
 
-const SIZE = 36;
+const SIZE = 44;
 
 /** تصيير حتمي: كل سطر عنصر text مستقل، والعرض محسوب من أطول سطر. */
 function render(text, fontFile) {
