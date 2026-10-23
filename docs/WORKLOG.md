@@ -5544,3 +5544,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `loadTrainingScenario` (YAML بمخطط صارم، فشل مغلق) + `createTrainingWorld` (عالم على خادمة المحاكاة — بلا شبكة) + `gradeTrainingRun` (تصحيح حتمي بنتيجة مرجعية بتشخيص الفروق).
 - **الجودة:** T-TRN-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2927/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-016/UC-23)؛ docs/STATUS.md (P5-016 → done)؛ docs/evidence/2026-10-23-P5-016-red.md.
+
+## 2026-10-23 — P5-016 إغلاق الصف — الدمج والبوابات [P5-016]
+
+- **الدمج:** PR #375 دُمج squash في main عند `b63cf58` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
+- **المصدر/المرجع:** docs/STATUS.md (P5-016 → done مع أدلة الدمج)؛ PR #375؛ إيداع الدمج `b63cf58`.
