@@ -5412,3 +5412,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 - فشل بوابات build/docker/e2e/gates/zap في PR #355: `tsc` في CI لا يجد تعريفات 'node' للحزمة الجديدة (عزل pnpm لا يرفع الأنواع) — أُضيفت `@types/node` (catalog) اعتمادية تطوير للحزمة. محلياً كان يمر بالرفع العرضي.
 - **المصدر/المرجع:** سجل فشل build في PR #355؛ docs/STATUS.md (صف P5-007).
+
+## 2026-10-23 — P5-007 إغلاق الصف — الدمج والبوابات [P5-007]
+
+- **الدمج:** PR #355 دُمج squash في main عند `75b5af6` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
+- **المصدر/المرجع:** docs/STATUS.md (P5-007 → done مع أدلة الدمج)؛ PR #355؛ إيداع الدمج `75b5af6`.
