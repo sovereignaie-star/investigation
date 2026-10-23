@@ -5602,3 +5602,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `renderReportMarkdown` (حتمي، إحالات وبصمات وتصنيف) + `renderGraphSvg`/`renderGraphPng` (تخطيط شبكي حتمي، rtl، خط عربي مضمّن OFL للتنقيط — بلا خطوط نظام) + هوية التقرير (علامة مائية في كل صفحة: طبقة ثابتة في HTML ورأس في DOCX، تصنيف في كل الصيغ، شعار ولون).
 - **الجودة:** T-EXP-001..008 (8 اختبارات) خضراء؛ الحزمة الكاملة 2965/0/6 (+8)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-022)؛ docs/STATUS.md (P5-022 → done)؛ docs/evidence/2026-10-23-P5-022-red.md.
+
+## 2026-10-23 — P5-022 إصلاح حارس CodeQL — UUIDv5 بمعيار RFC 4122 [P5-022]
+
+- **الحارس كشف، الكود أُصلح، الحارس لم يُعطل:** كشف CodeQL ثغرة عالية الخطورة في كود سابق (ليس من تغييرات المهمة): `packages/interop/src/stix/stix.ts` اشتق UUIDv5 بتدوير SHA-1 يدوي (`createHash("sha1")`).
+- **الإصلاح:** الاشتقاق بمعيار RFC 4122 عبر مكتبة `uuid` الرسمية (v5) — المعرّفات تغيرت تبعاً لذلك.
+- **إعادة المباركة الرسمية:** الحزمة المرجعية المجمدة أُعيد توليدها (`fixtures/stix/reference-bundle.json`) **وباركها المدقق الرسمي مجدداً** (stix2-validator 3.3.1 من OASIS مع مخططات cti-stix2-json-schemas الرسمية: «[+] STIX JSON: Valid» — التقرير المجدد في `fixtures/stix/validation-report.json` وتقرير `--check` متطابق)، واختبار التجميد المرجعي أخضر (interop 50/50).
+- **المصدر/المرجع:** docs/evidence/2026-10-23-P5-022-red.md (قسم إصلاح الحارس)؛ tools/stix/validate_reference.py؛ PR #383.
