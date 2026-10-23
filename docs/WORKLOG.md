@@ -5365,3 +5365,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الجودة:** 2824/0/6 (+30)؛ lint/typecheck/build/governance exit 0.
 - **حد معلن:** L-72 (نطاق أم القرى ومرجعية الجداول دون ICU).
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-004)؛ docs/STATUS.md (P5-004 → done، المرحلة 5: 4/27)؛ docs/evidence/2026-10-23-P5-004-red.md.
+
+## 2026-10-23 — P5-004 إغلاق الصف — الدمج والبوابات [P5-004]
+
+- **الدمج:** PR #349 دُمج squash في main عند `70cf391` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
+- **المصدر/المرجع:** docs/STATUS.md (P5-004 → done مع أدلة الدمج)؛ PR #349؛ إيداع الدمج `70cf391`.
