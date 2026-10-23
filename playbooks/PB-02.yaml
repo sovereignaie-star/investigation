@@ -1,0 +1,24 @@
+# PB-02 — فحص شركة (KYB) (الملحق C)
+# مدخل: اسم/رقم. خطوات أساسية: GLEIF، سجلات، مسؤولون، عقوبات، أخبار.
+# بوابة بشرية: قبل توسيع المسؤولين (أشخاص).
+id: PB-02
+title: فحص شركة (KYB)
+description: فحص كيان قانوني — الكيان والسجلات والعقوبات، والمسؤولون ببوابة بشرية
+input: company
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: gleif
+    transform: TR-021
+    input: playbook
+  - id: sanctions
+    transform: TR-025
+    input: gleif
+  - id: officers
+    transform: TR-022
+    input: gleif
+gates:
+  - id: before-officers
+    before: officers
+    reason: قبل توسيع المسؤولين (أشخاص)
+    requires: human_confirmation

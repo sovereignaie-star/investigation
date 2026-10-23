@@ -1,0 +1,24 @@
+# PB-05 — تحقق من صورة (الملحق C)
+# مدخل: صورة. خطوات أساسية: EXIF، تجزئة، بحث عكسي موجه، موقع، زمن الظل.
+# بوابة بشرية: قبل أي رفع خارجي (البحث العكسي يدوي بلا رفع آلي — TR-033).
+id: PB-05
+title: تحقق من صورة
+description: تحقق محلي من صورة — EXIF وتجزئة إدراكية، والبحث العكسي ببوابة بشرية
+input: image
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: exif
+    transform: TR-031
+    input: playbook
+  - id: phash
+    transform: TR-032
+    input: playbook
+  - id: reverse-search
+    transform: TR-033
+    input: phash
+gates:
+  - id: before-upload
+    before: reverse-search
+    reason: قبل أي رفع خارجي
+    requires: human_confirmation

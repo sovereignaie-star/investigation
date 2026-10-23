@@ -1,0 +1,22 @@
+# PB-07 — بنية تحتية لحملة تصيد (دفاعي) (الملحق C)
+# مدخل: نطاق/رابط. خطوات أساسية: شهادات، استضافة، نطاقات مشابهة، STIX. لا بوابات.
+id: PB-07
+title: بنية تحتية لحملة تصيد (دفاعي)
+description: تحليل دفاعي لبنية تحتية لخدمة تصيد — شهادات واستضافة وتاريخ DNS
+input: domain
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: certs
+    transform: TR-004
+    input: playbook
+  - id: ip-rdap
+    transform: TR-003
+    input: playbook
+  - id: asn
+    transform: TR-006
+    input: playbook
+  - id: dns-history
+    transform: TR-048
+    input: playbook
+gates: []

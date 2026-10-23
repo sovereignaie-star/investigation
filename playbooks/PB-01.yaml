@@ -1,0 +1,33 @@
+# PB-01 — فحص نطاق (الملحق C)
+# مدخل: نطاق. خطوات أساسية: DNS، RDAP، شهادات، أرشيف، IP/ASN، تقنيات.
+# بوابة بشرية: قبل أي محوّل بمفتاح مدفوع.
+id: PB-01
+title: فحص نطاق
+description: فحص أساسي شامل لنطاق قبل أي محوّل بمفتاح مدفوع
+input: domain
+scope:
+  natural_persons: out_of_scope
+steps:
+  - id: dns
+    transform: TR-001
+    input: playbook
+  - id: rdap-domain
+    transform: TR-002
+    input: playbook
+  - id: certs
+    transform: TR-004
+    input: playbook
+  - id: ip-asn
+    transform: TR-006
+    input: playbook
+  - id: archive
+    transform: TR-011
+    input: playbook
+  - id: shodan
+    transform: TR-008
+    input: playbook
+gates:
+  - id: before-paid
+    before: shodan
+    reason: قبل أي محوّل بمفتاح مدفوع
+    requires: human_confirmation
