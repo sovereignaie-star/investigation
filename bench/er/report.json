@@ -1,0 +1,61 @@
+{
+  "task": "P4-023",
+  "date": "2026-10-23",
+  "protocol": {
+    "referenceSet": "المجموعة المرجعية المجمدة للمحرك نفسه (seed 1337 eval / seed 42 train) — بلا مجموعة مبتكرة هنا",
+    "splits": "كل أداة ترى train (seed 42) للتدريب وتُقاس على eval (seed 1337)",
+    "metric": "F1 زوجي على أزواج الإيجابيات الموسومة (FP = زوج متوقع ليس في الحقيقة؛ FN = زوج حقيقي لم يُتنبأ)",
+    "thresholds": "core/er: عتبات معلنة (4.0/1.0)؛ splink: 0.5 الافتراضي؛ dedupe: 0.5 الافتراضي — لا ضبط على eval",
+    "supervision": "core/er: تقدير FS من train؛ splink: EM غير خاضع للإشراف + أولوية تجريبية من train؛ dedupe: أزواج موسومة من train — نفس مستوى الإشراف",
+    "timing": "زمن القرار (الاستدلال) على eval؛ التدريب يُبلَّغ منفصلاً"
+  },
+  "results": [
+    {
+      "tool": "core/er",
+      "tp": 137,
+      "fp": 3,
+      "fn": 0,
+      "precision": 0.9786,
+      "recall": 1,
+      "f1": 0.9892,
+      "resolveMedianMs": 21.4,
+      "suggestions": 140
+    },
+    {
+      "tool": "splink 5.0.0 (duckdb)",
+      "tp": 120,
+      "fp": 9,
+      "fn": 17,
+      "precision": 0.9302,
+      "recall": 0.8759,
+      "f1": 0.9023,
+      "trainSeconds": 2.27,
+      "predictSeconds": 0.08,
+      "predictions": 129
+    },
+    {
+      "tool": "dedupe 3.0.3",
+      "tp": 119,
+      "fp": 69,
+      "fn": 18,
+      "precision": 0.633,
+      "recall": 0.8686,
+      "f1": 0.7323,
+      "threshold": 0.5,
+      "trainSeconds": 1.8,
+      "predictSeconds": 0.03,
+      "scoredPairs": 2
+    }
+  ],
+  "zingg": {
+    "status": "not-runnable",
+    "reason": "Zingg تطبيق Java/Spark ولا يوجد Java runtime في بيئة المعيار ولا صلاحية root لتثبيته — موثق قصراً صادقاً؛ 'أفضلها' = أفضل الأدوات القابلة للتشغيل (splink وdedupe)"
+  },
+  "verdict": {
+    "bestOther": 0.9023,
+    "coreErF1": 0.9892,
+    "gap": 0.0869,
+    "accepted": true,
+    "rule": "core/er لا يقل عن أفضلها بأكثر من نقطتين (0.02)"
+  }
+}

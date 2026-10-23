@@ -1,0 +1,11 @@
+{
+  "tool": "core/er",
+  "tp": 137,
+  "fp": 3,
+  "fn": 0,
+  "precision": 0.9786,
+  "recall": 1,
+  "f1": 0.9892,
+  "resolveMedianMs": 12.8,
+  "suggestions": 140
+}
