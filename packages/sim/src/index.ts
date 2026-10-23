@@ -12,3 +12,4 @@
  * both P2-005 and P2-008.
  */
 export * from "./server.ts";
+export * from "./training.ts";

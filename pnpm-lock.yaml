@@ -937,6 +937,12 @@ importers:
       '@ir/engine':
         specifier: workspace:*
         version: link:../engine
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
