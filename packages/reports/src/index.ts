@@ -250,3 +250,116 @@ export async function renderReportPdf(_doc: ReportDocument): Promise<Buffer> {
     "PDF غير متاح بعد: P5-027 يقارن Typst/Playwright/React-PDF للعربية RTL والخطوط وروابط الإحالات ويقرر المحرك — لا توليد PDF قبل القرار (فشل-مغلق، موثق في DECLARED_LIMITS)",
   );
 }
+
+/* ---------------------------------------------------- P5-011: مدقق الإحالات */
+
+export type CitationIssue =
+  | { readonly kind: "uncited_statement"; readonly detail: string }
+  | { readonly kind: "dangling_citation"; readonly detail: string }
+  | { readonly kind: "orphan_evidence"; readonly detail: string };
+
+export interface CitationAudit {
+  readonly ok: boolean;
+  readonly statementCount: number;
+  readonly citedCount: number;
+  readonly issues: readonly CitationIssue[];
+}
+
+/**
+ * مدقق مستقل للنموذج — تأكيد خارج مسار البناء: عبارة بلا إحالة، إحالة معلقة،
+ * أو دليل يتيم كلها تُكشف هنا حتى لو افترض البناء أنه سليم.
+ */
+export function auditReportDocument(doc: ReportDocument): CitationAudit {
+  const ids = new Set(doc.evidence.map((e) => e.id));
+  const issues: CitationIssue[] = [];
+  let statementCount = 0;
+  let citedCount = 0;
+  for (const section of doc.sections) {
+    for (const statement of section.statements) {
+      statementCount += 1;
+      if (statement.citations.length === 0) {
+        issues.push({ kind: "uncited_statement", detail: statement.text.slice(0, 60) });
+        continue;
+      }
+      citedCount += 1;
+      for (const citation of statement.citations) {
+        if (!ids.has(citation.id)) issues.push({ kind: "dangling_citation", detail: citation.id });
+      }
+    }
+  }
+  const cited = new Set(doc.sections.flatMap((s) => s.statements.flatMap((st) => st.citations.map((c) => c.id))));
+  for (const e of doc.evidence) {
+    if (!cited.has(e.id)) issues.push({ kind: "orphan_evidence", detail: e.id });
+  }
+  return { ok: issues.length === 0, statementCount, citedCount, issues };
+}
+
+/**
+ * مدقق المخرج النهائي — يفحص HTML المُصيَّر لا افتراضات النموذج: كل فقرة عبارة
+ * يجب أن تحمل رابط إحالة إلى مرساة دليل موجودة، وكل دليل في الملحق مقتبس.
+ * مستقل عن القالب: يفحص أي HTML فيه فقرات ومراسي أدلة.
+ */
+/** مراسي الأدلة في الملحق: <li id="EV-...">. */
+function scanEvidenceAnchors(html: string): Set<string> {
+  const anchors = new Set<string>();
+  for (let i = html.indexOf('<li id="'); i !== -1; i = html.indexOf('<li id="', i + 1)) {
+    const start = i + 8;
+    const end = html.indexOf('"', start);
+    if (end === -1) break;
+    anchors.add(html.slice(start, end));
+  }
+  return anchors;
+}
+
+/** فقرات العبارات: <p ...>...</p> (تخطَّ <pre> ونحوها). */
+function scanParagraphs(html: string): { attrs: string; body: string }[] {
+  const paragraphs: { attrs: string; body: string }[] = [];
+  for (let i = html.indexOf("<p"); i !== -1; i = html.indexOf("<p", i + 1)) {
+    const gt = html.indexOf(">", i);
+    if (gt === -1) break;
+    if (html[i + 2] !== " " && html[i + 2] !== ">") continue;
+    const close = html.indexOf("</p>", gt);
+    if (close === -1) continue;
+    paragraphs.push({ attrs: html.slice(i + 2, gt), body: html.slice(gt + 1, close) });
+  }
+  return paragraphs;
+}
+
+/** معرّفات الإحالات داخل فقرة: href="#EV-...". */
+function scanCitations(body: string): string[] {
+  const citations: string[] = [];
+  for (let i = body.indexOf('href="#'); i !== -1; i = body.indexOf('href="#', i + 1)) {
+    const start = i + 7;
+    const end = body.indexOf('"', start);
+    if (end === -1) break;
+    citations.push(body.slice(start, end));
+  }
+  return citations;
+}
+
+export function auditReportHtml(html: string): CitationAudit {
+  const issues: CitationIssue[] = [];
+  const anchors = scanEvidenceAnchors(html);
+  const citedIds: string[] = [];
+  let statementCount = 0;
+  let citedCount = 0;
+  for (const { attrs, body } of scanParagraphs(html)) {
+    if (attrs.includes('class="case"')) continue;
+    statementCount += 1;
+    const citations = scanCitations(body);
+    if (citations.length === 0) {
+      issues.push({ kind: "uncited_statement", detail: body.slice(0, 60) });
+      continue;
+    }
+    citedCount += 1;
+    citedIds.push(...citations);
+    for (const id of citations) {
+      if (!anchors.has(id)) issues.push({ kind: "dangling_citation", detail: id });
+    }
+  }
+  const cited = new Set(citedIds);
+  for (const id of anchors) {
+    if (!cited.has(id)) issues.push({ kind: "orphan_evidence", detail: id });
+  }
+  return { ok: issues.length === 0 && statementCount > 0, statementCount, citedCount, issues };
+}

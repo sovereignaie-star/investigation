@@ -509,8 +509,8 @@ async function browserNetworkOnce(attempt: number): Promise<{ ok: boolean; measu
     browser.kill("SIGKILL");
     server.kill("SIGTERM");
     await Promise.all([new Promise((r) => browser.once("exit", r)), new Promise((r) => server.once("exit", r))]);
-    rmSync(data, { recursive: true, force: true });
-    rmSync(profile, { recursive: true, force: true });
+    rmSync(data, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   };
   try {
     const devtools = await new Promise<string>((resolve, reject) => {
