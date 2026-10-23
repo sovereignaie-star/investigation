@@ -1,0 +1,36 @@
+{
+  "task": "P5-025",
+  "date": "2026-10-24",
+  "protocol": "person-name detection coverage on 2832 unique gold names from fixtures/arabic/name-pairs.jsonl (isolated names, no sentence context). NOT general NER accuracy.",
+  "gold_names": 2832,
+  "results": [
+    {
+      "tool": "stanza",
+      "version": "1.15.0",
+      "names": 2832,
+      "person_detected": 1467,
+      "person_recall": 0.5180084745762712,
+      "mean_tokens_per_name": 2.753531073446328,
+      "seconds": 863.8,
+      "misses_sample_first20": []
+    },
+    {
+      "tool": "camel-tools (ner-arabert)",
+      "version": "camel_tools ner-arabert",
+      "names": 2832,
+      "person_detected": 1801,
+      "person_recall": 0.6359463276836158,
+      "mean_tokens_per_name": 2.4795197740112993,
+      "seconds": 1593.6,
+      "misses_sample_first20": []
+    },
+    {
+      "tool": "spacy (blank ar tokenizer)",
+      "names": 2832,
+      "note": "descriptive only - no official Arabic NER pipeline exists in explosion/spacy-models releases",
+      "person_recall": null,
+      "mean_tokens_per_name": 2.48
+    }
+  ],
+  "cross_check": "a second independent full run (earlier session) produced identical person_detected counts: stanza 1467/2832, camel 1801/2832"
+}
