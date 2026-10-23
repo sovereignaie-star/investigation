@@ -5457,3 +5457,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #361 دُمج squash في main عند `2b5af5b` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
 - **المصدر/المرجع:** docs/STATUS.md (P5-010 → done مع أدلة الدمج)؛ PR #361؛ إيداع الدمج `2b5af5b`.
+
+## 2026-10-23 — P5-011 مدقق الإحالات في التقارير [P5-011]
+
+- **الأحمر أولاً:** T-CIT-001..006 قبل وجود المدقق؛ الدليل: `docs/evidence/2026-10-23-P5-011-red.md`.
+- **التنفيذ:** `auditReportHtml` (المخرج النهائي — مستقل عن القالب) + `auditReportDocument` (النموذج — دفاع في العمق) بمشكلات مصنّفة.
+- **الجودة:** T-CIT-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2895/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-011)؛ docs/STATUS.md (P5-011 → done)؛ docs/evidence/2026-10-23-P5-011-red.md.

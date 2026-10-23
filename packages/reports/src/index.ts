@@ -250,3 +250,81 @@ export async function renderReportPdf(_doc: ReportDocument): Promise<Buffer> {
     "PDF غير متاح بعد: P5-027 يقارن Typst/Playwright/React-PDF للعربية RTL والخطوط وروابط الإحالات ويقرر المحرك — لا توليد PDF قبل القرار (فشل-مغلق، موثق في DECLARED_LIMITS)",
   );
 }
+
+/* ---------------------------------------------------- P5-011: مدقق الإحالات */
+
+export type CitationIssue =
+  | { readonly kind: "uncited_statement"; readonly detail: string }
+  | { readonly kind: "dangling_citation"; readonly detail: string }
+  | { readonly kind: "orphan_evidence"; readonly detail: string };
+
+export interface CitationAudit {
+  readonly ok: boolean;
+  readonly statementCount: number;
+  readonly citedCount: number;
+  readonly issues: readonly CitationIssue[];
+}
+
+/**
+ * مدقق مستقل للنموذج — تأكيد خارج مسار البناء: عبارة بلا إحالة، إحالة معلقة،
+ * أو دليل يتيم كلها تُكشف هنا حتى لو افترض البناء أنه سليم.
+ */
+export function auditReportDocument(doc: ReportDocument): CitationAudit {
+  const ids = new Set(doc.evidence.map((e) => e.id));
+  const issues: CitationIssue[] = [];
+  let statementCount = 0;
+  let citedCount = 0;
+  for (const section of doc.sections) {
+    for (const statement of section.statements) {
+      statementCount += 1;
+      if (statement.citations.length === 0) {
+        issues.push({ kind: "uncited_statement", detail: statement.text.slice(0, 60) });
+        continue;
+      }
+      citedCount += 1;
+      for (const citation of statement.citations) {
+        if (!ids.has(citation.id)) issues.push({ kind: "dangling_citation", detail: citation.id });
+      }
+    }
+  }
+  const cited = new Set(doc.sections.flatMap((s) => s.statements.flatMap((st) => st.citations.map((c) => c.id))));
+  for (const e of doc.evidence) {
+    if (!cited.has(e.id)) issues.push({ kind: "orphan_evidence", detail: e.id });
+  }
+  return { ok: issues.length === 0, statementCount, citedCount, issues };
+}
+
+/**
+ * مدقق المخرج النهائي — يفحص HTML المُصيَّر لا افتراضات النموذج: كل فقرة عبارة
+ * يجب أن تحمل رابط إحالة إلى مرساة دليل موجودة، وكل دليل في الملحق مقتبس.
+ * مستقل عن القالب: يفحص أي HTML فيه فقرات ومراسي أدلة.
+ */
+export function auditReportHtml(html: string): CitationAudit {
+  const paragraphs = [...html.matchAll(/<p([^>]*)>([\s\S]*?)<\/p>/g)];
+  const anchors = new Set([...html.matchAll(/<li id="(EV-[^"]+)"/g)].map((m) => m[1]));
+  const cited = new Set(paragraphs.flatMap(([, , body]) => [...body.matchAll(/href="#(EV-[^"]+)"/g)].map((m) => m[1])));
+  const issues: CitationIssue[] = [];
+  let statementCount = 0;
+  let citedCount = 0;
+  for (const [, attrs, body] of paragraphs) {
+    if (/class="case"/.test(attrs)) continue;
+    statementCount += 1;
+    const citations = [...body.matchAll(/href="#(EV-[^"]+)"/g)].map((m) => m[1]);
+    if (citations.length === 0) {
+      const text = body
+        .replace(/<[^>]+>/g, "")
+        .trim()
+        .slice(0, 60);
+      issues.push({ kind: "uncited_statement", detail: text });
+      continue;
+    }
+    citedCount += 1;
+    for (const id of citations) {
+      if (!anchors.has(id)) issues.push({ kind: "dangling_citation", detail: id });
+    }
+  }
+  for (const id of anchors) {
+    if (!cited.has(id)) issues.push({ kind: "orphan_evidence", detail: id });
+  }
+  return { ok: issues.length === 0 && statementCount > 0, statementCount, citedCount, issues };
+}
