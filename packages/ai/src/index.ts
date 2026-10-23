@@ -222,6 +222,8 @@ export { summarizeEvidence } from "./summarize.ts";
 export type { SummarizeResult, SummaryClaim, SummarizeOptions } from "./summarize.ts";
 export { detectInjection, buildSummarizeMessages, neutralizeMarkers } from "./injection.ts";
 export { suggestNextActions, PERSONAL_ENTITY_TYPES } from "./next-action.ts";
+export { answerCaseQuestion } from "./qa.ts";
+export type { QaResult, QaClaim, QaOptions } from "./qa.ts";
 export type {
   CaseEntity,
   CaseSnapshot,
