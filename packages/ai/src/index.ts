@@ -223,6 +223,16 @@ export type { SummarizeResult, SummaryClaim, SummarizeOptions } from "./summariz
 export { detectInjection, buildSummarizeMessages, neutralizeMarkers } from "./injection.ts";
 export { suggestNextActions, PERSONAL_ENTITY_TYPES } from "./next-action.ts";
 export { answerCaseQuestion } from "./qa.ts";
+export { createLocalEmbedProvider, buildSearchIndex, searchCase, serializeSearchIndex, deserializeSearchIndex } from "./semantic.ts";
+export type {
+  EmbedProvider,
+  LocalEmbedProviderOptions,
+  SearchItem,
+  SearchIndex,
+  SearchResult,
+  BuildIndexOptions,
+  SearchOptions,
+} from "./semantic.ts";
 export type { QaResult, QaClaim, QaOptions } from "./qa.ts";
 export type {
   CaseEntity,
