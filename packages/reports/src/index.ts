@@ -299,30 +299,65 @@ export function auditReportDocument(doc: ReportDocument): CitationAudit {
  * يجب أن تحمل رابط إحالة إلى مرساة دليل موجودة، وكل دليل في الملحق مقتبس.
  * مستقل عن القالب: يفحص أي HTML فيه فقرات ومراسي أدلة.
  */
+/** مراسي الأدلة في الملحق: <li id="EV-...">. */
+function scanEvidenceAnchors(html: string): Set<string> {
+  const anchors = new Set<string>();
+  for (let i = html.indexOf('<li id="'); i !== -1; i = html.indexOf('<li id="', i + 1)) {
+    const start = i + 8;
+    const end = html.indexOf('"', start);
+    if (end === -1) break;
+    anchors.add(html.slice(start, end));
+  }
+  return anchors;
+}
+
+/** فقرات العبارات: <p ...>...</p> (تخطَّ <pre> ونحوها). */
+function scanParagraphs(html: string): { attrs: string; body: string }[] {
+  const paragraphs: { attrs: string; body: string }[] = [];
+  for (let i = html.indexOf("<p"); i !== -1; i = html.indexOf("<p", i + 1)) {
+    const gt = html.indexOf(">", i);
+    if (gt === -1) break;
+    if (html[i + 2] !== " " && html[i + 2] !== ">") continue;
+    const close = html.indexOf("</p>", gt);
+    if (close === -1) continue;
+    paragraphs.push({ attrs: html.slice(i + 2, gt), body: html.slice(gt + 1, close) });
+  }
+  return paragraphs;
+}
+
+/** معرّفات الإحالات داخل فقرة: href="#EV-...". */
+function scanCitations(body: string): string[] {
+  const citations: string[] = [];
+  for (let i = body.indexOf('href="#'); i !== -1; i = body.indexOf('href="#', i + 1)) {
+    const start = i + 7;
+    const end = body.indexOf('"', start);
+    if (end === -1) break;
+    citations.push(body.slice(start, end));
+  }
+  return citations;
+}
+
 export function auditReportHtml(html: string): CitationAudit {
-  const paragraphs = [...html.matchAll(/<p([^>]*)>([\s\S]*?)<\/p>/g)];
-  const anchors = new Set([...html.matchAll(/<li id="(EV-[^"]+)"/g)].map((m) => m[1]));
-  const cited = new Set(paragraphs.flatMap(([, , body]) => [...body.matchAll(/href="#(EV-[^"]+)"/g)].map((m) => m[1])));
   const issues: CitationIssue[] = [];
+  const anchors = scanEvidenceAnchors(html);
+  const citedIds: string[] = [];
   let statementCount = 0;
   let citedCount = 0;
-  for (const [, attrs, body] of paragraphs) {
-    if (/class="case"/.test(attrs)) continue;
+  for (const { attrs, body } of scanParagraphs(html)) {
+    if (attrs.includes('class="case"')) continue;
     statementCount += 1;
-    const citations = [...body.matchAll(/href="#(EV-[^"]+)"/g)].map((m) => m[1]);
+    const citations = scanCitations(body);
     if (citations.length === 0) {
-      const text = body
-        .replace(/<[^>]+>/g, "")
-        .trim()
-        .slice(0, 60);
-      issues.push({ kind: "uncited_statement", detail: text });
+      issues.push({ kind: "uncited_statement", detail: body.slice(0, 60) });
       continue;
     }
     citedCount += 1;
+    citedIds.push(...citations);
     for (const id of citations) {
       if (!anchors.has(id)) issues.push({ kind: "dangling_citation", detail: id });
     }
   }
+  const cited = new Set(citedIds);
   for (const id of anchors) {
     if (!cited.has(id)) issues.push({ kind: "orphan_evidence", detail: id });
   }
