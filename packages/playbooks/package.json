@@ -12,5 +12,8 @@
   "dependencies": {
     "yaml": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
   }
 }
