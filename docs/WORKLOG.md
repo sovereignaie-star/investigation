@@ -5444,3 +5444,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #359 دُمج squash في main عند `09538c5` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
 - **المصدر/المرجع:** docs/STATUS.md (P5-009 → done مع أدلة الدمج)؛ PR #359؛ إيداع الدمج `09538c5`.
+
+## 2026-10-23 — P5-010 `@ir/reports` قوالب التقارير بإحالات [P5-010]
+
+- **الأحمر أولاً:** T-REP-001..009 قبل بناء الحزمة (Cannot find module)؛ الدليل: `docs/evidence/2026-10-23-P5-010-red.md`.
+- **التنفيذ:** حزمة `@ir/reports` — نموذج فاشل-مغلق (كل جملة واقعية بإحالة، لا إحالات معلقة)، HTML حتمي RTL، DOCX حتمي (تثبيت طوابع docx عبر jszip)، PDF مرفوض صريحاً حتى P5-027.
+- **الجودة:** T-REP-001..009 (9 اختبارات) خضراء؛ الحزمة الكاملة 2889/0/6 (+9)؛ lint/typecheck/build/governance exit 0.
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-010، UC-14)؛ docs/STATUS.md (P5-010 → done)؛ docs/evidence/2026-10-23-P5-010-red.md.
