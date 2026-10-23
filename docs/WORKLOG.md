@@ -5464,3 +5464,8 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `auditReportHtml` (المخرج النهائي — مستقل عن القالب) + `auditReportDocument` (النموذج — دفاع في العمق) بمشكلات مصنّفة.
 - **الجودة:** T-CIT-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2895/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-011)؛ docs/STATUS.md (P5-011 → done)؛ docs/evidence/2026-10-23-P5-011-red.md.
+
+## 2026-10-23 — P5-011 إصلاح اهتزاز حارس البوابات — تسابق حذف مجلد كروم [P5-011]
+
+- فشل فحص gates في PR #364 بـ ENOTEMPTY عند حذف مجلد كروم المؤقت (`/tmp/ir-gate-chrome-*`) — تسابق: كروم لا يزال يكتب أثناء rmSync. أُضيف maxRetries/retryDelay (5 محاولات/200ms) إلى الحذفين — الحارس لا يُعطَّل بل يُصلَّح.
+- **المصدر/المرجع:** سجل فشل gates في PR #364 (تشغيل 39955279020)؛ scripts/gates/phase1.ts.
