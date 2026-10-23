@@ -11,11 +11,6 @@
  * ولا يُسقط أبداً إلى السحابي (لا احتياط صامت — السيادة لا تُفوض عند التعثر).
  */
 
-export interface ChatMessage {
-  readonly role: "system" | "user" | "assistant";
-  readonly content: string;
-}
-
 export interface ChatRequest {
   readonly model: string;
   readonly messages: readonly ChatMessage[];
@@ -221,8 +216,13 @@ const nodeRejectTransport: AiTransport = {
   },
 };
 
+import type { ChatMessage } from "./summarize-types.ts";
+
 export { summarizeEvidence } from "./summarize.ts";
-export type { EvidenceStatement, SummarizeResult, SummaryClaim, SummarizeOptions } from "./summarize.ts";
+export type { SummarizeResult, SummaryClaim, SummarizeOptions } from "./summarize.ts";
+export { detectInjection, buildSummarizeMessages } from "./injection.ts";
+export type { InjectionCheck } from "./injection.ts";
+export type { ChatMessage, EvidenceStatement } from "./summarize-types.ts";
 
 export interface AiProvider {
   readonly id: string;
