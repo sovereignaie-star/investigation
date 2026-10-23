@@ -12,7 +12,8 @@
   "dependencies": {
     "docx": "^9.5.1",
     "zod": "catalog:",
-    "jszip": "^3.10.1"
+    "jszip": "^3.10.1",
+    "@resvg/resvg-js": "^2.6.2"
   },
   "devDependencies": {
     "@types/node": "catalog:"
