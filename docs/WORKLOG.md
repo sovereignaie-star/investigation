@@ -5581,3 +5581,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **عيب مكتشف (موثق بصدق):** منافذ الاختبار تجاوزت الحد الأعلى (65535) فرفضها Node بوضوح — أُصلحت بمنافذ صالحة.
 - **الجودة:** T-QA-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2945/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-019/T-AI)؛ docs/STATUS.md (P5-019 → done)؛ docs/evidence/2026-10-23-P5-019-red.md.
+
+## 2026-10-23 — P5-020 بحث دلالي محلي داخل القضية [P5-020]
+
+- **الأحمر أولاً:** T-SEM-001..006 قبل وجود الميزة؛ الدليل: `docs/evidence/2026-10-23-P5-020-red.md`.
+- **التنفيذ:** `createLocalEmbedProvider` (Ollama /api/embed، نقل محقون — بلا شبكة مباشرة) + `buildSearchIndex`/`searchCase` (تشابه جيب التمام حتمي الترتيب) + `serializeSearchIndex`/`deserializeSearchIndex` — والتخزين المشفر مع القضية عبر مخزن الحمولات المشفرة (P1-014).
+- **الجودة:** T-SEM-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2951/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-020/ADR-17)؛ docs/STATUS.md (P5-020 → done)؛ docs/evidence/2026-10-23-P5-020-red.md.

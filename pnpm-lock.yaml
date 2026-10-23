@@ -739,6 +739,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@ir/store':
+        specifier: workspace:*
+        version: link:../store
       '@types/node':
         specifier: 'catalog:'
         version: 25.6.2
