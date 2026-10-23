@@ -19,7 +19,8 @@
     "test": "vitest run",
     "e2e": "pnpm --filter @workspace/scripts e2e",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:knowledge": "node scripts/gen-knowledge.mjs"
   },
   "private": true,
   "devDependencies": {

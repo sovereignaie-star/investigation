@@ -1,0 +1,141 @@
+# استُخرج آلياً من attached_assets/legacy/Investigation1.py (P5-009) — لا يُعدل يدوياً؛ عدّل scripts/gen-knowledge.mjs ثم أعد التوليد.
+# الأصل: 26 بنداً؛ بعد التنقية (إزالة التكرار): 26.
+
+source:
+  file: "Investigation1.py"
+  sha256: 5cee26cadf006fe447829a41fced1998e9114b628ca5f9e5d644e6c24c857092
+items:
+  - id: KN-001
+    title: "تقنيات اندثرت"
+    description: "آليات بدائية تعتمد على الحواس البشرية الخمس والملاحظة المباشرة"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-002
+    title: "ما قبل الرقمية"
+    description: "آليات تعتمد على التوثيق الورقي والمراسلات والتسجيلات التناظرية"
+    classification: مقبول
+    reason: "منهجية بحثية وتوثيقية قابلة للتعليم"
+  - id: KN-003
+    title: "مستخدمة حالياً"
+    description: "آليات رقمية وشبكية متطورة مع بنية تحتية عالمية"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-004
+    title: "طور التبني"
+    description: "آليات تجريبية في مختبرات متقدمة وتحت الاختبار الميداني"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-005
+    title: "5-15 سنة"
+    description: "آليات قيد التطوير المخبري مع نماذج أولية فعالة"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-006
+    title: "20+ سنة"
+    description: "آليات تعتمد على اكتشافات علمية متوقعة بناءً على الأبحاث الحالية"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-007
+    title: "HUMINT"
+    description: "توظيف وإدارة مصادر بشرية عبر بناء علاقات وتجنيد وإدارة عملاء"
+    classification: خارج الحدود
+    reason: "استخبارات بشرية (HUMINT) — تجنيد مصادر بشرية خارج حدود المنتج الأخلاقية"
+  - id: KN-008
+    title: "SIGINT"
+    description: "اعتراض ومعالجة الإشارات الكهرومغناطيسية عبر هوائيات وأجهزة استقبال"
+    classification: خارج الحدود
+    reason: "اعتراض إشارات (SIGINT) — خارج حدود المصادر المفتوحة المشروعة"
+  - id: KN-009
+    title: "IMINT"
+    description: "التقاط وتحليل الصور عبر منصات جوية وفضائية وأرضية"
+    classification: خارج الحدود
+    reason: "انضباط استخباراتي عدائي (IMINT/ELINT/MASINT/CYBINT/كمومي) — خارج نطاق أداة تحقيق دفاعية"
+  - id: KN-010
+    title: "ELINT"
+    description: "اعتراض الإشارات غير التواصلية كالرادار عبر مستقبلات متخصصة"
+    classification: خارج الحدود
+    reason: "اعتراض إشارات (SIGINT) — خارج حدود المصادر المفتوحة المشروعة"
+  - id: KN-011
+    title: "MASINT"
+    description: "قياس الخصائص الفيزيائية والكيميائية للمواد والظواهر"
+    classification: خارج الحدود
+    reason: "انضباط استخباراتي عدائي (IMINT/ELINT/MASINT/CYBINT/كمومي) — خارج نطاق أداة تحقيق دفاعية"
+  - id: KN-012
+    title: "OSINT"
+    description: "جمع وتحليل المعلومات من مصادر متاحة للعموم"
+    classification: مقبول
+    reason: "منهجية مصادر مفتوحة (OSINT) — أساس المنتج"
+    playbook: PB-01
+  - id: KN-013
+    title: "GEOINT"
+    description: "دمج وتحليل البيانات الجغرافية والمكانية متعددة المصادر"
+    classification: مقبول
+    reason: "تحليل جغرافي مكاني عام (خرائط عامة) — يدعم تحليل البنية"
+    playbook: PB-07
+  - id: KN-014
+    title: "CYBINT"
+    description: "اختراق ورصد الشبكات الرقمية وأنظمة المعلومات"
+    classification: خارج الحدود
+    reason: "انضباط استخباراتي عدائي (IMINT/ELINT/MASINT/CYBINT/كمومي) — خارج نطاق أداة تحقيق دفاعية"
+  - id: KN-015
+    title: "FININT"
+    description: "تتبع وتحليل التدفقات المالية والمعاملات الاقتصادية"
+    classification: مقبول
+    reason: "تحليل مالي عام — يتقاطع مع فحص المحافظ الرقمية"
+    playbook: PB-03
+  - id: KN-016
+    title: "TECHINT"
+    description: "تحليل المعدات والأسلحة والتقنيات المستولى عليها"
+    classification: خارج الحدود
+    reason: "تشفير عسكري/تسليح — خارج نطاق المنتج المدني"
+  - id: KN-017
+    title: "SOCINT"
+    description: "تحليل السلوك الاجتماعي والاتجاهات النفسية للمجموعات"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-018
+    title: "QUINT"
+    description: "استخدام مبادئ الميكانيكا الكمومية في جمع ومعالجة المعلومات"
+    classification: خارج الحدود
+    reason: "انضباط استخباراتي عدائي (IMINT/ELINT/MASINT/CYBINT/كمومي) — خارج نطاق أداة تحقيق دفاعية"
+  - id: KN-019
+    title: "Money"
+    description: "مكافآت مالية مباشرة أو غير مباشرة"
+    classification: مقبول
+    reason: "تحليل مالي عام — يتقاطع مع فحص المحافظ الرقمية"
+    playbook: PB-03
+  - id: KN-020
+    title: "Ideology"
+    description: "توافق فكري أو عقائدي مع جهة التجنيد"
+    classification: خارج الحدود
+    reason: "استخبارات بشرية (HUMINT) — تجنيد مصادر بشرية خارج حدود المنتج الأخلاقية"
+  - id: KN-021
+    title: "Compromise"
+    description: "تهديد بكشف معلومات حساسة أو عقوبات"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-022
+    title: "Ego"
+    description: "إشباع الذات والشعور بالأهمية والتفرد"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-023
+    title: "Revenge"
+    description: "رغبة في الانتقام من جهة العمل أو الدولة"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-024
+    title: "Excitement"
+    description: "البحث عن الإثارة والمغامرة وكسر الروتين"
+    classification: مقبول
+    reason: "منهجية بحثية وتوثيقية قابلة للتعليم"
+  - id: KN-025
+    title: "Dual Loyalty"
+    description: "انتماء مزدوج لدولتين أو منظمتين"
+    classification: خارج الحدود
+    reason: "لم يطابق قواعد التصنيف الصريحة — خارج الحدود احتياطاً (فاشل-مغلق)"
+  - id: KN-026
+    title: "Unwitting"
+    description: "تقديم معلومات دون إدراك أنه تجسس"
+    classification: خارج الحدود
+    reason: "انضباط استخباراتي عدائي (IMINT/ELINT/MASINT/CYBINT/كمومي) — خارج نطاق أداة تحقيق دفاعية"

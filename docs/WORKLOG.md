@@ -5431,3 +5431,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الدمج:** PR #357 دُمج squash في main عند `af9338f` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
 - **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
 - **المصدر/المرجع:** docs/STATUS.md (P5-008 → done مع أدلة الدمج)؛ PR #357؛ إيداع الدمج `af9338f`.
+
+## 2026-10-23 — P5-009 استخراج المعرفة إلى YAML بعد التنقية [P5-009]
+
+- **الأحمر أولاً:** T-KNW-001..007 قبل بناء المستخرج؛ الدليل: `docs/evidence/2026-10-23-P5-009-red.md`.
+- **التنفيذ:** `scripts/gen-knowledge.mjs` (gen:knowledge) — 64 بنداً مصنفاً (16 مقبولاً/48 خارج الحدود) في `knowledge/*.yaml` + تغطية 13/13 (EXEMPT.md)؛ قواعد تصنيف صريحة فاشلة-مغلقة.
+- **الجودة:** T-KNW-001..007 (7 اختبارات) خضراء؛ الحزمة الكاملة 2880/0/6 (+7)؛ lint/typecheck/build/governance exit 0.
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-009، D-042)؛ docs/STATUS.md (P5-009 → done)؛ docs/evidence/2026-10-23-P5-009-red.md.
