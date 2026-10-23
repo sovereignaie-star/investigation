@@ -5661,3 +5661,12 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **توثيق «بلا شبكة» الأمتن:** المثبت (مسارات محلية فقط، أصول مضمّنة، لا روابط بعيدة) مقابل غير المثبت (عزل مستوى النظام غير متاح في CI) — DECLARED_LIMITS حُدّث.
 - **الجودة:** T-ENG-001 + كل اختبارات OCR (16) خضراء؛ الحزمة الكاملة 2986/0/6 (+1)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/evidence/2026-10-23-P5-024-red.md (قسم التصحيح)؛ packages/transforms/src/ocr/engine.ts (downscalePng + التمريران)؛ engine.test.ts (T-ENG-001).
+
+## 2026-10-24 — P5-025 اختيار أدوات العربية للتجزئة والكيانات المسماة [P5-025]
+
+- **الحصن:** `tools/arabic/evaluate_ner.py` — تشغيل محلي كامل على 2,832 اسماً فريداً من المجموعة الذهبية P5-006؛ البروتوكول معلن في رأس الملف (تغطية اكتشاف أسماء أشخاص ≠ دقة NER عامة)؛ تشغيلان مستقلان اتفقا على العدادات (stanza 1467، camel 1801).
+- **القياس:** CAMeL Tools (ner-arabert) 63.59% (1801/2832)؛ Stanza 1.15.0 51.80% (1467/2832)؛ spaCy tokenizer وصفياً (2.48 رمز/اسم — لا خط NER عربي رسمي في explosion/spacy-models)؛ Farasa لم تُقس (تنزيل خلف تسجيل + رخصة بحثية + واجهة keyed → LC-D، رفض موثق).
+- **القرار:** CAMeL Tools أداة NER العربية المختارة (تعمل محلياً — قبول المهمة)؛ حد الاعتماد أداة تقييم في tools/arabic لا محوّل تشغيل TR-xxx — القرار الكامل والحدود في ADR-34؛ التقييمات في docs/tools/evaluations/ (TL-77619eb7، TL-08b94619، TL-dcc355f1، TL-b48eebe8) وREJECTED.md (Farasa).
+- **الحدود:** نطاق البروتوكول والتجزئة بلا حقيقة أرضية والفاراسا غير المقيسة موثقة في DECLARED_LIMITS (L-P5-025) وevidence.
+- **الجودة:** لا كود ميزة (مهمة قياس/اختيار) — الحزمة الكاملة كما في P5-024 (2986/0/6)؛ governance exit 0.
+- **المصدر/المرجع:** docs/evidence/2026-10-24-P5-025-red.md؛ docs/evidence/2026-10-24-P5-025-ner-report.json؛ docs/adr/ADR-34-arabic-ner-tool-selection.md
