@@ -33,7 +33,7 @@ export const en = {
   "shell.theme.light": "Light mode",
   "shell.theme.toDark": "Switch to dark mode",
   "shell.theme.toLight": "Switch to light mode",
-  "shell.lang.toEn": "التبديل إلى التخطيط الإنجليزي",
+  "shell.lang.toEn": "Switch to English layout",
   "shell.lang.toAr": "Switch to the Arabic layout",
   "shell.lang.en": "English",
   "shell.lang.ar": "العربية",
