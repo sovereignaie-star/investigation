@@ -1,0 +1,1972 @@
+[
+  {
+    "id": "ent-0110",
+    "name": "شركة النور للتجارة",
+    "country": "JO",
+    "birthDate": "1979",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": "cr:100110"
+  },
+  {
+    "id": "ent-0110-v1",
+    "name": "شركهـ النور للتجارة",
+    "country": "JO",
+    "birthDate": "undefined/undefined/1979",
+    "addresses": null,
+    "identifiers": "cr:100110"
+  },
+  {
+    "id": "ent-0110-s1",
+    "name": "شركة الدرعية للمقاولات",
+    "country": "JO",
+    "birthDate": "1992",
+    "addresses": "جدة - حي الملقا",
+    "identifiers": "cr:300110"
+  },
+  {
+    "id": "ent-0111",
+    "name": "طلال زيد الحربي",
+    "country": "EG",
+    "birthDate": "1958-01-17",
+    "addresses": "الرياض - حي المعادي",
+    "identifiers": "nat:20000777"
+  },
+  {
+    "id": "ent-0111-v1",
+    "name": "طلال زيد الحربي",
+    "country": "EG",
+    "birthDate": "1958-01-17",
+    "addresses": "حي المعادي - الرياض",
+    "identifiers": "nat:20000777"
+  },
+  {
+    "id": "ent-0111-v2",
+    "name": "طلال زيد لحربي",
+    "country": "EG",
+    "birthDate": "17/01/1958",
+    "addresses": "حي المعادي - الرياض",
+    "identifiers": "nat:20000777"
+  },
+  {
+    "id": "ent-0112",
+    "name": "شركة الدرعية للتجارة",
+    "country": "KW",
+    "birthDate": "1945",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": "cr:100112"
+  },
+  {
+    "id": "ent-0112-v1",
+    "name": "شركة ألدرعية للتجارة",
+    "country": "KW",
+    "birthDate": "1945",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0112-v2",
+    "name": "شركة لدرعية للتجارة",
+    "country": "KW",
+    "birthDate": null,
+    "addresses": "القاهرة",
+    "identifiers": "cr:100112"
+  },
+  {
+    "id": "ent-0113",
+    "name": "هند بندر السبيعي",
+    "country": "JO",
+    "birthDate": "1993-07-07",
+    "addresses": "الدمام - حي المعادي",
+    "identifiers": "nat:20000791"
+  },
+  {
+    "id": "ent-0113-v1",
+    "name": "هند بنر السبيعي",
+    "country": "JO",
+    "birthDate": "1993-07-07",
+    "addresses": "الدمام",
+    "identifiers": "nat:20000791"
+  },
+  {
+    "id": "ent-0113-v2",
+    "name": "هند بندر السبييع",
+    "country": "JO",
+    "birthDate": "07/07/1993",
+    "addresses": null,
+    "identifiers": "nat:20000791"
+  },
+  {
+    "id": "ent-0114",
+    "name": "نايف زيد الصالح",
+    "country": "JO",
+    "birthDate": "1965-03-07",
+    "addresses": "جدة - حي العليا",
+    "identifiers": "nat:20000798"
+  },
+  {
+    "id": "ent-0114-v1",
+    "name": "نايف زيد لصالح",
+    "country": "JO",
+    "birthDate": null,
+    "addresses": "حي العليا - جدة",
+    "identifiers": "nat:20000798"
+  },
+  { "id": "ent-0114-v2", "name": "نايف زيدالصالح", "country": "JO", "birthDate": null, "addresses": null, "identifiers": "nat:20000798" },
+  {
+    "id": "ent-0115",
+    "name": "بدر وليد الفهد",
+    "country": "SA",
+    "birthDate": "1944-04-26",
+    "addresses": "الرياض - حي النرجس",
+    "identifiers": "nat:20000805"
+  },
+  {
+    "id": "ent-0115-s1",
+    "name": "بدر صالح المطيري",
+    "country": "SA",
+    "birthDate": "1999-12-24",
+    "addresses": "مكة - حي المعادي",
+    "identifiers": "nat:40001495"
+  },
+  {
+    "id": "ent-0116",
+    "name": "جواهر فيصل النعيمي",
+    "country": "AE",
+    "birthDate": "1978-05-21",
+    "addresses": "عمّان - حي المعادي",
+    "identifiers": "nat:20000812"
+  },
+  {
+    "id": "ent-0116-v1",
+    "name": "جوأهر فيصل النعيمي",
+    "country": "AE",
+    "birthDate": null,
+    "addresses": "عمّان - حي المعادي",
+    "identifiers": "nat:20000812"
+  },
+  {
+    "id": "ent-0116-v2",
+    "name": "جواهر فيصل النعيمي",
+    "country": "AE",
+    "birthDate": null,
+    "addresses": "عمّان",
+    "identifiers": "nat:20000812"
+  },
+  {
+    "id": "ent-0117",
+    "name": "شركة السلام للتجارة",
+    "country": "EG",
+    "birthDate": "1962",
+    "addresses": "أبوظبي - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0117-v1",
+    "name": "شركة ألسلام للتجارة",
+    "country": "EG",
+    "birthDate": "1962",
+    "addresses": "أبوظبي - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0118",
+    "name": "شركة النور للتجارة",
+    "country": "AE",
+    "birthDate": "1941",
+    "addresses": "المدينة - حي عبدون",
+    "identifiers": "cr:100118"
+  },
+  {
+    "id": "ent-0118-v1",
+    "name": "شرك النور للتجارة",
+    "country": "AE",
+    "birthDate": "1941",
+    "addresses": "حي عبدون - المدينة",
+    "identifiers": "cr:100118"
+  },
+  {
+    "id": "ent-0118-v2",
+    "name": "شركة النور لتلجارة",
+    "country": "AE",
+    "birthDate": "undefined/undefined/1941",
+    "addresses": "حي عبدون - المدينة",
+    "identifiers": "cr:100118"
+  },
+  {
+    "id": "ent-0118-s1",
+    "name": "شركة الأفق للمقاولات",
+    "country": "AE",
+    "birthDate": "1998",
+    "addresses": "أبوظبي - حي الشاطئ",
+    "identifiers": "cr:300118"
+  },
+  {
+    "id": "ent-0119",
+    "name": "مشعل ماجد الكندي",
+    "country": "SA",
+    "birthDate": "1980-04-08",
+    "addresses": "المدينة - حي النرجس",
+    "identifiers": "nat:20000833"
+  },
+  {
+    "id": "ent-0119-v1",
+    "name": "مشعل امجد الكندي",
+    "country": "SA",
+    "birthDate": "1980",
+    "addresses": null,
+    "identifiers": "nat:20000833"
+  },
+  {
+    "id": "ent-0120",
+    "name": "شركة النخيل للتجارة",
+    "country": "JO",
+    "birthDate": "1973",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": "cr:100120"
+  },
+  { "id": "ent-0120-v1", "name": "شركة النخيل لتجارة", "country": "JO", "birthDate": null, "addresses": null, "identifiers": "cr:100120" },
+  {
+    "id": "ent-0121",
+    "name": "شركة الياسمين للتجارة",
+    "country": "AE",
+    "birthDate": "1942",
+    "addresses": "جدة - حي المعادي",
+    "identifiers": null
+  },
+  { "id": "ent-0121-v1", "name": "شركة الياسمي نللتجارة", "country": "AE", "birthDate": "1942", "addresses": "جدة", "identifiers": null },
+  {
+    "id": "ent-0121-s1",
+    "name": "شركة الصفا للمقاولات",
+    "country": "AE",
+    "birthDate": "1978",
+    "addresses": "المدينة - حي عبدون",
+    "identifiers": "cr:300121"
+  },
+  {
+    "id": "ent-0122",
+    "name": "حمدان ماجد المطيري",
+    "country": "AE",
+    "birthDate": "1988-10-10",
+    "addresses": "مكة - حي الملقا",
+    "identifiers": "nat:20000854"
+  },
+  {
+    "id": "ent-0123",
+    "name": "سلمان طاهر البقمي",
+    "country": "EG",
+    "birthDate": "1995-10-21",
+    "addresses": "المدينة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0124",
+    "name": "شركة التميز للتجارة",
+    "country": "AE",
+    "birthDate": "1982",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0124-s1",
+    "name": "شركة الوسطى للمقاولات",
+    "country": "AE",
+    "birthDate": "1950",
+    "addresses": "الرياض - حي العليا",
+    "identifiers": "cr:300124"
+  },
+  {
+    "id": "ent-0125",
+    "name": "شركة الصفا للتجارة",
+    "country": "AE",
+    "birthDate": "1961",
+    "addresses": "مكة - حي المعادي",
+    "identifiers": "cr:100125"
+  },
+  {
+    "id": "ent-0126",
+    "name": "شركة المدار للتجارة",
+    "country": "AE",
+    "birthDate": "1995",
+    "addresses": "عمّان - حي الشاطئ",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0127",
+    "name": "شركة الأفق للتجارة",
+    "country": "AE",
+    "birthDate": "1983",
+    "addresses": "الرياض - حي عبدون",
+    "identifiers": null
+  },
+  { "id": "ent-0127-v1", "name": "شركهـ الأفق للتجارة", "country": "AE", "birthDate": "1983", "addresses": "الرياض", "identifiers": null },
+  {
+    "id": "ent-0127-v2",
+    "name": "شركة ألأفق للتجارة",
+    "country": "AE",
+    "birthDate": "1983",
+    "addresses": "حي عبدون - الرياض",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0128",
+    "name": "أمجد سلمان الغامدي",
+    "country": "SA",
+    "birthDate": "1954-03-25",
+    "addresses": "أبوظبي - حي العليا",
+    "identifiers": "nat:20000896"
+  },
+  {
+    "id": "ent-0128-v1",
+    "name": "أمجد سلمان اغلامدي",
+    "country": "SA",
+    "birthDate": "1954-03-25",
+    "addresses": "أبوظبي",
+    "identifiers": "nat:20000896"
+  },
+  {
+    "id": "ent-0129",
+    "name": "عبدالله سامي السبيعي",
+    "country": "AE",
+    "birthDate": "1958-11-11",
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": "nat:20000903"
+  },
+  {
+    "id": "ent-0129-v1",
+    "name": "عبدالل هسامي السبيعي",
+    "country": "AE",
+    "birthDate": null,
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": "nat:20000903"
+  },
+  {
+    "id": "ent-0130",
+    "name": "خالد سلمان الحربي",
+    "country": "AE",
+    "birthDate": "1962-06-16",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "nat:20000910"
+  },
+  {
+    "id": "ent-0130-v1",
+    "name": "خال سلمان الحربي",
+    "country": "AE",
+    "birthDate": "16/06/1962",
+    "addresses": "الرياض",
+    "identifiers": "nat:20000910"
+  },
+  {
+    "id": "ent-0130-v2",
+    "name": "خالد سلمان الحربي",
+    "country": "AE",
+    "birthDate": "1962-06-16",
+    "addresses": "الرياض",
+    "identifiers": "nat:20000910"
+  },
+  {
+    "id": "ent-0131",
+    "name": "شركة النخبة للتجارة",
+    "country": "KW",
+    "birthDate": "1962",
+    "addresses": "جدة - حي عبدون",
+    "identifiers": null
+  },
+  { "id": "ent-0131-v1", "name": "شركةالنخبة للتجارة", "country": "KW", "birthDate": "1962", "addresses": null, "identifiers": null },
+  {
+    "id": "ent-0131-v2",
+    "name": "شركهـ النخبة للتجارة",
+    "country": "KW",
+    "birthDate": "undefined/undefined/1962",
+    "addresses": "جدة - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0132",
+    "name": "علي ماجد المالكي",
+    "country": "JO",
+    "birthDate": "1970-05-14",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "nat:20000924"
+  },
+  {
+    "id": "ent-0132-v1",
+    "name": "علي ماجد لامالكي",
+    "country": "JO",
+    "birthDate": "1970-05-14",
+    "addresses": "حي الشاطئ - الرياض",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0133",
+    "name": "نورة رائد الحربي",
+    "country": "AE",
+    "birthDate": "1977-09-01",
+    "addresses": "جدة - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0133-v1",
+    "name": "نور ةرائد الحربي",
+    "country": "AE",
+    "birthDate": "1977-09-01",
+    "addresses": "جدة - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0133-v2",
+    "name": "نورهـ رائد الحربي",
+    "country": "AE",
+    "birthDate": null,
+    "addresses": "حي الملقا - جدة",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0134",
+    "name": "شركة الوفاء للتجارة",
+    "country": "KW",
+    "birthDate": "1990",
+    "addresses": "جدة - حي عبدون",
+    "identifiers": "cr:100134"
+  },
+  {
+    "id": "ent-0135",
+    "name": "أحمد بندر السويلم",
+    "country": "KW",
+    "birthDate": "1997-08-26",
+    "addresses": "القاهرة - حي المعادي",
+    "identifiers": "nat:20000945"
+  },
+  {
+    "id": "ent-0135-v1",
+    "name": "أحمد بندر السويلم",
+    "country": "KW",
+    "birthDate": "26/08/1997",
+    "addresses": "القاهرة",
+    "identifiers": "nat:20000945"
+  },
+  {
+    "id": "ent-0136",
+    "name": "سعود حسن القحطاني",
+    "country": "KW",
+    "birthDate": "1960-11-25",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0136-v1",
+    "name": "سعود حسن القحطانى",
+    "country": "KW",
+    "birthDate": "25/11/1960",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0136-v2",
+    "name": "سعود حسن اقحطاني",
+    "country": "KW",
+    "birthDate": "1960",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0136-s1",
+    "name": "سعود فواز الخالدي",
+    "country": "KW",
+    "birthDate": "1996-02-08",
+    "addresses": "الرياض - حي عبدون",
+    "identifiers": "nat:40001768"
+  },
+  {
+    "id": "ent-0137",
+    "name": "إبراهيم سعد الفهد",
+    "country": "SA",
+    "birthDate": "1995-05-16",
+    "addresses": "الدمام - حي الشاطئ",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0137-s1",
+    "name": "إبراهيم سامي الشمري",
+    "country": "SA",
+    "birthDate": "1960-06-05",
+    "addresses": "القاهرة - حي المعادي",
+    "identifiers": "nat:40001781"
+  },
+  {
+    "id": "ent-0138",
+    "name": "إبراهيم منصور الهاجري",
+    "country": "AE",
+    "birthDate": "1990-12-23",
+    "addresses": "عمّان - حي المعادي",
+    "identifiers": "nat:20000966"
+  },
+  {
+    "id": "ent-0138-v1",
+    "name": "إبراهيم منصور الهاري",
+    "country": "AE",
+    "birthDate": "1990",
+    "addresses": null,
+    "identifiers": "nat:20000966"
+  },
+  {
+    "id": "ent-0138-v2",
+    "name": "إبراهيم منصور لهاجري",
+    "country": "AE",
+    "birthDate": "1990-12-23",
+    "addresses": "عمّان",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0139",
+    "name": "شركة السدرة للتجارة",
+    "country": "JO",
+    "birthDate": "1941",
+    "addresses": "مكة - حي المعادي",
+    "identifiers": "cr:100139"
+  },
+  {
+    "id": "ent-0139-v1",
+    "name": "شركة لسدرة للتجارة",
+    "country": "JO",
+    "birthDate": "1941",
+    "addresses": "حي المعادي - مكة",
+    "identifiers": "cr:100139"
+  },
+  {
+    "id": "ent-0139-v2",
+    "name": "شركة السدرةللتجارة",
+    "country": "JO",
+    "birthDate": null,
+    "addresses": "مكة - حي المعادي",
+    "identifiers": "cr:100139"
+  },
+  {
+    "id": "ent-0140",
+    "name": "محمد حسن السالم",
+    "country": "KW",
+    "birthDate": "1979-04-07",
+    "addresses": "أبوظبي - حي الملقا",
+    "identifiers": "nat:20000980"
+  },
+  {
+    "id": "ent-0140-v1",
+    "name": "محمد حسن السالم",
+    "country": "KW",
+    "birthDate": "1979-04-07",
+    "addresses": "حي الملقا - أبوظبي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0140-s1",
+    "name": "محمد وليد المالكي",
+    "country": "KW",
+    "birthDate": "1973-02-11",
+    "addresses": "القاهرة - حي المعادي",
+    "identifiers": "nat:40001820"
+  },
+  {
+    "id": "ent-0141",
+    "name": "عبدالعزيز طاهر السهلي",
+    "country": "JO",
+    "birthDate": "1972-03-08",
+    "addresses": "أبوظبي - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0141-v1",
+    "name": "عبدألعزيز طاهر السهلي",
+    "country": "JO",
+    "birthDate": "08/03/1972",
+    "addresses": "حي الملقا - أبوظبي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0141-s1",
+    "name": "عبدالعزيز تركي العتيبي",
+    "country": "JO",
+    "birthDate": "1994-04-20",
+    "addresses": "المدينة - حي النرجس",
+    "identifiers": "nat:40001833"
+  },
+  {
+    "id": "ent-0142",
+    "name": "شركة الياسمين للتجارة",
+    "country": "JO",
+    "birthDate": "1971",
+    "addresses": "عمّان - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0143",
+    "name": "شركة الريادة للتجارة",
+    "country": "SA",
+    "birthDate": "1988",
+    "addresses": "عمّان - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0144",
+    "name": "شركة المدار للتجارة",
+    "country": "JO",
+    "birthDate": "1983",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "cr:100144"
+  },
+  {
+    "id": "ent-0145",
+    "name": "يوسف ماجد الكندي",
+    "country": "KW",
+    "birthDate": "1999-01-27",
+    "addresses": "جدة - حي الملقا",
+    "identifiers": null
+  },
+  { "id": "ent-0145-v1", "name": "يوسف مأجد الكندي", "country": "KW", "birthDate": null, "addresses": null, "identifiers": null },
+  {
+    "id": "ent-0146",
+    "name": "شركة الزيتونة للتجارة",
+    "country": "JO",
+    "birthDate": "1995",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0146-v1",
+    "name": "شركة الزيوتنة للتجارة",
+    "country": "JO",
+    "birthDate": "undefined/undefined/1995",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0147",
+    "name": "جواهر سلمان البقمي",
+    "country": "AE",
+    "birthDate": "1984-02-14",
+    "addresses": "المدينة - حي العليا",
+    "identifiers": "nat:20001029"
+  },
+  {
+    "id": "ent-0147-v1",
+    "name": "جواهر سلمان البقمى",
+    "country": "AE",
+    "birthDate": null,
+    "addresses": null,
+    "identifiers": "nat:20001029"
+  },
+  {
+    "id": "ent-0147-v2",
+    "name": "جواهر سلمان البقمي",
+    "country": "AE",
+    "birthDate": null,
+    "addresses": "المدينة - حي العليا",
+    "identifiers": "nat:20001029"
+  },
+  {
+    "id": "ent-0147-s1",
+    "name": "جواهر ماجد الرشيد",
+    "country": "AE",
+    "birthDate": "1945-08-05",
+    "addresses": "المدينة - حي الشاطئ",
+    "identifiers": "nat:40001911"
+  },
+  {
+    "id": "ent-0148",
+    "name": "شركة الإتقان للتجارة",
+    "country": "AE",
+    "birthDate": "1985",
+    "addresses": "جدة - حي العليا",
+    "identifiers": null
+  },
+  { "id": "ent-0148-v1", "name": "شركهـ الإتقان للتجارة", "country": "AE", "birthDate": null, "addresses": null, "identifiers": null },
+  {
+    "id": "ent-0149",
+    "name": "علي بندر الحربي",
+    "country": "AE",
+    "birthDate": "1968-08-25",
+    "addresses": "جدة - حي الملقا",
+    "identifiers": "nat:20001043"
+  },
+  { "id": "ent-0149-v1", "name": "علي ندر الحربي", "country": "AE", "birthDate": null, "addresses": null, "identifiers": "nat:20001043" },
+  {
+    "id": "ent-0149-s1",
+    "name": "علي سلمان الزهراني",
+    "country": "AE",
+    "birthDate": "1950-02-10",
+    "addresses": "المدينة - حي عبدون",
+    "identifiers": "nat:40001937"
+  },
+  {
+    "id": "ent-0150",
+    "name": "حمدان بندر الزهراني",
+    "country": "KW",
+    "birthDate": "1981-11-21",
+    "addresses": "مكة - حي عبدون",
+    "identifiers": "nat:20001050"
+  },
+  {
+    "id": "ent-0151",
+    "name": "طلال حسين الرشيد",
+    "country": "SA",
+    "birthDate": "1958-08-17",
+    "addresses": "عمّان - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0151-v1",
+    "name": "طلأل حسين الرشيد",
+    "country": "SA",
+    "birthDate": "17/08/1958",
+    "addresses": "عمّان",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0151-v2",
+    "name": "طلال حين الرشيد",
+    "country": "SA",
+    "birthDate": "1958-08-17",
+    "addresses": "حي الملقا - عمّان",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0151-s1",
+    "name": "طلال منصور العتيبي",
+    "country": "SA",
+    "birthDate": "1959-12-09",
+    "addresses": "الرياض - حي عبدون",
+    "identifiers": "nat:40001963"
+  },
+  {
+    "id": "ent-0152",
+    "name": "شركة الدرعية للتجارة",
+    "country": "AE",
+    "birthDate": "1974",
+    "addresses": "أبوظبي - حي الشاطئ",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0152-s1",
+    "name": "شركة الوفاء للمقاولات",
+    "country": "AE",
+    "birthDate": "1985",
+    "addresses": "الدمام - حي عبدون",
+    "identifiers": "cr:300152"
+  },
+  {
+    "id": "ent-0153",
+    "name": "عبدالله سامي السبيعي",
+    "country": "EG",
+    "birthDate": "1957-07-08",
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": "nat:20001071"
+  },
+  {
+    "id": "ent-0154",
+    "name": "نورة تركي المطيري",
+    "country": "JO",
+    "birthDate": "1976-03-08",
+    "addresses": "الرياض - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0154-s1",
+    "name": "نورة عبدالرحمن الزهراني",
+    "country": "JO",
+    "birthDate": "1947-10-19",
+    "addresses": "مكة - حي عبدون",
+    "identifiers": "nat:40002002"
+  },
+  {
+    "id": "ent-0155",
+    "name": "منى عادل القحطاني",
+    "country": "SA",
+    "birthDate": "1987-06-18",
+    "addresses": "عمّان - حي الملقا",
+    "identifiers": "nat:20001085"
+  },
+  {
+    "id": "ent-0155-s1",
+    "name": "منى ناصر النعيمي",
+    "country": "SA",
+    "birthDate": "1958-06-25",
+    "addresses": "الرياض - حي العليا",
+    "identifiers": "nat:40002015"
+  },
+  {
+    "id": "ent-0156",
+    "name": "شركة الزيتونة للتجارة",
+    "country": "KW",
+    "birthDate": "1985",
+    "addresses": "الرياض - حي الملقا",
+    "identifiers": "cr:100156"
+  },
+  {
+    "id": "ent-0156-v1",
+    "name": "شركة الزتونة للتجارة",
+    "country": "KW",
+    "birthDate": "1985",
+    "addresses": null,
+    "identifiers": "cr:100156"
+  },
+  {
+    "id": "ent-0157",
+    "name": "عبدالله زيد الرشيد",
+    "country": "KW",
+    "birthDate": "1974-10-16",
+    "addresses": "أبوظبي - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0157-v1",
+    "name": "عبدالله زىد الرشيد",
+    "country": "KW",
+    "birthDate": "16/10/1974",
+    "addresses": "حي النرجس - أبوظبي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0158",
+    "name": "بدر حسين الفيفي",
+    "country": "SA",
+    "birthDate": "1941-09-12",
+    "addresses": "الدمام - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0158-v1",
+    "name": "بدر سحين الفيفي",
+    "country": "SA",
+    "birthDate": "1941-09-12",
+    "addresses": "حي العليا - الدمام",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0158-s1",
+    "name": "بدر تركي الهاجري",
+    "country": "SA",
+    "birthDate": "1994-04-21",
+    "addresses": "المدينة - حي المعادي",
+    "identifiers": "nat:40002054"
+  },
+  {
+    "id": "ent-0159",
+    "name": "فاطمة تركي الكندي",
+    "country": "SA",
+    "birthDate": "1974-02-11",
+    "addresses": "جدة - حي المعادي",
+    "identifiers": "nat:20001113"
+  },
+  {
+    "id": "ent-0159-v1",
+    "name": "فاطمة تركى الكندي",
+    "country": "SA",
+    "birthDate": "11/02/1974",
+    "addresses": "جدة",
+    "identifiers": "nat:20001113"
+  },
+  {
+    "id": "ent-0159-v2",
+    "name": "فاطمة تركى الكندي",
+    "country": "SA",
+    "birthDate": "1974-02-11",
+    "addresses": "جدة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0160",
+    "name": "شركة الرؤية للتجارة",
+    "country": "JO",
+    "birthDate": "1947",
+    "addresses": "مكة - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0160-s1",
+    "name": "شركة الوسطى للمقاولات",
+    "country": "JO",
+    "birthDate": "1980",
+    "addresses": "الرياض - حي المعادي",
+    "identifiers": "cr:300160"
+  },
+  {
+    "id": "ent-0161",
+    "name": "شركة الإتقان للتجارة",
+    "country": "KW",
+    "birthDate": "1996",
+    "addresses": "جدة - حي الشاطئ",
+    "identifiers": "cr:100161"
+  },
+  {
+    "id": "ent-0161-v1",
+    "name": "شركة ألإتقان للتجارة",
+    "country": "KW",
+    "birthDate": "undefined/undefined/1996",
+    "addresses": "جدة",
+    "identifiers": "cr:100161"
+  },
+  {
+    "id": "ent-0162",
+    "name": "سلمان سامي الودعاني",
+    "country": "KW",
+    "birthDate": "1953-11-07",
+    "addresses": "المدينة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0162-v1",
+    "name": "سلمان سامي الودعني",
+    "country": "KW",
+    "birthDate": "1953-11-07",
+    "addresses": "المدينة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0163",
+    "name": "شهد فيصل البقمي",
+    "country": "SA",
+    "birthDate": "1990-01-11",
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": "nat:20001141"
+  },
+  {
+    "id": "ent-0163-v1",
+    "name": "شهد فيصل ابلقمي",
+    "country": "SA",
+    "birthDate": "1990-01-11",
+    "addresses": null,
+    "identifiers": "nat:20001141"
+  },
+  {
+    "id": "ent-0164",
+    "name": "طلال رائد السالم",
+    "country": "AE",
+    "birthDate": "1994-01-23",
+    "addresses": "الدمام - حي عبدون",
+    "identifiers": "nat:20001148"
+  },
+  {
+    "id": "ent-0164-v1",
+    "name": "طلال رائد لاسالم",
+    "country": "AE",
+    "birthDate": "1994-01-23",
+    "addresses": "حي عبدون - الدمام",
+    "identifiers": "nat:20001148"
+  },
+  {
+    "id": "ent-0164-v2",
+    "name": "طلال رائد السالم",
+    "country": "AE",
+    "birthDate": "23/01/1994",
+    "addresses": null,
+    "identifiers": "nat:20001148"
+  },
+  {
+    "id": "ent-0164-s1",
+    "name": "طلال حسين الغامدي",
+    "country": "AE",
+    "birthDate": "1981-08-03",
+    "addresses": "القاهرة - حي المعادي",
+    "identifiers": "nat:40002132"
+  },
+  {
+    "id": "ent-0165",
+    "name": "شركة المروة للتجارة",
+    "country": "KW",
+    "birthDate": "1975",
+    "addresses": "القاهرة - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0166",
+    "name": "عمر صالح الغامدي",
+    "country": "AE",
+    "birthDate": "1999-07-02",
+    "addresses": "الرياض - حي العليا",
+    "identifiers": "nat:20001162"
+  },
+  {
+    "id": "ent-0166-s1",
+    "name": "عمر منصور الصالح",
+    "country": "AE",
+    "birthDate": "1970-05-08",
+    "addresses": "مكة - حي عبدون",
+    "identifiers": "nat:40002158"
+  },
+  {
+    "id": "ent-0167",
+    "name": "بدر سعد الخالدي",
+    "country": "JO",
+    "birthDate": "1986-02-18",
+    "addresses": "القاهرة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0168",
+    "name": "أمجد حسن النعيمي",
+    "country": "SA",
+    "birthDate": "1985-12-03",
+    "addresses": "المدينة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0168-v1",
+    "name": "أمج حسن النعيمي",
+    "country": "SA",
+    "birthDate": null,
+    "addresses": "حي العليا - المدينة",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0168-v2",
+    "name": "أمجد حسن ألنعيمي",
+    "country": "SA",
+    "birthDate": "1985-12-03",
+    "addresses": "المدينة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0169",
+    "name": "عبدالعزيز سامي الهاجري",
+    "country": "EG",
+    "birthDate": "1961-07-06",
+    "addresses": "المدينة - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0170",
+    "name": "شركة الدرعية للتجارة",
+    "country": "JO",
+    "birthDate": "1949",
+    "addresses": "جدة - حي عبدون",
+    "identifiers": null
+  },
+  { "id": "ent-0170-v1", "name": "شركة الدرعي للتجارة", "country": "JO", "birthDate": "1949", "addresses": null, "identifiers": null },
+  {
+    "id": "ent-0171",
+    "name": "لمى عادل القحطاني",
+    "country": "SA",
+    "birthDate": "1976-04-24",
+    "addresses": "مكة - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0171-v1",
+    "name": "لمى عادل القطاني",
+    "country": "SA",
+    "birthDate": null,
+    "addresses": "حي عبدون - مكة",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0172",
+    "name": "فهد عبدالرحمن الخالدي",
+    "country": "EG",
+    "birthDate": "1952-05-16",
+    "addresses": "المدينة - حي الشاطئ",
+    "identifiers": "nat:20001204"
+  },
+  {
+    "id": "ent-0172-v1",
+    "name": "فهد عبدالرحمن الخالدي",
+    "country": "EG",
+    "birthDate": "16/05/1952",
+    "addresses": "حي الشاطئ - المدينة",
+    "identifiers": "nat:20001204"
+  },
+  {
+    "id": "ent-0173",
+    "name": "شركة النور للتجارة",
+    "country": "KW",
+    "birthDate": "1947",
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": "cr:100173"
+  },
+  {
+    "id": "ent-0173-v1",
+    "name": "شركهـ النور للتجارة",
+    "country": "KW",
+    "birthDate": "1947",
+    "addresses": "حي النرجس - الدمام",
+    "identifiers": "cr:100173"
+  },
+  {
+    "id": "ent-0174",
+    "name": "شركة الشرقية للتجارة",
+    "country": "SA",
+    "birthDate": "1960",
+    "addresses": "جدة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0174-v1",
+    "name": "شركة الشرقىة للتجارة",
+    "country": "SA",
+    "birthDate": "1960",
+    "addresses": "جدة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0175",
+    "name": "حمدان حسين الهاجري",
+    "country": "SA",
+    "birthDate": "1950-10-15",
+    "addresses": "القاهرة - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0175-v1",
+    "name": "حمدان حسين الهاجي",
+    "country": "SA",
+    "birthDate": "1950-10-15",
+    "addresses": "حي عبدون - القاهرة",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0175-s1",
+    "name": "حمدان سامي السالم",
+    "country": "SA",
+    "birthDate": "1941-07-22",
+    "addresses": "مكة - حي الملقا",
+    "identifiers": "nat:40002275"
+  },
+  {
+    "id": "ent-0176",
+    "name": "شهد منصور السبيعي",
+    "country": "JO",
+    "birthDate": "1988-04-18",
+    "addresses": "مكة - حي الملقا",
+    "identifiers": "nat:20001232"
+  },
+  {
+    "id": "ent-0176-v1",
+    "name": "شهد نصور السبيعي",
+    "country": "JO",
+    "birthDate": "18/04/1988",
+    "addresses": "مكة - حي الملقا",
+    "identifiers": "nat:20001232"
+  },
+  {
+    "id": "ent-0177",
+    "name": "شركة السلام للتجارة",
+    "country": "KW",
+    "birthDate": "1956",
+    "addresses": "القاهرة - حي الملقا",
+    "identifiers": "cr:100177"
+  },
+  {
+    "id": "ent-0177-v1",
+    "name": "شركة ألسلام للتجارة",
+    "country": "KW",
+    "birthDate": "1956",
+    "addresses": "القاهرة - حي الملقا",
+    "identifiers": "cr:100177"
+  },
+  {
+    "id": "ent-0177-v2",
+    "name": "شركة السلام للتجارة",
+    "country": "KW",
+    "birthDate": "1956",
+    "addresses": null,
+    "identifiers": "cr:100177"
+  },
+  {
+    "id": "ent-0178",
+    "name": "شركة الرؤية للتجارة",
+    "country": "SA",
+    "birthDate": "1989",
+    "addresses": "المدينة - حي المعادي",
+    "identifiers": "cr:100178"
+  },
+  {
+    "id": "ent-0178-v1",
+    "name": "شركة الرية للتجارة",
+    "country": "SA",
+    "birthDate": "1989",
+    "addresses": null,
+    "identifiers": "cr:100178"
+  },
+  {
+    "id": "ent-0178-s1",
+    "name": "شركة الرؤية للمقاولات",
+    "country": "SA",
+    "birthDate": "1953",
+    "addresses": "الدمام - حي الملقا",
+    "identifiers": "cr:300178"
+  },
+  {
+    "id": "ent-0179",
+    "name": "عبدالعزيز طاهر الكندي",
+    "country": "KW",
+    "birthDate": "1980-11-28",
+    "addresses": "المدينة - حي الملقا",
+    "identifiers": "nat:20001253"
+  },
+  {
+    "id": "ent-0179-v1",
+    "name": "عبدالعزىز طاهر الكندي",
+    "country": "KW",
+    "birthDate": "1980-11-28",
+    "addresses": "حي الملقا - المدينة",
+    "identifiers": "nat:20001253"
+  },
+  {
+    "id": "ent-0180",
+    "name": "محمد طاهر الفهد",
+    "country": "SA",
+    "birthDate": "1982-07-18",
+    "addresses": "عمّان - حي الملقا",
+    "identifiers": "nat:20001260"
+  },
+  {
+    "id": "ent-0180-s1",
+    "name": "محمد بندر الرشيد",
+    "country": "SA",
+    "birthDate": "1973-06-01",
+    "addresses": "مكة - حي النرجس",
+    "identifiers": "nat:40002340"
+  },
+  {
+    "id": "ent-0181",
+    "name": "شركة الياسمين للتجارة",
+    "country": "JO",
+    "birthDate": "1991",
+    "addresses": "الدمام - حي الشاطئ",
+    "identifiers": "cr:100181"
+  },
+  {
+    "id": "ent-0181-v1",
+    "name": "شركة الىاسمين للتجارة",
+    "country": "JO",
+    "birthDate": "1991",
+    "addresses": "حي الشاطئ - الدمام",
+    "identifiers": "cr:100181"
+  },
+  {
+    "id": "ent-0182",
+    "name": "طلال فواز السهلي",
+    "country": "EG",
+    "birthDate": "1942-09-08",
+    "addresses": "المدينة - حي الملقا",
+    "identifiers": "nat:20001274"
+  },
+  {
+    "id": "ent-0182-v1",
+    "name": "طلال فواز السهلي",
+    "country": "EG",
+    "birthDate": "08/09/1942",
+    "addresses": null,
+    "identifiers": "nat:20001274"
+  },
+  {
+    "id": "ent-0182-s1",
+    "name": "طلال حسين العمري",
+    "country": "EG",
+    "birthDate": "1989-05-17",
+    "addresses": "الرياض - حي المعادي",
+    "identifiers": "nat:40002366"
+  },
+  {
+    "id": "ent-0183",
+    "name": "شركة الأفق للتجارة",
+    "country": "JO",
+    "birthDate": "1941",
+    "addresses": "الرياض - حي المعادي",
+    "identifiers": "cr:100183"
+  },
+  {
+    "id": "ent-0184",
+    "name": "خالد سامي الخالدي",
+    "country": "AE",
+    "birthDate": "1971-03-07",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0185",
+    "name": "فاطمة عبدالرحمن العتيبي",
+    "country": "KW",
+    "birthDate": "1951-10-27",
+    "addresses": "الرياض - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0185-v1",
+    "name": "فاطم عبدالرحمن العتيبي",
+    "country": "KW",
+    "birthDate": null,
+    "addresses": "الرياض - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0185-v2",
+    "name": "فاطمة عبدالرحمن العتيي",
+    "country": "KW",
+    "birthDate": "1951-10-27",
+    "addresses": null,
+    "identifiers": null
+  },
+  {
+    "id": "ent-0186",
+    "name": "سارة عبدالرحمن السهلي",
+    "country": "SA",
+    "birthDate": "1943-02-26",
+    "addresses": "الدمام - حي الشاطئ",
+    "identifiers": "nat:20001302"
+  },
+  {
+    "id": "ent-0187",
+    "name": "عبدالله منصور الغامدي",
+    "country": "JO",
+    "birthDate": "1955-08-27",
+    "addresses": "الدمام - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0187-v1",
+    "name": "عبدألله منصور الغامدي",
+    "country": "JO",
+    "birthDate": "1955-08-27",
+    "addresses": null,
+    "identifiers": null
+  },
+  {
+    "id": "ent-0187-v2",
+    "name": "عبدألله منصور الغامدي",
+    "country": "JO",
+    "birthDate": "1955",
+    "addresses": "حي المعادي - الدمام",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0188",
+    "name": "مشعل سعد الزهراني",
+    "country": "SA",
+    "birthDate": "1993-10-17",
+    "addresses": "جدة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0188-s1",
+    "name": "مشعل بندر المطيري",
+    "country": "SA",
+    "birthDate": "1990-03-25",
+    "addresses": "الدمام - حي الملقا",
+    "identifiers": "nat:40002444"
+  },
+  {
+    "id": "ent-0189",
+    "name": "شركة الأفق للتجارة",
+    "country": "KW",
+    "birthDate": "1988",
+    "addresses": "القاهرة - حي العليا",
+    "identifiers": "cr:100189"
+  },
+  {
+    "id": "ent-0189-v1",
+    "name": "شركة األفق للتجارة",
+    "country": "KW",
+    "birthDate": "1988",
+    "addresses": "حي العليا - القاهرة",
+    "identifiers": "cr:100189"
+  },
+  {
+    "id": "ent-0189-v2",
+    "name": "شركة ألأفق للتجارة",
+    "country": "KW",
+    "birthDate": "1988",
+    "addresses": null,
+    "identifiers": "cr:100189"
+  },
+  {
+    "id": "ent-0189-s1",
+    "name": "شركة الرؤية للمقاولات",
+    "country": "KW",
+    "birthDate": "1967",
+    "addresses": "الرياض - حي عبدون",
+    "identifiers": "cr:300189"
+  },
+  {
+    "id": "ent-0190",
+    "name": "راشد وليد الشمري",
+    "country": "EG",
+    "birthDate": "1949-09-05",
+    "addresses": "الرياض - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0190-v1",
+    "name": "راشد وليد الشمري",
+    "country": "EG",
+    "birthDate": "1949-09-05",
+    "addresses": "حي النرجس - الرياض",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0191",
+    "name": "شركة الوسطى للتجارة",
+    "country": "KW",
+    "birthDate": "1954",
+    "addresses": "الدمام - حي المعادي",
+    "identifiers": "cr:100191"
+  },
+  {
+    "id": "ent-0191-v1",
+    "name": "شركهـ الوسطى للتجارة",
+    "country": "KW",
+    "birthDate": null,
+    "addresses": "حي المعادي - الدمام",
+    "identifiers": "cr:100191"
+  },
+  {
+    "id": "ent-0191-s1",
+    "name": "شركة الدرعية للمقاولات",
+    "country": "KW",
+    "birthDate": "1984",
+    "addresses": "جدة - حي النرجس",
+    "identifiers": "cr:300191"
+  },
+  {
+    "id": "ent-0192",
+    "name": "سلمان فيصل الشمري",
+    "country": "AE",
+    "birthDate": "1961-07-03",
+    "addresses": "القاهرة - حي الملقا",
+    "identifiers": "nat:20001344"
+  },
+  {
+    "id": "ent-0192-v1",
+    "name": "سلمان فيصل لاشمري",
+    "country": "AE",
+    "birthDate": "1961-07-03",
+    "addresses": null,
+    "identifiers": "nat:20001344"
+  },
+  {
+    "id": "ent-0192-s1",
+    "name": "سلمان منصور المطيري",
+    "country": "AE",
+    "birthDate": "1974-12-22",
+    "addresses": "القاهرة - حي المعادي",
+    "identifiers": "nat:40002496"
+  },
+  {
+    "id": "ent-0193",
+    "name": "شركة الإتقان للتجارة",
+    "country": "AE",
+    "birthDate": "1997",
+    "addresses": "المدينة - حي الملقا",
+    "identifiers": "cr:100193"
+  },
+  {
+    "id": "ent-0193-s1",
+    "name": "شركة الياسمين للمقاولات",
+    "country": "AE",
+    "birthDate": "1976",
+    "addresses": "القاهرة - حي عبدون",
+    "identifiers": "cr:300193"
+  },
+  {
+    "id": "ent-0194",
+    "name": "شركة الياسمين للتجارة",
+    "country": "EG",
+    "birthDate": "1976",
+    "addresses": "أبوظبي - حي النرجس",
+    "identifiers": "cr:100194"
+  },
+  {
+    "id": "ent-0194-v1",
+    "name": "شركة ألياسمين للتجارة",
+    "country": "EG",
+    "birthDate": "1976",
+    "addresses": null,
+    "identifiers": "cr:100194"
+  },
+  {
+    "id": "ent-0194-s1",
+    "name": "شركة الشرقية للمقاولات",
+    "country": "EG",
+    "birthDate": "1984",
+    "addresses": "المدينة - حي العليا",
+    "identifiers": "cr:300194"
+  },
+  {
+    "id": "ent-0195",
+    "name": "ريم طاهر الزهراني",
+    "country": "KW",
+    "birthDate": "1974-09-07",
+    "addresses": "الدمام - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0195-v1",
+    "name": "رىم طاهر الزهراني",
+    "country": "KW",
+    "birthDate": "07/09/1974",
+    "addresses": "حي الملقا - الدمام",
+    "identifiers": null
+  },
+  { "id": "ent-0195-v2", "name": "ريم طاهر الزراني", "country": "KW", "birthDate": null, "addresses": null, "identifiers": null },
+  {
+    "id": "ent-0195-s1",
+    "name": "ريم بندر المطيري",
+    "country": "KW",
+    "birthDate": "1971-04-11",
+    "addresses": "أبوظبي - حي عبدون",
+    "identifiers": "nat:40002535"
+  },
+  {
+    "id": "ent-0196",
+    "name": "لمى منصور الكندي",
+    "country": "SA",
+    "birthDate": "1953-03-01",
+    "addresses": "عمّان - حي عبدون",
+    "identifiers": "nat:20001372"
+  },
+  {
+    "id": "ent-0197",
+    "name": "بدر سلمان الشمري",
+    "country": "EG",
+    "birthDate": "1953-01-06",
+    "addresses": "الدمام - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0197-v1",
+    "name": "بدر سلمن الشمري",
+    "country": "EG",
+    "birthDate": "1953",
+    "addresses": "الدمام - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0197-v2",
+    "name": "بدر سلمانا لشمري",
+    "country": "EG",
+    "birthDate": "1953",
+    "addresses": "حي عبدون - الدمام",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0198",
+    "name": "عبدالعزيز سعد المطيري",
+    "country": "EG",
+    "birthDate": "1982-04-03",
+    "addresses": "الدمام - حي العليا",
+    "identifiers": "nat:20001386"
+  },
+  {
+    "id": "ent-0198-v1",
+    "name": "عبدالعزيز سعد لمطيري",
+    "country": "EG",
+    "birthDate": "1982-04-03",
+    "addresses": null,
+    "identifiers": "nat:20001386"
+  },
+  {
+    "id": "ent-0198-v2",
+    "name": "عبدالعزىز سعد المطيري",
+    "country": "EG",
+    "birthDate": "1982-04-03",
+    "addresses": null,
+    "identifiers": "nat:20001386"
+  },
+  {
+    "id": "ent-0199",
+    "name": "لمى حسين الصالح",
+    "country": "AE",
+    "birthDate": "1949-09-04",
+    "addresses": "الدمام - حي الملقا",
+    "identifiers": "nat:20001393"
+  },
+  {
+    "id": "ent-0199-s1",
+    "name": "لمى طاهر الهاجري",
+    "country": "AE",
+    "birthDate": "1978-11-06",
+    "addresses": "المدينة - حي الشاطئ",
+    "identifiers": "nat:40002587"
+  },
+  {
+    "id": "ent-0200",
+    "name": "ريم حسن المطيري",
+    "country": "SA",
+    "birthDate": "1954-01-08",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "nat:20001400"
+  },
+  {
+    "id": "ent-0200-v1",
+    "name": "ريم حسن ألمطيري",
+    "country": "SA",
+    "birthDate": "08/01/1954",
+    "addresses": "حي الشاطئ - الرياض",
+    "identifiers": "nat:20001400"
+  },
+  {
+    "id": "ent-0200-v2",
+    "name": "ريم حسن املطيري",
+    "country": "SA",
+    "birthDate": "1954-01-08",
+    "addresses": "الرياض",
+    "identifiers": "nat:20001400"
+  },
+  {
+    "id": "ent-0200-s1",
+    "name": "ريم منصور المالكي",
+    "country": "SA",
+    "birthDate": "1966-04-21",
+    "addresses": "مكة - حي المعادي",
+    "identifiers": "nat:40002600"
+  },
+  {
+    "id": "ent-0201",
+    "name": "ريم صالح الجابري",
+    "country": "SA",
+    "birthDate": "1988-11-17",
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0201-v1",
+    "name": "ريم صالح الجابري",
+    "country": "SA",
+    "birthDate": "1988-11-17",
+    "addresses": "حي النرجس - الدمام",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0201-s1",
+    "name": "ريم صالح البقمي",
+    "country": "SA",
+    "birthDate": "1977-02-02",
+    "addresses": "الرياض - حي عبدون",
+    "identifiers": "nat:40002613"
+  },
+  {
+    "id": "ent-0202",
+    "name": "ريم عبدالرحمن الفيفي",
+    "country": "AE",
+    "birthDate": "1951-11-16",
+    "addresses": "مكة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0202-v1",
+    "name": "رىم عبدالرحمن الفيفي",
+    "country": "AE",
+    "birthDate": "1951-11-16",
+    "addresses": "حي المعادي - مكة",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0203",
+    "name": "شركة النخبة للتجارة",
+    "country": "EG",
+    "birthDate": "1981",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": "cr:100203"
+  },
+  {
+    "id": "ent-0203-v1",
+    "name": "شركة النخب ةللتجارة",
+    "country": "EG",
+    "birthDate": null,
+    "addresses": "حي النرجس - القاهرة",
+    "identifiers": "cr:100203"
+  },
+  {
+    "id": "ent-0204",
+    "name": "شركة الدرعية للتجارة",
+    "country": "AE",
+    "birthDate": "1970",
+    "addresses": "الدمام - حي الشاطئ",
+    "identifiers": "cr:100204"
+  },
+  {
+    "id": "ent-0204-v1",
+    "name": "شركة ادرعية للتجارة",
+    "country": "AE",
+    "birthDate": "1970",
+    "addresses": "حي الشاطئ - الدمام",
+    "identifiers": "cr:100204"
+  },
+  {
+    "id": "ent-0204-v2",
+    "name": "شركة الدرعي ةللتجارة",
+    "country": "AE",
+    "birthDate": "1970",
+    "addresses": "حي الشاطئ - الدمام",
+    "identifiers": "cr:100204"
+  },
+  {
+    "id": "ent-0205",
+    "name": "شركة الشرقية للتجارة",
+    "country": "AE",
+    "birthDate": "1972",
+    "addresses": "عمّان - حي الشاطئ",
+    "identifiers": "cr:100205"
+  },
+  {
+    "id": "ent-0205-v1",
+    "name": "شركة الشرقية للجتارة",
+    "country": "AE",
+    "birthDate": "1972",
+    "addresses": "عمّان - حي الشاطئ",
+    "identifiers": "cr:100205"
+  },
+  {
+    "id": "ent-0206",
+    "name": "ريم سامي الفيفي",
+    "country": "SA",
+    "birthDate": "1995-03-09",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "nat:20001442"
+  },
+  {
+    "id": "ent-0206-v1",
+    "name": "ريم سامي افليفي",
+    "country": "SA",
+    "birthDate": "1995-03-09",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "nat:20001442"
+  },
+  {
+    "id": "ent-0206-s1",
+    "name": "ريم ماجد السالم",
+    "country": "SA",
+    "birthDate": "1958-07-16",
+    "addresses": "مكة - حي عبدون",
+    "identifiers": "nat:40002678"
+  },
+  {
+    "id": "ent-0207",
+    "name": "نورة زيد الشمري",
+    "country": "AE",
+    "birthDate": "1986-10-01",
+    "addresses": "المدينة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0207-v1",
+    "name": "نورهـ زيد الشمري",
+    "country": "AE",
+    "birthDate": "1986-10-01",
+    "addresses": "المدينة - حي المعادي",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0207-s1",
+    "name": "نورة ناصر الخالدي",
+    "country": "AE",
+    "birthDate": "1996-08-14",
+    "addresses": "القاهرة - حي النرجس",
+    "identifiers": "nat:40002691"
+  },
+  {
+    "id": "ent-0208",
+    "name": "هند حسين السالم",
+    "country": "EG",
+    "birthDate": "1968-08-24",
+    "addresses": "الدمام - حي النرجس",
+    "identifiers": "nat:20001456"
+  },
+  {
+    "id": "ent-0208-v1",
+    "name": "هند حسي السالم",
+    "country": "EG",
+    "birthDate": "1968-08-24",
+    "addresses": "حي النرجس - الدمام",
+    "identifiers": "nat:20001456"
+  },
+  {
+    "id": "ent-0209",
+    "name": "شركة الصفا للتجارة",
+    "country": "KW",
+    "birthDate": "1994",
+    "addresses": "عمّان - حي النرجس",
+    "identifiers": "cr:100209"
+  },
+  {
+    "id": "ent-0210",
+    "name": "لمى عادل المالكي",
+    "country": "AE",
+    "birthDate": "1973-05-02",
+    "addresses": "القاهرة - حي عبدون",
+    "identifiers": "nat:20001470"
+  },
+  {
+    "id": "ent-0211",
+    "name": "غادة ماجد العتيبي",
+    "country": "SA",
+    "birthDate": "1963-06-19",
+    "addresses": "القاهرة - حي عبدون",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0211-s1",
+    "name": "غادة تركي الفيفي",
+    "country": "SA",
+    "birthDate": "1950-08-02",
+    "addresses": "أبوظبي - حي الملقا",
+    "identifiers": "nat:40002743"
+  },
+  {
+    "id": "ent-0212",
+    "name": "شركة التميز للتجارة",
+    "country": "SA",
+    "birthDate": "1967",
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "cr:100212"
+  },
+  {
+    "id": "ent-0212-v1",
+    "name": "شركة التمز للتجارة",
+    "country": "SA",
+    "birthDate": null,
+    "addresses": "الرياض - حي الشاطئ",
+    "identifiers": "cr:100212"
+  },
+  {
+    "id": "ent-0212-v2",
+    "name": "شركة التمىز للتجارة",
+    "country": "SA",
+    "birthDate": "1967",
+    "addresses": null,
+    "identifiers": "cr:100212"
+  },
+  {
+    "id": "ent-0213",
+    "name": "مشعل فواز القحطاني",
+    "country": "SA",
+    "birthDate": "1984-08-03",
+    "addresses": "الدمام - حي الشاطئ",
+    "identifiers": "nat:20001491"
+  },
+  {
+    "id": "ent-0213-s1",
+    "name": "مشعل سعد السهلي",
+    "country": "SA",
+    "birthDate": "1951-11-05",
+    "addresses": "الرياض - حي الملقا",
+    "identifiers": "nat:40002769"
+  },
+  {
+    "id": "ent-0214",
+    "name": "شركة الشرقية للتجارة",
+    "country": "JO",
+    "birthDate": "1991",
+    "addresses": "جدة - حي الشاطئ",
+    "identifiers": "cr:100214"
+  },
+  {
+    "id": "ent-0214-v1",
+    "name": "شركهـ الشرقية للتجارة",
+    "country": "JO",
+    "birthDate": "1991",
+    "addresses": "جدة - حي الشاطئ",
+    "identifiers": "cr:100214"
+  },
+  {
+    "id": "ent-0214-v2",
+    "name": "شركة ألشرقية للتجارة",
+    "country": "JO",
+    "birthDate": null,
+    "addresses": "حي الشاطئ - جدة",
+    "identifiers": "cr:100214"
+  },
+  {
+    "id": "ent-0215",
+    "name": "أحمد رائد البقمي",
+    "country": "SA",
+    "birthDate": "1982-09-28",
+    "addresses": "الرياض - حي النرجس",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0216",
+    "name": "طلال سامي الدوسري",
+    "country": "EG",
+    "birthDate": "1992-04-10",
+    "addresses": "جدة - حي المعادي",
+    "identifiers": "nat:20001512"
+  },
+  {
+    "id": "ent-0217",
+    "name": "شركة الأفق للتجارة",
+    "country": "AE",
+    "birthDate": "1981",
+    "addresses": "المدينة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0217-v1",
+    "name": "شركة الأفق لتجارة",
+    "country": "AE",
+    "birthDate": "1981",
+    "addresses": "المدينة - حي العليا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0217-v2",
+    "name": "شركة الأفق للتجارة",
+    "country": "AE",
+    "birthDate": "1981",
+    "addresses": "حي العليا - المدينة",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0217-s1",
+    "name": "شركة السدرة للمقاولات",
+    "country": "AE",
+    "birthDate": "1952",
+    "addresses": "أبوظبي - حي النرجس",
+    "identifiers": "cr:300217"
+  },
+  {
+    "id": "ent-0218",
+    "name": "شركة التميز للتجارة",
+    "country": "EG",
+    "birthDate": "1967",
+    "addresses": "المدينة - حي الملقا",
+    "identifiers": "cr:100218"
+  },
+  {
+    "id": "ent-0218-v1",
+    "name": "شركة اتميز للتجارة",
+    "country": "EG",
+    "birthDate": "1967",
+    "addresses": null,
+    "identifiers": "cr:100218"
+  },
+  {
+    "id": "ent-0219",
+    "name": "نايف فواز السبيعي",
+    "country": "EG",
+    "birthDate": "1993-05-01",
+    "addresses": "أبوظبي - حي الملقا",
+    "identifiers": "nat:20001533"
+  },
+  {
+    "id": "ent-0219-v1",
+    "name": "ناىف فواز السبيعي",
+    "country": "EG",
+    "birthDate": null,
+    "addresses": "أبوظبي - حي الملقا",
+    "identifiers": "nat:20001533"
+  },
+  {
+    "id": "ent-0219-v2",
+    "name": "نايف فواز السبيعي",
+    "country": "EG",
+    "birthDate": "1993-05-01",
+    "addresses": "أبوظبي - حي الملقا",
+    "identifiers": null
+  },
+  {
+    "id": "ent-0219-s1",
+    "name": "نايف فواز العمري",
+    "country": "EG",
+    "birthDate": "1971-11-15",
+    "addresses": "عمّان - حي النرجس",
+    "identifiers": "nat:40002847"
+  }
+]

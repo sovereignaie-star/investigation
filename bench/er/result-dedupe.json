@@ -1,0 +1,13 @@
+{
+  "tool": "dedupe 3.0.3",
+  "tp": 119,
+  "fp": 69,
+  "fn": 18,
+  "precision": 0.633,
+  "recall": 0.8686,
+  "f1": 0.7323,
+  "threshold": 0.5,
+  "trainSeconds": 1.8,
+  "predictSeconds": 0.03,
+  "scoredPairs": 2
+}
