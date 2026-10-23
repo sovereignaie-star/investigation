@@ -221,6 +221,9 @@ const nodeRejectTransport: AiTransport = {
   },
 };
 
+export { summarizeEvidence } from "./summarize.ts";
+export type { EvidenceStatement, SummarizeResult, SummaryClaim, SummarizeOptions } from "./summarize.ts";
+
 export interface AiProvider {
   readonly id: string;
   readonly isLocal: boolean;
