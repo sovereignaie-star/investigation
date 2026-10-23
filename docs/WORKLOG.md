@@ -5394,3 +5394,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **حدود معلنة:** L-74 (Tariq/Tarek، أحمد≈الحمد، المنطقة الملتبسة بلا حقيقة أرضية).
 - **الجودة:** 2849/0/6 (+7)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-006)؛ docs/STATUS.md (P5-006 → done)؛ docs/evidence/2026-10-23-P5-006-red.md.
+
+## 2026-10-23 — P5-006 إغلاق الصف — الدمج والبوابات [P5-006]
+
+- **الدمج:** PR #353 دُمج squash في main عند `7b5bd2f` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
+- **المصدر/المرجع:** docs/STATUS.md (P5-006 → done مع أدلة الدمج)؛ PR #353؛ إيداع الدمج `7b5bd2f`.
