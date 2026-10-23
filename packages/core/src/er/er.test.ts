@@ -269,7 +269,7 @@ describe("P4-004: resolution end-to-end (D9 — F1 ≥ 0.9 على مجموعة �
     // the model's threshold reference IS what the scoring path consumes
     expect(ER_MODEL_THRESHOLDS.strong).toBe(STRONG_THRESHOLD);
     expect(ER_MODEL_THRESHOLDS.review).toBe(REVIEW_THRESHOLD);
-    expect(ER_MODEL_VERSION).toBe("er-model/1");
+    expect(ER_MODEL_VERSION).toBe("er-model/2"); // P5-003: ترقية معلنة — التطبيع العربي الكامل
   });
 
   it("T-ER-007: decisions follow the two thresholds — strong / review / none, and NO automatic merge", () => {

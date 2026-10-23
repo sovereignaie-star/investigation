@@ -1,17 +1,21 @@
 /**
- * P4-005 — the pinned production ER model: `er-model/1`.
+ * P4-005/P5-003 — the pinned production ER model: `er-model/2`.
  *
  * The cases are UNLABELED: `estimateWeights` cannot run on production data
  * (it needs duplicatePairs ground truth). The production model is therefore a
  * VERSIONED FROZEN model with a documented, reproducible training origin —
  * not a runtime estimation:
  *
- * - Origin: `estimateWeights(generateReferenceSet(42).train)` — the reference
- *   generator at the #306 merge (commit cd8e585), seed 42, TRAIN split only.
+ * - er-model/2 origin: `estimateWeights(generateReferenceSet(42).train)` —
+ *   seed 42, TRAIN split only, measured after the P5-003 Arabic integration
+ *   (the comparison key upgraded to the FULL P5-001 normalization
+ *   `normalizeArabicName` — the minimal P4-004 fold superseded). er-model/1
+ *   (measured at the #306 merge, commit cd8e585) is superseded for that
+ *   documented reason — a deliberate semantic upgrade, not silent drift.
  * - The weights below are the frozen constants of that measurement. The
  *   consistency test (T-MODEL-001) re-derives them and compares — if the
- *   generator ever changes, the test breaks VISIBLY and forces a version bump
- *   (er-model/2), never a silent drift.
+ *   generator or comparison policy ever changes again, the test breaks
+ *   VISIBLY and forces a version bump (er-model/3), never a silent drift.
  * - The thresholds are the DECLARED constants of fellegi-sunter.ts
  *   (STRONG_THRESHOLD / REVIEW_THRESHOLD) — never estimated from any data.
  *   T-MODEL-001 verifies the model's threshold reference equals the constants
@@ -25,18 +29,18 @@
 import type { ErRecord } from "./types.ts";
 
 /** The pinned model's version — part of the suggestion/accept contract. */
-export const ER_MODEL_VERSION = "er-model/1";
+export const ER_MODEL_VERSION = "er-model/2";
 
 /** The frozen FsWeights — measured once from the reference TRAIN split (seed 42). */
 export const ER_MODEL_WEIGHTS = {
-  name: 2.4594680761493155,
-  namePartial: -4.045280608562864,
-  nameDisagree: -3.4863551900024623,
-  date: 4.8230898601738925,
-  datePartial: 2.1840325305586337,
-  dateDisagree: -4.153382997125105,
-  address: 2.5714519349491036,
-  addressDisagree: -1.6010388807464357,
+  name: 2.4722682509162777,
+  namePartial: -4.067762247940543,
+  nameDisagree: -3.449103919371336,
+  date: 4.841397007618249,
+  datePartial: 2.20233967800299,
+  dateDisagree: -4.1537679826929015,
+  address: 2.3961387292235936,
+  addressDisagree: -1.588299854969006,
 } as const;
 
 /** The model's threshold reference — must equal the declared scoring constants (T-MODEL-001). */
@@ -46,15 +50,16 @@ export const ER_MODEL_THRESHOLDS = {
 } as const;
 
 /** The declared comparison policy — the compare.ts key + Jaro-Winkler. */
-export const ER_MODEL_COMPARISON_POLICY = "compare.ts: Arabic-normalizing key + Jaro-Winkler" as const;
+export const ER_MODEL_COMPARISON_POLICY =
+  "compare.ts: full P5-001 Arabic normalization + Jaro-Winkler + P5-002 cross-script matcher" as const;
 
 /** The documented training origin (reproducible: generator SHA, seed, split). */
 export const ER_MODEL_ORIGIN = {
   source: "estimateWeights(generateReferenceSet(42).train)",
-  generatorCommit: "cd8e585 (#306 merge)",
+  generatorCommit: "P5-003 Arabic integration (full normalizeArabicName comparison key)",
   seed: 42,
   split: "train",
-  measuredAt: "2026-10-21",
+  measuredAt: "2026-10-23",
 } as const;
 
 /**

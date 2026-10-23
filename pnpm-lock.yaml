@@ -774,6 +774,10 @@ importers:
         version: 0.28.2
 
   packages/core:
+    dependencies:
+      '@ir/arabic':
+        specifier: workspace:*
+        version: link:../arabic
     devDependencies:
       '@ir/schema':
         specifier: workspace:*
