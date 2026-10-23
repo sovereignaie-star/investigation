@@ -1,4 +1,4 @@
-# Identifier catalog: Phone (67 types). Schema: IdentifierSpec in @ir/schema (5.6).
+# Identifier catalog: Phone (68 types). Schema: IdentifierSpec in @ir/schema (5.6).
 # Edit here, then run: pnpm --filter @ir/core run gen:data
 - id: phone_intl
   category: Phone
@@ -24,17 +24,22 @@
   labels:
     en: US Phone Number
     ar: هاتف أمريكي
-  description: US/Canada phone number
+  description: US/Canada (NANP) phone number — area code and exchange cannot start with 0/1 (P5-005)
   icon: 🇺🇸
   color: blue
   patterns:
     - ^(\+?1[-.\s]?)?(\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})$
-  validator: null
+  validator: phone_us
   examples:
     positive:
-      - +1-555-123-4567
+      - +1-415-555-0166
+      - "(212) 555-0198"
+      - "3125550121"
     negative:
       - +1-555-123-4567#
+      - "+1-555-123-4567"
+      - "1234567890"
+      - "229136335"
   sensitivity: normal
 - id: phone_uk
   category: Phone
@@ -58,34 +63,48 @@
   labels:
     en: Saudi Arabia Phone
     ar: هاتف سعودي
-  description: Saudi Arabia phone number
+  description: Saudi Arabia phone number (CST national numbering plan — P5-005)
   icon: 🇸🇦
   color: green
   patterns:
-    - ^(\+?966[-.\s]?)?0?5[0-9]{8}$
-  validator: null
+    - ^\+?966[\-.\s]?(5[0134-9]\d{7}|1[123467]\d{7}|800\d{7}|92[0-9]\d{6})$
+    - ^(05[0134-9]\d{7}|01[123467]\d{7}|800\d{7}|92[0-9]\d{6})$
+  validator: phone_sa
   examples:
     positive:
       - "+966501234567"
+      - "+966551234567"
+      - "0113456789"
+      - "8001232222"
+      - "920012345"
     negative:
       - +966501234567#
+      - "+9660521234567"
+      - "+9660151234567"
+      - "5512345678"
+      - "+96650123456"
   sensitivity: normal
 - id: phone_ae
   category: Phone
   labels:
     en: UAE Phone Number
     ar: هاتف إماراتي
-  description: UAE phone number
+  description: UAE phone number (TDRA national numbering plan — P5-005)
   icon: 🇦🇪
   color: red
   patterns:
-    - ^(\+?971[-.\s]?)?0?5[0-9]{8}$
-  validator: null
+    - ^(\+?971[\-.\s]?)?(0?5\d{8}|0?[234679]\d{7})$
+  validator: phone_ae
   examples:
     positive:
       - "+971501234567"
+      - "0501234567"
+      - "+97141234567"
     negative:
       - +971501234567#
+      - "+971601234567"
+      - "+9715012345678"
+      - "+9714123456"
   sensitivity: normal
 - id: phone_eg
   category: Phone
@@ -124,70 +143,86 @@
 - id: phone_kw
   category: Phone
   labels:
-    en: Kuwait Phone
+    en: Kuwait Phone Number
     ar: هاتف كويتي
-  description: Kuwait phone number
+  description: Kuwait phone number (8 digits, leading 2/5/6/9 — P5-005)
   icon: 🇰🇼
   color: green
   patterns:
-    - ^(\+?965[-.\s]?)?[569]\d{7}$
-  validator: null
+    - ^(\+?965[\-.\s]?)?[2569]\d{7}$
+  validator: phone_kw
   examples:
     positive:
-      - "+96551234567"
+      - "+96550012345"
+      - "50012345"
     negative:
-      - +96551234567#
+      - +96550012345#
+      - "+96541234567"
+      - "+965500123456"
+      - "+9655001234"
   sensitivity: normal
 - id: phone_qa
   category: Phone
   labels:
-    en: Qatar Phone
+    en: Qatar Phone Number
     ar: هاتف قطري
-  description: Qatar phone number
+  description: Qatar phone number (8 digits, leading 3/4/5/6/7 — P5-005)
   icon: 🇶🇦
-  color: red
+  color: maroon
   patterns:
-    - ^(\+?974[-.\s]?)?[356]\d{7}$
-  validator: null
+    - ^(\+?974[\-.\s]?)?[34567]\d{7}$
+  validator: phone_qa
   examples:
     positive:
-      - "+97451234567"
+      - "+97433123456"
+      - "44123456"
     negative:
-      - +97451234567#
+      - +97433123456#
+      - "+97423123456"
+      - "+974331234567"
+      - "+9743312345"
   sensitivity: normal
 - id: phone_bh
   category: Phone
   labels:
-    en: Bahrain Phone
+    en: Bahrain Phone Number
     ar: هاتف بحريني
-  description: Bahrain phone number
+  description: Bahrain phone number (8 digits, landline 17x or mobile 3/6 — P5-005)
   icon: 🇧🇭
   color: red
   patterns:
-    - ^(\+?973[-.\s]?)?[369]\d{7}$
-  validator: null
+    - ^(\+?973[\-.\s]?)?(17\d{6}|[36]\d{7})$
+  validator: phone_bh
   examples:
     positive:
-      - "+97336123456"
+      - "+97336001234"
+      - "+97317123456"
     negative:
-      - +97336123456#
+      - +97336001234#
+      - "+97346001234"
+      - "+973360012345"
+      - "+9733600123"
   sensitivity: normal
 - id: phone_om
   category: Phone
   labels:
-    en: Oman Phone
-    ar: هاتف عُماني
-  description: Oman phone number
+    en: Oman Phone Number
+    ar: هاتف عماني
+  description: Oman phone number (8 digits, landline 2x or mobile 7/9 — P5-005)
   icon: 🇴🇲
   color: red
   patterns:
-    - ^(\+?968[-.\s]?)?[79]\d{7}$
-  validator: null
+    - ^(\+?968[\-.\s]?)?[279]\d{7}$
+  validator: phone_om
   examples:
     positive:
       - "+96892123456"
+      - "+96871234567"
     negative:
       - +96892123456#
+      - "+96852123456"
+      - "+968921234567"
+      - "+9689212345"
   sensitivity: normal
 - id: phone_iq
   category: Phone

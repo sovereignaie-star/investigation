@@ -2,6 +2,7 @@ import { isRegistrableHost, registrableDomain } from "../psl/index.ts";
 import { base58CheckDecode } from "./base58.ts";
 import { decodeBitcoinAddress } from "./bitcoin.ts";
 import { checkEip55 } from "./eip55.ts";
+import { checkCrSa, checkGulfPhone, checkIbanCountry, checkNanp, checkSaudiId, checkVatSa } from "./gulf.ts";
 import { checkIban } from "./iban.ts";
 import { isIP, isIPv4, isIPv6 } from "./ip.ts";
 import { luhn } from "./luhn.ts";
@@ -60,6 +61,25 @@ export function isValidIsin(v: string): boolean {
 
 const VALIDATORS: Record<string, [string, Check]> = {
   credit_card: ["luhn", card(/^\d/, [12, 13, 14, 15, 16, 17, 18, 19])],
+  // P5-005 — الصيغ المحلية الخليجية: مدققات على قواعد علنية موثقة (gulf.ts).
+  // المفتاح هو معرف النوع (validate(typeId, …))؛ الاسم الأول هو اسم المدقق في المواصفة.
+  national_id_sa: ["saudi_id", (v) => checkSaudiId(v)],
+  iqama_sa: ["saudi_id", checkSaudiId],
+  cr_sa: ["cr_sa", checkCrSa],
+  vat_sa: ["vat_sa", checkVatSa],
+  iban_sa: ["iban", (v) => checkIbanCountry(v, "SA")],
+  iban_ae: ["iban", (v) => checkIbanCountry(v, "AE")],
+  iban_kw: ["iban", (v) => checkIbanCountry(v, "KW")],
+  iban_qa: ["iban", (v) => checkIbanCountry(v, "QA")],
+  iban_bh: ["iban", (v) => checkIbanCountry(v, "BH")],
+  iban_om: ["iban", (v) => checkIbanCountry(v, "OM")],
+  phone_us: ["nanp", checkNanp],
+  phone_sa: ["gulf_phone", (v) => checkGulfPhone(v, "SA")],
+  phone_ae: ["gulf_phone", (v) => checkGulfPhone(v, "AE")],
+  phone_kw: ["gulf_phone", (v) => checkGulfPhone(v, "KW")],
+  phone_qa: ["gulf_phone", (v) => checkGulfPhone(v, "QA")],
+  phone_bh: ["gulf_phone", (v) => checkGulfPhone(v, "BH")],
+  phone_om: ["gulf_phone", (v) => checkGulfPhone(v, "OM")],
   visa_card: ["luhn", card(/^4/, [13, 16, 19])],
   mastercard: ["luhn", card(/^(?:5[1-5]|222[1-9]|22[3-9]\d|2[3-6]\d\d|27[01]\d|2720)/, [16])],
   amex_card: ["luhn", card(/^3[47]/, [15])],
@@ -150,6 +170,7 @@ export * from "./base58.ts";
 export * from "./bech32.ts";
 export * from "./bitcoin.ts";
 export * from "./eip55.ts";
+export * from "./gulf.ts";
 export * from "./hash.ts";
 export * from "./iban.ts";
 export * from "./ip.ts";

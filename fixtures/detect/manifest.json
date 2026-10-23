@@ -58,7 +58,7 @@
       "tron": 88
     }
   },
-  "sha256": "dce640f17818c1557bc390209085b850b095b7c783309d2c082ccf4a56ceb057",
+  "sha256": "31f0ea3af734d59418456f5d13cb90ae077a8611e9fa27842e31d3bf26ce2294",
   "generator": "packages/core/scripts/gen-golden.mjs",
   "review": "second review = packages/core/src/identifiers/golden.test.ts (independent core validators must agree with every label)"
 }

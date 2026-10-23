@@ -248,7 +248,10 @@ const DET = {
   },
   iban: () => {
     const cc = pick(Object.keys(BBAN));
-    return { value: iban(cc, BBAN[cc]()), type: "iban", accept: ["iban"] };
+    // P5-005: the catalog now tells Gulf IBANs apart by country (iban_sa/iban_ae) —
+    // a correct detector may report the country type first; other IBANs stay "iban".
+    const countryType = { SA: "iban_sa", AE: "iban_ae" }[cc];
+    return { value: iban(cc, BBAN[cc]()), type: "iban", accept: countryType ? ["iban", countryType] : ["iban"] };
   },
   visa_card: () => ({ value: card(pick(["400000", "424242"]), 16), type: "visa_card", accept: ["visa_card", "credit_card"] }),
   mastercard: () => ({ value: card(pick(["555555", "510510"]), 16), type: "mastercard", accept: ["mastercard", "credit_card"] }),
