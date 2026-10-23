@@ -5531,3 +5531,9 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `suggestEntities` — اقتراحات غير مؤكدة بالتصميم (لا مسار تأكيد آلي — E-07) + تحقق حتمي بمخطط صارم (JSON، أنواع معروفة، فشل صريح مصنف) + حصر الوثيقة (علامات P5-014).
 - **الجودة:** T-ENT-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2921/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-015)؛ docs/STATUS.md (P5-015 → done)؛ docs/evidence/2026-10-23-P5-015-red.md.
+
+## 2026-10-23 — P5-015 إغلاق الصف — الدمج والبوابات [P5-015]
+
+- **الدمج:** PR #373 دُمج squash في main عند `90cb111` (بتكليف المالك 2026-10-22: المرجعة D-8 ملغاة — الدمج عند اخضرار البوابات الآلية).
+- **البوابات عند الدمج:** كل فحوص PR ناجحة (CLEAN) — CodeQL وanalyze وbuild وdocker وe2e وgates وgitleaks وgovernance وsecurity-review-advisory وtest وzap.
+- **المصدر/المرجع:** docs/STATUS.md (P5-015 → done مع أدلة الدمج)؛ PR #373؛ إيداع الدمج `90cb111`.
