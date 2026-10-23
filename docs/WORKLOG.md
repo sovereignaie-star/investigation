@@ -5588,3 +5588,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `createLocalEmbedProvider` (Ollama /api/embed، نقل محقون — بلا شبكة مباشرة) + `buildSearchIndex`/`searchCase` (تشابه جيب التمام حتمي الترتيب) + `serializeSearchIndex`/`deserializeSearchIndex` — والتخزين المشفر مع القضية عبر مخزن الحمولات المشفرة (P1-014).
 - **الجودة:** T-SEM-001..006 (6 اختبارات) خضراء؛ الحزمة الكاملة 2951/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-020/ADR-17)؛ docs/STATUS.md (P5-020 → done)؛ docs/evidence/2026-10-23-P5-020-red.md.
+
+## 2026-10-23 — P5-021 سجل استخدام الذكاء الاصطناعي ومفتاح التعطيل [P5-021]
+
+- **الأحمر أولاً:** T-LOG-001..006 قبل وجود الميزة؛ الدليل: `docs/evidence/2026-10-23-P5-021-red.md`.
+- **التنفيذ:** `withUsageAudit`/`withEmbedUsageAudit` (تسجيل كل استدعاء بالنموذج والحجم والتكلفة، ورفع إلى سجل تدقيق القضية عبر محقن) + `estimateAiCost` (حتمية: محلي صفر، سحابي بجدول معلن، الرموز = حروف/4) + `createAiGuard` (تعطيل كامل يمنع أي استدعاء قبل مسار النقل — فشل-مغلق).
+- **الجودة:** T-LOG-001..006 (6 اختبارات، منها تكامل حقيقي مع سجل تدقيق قضية مخزنة) خضراء؛ الحزمة الكاملة 2957/0/6 (+6)؛ lint/typecheck/build/governance exit 0.
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-021/P1-017)؛ docs/STATUS.md (P5-021 → done)؛ docs/evidence/2026-10-23-P5-021-red.md.

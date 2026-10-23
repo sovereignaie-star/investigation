@@ -224,6 +224,8 @@ export { detectInjection, buildSummarizeMessages, neutralizeMarkers } from "./in
 export { suggestNextActions, PERSONAL_ENTITY_TYPES } from "./next-action.ts";
 export { answerCaseQuestion } from "./qa.ts";
 export { createLocalEmbedProvider, buildSearchIndex, searchCase, serializeSearchIndex, deserializeSearchIndex } from "./semantic.ts";
+export { withUsageAudit, withEmbedUsageAudit, estimateAiCost, createAiGuard, AiDisabledError } from "./usage-log.ts";
+export type { UsageAuditRecord, UsageAuditSink, AiGuard } from "./usage-log.ts";
 export type {
   EmbedProvider,
   LocalEmbedProviderOptions,
