@@ -16,7 +16,12 @@ const EV = [
   { id: "EV-3", label: "شهادة شاهد", sha256: "c".repeat(64) },
 ];
 
-const C = (ids: string[]) => ids.map((id) => EV.find((e) => e.id === id) ?? EV[0]);
+const C = (ids: string[]) =>
+  ids.map((id) => {
+    const found = EV.find((e) => e.id === id);
+    if (found === undefined) throw new Error(`معرّف دليل غير موجود في الاختبار: ${id}`);
+    return found;
+  });
 
 describe("P5-023 — قوالب التقارير الإضافية", () => {
   it("T-TPL-001: ملف الكيان (Dossier) — تقرير صالح يجتاز مدقق الإحالات باسم الكيان في العنوان", () => {
@@ -138,7 +143,10 @@ describe("P5-023 — قوالب التقارير الإضافية", () => {
       caseRef: "01J",
       lang: "ar",
       evidence: EV,
-      sections: [{ title: "س", statements: [{ text: "نص", citations: C(["EV-1"]) }] }],
+      sections: [
+        { title: "س", statements: [{ text: "نص أول", citations: C(["EV-1"]) }] },
+        { title: "س2", statements: [{ text: "نص ثانٍ وثالث", citations: C(["EV-2", "EV-3"]) }] },
+      ],
     });
     const html = renderReportHtml(dossier);
     expect(html).toContain('dir="rtl"');
@@ -150,7 +158,10 @@ describe("P5-023 — قوالب التقارير الإضافية", () => {
       lang: "ar",
       title: "خط",
       evidence: EV,
-      events: [{ at: "2026-03-01T09:00:00Z", text: "حدث", citations: C(["EV-1"]) }],
+      events: [
+        { at: "2026-03-01T09:00:00Z", text: "حدث أول", citations: C(["EV-1"]) },
+        { at: "2026-03-02T09:00:00Z", text: "حدث ثانٍ وثالث", citations: C(["EV-2", "EV-3"]) },
+      ],
     });
     expect(renderReportHtml(timeline)).toContain('dir="rtl"');
 
@@ -160,7 +171,10 @@ describe("P5-023 — قوالب التقارير الإضافية", () => {
       title: "مقارنة",
       evidence: EV,
       subjects: [{ name: "أ" }, { name: "ب" }],
-      aspects: [{ name: "جانب", statements: [{ subject: "أ", text: "نص", citations: C(["EV-3"]) }] }],
+      aspects: [
+        { name: "جانب", statements: [{ subject: "أ", text: "نص", citations: C(["EV-3"]) }] },
+        { name: "جانب2", statements: [{ subject: "ب", text: "نص موسع", citations: C(["EV-1", "EV-2"]) }] },
+      ],
     });
     expect(renderReportHtml(comparison)).toContain('dir="rtl"');
   });
@@ -171,10 +185,52 @@ describe("P5-023 — قوالب التقارير الإضافية", () => {
       lang: "ar",
       title: "خط",
       evidence: EV,
-      events: [{ at: "2026-03-01T09:00:00Z", text: "حدث", citations: C(["EV-1"]) }],
+      events: [
+        { at: "2026-03-01T09:00:00Z", text: "حدث أول", citations: C(["EV-1"]) },
+        { at: "2026-03-02T09:00:00Z", text: "حدث ثانٍ وثالث", citations: C(["EV-2", "EV-3"]) },
+      ],
     });
     const md = renderReportMarkdown(timeline);
     expect(md).toContain("[1]");
     expect(md).toContain("a".repeat(64));
+  });
+});
+
+describe("P5-023 — إصلاح عيب القبول: رفض الأدلة اليتيمة فاشلاً-مغلقاً", () => {
+  const EV_ORPHAN = [
+    { id: "EV-1", label: "دليل مستخدم", sha256: "a".repeat(64) },
+    { id: "EV-9", label: "دليل يتيم غير مُحال إليه", sha256: "z".repeat(64) },
+  ];
+
+  it("T-TPL-009: القوالب الثلاثة ترفض مدخلات فيها دليل يتيم (لا يجتاز المدقق = لا يُقبل القالب)", () => {
+    const expectThrow = (fn: () => unknown) => expect(fn).toThrow();
+    expectThrow(() =>
+      buildDossierReport({
+        entity: { name: "كيان", kind: "شخص" },
+        caseRef: "01J",
+        lang: "ar",
+        evidence: EV_ORPHAN,
+        sections: [{ title: "س", statements: [{ text: "نص", citations: [{ id: "EV-1", label: "ل" }] }] }],
+      }),
+    );
+    expectThrow(() =>
+      buildTimelineReport({
+        caseRef: "01J",
+        lang: "ar",
+        title: "خط",
+        evidence: EV_ORPHAN,
+        events: [{ at: "2026-03-01T09:00:00Z", text: "حدث", citations: [{ id: "EV-1", label: "ل" }] }],
+      }),
+    );
+    expectThrow(() =>
+      buildComparisonReport({
+        caseRef: "01J",
+        lang: "ar",
+        title: "مقارنة",
+        evidence: EV_ORPHAN,
+        subjects: [{ name: "أ" }, { name: "ب" }],
+        aspects: [{ name: "جانب", statements: [{ subject: "أ", text: "نص", citations: [{ id: "EV-1", label: "ل" }] }] }],
+      }),
+    );
   });
 });

@@ -5,7 +5,7 @@
  * فاشل-مغلق: لا جملة بلا إحالة ولا إحالة معلقة) فيجتاز مدقق الإحالات P5-011
  * بحكم البناء، ويُصدَّر بالقوالب القائمة (HTML/DOCX/Markdown).
  */
-import { buildReport, type EvidenceRef, type ReportDocument, type ReportSection } from "./index.ts";
+import { auditReportDocument, buildReport, type EvidenceRef, type ReportDocument, type ReportSection } from "./index.ts";
 import { z } from "zod";
 
 const EvidenceRefSchema = z.object({
@@ -13,6 +13,15 @@ const EvidenceRefSchema = z.object({
   label: z.string().min(1),
   sha256: z.string().length(64).optional(),
 });
+
+/** فاشل-مغلق: القالب يُقبل فقط إذا اجتاز مدقق الإحالات P5-011 (لا أدلة يتيمة ولا عبارات بلا إحالة ولا إحالات معلقة). */
+function auditedOrThrow(doc: ReportDocument): ReportDocument {
+  const audit = auditReportDocument(doc);
+  if (!audit.ok) {
+    throw new Error(`القالب ينتج تقريراً لا يجتاز مدقق الإحالات: ${audit.issues.map((i) => `${i.kind}(${i.detail})`).join("، ")}`);
+  }
+  return doc;
+}
 
 const StatementInputSchema = z.object({
   text: z.string().min(1),
@@ -43,13 +52,14 @@ const DossierSchema = z.object({
 /** ملف الكيان — تقرير عن كيان واحد باسمه في العنوان. */
 export function buildDossierReport(input: DossierInput): ReportDocument {
   const parsed = DossierSchema.parse(input);
-  return buildReport({
+  const report = buildReport({
     title: parsed.lang === "ar" ? `ملف الكيان: ${parsed.entity.name}` : `Entity dossier: ${parsed.entity.name}`,
     caseRef: parsed.caseRef,
     lang: parsed.lang,
     sections: parsed.sections,
     evidence: parsed.evidence,
   });
+  return auditedOrThrow(report);
 }
 
 /* ------------------------------------------------------ تقرير الخط الزمني */
@@ -93,13 +103,14 @@ export function buildTimelineReport(input: TimelineInput): ReportDocument {
     title: event.at,
     statements: [{ text: `${event.at} — ${event.text}`, citations: event.citations }],
   }));
-  return buildReport({
+  const report = buildReport({
     title: parsed.title,
     caseRef: parsed.caseRef,
     lang: parsed.lang,
     sections: events,
     evidence: parsed.evidence,
   });
+  return auditedOrThrow(report);
 }
 
 /* ----------------------------------------------------- تقرير المقارنة */
@@ -163,11 +174,12 @@ export function buildComparisonReport(input: ComparisonInput): ReportDocument {
       citations: statement.citations,
     })),
   }));
-  return buildReport({
+  const report = buildReport({
     title: parsed.title,
     caseRef: parsed.caseRef,
     lang: parsed.lang,
     sections,
     evidence: parsed.evidence,
   });
+  return auditedOrThrow(report);
 }
