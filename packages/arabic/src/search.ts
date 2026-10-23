@@ -23,10 +23,23 @@ import { normalizeArabicName } from "./normalize.ts";
 const ARABIC = /[\u0600-\u06FF]/;
 export const isArabicScript = (s: string): boolean => ARABIC.test(s);
 
+/**
+ * P5-006 — تطبيع ما قبل التقطيع للمطابقة: تطبيع عربي كامل (يضم «عبد الله» ≡ «عبدالله»
+ * عبر normalizeArabicName) + ضم اللاتيني «Abdul Aziz» ≡ «Abdulaziz» (نفس التركيب
+ * المكتوب بالطريقتين في اللاتينية أيضاً). يعمل على الكتابتين ولا يغير المعنى.
+ */
+function matchNormalize(name: string): string {
+  const out = normalizeArabicName(name);
+  return out.replace(/\b(abdul|abd)\s+(\S)/gi, (_m, p1: string, p2: string) => p1 + p2);
+}
+
 /* ------------------------------------------------------- nameSkeleton */
 
 /** Characters dropped from skeletons: Latin vowels/semivowels + ayn/hamza. */
 const SKELETON_DROP = /[aeiouwy'`]/g;
+
+/** إطار صوامت لاتيني (كلمات ≥ 4 حروف): Conrad-frame للاتيني-اللاتيني (P5-006). */
+const latinFrame = (s: string) => s.replace(SKELETON_DROP, "");
 
 /**
  * The script-neutral name skeleton: the consonant frame both scripts agree
@@ -98,6 +111,19 @@ function jaroWinkler(a: string, b: string): number {
 const JW_ARABIC = 0.92; // العربية المطبّعة متقاربة جداً — عتبة عالية صادقة
 const JW_LATIN = 0.87;
 
+/** لاتيني-لاتيني: «bin»≡«ibn» (D5)، JW، ثم إطار الصوامت (P5-006 — L-74 للمنطقة الملتبسة). */
+function latinTokenMatches(q: string, c: string): boolean {
+  const lq = q.toLowerCase();
+  const lc = c.toLowerCase();
+  if ((lq === "bin" && lc === "ibn") || (lq === "ibn" && lc === "bin")) return true;
+  if (lq === lc || jaroWinkler(lq, lc) >= JW_LATIN) return true;
+  // نفس الاسم بإملاءين متطابقي إطار الصوامت (Mohammed≡Muhammad، Saeed≡Said) —
+  // قرار بحث معلن: الاسترجاع أولوية والمرشحات يراجعها الإنسان؛ المنطقة الملتبسة
+  // (Salem≡Selim — إطاران متطابقان لاسمين عربيين مختلفين) سلوك موثق لا يُقاس (L-74).
+  if (q.length >= 4 && c.length >= 4) return latinFrame(lq) === latinFrame(lc);
+  return false;
+}
+
 /** Does one TOKEN match another across/within scripts? */
 function tokenMatches(queryToken: string, candidateToken: string): boolean {
   const q = queryToken.trim();
@@ -110,9 +136,7 @@ function tokenMatches(queryToken: string, candidateToken: string): boolean {
     const nc = normalizeArabicName(c);
     return nq === nc || jaroWinkler(nq, nc) >= JW_ARABIC;
   }
-  if (!qAr && !cAr) {
-    return q.toLowerCase() === c.toLowerCase() || jaroWinkler(q.toLowerCase(), c.toLowerCase()) >= JW_LATIN;
-  }
+  if (!qAr && !cAr) return latinTokenMatches(q, c);
   // عبر الكتابتين: البحث الراجع المعلن من P5-002 (لا تخمين) — مع حالة
   // «ال» التعريف: الكتابة اللاتينية قد تحذفها (Qahtani ≡ القحطاني)
   const latin = qAr ? c : q;
@@ -127,9 +151,15 @@ function tokenMatches(queryToken: string, candidateToken: string): boolean {
  * matches «محمد الحربي»; «الحربي» also matches it — family-name search).
  */
 export function arabicNameMatches(query: string, candidate: string): boolean {
-  const qTokens = query.split(/[\s\-,.]+/).filter((t) => t.length > 0);
+  // التطبيع قبل التقطيع (P5-006): ضم «عبد الله» ≡ «عبدالله» و«Abdul Aziz» ≡ «Abdulaziz»
+  // يعمل على الاسم كاملاً — تقطيع الاسم أولاً كان يفصل المركب فتفشل المطابقة
+  const qTokens = matchNormalize(query)
+    .split(/[\s\-,.]+/)
+    .filter((t) => t.length > 0);
   if (qTokens.length === 0) return false;
-  const cTokens = candidate.split(/[\s\-,.]+/).filter((t) => t.length > 0);
+  const cTokens = matchNormalize(candidate)
+    .split(/[\s\-,.]+/)
+    .filter((t) => t.length > 0);
   if (cTokens.length === 0) return false;
   return qTokens.every((qt) => cTokens.some((ct) => tokenMatches(qt, ct)));
 }
@@ -140,11 +170,16 @@ export function arabicNameMatches(query: string, candidate: string): boolean {
  * then Jaro-Winkler descending, then the input order for ties).
  */
 export function searchArabicNames(query: string, candidates: readonly string[]): string[] {
-  const qTokens = query.split(/[\s\-,.]+/).filter((t) => t.length > 0);
+  // تطبيع قبل التقطيع — نفس إصلاح arabicNameMatches (P5-006)
+  const qTokens = matchNormalize(query)
+    .split(/[\s\-,.]+/)
+    .filter((t) => t.length > 0);
   if (qTokens.length === 0) return [];
   const scored: Array<{ name: string; score: number; index: number }> = [];
   candidates.forEach((candidate, index) => {
-    const cTokens = candidate.split(/[\s\-,.]+/).filter((t) => t.length > 0);
+    const cTokens = matchNormalize(candidate)
+      .split(/[\s\-,.]+/)
+      .filter((t) => t.length > 0);
     if (cTokens.length === 0) return;
     let total = 0;
     let ok = true;
