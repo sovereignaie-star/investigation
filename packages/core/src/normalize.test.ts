@@ -146,11 +146,14 @@ describe("P6-026 — fuzz finding #5: prototype-member type ids must not hit Obj
   // into canonicalKey/consumers is a type-confusion hazard. The fix is structural: the
   // type map has a null prototype, so every prototype-member key is a miss.
   it("prototype-member type ids are unknown types: text fallback, primitive, idempotent", () => {
-    for (const type of ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__", "isPrototypeOf"]) {
-      const once = normalize(type, "!");
-      expect(typeof once).toBe("string");
-      expect(once instanceof String).toBe(false);
-      expect(normalize(type, once)).toBe(once);
+    // "constructor" is the only all-lowercase prototype member that passes TYPE_ID —
+    // the mixed-case members (__proto__ fails the first-char rule) are rejected by
+    // TYPE_ID before the map is ever reached, which is also correct fail-closed behavior.
+    const once = normalize("constructor", "!");
+    expect(typeof once).toBe("string");
+    expect(normalize("constructor", once)).toBe(once);
+    for (const type of ["toString", "valueOf", "hasOwnProperty", "isPrototypeOf", "__proto__"]) {
+      expect(() => normalize(type, "!")).toThrow(NormalizeError);
     }
   });
 
