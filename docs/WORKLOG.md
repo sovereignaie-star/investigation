@@ -11565,3 +11565,4 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 ### الخطوة التالية
 - لا شيء (مغلقة)
+- 2026-10-24: **[P6-007] الاختبارات الحمراء** — بوابة حوكمة T-BK-001..003 وسيناريو الاستعادة الآلي `scripts/backup/roundtrip.mjs` واختبارات CLI في `packages/cli/src/backup.test.ts`؛ الكل أحمر (الميزة غير مكتوبة): 0/3 و 0/3 و backupFile is not a function.
