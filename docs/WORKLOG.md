@@ -11502,3 +11502,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 ### الخطوة التالية
 - دفع التعميم على فرع fix/fake-ollama-race وانتظار CI على #402
+
+### 2026-10-24 — [P6-021] الحارس الأحمر: ترقيات أمنية للاعتماديات (Dependabot #75..#79)
+
+- **ما تم:** إضافة مهمة P6-021 إلى الخارطة (GR-02) وحارس حوكمة `scripts/governance/deps.test.mjs` (T-DEP-001..004) يطالب بأن تكون كل نسخة محتومة من maplibre-gl/zod/body-parser/ip-address في `pnpm-lock.yaml` >= الحد المرقّع من خمسة إنذارات Dependabot مفتوحة على main (2 critical، 2 high، 1 medium).
+- **الأدلة:** `node --test scripts/governance/deps.test.mjs` => فشل 4/4 (أحمر) على main الحالي؛ الدليل `docs/evidence/2026-10-24-P6-021-red.md`؛ الإنذارات من `gh api .../dependabot/alerts`.
+- **ما لم يتم:** الترقيات (المرحلة الخضراء) وإغلاق التنبيهات.
+- **الخطوة التالية:** ترقية maplibre-gl إلى 6.4.1 وzod إلى 4.6.7 مع ترحيل الاستيرادات وbody-parser/ip-address عبر overrides، ثم التحقق الكامل.
