@@ -491,13 +491,13 @@ export const siteMeta = {
     tagline: "منصة تحقيقات مفتوحة المصدر: كل خطوة مدعومة بدليل، وكل دليل موثّق بمصدره.",
     langLabel: "العربية",
     otherLang: "English",
-    otherLangHref: "/en/",
+    otherLangHref: "../en/",
   },
   en: {
     title: "Open Investigations Platform — Documentation",
     tagline: "An open-source investigations platform: every step backed by evidence, every evidence item sourced.",
     langLabel: "English",
     otherLang: "العربية",
-    otherLangHref: "/ar/",
+    otherLangHref: "../ar/",
   },
 };

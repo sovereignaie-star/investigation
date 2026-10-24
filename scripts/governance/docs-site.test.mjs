@@ -54,3 +54,16 @@ test("T-DOC-004: الصفحات العربية RTL والإنجليزية LTR", 
   assert.ok(ar.includes('lang="ar"') && ar.includes('dir="rtl"'), "الصفحة العربية ليست RTL");
   assert.ok(en.includes('lang="en"') && en.includes('dir="ltr"'), "الصفحة الإنجليزية ليست LTR");
 });
+
+test("T-DOC-005: لا روابط مطلقة من جذر النطاق — الموقع ينشر تحت بادئة /investigation/", () => {
+  const out = "/tmp/docs-site-build-test";
+  for (const lang of ["ar", "en"]) {
+    for (const page of ["index.html", "uc-01.html", "uc-24.html"]) {
+      const html = readFileSync(`${out}/${lang}/${page}`, "utf8");
+      assert.ok(!/href="\/(ar|en)\//.test(html), `${lang}/${page} يحوي روابط مطلقة تكسر تحت بادئة النشر`);
+      assert.ok(!/url=\/en\//.test(html), `${lang}/${page} تحويل مطلق`);
+    }
+  }
+  const root = readFileSync(`${out}/index.html`, "utf8");
+  assert.ok(!/href="\/(ar|en)\//.test(root) && !/url=\/en\//.test(root), "صفحة الجذر تحوي روابط مطلقة");
+});
