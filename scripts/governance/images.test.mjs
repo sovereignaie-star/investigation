@@ -27,7 +27,9 @@ test("T-IMG-001: workflow الصور متعدد المعماريات إلى GHCR
   assert.ok(/tags:\s*\["v\*"\]/.test(y), "يستهدف أوسمة v*");
   assert.ok(y.includes("workflow_dispatch"), "يسمح بتشغيل تجريبي يدوي");
   assert.ok(y.includes("linux/amd64,linux/arm64"), "البناء متعدد المعماريات غير مذكور");
-  assert.ok(y.includes("ghcr.io"), "الدفع إلى GHCR غير مذكور");
+  // anchored host check (CodeQL js/incomplete-hostname-regexp): the registry
+  // must appear as a host prefix (ghcr.io/<image>), not a bare substring
+  assert.ok(/ghcr\.io\/[^\s"']/.test(y), "الدفع إلى GHCR (بمضيف مثبت) غير مذكور");
   assert.ok(y.includes("docker/setup-qemu-action"), "إعداد QEMU مفقود");
   assert.ok(y.includes("docker/setup-buildx-action"), "إعداد buildx مفقود");
 });
