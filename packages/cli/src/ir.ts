@@ -304,6 +304,8 @@ type Values = {
   every?: string | undefined;
   /** P4-009: `ir monitor run --once` — run every due check once, then exit. */
   once?: boolean | undefined;
+  /** P6-008: `ir delete` — the reason for deletion, >= 3 characters, required. */
+  reason?: string | undefined;
 };
 
 /** P4-016: `ir pack <case-dir> <out.irpack>` — the signed case package. */

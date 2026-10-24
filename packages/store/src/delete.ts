@@ -23,7 +23,15 @@ import { closeSync, openSync, readdirSync, rmSync, statSync, writeSync } from "n
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { isoNow, systemClock, type Clock } from "@ir/core";
-import { canonicalize, IRDELETION_FORMAT, merkleRoot, type Entry, type InstallationKey, type SignedDeletionCertificate } from "@ir/ledger";
+import {
+  canonicalize,
+  IRDELETION_FORMAT,
+  merkleRoot,
+  type DeletionCertificatePayload,
+  type Entry,
+  type InstallationKey,
+  type SignedDeletionCertificate,
+} from "@ir/ledger";
 import { openCase } from "./case.ts";
 import { verifyCase } from "./verify-case.ts";
 
@@ -50,7 +58,7 @@ const bytesOf = (p: object) => new TextEncoder().encode(canonicalize(p));
 
 /** The retention deadline as a timestamp, or null when there is none (indefinite). */
 function retentionDeadline(createdAt: string, retention: { mode: string; days?: number; until?: string }): number | null {
-  if (retention.mode === "days" && Number.isFinite(retention.days)) {
+  if (retention.mode === "days" && typeof retention.days === "number" && Number.isFinite(retention.days)) {
     return Date.parse(createdAt) + retention.days * 86_400_000;
   }
   if (retention.mode === "until" && retention.until) return Date.parse(retention.until);
@@ -101,13 +109,13 @@ export function deleteCase(dir: string, opts: DeleteCaseOptions): SignedDeletion
   let entries: readonly Entry[];
   let caseId: string;
   let createdAt: string;
-  let retention: { mode: string; [k: string]: unknown };
+  let retention: DeletionCertificatePayload["retention"];
   try {
     entries = c.ledger.entries();
     const info = c.info();
     caseId = info.id;
     createdAt = info.createdAt;
-    retention = info.retention as { mode: string; [k: string]: unknown };
+    retention = info.retention as DeletionCertificatePayload["retention"];
   } finally {
     c.close();
   }
@@ -124,7 +132,7 @@ export function deleteCase(dir: string, opts: DeleteCaseOptions): SignedDeletion
   rmSync(dir, { recursive: true, force: true });
 
   // 4. the signed certificate (kept outside the deleted tree by the caller).
-  const payload = {
+  const payload: DeletionCertificatePayload = {
     format: IRDELETION_FORMAT,
     caseId,
     chainLength: entries.length,
