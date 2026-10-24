@@ -11429,3 +11429,7 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 ## 2026-10-24 — P6-004 CI fix
 - `ci(governance): install pnpm toolchain before fuzz guard [P6-004]`
 - عيّن `pnpm/action-setup@v6` + `pnpm install --frozen-lockfile` في `governance.yml` قبل خطوة حارس الحملة (T-FUZZ-001..006 تحتاج fast-check/tsx من node_modules، وكانت مهمة CI تفشل لغيابهما).
+
+## 2026-10-24 — P6-006 red
+- `test(governance): perf guard T-PERF-001..004 red [P6-006]`
+- حارس أحمر (4/4 فشل): يتطلب سكربتات قياس NFR-22..25 (إضافة 100 عقدة، بحث 5000 عقدة، تصدير 500 عقدة، p95 للواجهة) مع دليل خط أساس موثّق لا يتجاوز سقوف القسم 9.
