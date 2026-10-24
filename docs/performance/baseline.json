@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-24T08:48:36.738Z",
+  "command": "node scripts/perf/run.mjs",
+  "mode": "full",
+  "host": {
+    "node": "v24.10.0",
+    "platform": "linux x64",
+    "cpus": 2
+  },
+  "metrics": {
+    "nfr22GraphAdd100": {
+      "ms": 78.95,
+      "ceilingMs": 500,
+      "pass": true,
+      "detail": {
+        "graphNodes": 5100,
+        "addedNodes": 100,
+        "addedEdges": 200
+      }
+    },
+    "nfr23Search5000": {
+      "ms": 1.66,
+      "ceilingMs": 100,
+      "pass": true,
+      "detail": {
+        "rows": 5000,
+        "matched": 638,
+        "query": "ip"
+      }
+    },
+    "nfr24Export500": {
+      "ms": 39.53,
+      "ceilingMs": 5000,
+      "pass": true,
+      "detail": {
+        "entities": 500,
+        "bytes": 262421,
+        "sha256": "39167cab0294"
+      }
+    },
+    "nfr25ApiP95": {
+      "ms": 97.55,
+      "ceilingMs": 200,
+      "pass": true,
+      "detail": {
+        "requests": 350,
+        "p95Ms": 97.55,
+        "sequential": 100,
+        "concurrentPerRound": 50
+      }
+    }
+  }
+}

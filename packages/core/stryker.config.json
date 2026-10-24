@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "./stryker.vitest.config.ts"
+  },
+  "mutate": ["src/**/*.ts", "!src/**/*.test.ts", "!src/identifiers/catalog.ts", "!src/psl/rules.ts", "!src/validators/iban-registry.ts"],
+  "coverageAnalysis": "perTest",
+  "concurrency": 2,
+  "timeoutMS": 10000,
+  "reporters": ["clear-text", "json"],
+  "tempDirName": "stryker-tmp",
+  "incremental": false,
+  "plugins": ["./stryker-plugins.mjs"],
+  "ignoreStatic": true,
+  "cleanTempDir": false
+}

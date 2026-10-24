@@ -37,3 +37,15 @@ const casesRoot = (): string =>
 router.use(casesRouter(casesRoot));
 
 export default router;
+
+/**
+ * P6-006: the common read-path composition (health + cases) with an explicit root and
+ * env — used by the performance harness and any tool that must not lean on ambient
+ * process.env. The server itself uses the env-driven composition above.
+ */
+export function commonRouter(opts: { env: NodeJS.ProcessEnv; casesRoot: () => string }): IRouter {
+  const r = Router();
+  r.use(healthRouter);
+  r.use(casesRouter(opts.casesRoot, { env: opts.env }));
+  return r;
+}
