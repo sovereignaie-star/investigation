@@ -122,12 +122,18 @@ jobs:
           echo "${INDEX_JSON}" | jq -e .manifests >/dev/null || { echo "could not fetch the image index: ${INDEX_JSON}"; exit 1; }
           ATTS="$(echo "${INDEX_JSON}" | jq -r '.manifests[] | select(.annotations["vnd.docker.reference.type"]=="attestation-manifest") | .digest')"
           echo "attestation manifests: ${ATTS}"
+          # GHCR is eventually consistent: freshly pushed attestation manifests can
+          # 404 briefly even when listed in the index — retry the whole scan
           FOUND=0
-          for att in ${ATTS}; do
-            for layer in $(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.oci.image.manifest.v1+json" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/manifests/${att}" | jq -r '.layers[].digest'); do
-              PT="$(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/blobs/${layer}" | jq -r .predicateType)"
-              if [ "${PT}" = "https://slsa.dev/provenance/v1" ]; then FOUND=1; fi
+          for attempt in 1 2 3 4 5 6; do
+            for att in ${ATTS}; do
+              for layer in $(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.oci.image.manifest.v1+json" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/manifests/${att}" | jq -r '.layers[].digest'); do
+                PT="$(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/blobs/${layer}" | jq -r .predicateType)"
+                if [ "${PT}" = "https://slsa.dev/provenance/v1" ]; then FOUND=1; fi
+              done
             done
+            [ "${FOUND}" = "1" ] && break
+            echo "provenance scan attempt ${attempt} found nothing yet; waiting 20s"; sleep 20
           done
           [ "${FOUND}" = "1" ] || { echo "no SLSA provenance layer found in the index"; exit 1; }
           echo "SLSA provenance layer verified in the index"
