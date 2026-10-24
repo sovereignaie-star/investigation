@@ -79,7 +79,7 @@ ${body}
 
 function ucCard(lang, uc) {
   return `<div class="uc-card">
-  <a href="/${lang}/uc-${uc.id.slice(3)}.html">${esc(uc[lang].title)}</a>
+  <a href="uc-${uc.id.slice(3)}.html">${esc(uc[lang].title)}</a>
   <span class="badge">${uc.id}</span>
   <div>${esc(uc[lang].goal)}</div>
 </div>`;
@@ -101,7 +101,7 @@ function ucPage(lang, uc) {
   <tr><th>${label.acceptance}</th><td>${esc(f.acceptance)}</td></tr>
   <tr><th>${label.phase}</th><td>${uc.phase}</td></tr>
 </table>
-<p><a href="/${lang}/">← ${lang === "ar" ? "عودة إلى الفهرس" : "Back to index"}</a></p>`;
+<p><a href="./">← ${lang === "ar" ? "عودة إلى الفهرس" : "Back to index"}</a></p>`;
   write(`${lang}/uc-${uc.id.slice(3)}.html`, layout({ lang, title: `${uc.id} ${f.title}`, body }));
 }
 
@@ -133,10 +133,10 @@ write(
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(siteMeta.en.title)}</title><style>${css}</style>
-<meta http-equiv="refresh" content="0; url=/en/"></head>
+<meta http-equiv="refresh" content="0; url=en/"></head>
 <body><main>
 <h1>${esc(siteMeta.en.title)}</h1>
-<p><a href="/en/">English</a> · <a href="/ar/">العربية</a></p>
+<p><a href="en/">English</a> · <a href="ar/">العربية</a></p>
 </main></body></html>
 `,
 );
