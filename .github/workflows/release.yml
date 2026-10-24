@@ -1,0 +1,24 @@
+# P7-001: the release line — a pushed v* tag becomes a GitHub release whose
+# notes are extracted from CHANGELOG.md (changesets/semver). The trial
+# acceptance is this workflow's first green run on a v* tag.
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Extract release notes from CHANGELOG
+        run: node scripts/release/notes.mjs "$GITHUB_REF_NAME" > notes.md
+      - name: Create the GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
