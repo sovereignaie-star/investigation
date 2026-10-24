@@ -30,6 +30,8 @@ jobs:
         run: node --test scripts/governance/fuzz.test.mjs scripts/governance/deps.test.mjs
       - name: Performance ceilings guard (P6-006)
         run: node --test scripts/governance/perf.test.mjs
+      - name: Backup/restore guard (P6-007)
+        run: node --test scripts/governance/backup.test.mjs
       - name: PR title carries a task id (P6-017)
         if: github.event_name == 'pull_request'
         env:

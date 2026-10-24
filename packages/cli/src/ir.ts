@@ -6,7 +6,18 @@ import { isoNow, systemClock, type Clock } from "@ir/core";
 import { specById } from "@ir/core/identifiers";
 import { installationKeyFromPem, type ExpandResult } from "@ir/ledger";
 import { diffProjections, project, projectionHash, type Projection } from "@ir/ledger/projections";
-import { formatReport, openCase, packCase, readCheckpointFile, unpackCase, verifyCase, type Case } from "@ir/store";
+import {
+  backupFile,
+  formatReport,
+  IRBACKUP_FORMAT,
+  openBackupFile,
+  openCase,
+  packCase,
+  readCheckpointFile,
+  unpackCase,
+  verifyCase,
+  type Case,
+} from "@ir/store";
 import { createSimServer, type SimRule } from "@ir/sim";
 import { runTransform, TransformRunError, type RunTransformResult, type Transform } from "@ir/transforms";
 import type { HttpTransport } from "@ir/engine";
@@ -35,6 +46,10 @@ const USAGE = `usage: ir verify <case-dir> [--key installation.pub] [--checkpoin
        ir monitor <case-dir> list [--json] | check <monitor-id> [--sim rules.json] | remove <monitor-id>
        ir monitor <case-dir> run [--once] [--sim rules.json]
        ir import <case-dir> <adsb|ais> <file> [--purpose text --legal-basis basis] [--json] [--passphrase-file file]
+       ir pack <case-dir> <out.irpack> --key <installation-private.pem> [--passphrase-file file]
+       ir unpack <pack.irpack> <case-dir> [--key installation.pub] [--passphrase-file file]
+       ir backup <case-dir> <out.irbak> --key <installation-private.pem> --backup-passphrase-file <file> [--passphrase-file file]
+       ir restore <backup.irbak> <case-dir> --backup-passphrase-file <file> [--key installation.pub] [--passphrase-file file]
 
   verify:  recomputes the hash chain, re-hashes every evidence blob, and checks signed checkpoints.
   project: rebuilds the graph, table, coverage and network-log views from the chain, offline (optionally as of seq --at),
@@ -123,6 +138,8 @@ const DEFAULT_CASE = {
 
 /** Transforms the CLI can run. Grows as transform batches land (P2-009/010/026/030). */
 
+const sha256Hex = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+
 function passphraseFrom(file: string | undefined): { passphrase?: string } {
   if (file) return { passphrase: readFileSync(file, "utf8").replace(/\r?\n$/, "") };
   const env = process.env["IR_CASE_PASSPHRASE"];
@@ -144,6 +161,7 @@ export async function main(
         key: { type: "string" },
         checkpoint: { type: "string" },
         "passphrase-file": { type: "string" },
+        "backup-passphrase-file": { type: "string" },
         json: { type: "boolean" },
         at: { type: "string" },
         expect: { type: "string" },
@@ -212,7 +230,6 @@ function commandFor(
   err: (s: string) => void,
   opts: CliOptions,
 ): (() => number | Promise<number>) | undefined {
-  const arity: Record<string, number> = { verify: 0, project: 0, run: 3, investigate: 2, import: 2, pack: 1, unpack: 1 };
   // P2-029: `ir source` takes up to 2 positionals after the case dir: the verb, then (for
   // disable/enable) the transform id.
   if (cmd === "source") {
@@ -225,6 +242,30 @@ function commandFor(
   if (cmd === "monitor") return monitorCommandFor(dir, rest, v, out, err, opts);
   // P4-008: `ir diff` — two snapshots of one case, compared by legal keys (UC-09).
   if (cmd === "diff") return diffCommandFor(dir, rest, v, out, err);
+  return simpleCommandFor(cmd, dir, rest, v, out, err, opts);
+}
+
+/** The arity-checked simple commands: one case dir plus a fixed number of positionals. */
+function simpleCommandFor(
+  cmd: string | undefined,
+  dir: string,
+  rest: string[],
+  v: RunValues & InvestigateValues & Values,
+  out: (s: string) => void,
+  err: (s: string) => void,
+  opts: CliOptions,
+): (() => number | Promise<number>) | undefined {
+  const arity: Record<string, number> = {
+    verify: 0,
+    project: 0,
+    run: 3,
+    investigate: 2,
+    import: 2,
+    pack: 1,
+    unpack: 1,
+    backup: 1,
+    restore: 1,
+  };
   if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
   switch (cmd) {
     case "verify":
@@ -237,6 +278,10 @@ function commandFor(
       return () => runImportCommand(dir, rest[0], rest[1], v, out, err, opts);
     case "pack":
       return () => runPackCommand(dir, rest[0], v, out, err);
+    case "backup":
+      return () => runBackupCommand(dir, rest[0], v, out, err);
+    case "restore":
+      return () => runRestoreCommand(dir, rest[0], v, out, err);
     case "unpack":
       return () => runUnpackCommand(dir, rest[0], v, out, err);
     default:
@@ -249,6 +294,8 @@ type Values = {
   checkpoint?: string | undefined;
   json?: boolean | undefined;
   "passphrase-file"?: string | undefined;
+  /** P6-007: the backup envelope's own passphrase (not the case's). */
+  "backup-passphrase-file"?: string | undefined;
   /** P4-009: `ir monitor add` — the check interval, a positive integer number of minutes. */
   every?: string | undefined;
   /** P4-009: `ir monitor run --once` — run every due check once, then exit. */
@@ -294,6 +341,58 @@ function runUnpackCommand(packPath: string, dir: string, v: Values, out: (s: str
   } catch (x) {
     err(`ir unpack: ${(x as Error).message}`);
     return (x as Error).name === "PackError" ? 1 : 2;
+  }
+}
+
+/** P6-007: `ir backup <case-dir> <out.irbak>` — the signed pack sealed in an encrypted backup. */
+function runBackupCommand(dir: string, outPath: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
+  if (!v.key) {
+    err("ir backup: --key <installation-private.pem> is required — an unsigned pack is not a pack");
+    return 2;
+  }
+  if (!v["backup-passphrase-file"]) {
+    err("ir backup: --backup-passphrase-file <file> is required — an unencrypted backup is not a backup (Section 10.4)");
+    return 2;
+  }
+  try {
+    const key = installationKeyFromPem(readFileSync(v.key, "utf8"));
+    const pack = packCase(dir, { actor: "ir backup", key, appVersion: "0.0.0" }, passphraseFrom(v["passphrase-file"]).passphrase);
+    const file = backupFile(pack, readFileSync(v["backup-passphrase-file"], "utf8").replace(/\r?\n$/, ""));
+    writeFileSync(outPath, file);
+    out(`wrote ${outPath}: ${file.length} bytes (encrypted ${IRBACKUP_FORMAT}, pack sha256 ${sha256Hex(pack).slice(0, 16)}…)`);
+    return 0;
+  } catch (x) {
+    err(`ir backup: ${(x as Error).message}`);
+    return 2;
+  }
+}
+
+/** P6-007: `ir restore <backup.irbak> <case-dir>` — decrypt, unpack, re-verify. Fail-closed. */
+function runRestoreCommand(backupPath: string, dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
+  if (!v["backup-passphrase-file"]) {
+    err("ir restore: --backup-passphrase-file <file> is required — the backup envelope is encrypted");
+    return 2;
+  }
+  try {
+    const opened = openBackupFile(
+      new Uint8Array(readFileSync(backupPath)),
+      readFileSync(v["backup-passphrase-file"], "utf8").replace(/\r?\n$/, ""),
+    );
+    const result = unpackCase(
+      opened,
+      dir,
+      v.key ? { expectedPublicKeyPem: readFileSync(v.key, "utf8") } : {},
+      passphraseFrom(v["passphrase-file"]).passphrase,
+    );
+    out(`restored ${backupPath} into ${dir}: case ${result.caseId}, chain length ${result.length}, head ${result.head}`);
+    const report = v.key
+      ? verifyCase(dir, { publicKeyPem: readFileSync(v.key, "utf8") }, passphraseFrom(v["passphrase-file"]).passphrase)
+      : result.report;
+    out(formatReport(report));
+    return report.ok ? 0 : 1;
+  } catch (x) {
+    err(`ir restore: ${(x as Error).message}`);
+    return (x as Error).name === "BackupError" || (x as Error).name === "PackError" ? 1 : 2;
   }
 }
 
