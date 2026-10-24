@@ -65,3 +65,5 @@ packages/core/reports/mutation/
 packages/core/stryker-tmp/
 packages/core/stryker-setup-*.js
 packages/core/stryker-instrumenter*.js
+site-dist/
+_site/
