@@ -160,7 +160,11 @@ const lower: Normalizer = (s) => s.toLowerCase();
 const exact: Normalizer = (s) => s; // case-sensitive encodings (base58, base64, secrets)
 const text: Normalizer = (s) => s.replace(/\s+/g, " ");
 
-const EXACT: Record<string, Normalizer> = {
+// P6-026 (fuzz finding #5): a null prototype so prototype-member keys ("constructor",
+// "toString", "__proto__"…) are misses like any other unknown type id — a plain object
+// literal returned Object.prototype.constructor for EXACT["constructor"] and normalize
+// then emitted a boxed String object, breaking the idempotence invariant.
+const EXACT_ENTRIES: Record<string, Normalizer> = {
   ipv4,
   ip_private: ipv4,
   ip_tor_exit: ip,
@@ -234,6 +238,7 @@ const EXACT: Record<string, Normalizer> = {
   magnet_link: exact,
   text,
 };
+const EXACT: Record<string, Normalizer> = Object.assign(Object.create(null), EXACT_ENTRIES);
 
 /** Families by type-id pattern, checked in order after EXACT. */
 const FAMILIES: Array<[RegExp, Normalizer]> = [

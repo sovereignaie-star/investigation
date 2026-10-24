@@ -137,3 +137,29 @@ describe("P6-004 — second fuzz finding: ideographic full stop (U+3002) in doma
     expect(() => normalize("domain", "..")).toThrow(NormalizeError);
   });
 });
+describe("P6-026 — fuzz finding #5: prototype-member type ids must not hit Object.prototype", () => {
+  // found by the 24h acceptance campaign (run 40085338964, 4 chunks, counterexample
+  // [{"type":"constructor","raw":"!"}]): EXACT is a plain object, so EXACT["constructor"]
+  // returned Object.prototype.constructor (truthy) instead of undefined — normalize then
+  // "normalized" via Object("!", ...) and returned a boxed String object. Two boxed
+  // Strings are never === so the idempotence invariant broke; a boxed String escaping
+  // into canonicalKey/consumers is a type-confusion hazard. The fix is structural: the
+  // type map has a null prototype, so every prototype-member key is a miss.
+  it("prototype-member type ids are unknown types: text fallback, primitive, idempotent", () => {
+    // "constructor" is the only all-lowercase prototype member that passes TYPE_ID —
+    // the mixed-case members (__proto__ fails the first-char rule) are rejected by
+    // TYPE_ID before the map is ever reached, which is also correct fail-closed behavior.
+    const once = normalize("constructor", "!");
+    expect(typeof once).toBe("string");
+    expect(normalize("constructor", once)).toBe(once);
+    for (const type of ["toString", "valueOf", "hasOwnProperty", "isPrototypeOf", "__proto__"]) {
+      expect(() => normalize(type, "!")).toThrow(NormalizeError);
+    }
+  });
+
+  it("the type map has a null prototype (structural guard)", () => {
+    // import * as core and reach the map? the map is not exported — assert behaviorally:
+    // a prototype-member key behaves exactly like an arbitrary unknown type id.
+    expect(normalize("constructor", "a b")).toBe(normalize("unknown_type_xyz", "a b"));
+  });
+});
