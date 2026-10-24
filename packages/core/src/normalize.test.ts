@@ -108,3 +108,32 @@ describe("P6-004 — idempotence under hostile unicode (fuzz finding)", () => {
     expect(normalize("mrz_line", once)).toBe(once);
   });
 });
+
+describe("P6-004 — second fuzz finding: ideographic full stop (U+3002) in domains", () => {
+  // found by the fuzz campaign (counterexample [{"type":"domain","raw":"。"}]):
+  // the WHATWG URL parser maps U+3002 (and U+FF0E, U+FF61) to the ASCII dot, but
+  // normalizeHost only stripped an ASCII trailing dot, so "x。" normalized to "x."
+  // and "。" normalized to "." — both violate idempotence and "." is not a hostname.
+  it("domain: ideographic separators normalize to ASCII dots, idempotently", () => {
+    for (const raw of ["x\u3002", "x\uFF0E", "x\uFF61", "a\u3002b\u3002c"]) {
+      const once = normalize("domain", raw);
+      expect(normalize("domain", once)).toBe(once);
+    }
+  });
+
+  it("domain: a lone ideographic separator is rejected (not a hostname)", () => {
+    for (const raw of ["\u3002", "\uFF0E", "\uFF61"]) {
+      expect(() => normalize("domain", raw)).toThrow(NormalizeError);
+    }
+  });
+
+  it("domain: trailing-dot runs are stripped whole, idempotently (a second campaign finding)", () => {
+    // ".." — found by re-running the campaign after the first fix: one strip left "."
+    // which the second pass rejected. A hostname has no trailing dots, strip them all.
+    for (const raw of ["x..", "x\u3002\uFF0E"]) {
+      const once = normalize("domain", raw);
+      expect(normalize("domain", once)).toBe(once);
+    }
+    expect(() => normalize("domain", "..")).toThrow(NormalizeError);
+  });
+});

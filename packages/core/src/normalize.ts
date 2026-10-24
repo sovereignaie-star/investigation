@@ -38,7 +38,13 @@ function fail(type: string, raw: string, reason: string): never {
 
 /** Lowercase ASCII hostname: IDN to punycode (A-label), no trailing dot. */
 export function normalizeHost(s: string, type = "domain"): string {
-  const h = s.replace(/\.$/, "").toLowerCase();
+  // WHATWG URL treats U+3002, U+FF0E and U+FF61 as domain separators equal to the ASCII
+  // dot (a P6-004 fuzz finding: without this, "x。" normalized to "x." — not idempotent,
+  // and "。" normalized to "." — not a hostname). Map them first, then strip the dot.
+  const h = s
+    .replace(/[.\u3002\uFF0E\uFF61]/g, ".")
+    .replace(/\.+$/, "") // all of them: "x.." and ".." are not hostnames either
+    .toLowerCase();
   if (!h || /[\s/@:?#]/.test(h)) fail(type, s, "not a hostname");
   let ascii: string;
   try {
