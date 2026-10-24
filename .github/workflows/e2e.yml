@@ -22,7 +22,9 @@ jobs:
   e2e:
     name: e2e
     timeout-minutes: 30
-    runs-on: ubuntu-latest
+    # P6-023: same as the ci test job — the drag hit-testing (UC-08) is sensitive to the
+    # renderer's frame timing on the new Ubuntu 26 image; pin to the calibrated image.
+    runs-on: ubuntu-24.04
     env:
       IR_ADMIN_TOKEN: e2e-admin-token
       IR_OPENSANCTIONS_TOKEN: e2e-sim-token

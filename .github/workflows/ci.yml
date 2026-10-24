@@ -28,7 +28,10 @@ jobs:
       - name: Bundle budget (P3-019 — ≤ 300KB gzipped initial load)
         run: node scripts/budget/bundle-budget.mjs
   test:
-    runs-on: ubuntu-latest
+    # P6-023: ubuntu-latest migrated to the Ubuntu 26 image (2026-10-19) — the timing-sensitive
+    # Chromium tests (T-REP-009) exceed their 30s budget intermittently there. Pin to the
+    # image the budgets were calibrated on until the new image settles.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
