@@ -25,32 +25,36 @@ import { openCase } from "@ir/store";
  * حتمية معلومة الصيغة: نماذج محلية صفر، وسحابية بجدول معلن.
  */
 
-let server: Server | undefined;
+const servers: Server[] = [];
 let requestCount = 0;
-const startFakeAi = (port: number, reply: string): void => {
-  server = createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk: Buffer) => {
-      body += chunk.toString();
-    });
-    req.on("end", () => {
-      requestCount += 1;
-      const url = req.url ?? "";
-      if (url.includes("/api/embed")) {
-        const inputs = (JSON.parse(body).input as string[]) ?? [];
+const startFakeAi = (port: number, reply: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const server = createServer((req, res) => {
+      let body = "";
+      req.on("data", (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on("end", () => {
+        requestCount += 1;
+        const url = req.url ?? "";
+        if (url.includes("/api/embed")) {
+          const inputs = (JSON.parse(body).input as string[]) ?? [];
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ model: "nomic-embed-text", embeddings: inputs.map(() => [1, 0, 0]) }));
+          return;
+        }
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ model: "nomic-embed-text", embeddings: inputs.map(() => [1, 0, 0]) }));
-        return;
-      }
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ model: "qwen2.5:7b", message: { role: "assistant", content: reply }, done: true }));
+        res.end(JSON.stringify({ model: "qwen2.5:7b", message: { role: "assistant", content: reply }, done: true }));
+      });
     });
-  }).listen(port, "127.0.0.1");
-};
+    servers.push(server);
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  });
 
-afterEach(() => {
-  server?.close();
-  server = undefined;
+afterEach(async () => {
+  await Promise.all(servers.map((s) => new Promise<void>((resolve) => s.close(() => resolve()))));
+  servers.length = 0;
   requestCount = 0;
 });
 
@@ -79,9 +83,9 @@ const embedProvider = (port: number) => createLocalEmbedProvider({ baseUrl: `htt
 
 describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   it("T-LOG-001: كل استدعاء محادثة مسجّل بالنموذج والحجم والتكلفة التقديرية", async () => {
-    startFakeAi(60434, "جواب النموذج [1].");
+    await startFakeAi(48534, "جواب النموذج [1].");
     const records: UsageAuditRecord[] = [];
-    const audited = withUsageAudit(provider(60434), (record) => records.push(record));
+    const audited = withUsageAudit(provider(48534), (record) => records.push(record));
     await audited.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: "سؤال طويل عن القضية" }] });
     expect(records.length).toBe(1);
     expect(records[0].kind).toBe("chat");
@@ -92,9 +96,9 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   });
 
   it("T-LOG-002: استدعاء التضمين مسجّل كذلك", async () => {
-    startFakeAi(61434, "—");
+    await startFakeAi(49534, "—");
     const records: UsageAuditRecord[] = [];
-    const audited = withEmbedUsageAudit(embedProvider(61434), (record) => records.push(record));
+    const audited = withEmbedUsageAudit(embedProvider(49534), (record) => records.push(record));
     await audited.embed(["نص أول", "نص ثانٍ"]);
     expect(records.length).toBe(1);
     expect(records[0].kind).toBe("embed");
@@ -113,9 +117,9 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   });
 
   it("T-LOG-004: التعطيل يمنع أي استدعاء — لا يصل الطلب أصلاً (فشل-مغلق)", async () => {
-    startFakeAi(62434, "جواب [1].");
+    await startFakeAi(50534, "جواب [1].");
     const guard = createAiGuard();
-    const guarded = guard.wrap(provider(62434));
+    const guarded = guard.wrap(provider(50534));
     guard.disable();
     await expect(guarded.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: "سؤال" }] })).rejects.toThrow(AiDisabledError);
     expect(requestCount).toBe(0);
@@ -133,8 +137,8 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
         actor: "محقق",
         create: { title: "قضية اختبار", purpose: "اختبار سجل استخدام الذكاء الاصطناعي", legalBasis: "training_simulation" },
       });
-      startFakeAi(63434, "جواب [1].");
-      const audited = withUsageAudit(provider(63434), (record) => {
+      await startFakeAi(51534, "جواب [1].");
+      const audited = withUsageAudit(provider(51534), (record) => {
         case_.audit("ai.usage", record.kind, {
           model: record.model,
           inputChars: record.inputChars,
@@ -155,9 +159,9 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   });
 
   it("T-LOG-006: كل استدعاء مسجّل — ثلاثة استدعاءات ثلاثة قيود", async () => {
-    startFakeAi(64434, "جواب [1].");
+    await startFakeAi(52534, "جواب [1].");
     const records: UsageAuditRecord[] = [];
-    const audited = withUsageAudit(provider(64434), (record) => records.push(record));
+    const audited = withUsageAudit(provider(52534), (record) => records.push(record));
     for (let i = 0; i < 3; i += 1) {
       await audited.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: `سؤال ${i}` }] });
     }

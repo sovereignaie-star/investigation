@@ -30,29 +30,33 @@ const OLLAMA_CHAT_RESPONSE = {
   done: true,
 };
 
-let server: Server | undefined;
-const startFakeOllama = (port = 11434, status = 200): void => {
-  server = createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk: Buffer) => {
-      body += chunk.toString();
+const servers: Server[] = [];
+const startFakeOllama = (port = 11434, status = 200): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const server = createServer((req, res) => {
+      let body = "";
+      req.on("data", (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on("end", () => {
+        if (req.url === "/api/chat" && status === 200) {
+          const parsed = JSON.parse(body) as { model?: string };
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ ...OLLAMA_CHAT_RESPONSE, request_model: parsed.model }));
+          return;
+        }
+        res.writeHead(status, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: "simulated failure" }));
+      });
     });
-    req.on("end", () => {
-      if (req.url === "/api/chat" && status === 200) {
-        const parsed = JSON.parse(body) as { model?: string };
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ ...OLLAMA_CHAT_RESPONSE, request_model: parsed.model }));
-        return;
-      }
-      res.writeHead(status, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: "simulated failure" }));
-    });
-  }).listen(port, "127.0.0.1");
-};
+    servers.push(server);
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  });
 
-afterEach(() => {
-  server?.close();
-  server = undefined;
+afterEach(async () => {
+  await Promise.all(servers.map((s) => new Promise<void>((resolve) => s.close(() => resolve()))));
+  servers.length = 0;
 });
 
 /** نقل عقدة محلي للحقن — في الاختبار فقط (منفذ محلي مسموح في ملفات الاختبار). */
@@ -84,7 +88,7 @@ describe("P5-012 — الافتراضي محلي", () => {
   });
 
   it("T-AI-002: يعمل مع نموذج محلي — عقد Ollama حرفياً (خادم اختبار محلي بالبروتوكول نفسه)", async () => {
-    startFakeOllama();
+    await startFakeOllama();
     const provider = createLocalProvider({ baseUrl: "http://127.0.0.1:11434", transport: nodeTransport });
     const response = await provider.chat({
       model: "qwen2.5:7b",
@@ -95,7 +99,7 @@ describe("P5-012 — الافتراضي محلي", () => {
   });
 
   it("T-AI-003: استدعاء الدالة الموحدة chat يعمل عبر المزوّد المحلي", async () => {
-    startFakeOllama(21434);
+    await startFakeOllama(21434);
     const response = await chat(
       { model: "qwen2.5:7b", messages: [{ role: "user", content: "سؤال" }] },
       { provider: createLocalProvider({ baseUrl: "http://127.0.0.1:21434", transport: nodeTransport }) },
@@ -129,11 +133,15 @@ describe("P5-012 — السحابي بموافقة صريحة فقط", () => {
       consent: { caseRef: "case-001", grantedBy: "investigator-1", purpose: "تلخيص القضية" },
     });
     const calls: string[] = [];
-    const cloud = createServer((req, res) => {
-      calls.push(String(req.headers["x-consent-case"]));
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ choices: [{ message: { content: "ملخص" } }], model: "cloud-x", usage: { total_tokens: 12 } }));
-    }).listen(18999, "127.0.0.1");
+    const cloud = await new Promise<Server>((resolve, reject) => {
+      const s = createServer((req, res) => {
+        calls.push(String(req.headers["x-consent-case"]));
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ choices: [{ message: { content: "ملخص" } }], model: "cloud-x", usage: { total_tokens: 12 } }));
+      });
+      s.once("error", reject);
+      s.listen(18999, "127.0.0.1", () => resolve(s));
+    });
     const response = await provider.chat({
       model: "cloud-x",
       messages: [{ role: "user", content: "لخص" }],
@@ -150,7 +158,7 @@ describe("P5-012 — السحابي بموافقة صريحة فقط", () => {
 
   it("T-AI-007: أخطاء HTTP من المزوّد مصنّفة بلا ابتلاع — لا تمر صامتة", async () => {
     const provider = createLocalProvider({ baseUrl: "http://127.0.0.1:31434", transport: nodeTransport });
-    startFakeOllama(31434, 500);
+    await startFakeOllama(31434, 500);
     await expect(provider.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: "س" }] })).rejects.toThrow(/500|HTTP/i);
   });
 });
