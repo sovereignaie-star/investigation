@@ -116,7 +116,10 @@ describe("P5-027 — محرك PDF المختار: Chromium عبر Playwright ع�
     const pdf = await renderReportPdf(validDoc());
     expect(pdf.length).toBeGreaterThan(1000);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
-  }, 30000);
+    // P6-023: Chromium cold start + Arabic shaping + print can exceed 30s on a loaded
+    // CI runner (run 40082187391 / 40082949474 both timed out at 30s and passed on rerun);
+    // 90s keeps the assertion strict while accommodating the runner variance.
+  }, 90000);
 
   it("T-REP-010: الإحالات قابلة للنقر — روابط داخلية إلى EV-1 وEV-2 في توضيحات PDF", async () => {
     const pdf = await renderReportPdf(validDoc());
