@@ -12294,3 +12294,13 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 **ما لم يتم:** تشغيل ناجح.
 
 **الخطوة التالية:** دمج ثم dispatch.
+
+### P6-005 — حملة الطفرات منتهية: 30.48% (2026-10-24)
+
+**ما تم:** حملة Stryker كاملة على النواة (in-place، vitest-runner 10.1.1، perTest، 231 اختباراً في الجولة التمهيدية): 3494 طفرة، 1009 مقتولة + 56 مهلة = 30.48% (38 دقيقة). حارس T-MUT-001..003 أحمر على التقرير الغائب (T-MUT-002/003) — docs/evidence/2026-10-24-P6-005-red.md.
+
+**الأدلة:** `node --test scripts/governance/mutation.test.mjs` => pass 1 / fail 2؛ packages/core/reports/mutation/mutation.json (محلي).
+
+**ما لم يتم:** حد القبول (≥60%) لم يتحقق — الفجوة (2283 طفرة ناجية) موثقة في التقرير وDECLARED_LIMITS؛ تحصين الاختبارات عمل لاحق متواصل.
+
+**الخطوة التالية:** كتابة التقرير الرسمي docs/security/mutation-core.md وقسم DECLARED_LIMITS ثم الأخضر والتسجيل.
