@@ -46,7 +46,7 @@ let lastRequestBody: { messages?: { role: string; content: string }[] } | undefi
  * of them (T-INJ-006 starts one per corpus sample).
  */
 const startFakeOllama = (port: number, reply: string): Promise<void> =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const server = createServer((req, res) => {
       let body = "";
       req.on("data", (chunk: Buffer) => {
@@ -59,6 +59,7 @@ const startFakeOllama = (port: number, reply: string): Promise<void> =>
       });
     });
     servers.push(server);
+    server.once("error", reject);
     server.listen(port, "127.0.0.1", () => resolve());
   });
 
@@ -174,7 +175,20 @@ describe("P6-022 — استقرار خوادم ollama الوهمية", () => {
     const p = startFakeOllama(49490, "خلاصة [1].");
     expect(p, "must return a promise that resolves once listening").toBeInstanceOf(Promise);
     await p;
-    // عقد التنظيف: كل خادم بدأ في الاختبار يُغلق — لا تسريب عبر حلقة T-INJ-006.
+    // الجاهزية تُثبت سلوكياً: طلب حقيقي ينجح فور انتظار الوعد — لا مجرد تغيير النوع
+    const served = await new Promise<string>((resolve, reject) => {
+      const req = httpRequest({ host: "127.0.0.1", port: 49490, path: "/", method: "POST" }, (res) => {
+        let body = "";
+        res.on("data", (c: Buffer) => (body += c.toString()));
+        res.on("end", () => resolve(body));
+      });
+      req.on("error", reject);
+      req.end("{}");
+    });
+    expect(served).toContain("خلاصة");
+    // عقد التنظيف: كل خادم بدأ في الاختبار يُغلق — بعد هذا التغيير تُغلق كلها
+    // في afterEach (الحلقة القديمة كانت تغلق المشترك لكل عينة؛ ادعاء التسريب السابق
+    // كان غير دقيق — التصحيح مدوّن في سجل العمل).
     const q = startFakeOllama(49491, "خلاصة [1].");
     expect(q).toBeInstanceOf(Promise);
     await q;
