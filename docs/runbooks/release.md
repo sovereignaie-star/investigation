@@ -12,7 +12,7 @@
 1. أضف changeset للميزة المدمجة (`pnpm changeset`) — تصف ماذا وأي نوع semver.
 2. ادمج، ثم على main: `node scripts/release/notes.mjs <vX.Y.Z>` لمعاينة الملاحظات، `node scripts/release/tag.mjs --create` لإنشاء الوسم، `git push origin <tag>`.
 3. انتظر release.yml (يستخرج الملاحظات وينشئ الإصدار عبر `gh release create`).
-4. عند الفشل: حلل `gh run view <id> --log-failed`، أصلح بPR، ثم احذف الوسم (`git push origin :refs/tags/<tag>` + `git tag -d <tag>`) وأعد إنشاءه على الرأس المصحح — إعادة الوسم على نفس المحتوى تكفي.
+4. عند الفشل قبل النشر: حلل `gh run view <id> --log-failed`، أصلح بPR، ثم احذف الوسم (`git push origin :refs/tags/<tag>` + `git tag -d <tag>`) وأعد إنشاءه على الرأس المصحح. **بعد النشر لا يُمسح وسم إصدار منشور أبداً** — العلاج إصدار جديد (patch) يحمل الإصلاح؛ إعادة الوسم تكسر ثقة من نزّل الإصدار.
 
 ## التحقق
 
