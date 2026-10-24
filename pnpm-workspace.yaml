@@ -112,7 +112,6 @@ overrides:
   lightningcss>lightningcss-darwin-x64: "-"
   lightningcss>lightningcss-freebsd-x64: "-"
   lightningcss>lightningcss-linux-arm-gnueabihf: "-"
-  lightningcss>lightningcss-linux-arm64-gnu: "-"
   lightningcss>lightningcss-linux-arm64-musl: "-"
   lightningcss>lightningcss-linux-x64-musl: "-"
   lightningcss>lightningcss-win32-arm64-msvc: "-"
