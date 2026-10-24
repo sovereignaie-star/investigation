@@ -104,12 +104,28 @@ jobs:
         run: |
           # buildx pushes provenance as in-toto layers inside the index;
           # assert a layer carries the SLSA predicate type
-          TOKEN="$(curl -s "https://ghcr.io/token?scope=repository:${GITHUB_REPOSITORY}:pull" | jq -r .token)"
-          ATTS="$(curl -s -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.oci.image.index.v1+json" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/manifests/${{ steps.build.outputs.digest }}" | jq -r '.manifests[] | select(.annotations["vnd.docker.reference.type"]=="attestation-manifest") | .digest')"
+          # anonymous GHCR token flow can be rate-limited from shared runner IPs:
+          # fetch with retries and fail loudly with diagnostics
+          TOKEN=""
+          for i in 1 2 3 4 5; do
+            TOKEN="$(curl -sS --retry 3 --retry-delay 5 "https://ghcr.io/token?scope=repository:${GITHUB_REPOSITORY}:pull" | jq -r .token)"
+            [ -n "${TOKEN}" ] && [ "${TOKEN}" != "null" ] && break
+            echo "token fetch attempt ${i} failed; waiting 15s"; sleep 15
+          done
+          [ -n "${TOKEN}" ] && [ "${TOKEN}" != "null" ] || { echo "could not obtain an anonymous GHCR pull token"; exit 1; }
+          INDEX_JSON=""
+          for i in 1 2 3; do
+            INDEX_JSON="$(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.oci.image.index.v1+json" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/manifests/${{ steps.build.outputs.digest }}")"
+            echo "${INDEX_JSON}" | jq -e .manifests >/dev/null 2>&1 && break
+            echo "index fetch attempt ${i} failed; waiting 15s"; sleep 15
+          done
+          echo "${INDEX_JSON}" | jq -e .manifests >/dev/null || { echo "could not fetch the image index: ${INDEX_JSON}"; exit 1; }
+          ATTS="$(echo "${INDEX_JSON}" | jq -r '.manifests[] | select(.annotations["vnd.docker.reference.type"]=="attestation-manifest") | .digest')"
+          echo "attestation manifests: ${ATTS}"
           FOUND=0
           for att in ${ATTS}; do
-            for layer in $(curl -s -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.oci.image.manifest.v1+json" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/manifests/${att}" | jq -r '.layers[].digest'); do
-              PT="$(curl -s -H "Authorization: Bearer ${TOKEN}" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/blobs/${layer}" | jq -r .predicateType)"
+            for layer in $(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.oci.image.manifest.v1+json" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/manifests/${att}" | jq -r '.layers[].digest'); do
+              PT="$(curl -sS --retry 3 --retry-delay 5 -H "Authorization: Bearer ${TOKEN}" "https://ghcr.io/v2/${GITHUB_REPOSITORY}/blobs/${layer}" | jq -r .predicateType)"
               if [ "${PT}" = "https://slsa.dev/provenance/v1" ]; then FOUND=1; fi
             done
           done
