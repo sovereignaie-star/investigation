@@ -32,6 +32,8 @@ jobs:
         run: node --test scripts/governance/perf.test.mjs
       - name: Backup/restore guard (P6-007)
         run: node --test scripts/governance/backup.test.mjs
+      - name: Secure deletion guard (P6-008)
+        run: node --test scripts/governance/delete.test.mjs
       - name: PR title carries a task id (P6-017)
         if: github.event_name == 'pull_request'
         env:

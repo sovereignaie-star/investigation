@@ -24,8 +24,10 @@ test("T-DEL-001: the CLI exposes secure deletion with a mandatory reason", () =>
 });
 
 test("T-DEL-002: the store implements overwrite-then-unlink with a signed certificate", () => {
+  const signing = readFileSync(join(root, "packages/ledger/src/signing.ts"), "utf8");
+  assert.match(signing, /IRDELETION_FORMAT = "irdeletion\/1"/, "the certificate format must be pinned");
   const src = readFileSync(join(root, "packages/store/src/delete.ts"), "utf8");
-  assert.match(src, /IRDELETION_FORMAT = "irdeletion\/1"/, "the certificate format must be pinned");
+  assert.match(src, /IRDELETION_FORMAT/, "the store must build the certificate from the pinned format");
   assert.match(src, /randomBytes/, "files must be overwritten with random bytes before unlink");
   assert.match(src, /class DeletionError/, "fail-closed DeletionError must exist");
   assert.match(src, /verifyCase|verify/, "an unverifiable case must be refused, never silently deleted");

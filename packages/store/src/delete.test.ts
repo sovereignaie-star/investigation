@@ -15,6 +15,7 @@
  * is an error, never a warning.
  */
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,10 +94,20 @@ describe("deleteCase — secure deletion with a signed certificate (P6-008, UC-2
   });
 
   it("refuses to delete a case that does not verify (fail-closed)", () => {
-    const { dir, key } = makeCase();
-    // damage the sqlite projection: the chain can no longer be rebuilt
+    const { dir, key, clock } = makeCase();
+    // corrupt the chain itself: the last entry's payload no longer matches its hash
+    const sqlite = new DatabaseSync(path.join(dir, "case.sqlite"));
+    const last = sqlite.prepare("SELECT seq, payload FROM ledger ORDER BY seq DESC LIMIT 1").get() as {
+      seq: number;
+      payload: string;
+    };
+    // the DB itself is append-only (triggers), so flip the payload byte in the file directly
+    sqlite.close();
     const db = readFileSync(path.join(dir, "case.sqlite"));
-    writeFileSync(path.join(dir, "case.sqlite"), db.subarray(0, db.length - 16));
+    const at = db.indexOf(Buffer.from(last.payload.slice(0, 8), "utf8"));
+    if (at < 0) throw new Error("fixture: payload not found in the sqlite file");
+    db[at] ^= 0xff;
+    writeFileSync(path.join(dir, "case.sqlite"), db);
     expect(() => deleteCase(dir, { actor: "analyst", reason: "test", key, clock })).toThrow(/verif/i);
     expect(existsSync(path.join(dir, "case.sqlite"))).toBe(true);
   });

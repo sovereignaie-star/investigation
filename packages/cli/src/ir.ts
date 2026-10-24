@@ -8,6 +8,7 @@ import { installationKeyFromPem, type ExpandResult } from "@ir/ledger";
 import { diffProjections, project, projectionHash, type Projection } from "@ir/ledger/projections";
 import {
   backupFile,
+  deleteCase,
   formatReport,
   IRBACKUP_FORMAT,
   openBackupFile,
@@ -265,6 +266,7 @@ function simpleCommandFor(
     unpack: 1,
     backup: 1,
     restore: 1,
+    delete: 0,
   };
   if (cmd === undefined || arity[cmd] !== rest.length) return undefined;
   switch (cmd) {
@@ -284,6 +286,8 @@ function simpleCommandFor(
       return () => runRestoreCommand(dir, rest[0], v, out, err);
     case "unpack":
       return () => runUnpackCommand(dir, rest[0], v, out, err);
+    case "delete":
+      return () => runDeleteCommand(dir, v, out, err);
     default:
       return () => runInvestigateCommand(dir, rest[0], rest[1], v, out, err, opts);
   }
@@ -393,6 +397,37 @@ function runRestoreCommand(backupPath: string, dir: string, v: Values, out: (s: 
   } catch (x) {
     err(`ir restore: ${(x as Error).message}`);
     return (x as Error).name === "BackupError" || (x as Error).name === "PackError" ? 1 : 2;
+  }
+}
+
+/** P6-008 (UC-24): `ir delete <case-dir>` — verify, overwrite, unlink, certify. */
+function runDeleteCommand(dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
+  if (!v.reason || v.reason.trim().length < 3) {
+    err("ir delete: --reason <text> is required — undocumented destruction is refused (UC-24)");
+    return 2;
+  }
+  if (!v.key) {
+    err("ir delete: --key <installation-private.pem> is required — an unsigned deletion certificate is not a certificate");
+    return 2;
+  }
+  try {
+    const key = installationKeyFromPem(readFileSync(v.key, "utf8"));
+    const crt = deleteCase(dir, {
+      actor: "ir delete",
+      reason: v.reason,
+      key,
+      ...passphraseFrom(v["passphrase-file"]),
+    });
+    const crtPath = `${dir}.deleted.crt.json`;
+    writeFileSync(crtPath, `${JSON.stringify(crt, null, 2)}\n`);
+    out(
+      `deleted ${dir}: case ${crt.payload.caseId}, chain length ${crt.payload.chainLength}, head ${crt.payload.head.slice(0, 12)}…, blobs ${crt.payload.blobs}, retention ${crt.payload.retentionState}`,
+    );
+    out(`certificate: ${crtPath} (signed by ${crt.payload.keyId})`);
+    return 0;
+  } catch (x) {
+    err(`ir delete: ${(x as Error).message}`);
+    return (x as Error).name === "DeletionError" ? 1 : 2;
   }
 }
 

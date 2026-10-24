@@ -59,7 +59,7 @@ describe("ir delete — secure deletion with a certificate (P6-008, T-DEL-001)",
     const { dir, priv, key } = makeCase();
     const deleted = await run(["delete", dir, "--reason", "انتهاء الاحتفاظ", "--key", priv]);
     expect(deleted.code).toBe(0);
-    expect(deleted.text).toMatch(/deleted .*: chain length \d+/);
+    expect(deleted.text).toMatch(/deleted .*: case .*, chain length \d+/);
     expect(existsSync(dir)).toBe(false);
     const crtPath = `${dir}.deleted.crt.json`;
     expect(existsSync(crtPath)).toBe(true);
@@ -77,7 +77,7 @@ describe("ir delete — secure deletion with a certificate (P6-008, T-DEL-001)",
 
   it("refuses without the installation key (the certificate must be signed)", async () => {
     const { dir } = makeCase();
-    const refused = await run(["delete", dir, "--reason", "x"]);
+    const refused = await run(["delete", dir, "--reason", "no key provided"]);
     expect(refused.code).not.toBe(0);
     expect(refused.text).toMatch(/--key/i);
     expect(existsSync(dir)).toBe(true);
