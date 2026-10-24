@@ -1,0 +1,68 @@
+# P7-002: signed multi-arch images. A v* tag (or a manual dispatch for the
+# trial acceptance) builds linux/amd64+linux/arm64, pushes to GHCR, signs
+# the multi-arch index digest with keyless cosign (GitHub OIDC), then
+# verifies the signature against the strict certificate identity (this
+# repository, this workflow file, the exact ref) and inspects the index.
+name: images
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # keyless cosign (OIDC)
+  packages: write # GHCR push
+
+jobs:
+  build-sign-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute image tags and signer identity
+        id: meta
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY}"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tags=${IMAGE}:${GITHUB_REF_NAME},${IMAGE}:latest" >> "$GITHUB_OUTPUT"
+            echo "identity=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/images.yml@${GITHUB_REF}" >> "$GITHUB_OUTPUT"
+          else
+            # trial acceptance run (workflow_dispatch): a SHA-bound tag that
+            # never touches published release tags or latest
+            TRIAL="trial-$(git rev-parse --short HEAD)"
+            echo "tags=${IMAGE}:${TRIAL}" >> "$GITHUB_OUTPUT"
+            echo "identity=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/.github/workflows/images.yml@${GITHUB_REF}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build and push the multi-arch image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: true
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Sign the multi-arch index digest (keyless)
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+        run: cosign sign --yes "${IMAGE}@${{ steps.build.outputs.digest }}"
+      - name: Verify the signature (strict identity)
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+        run: |
+          cosign verify \
+            --certificate-identity "${{ steps.meta.outputs.identity }}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "${IMAGE}@${{ steps.build.outputs.digest }}"
+      - name: Inspect the pushed index (both platforms)
+        run: docker buildx imagetools inspect "ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}"
