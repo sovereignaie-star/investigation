@@ -4,7 +4,11 @@ FROM node:24-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm run build
+# P7-002: build only what the image ships (server + web + cli with their
+# workspace deps). The root build also builds apps/sandbox, whose toolchain
+# (lightningcss native binding) fails on linux/arm64 — and the image never
+# uses it. Evidence: images run 40117018962 (arm64 leg, MODULE_NOT_FOUND).
+RUN pnpm install --frozen-lockfile && pnpm --filter @ir/server... --filter @ir/web... --filter @ir/cli... run build
 
 FROM node:24-slim
 WORKDIR /app
