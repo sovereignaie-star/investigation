@@ -139,7 +139,9 @@ const bech32: Normalizer = (s, type) => {
   return s.toLowerCase();
 };
 
-const upperCompact: Normalizer = (s) => asciiDigits(s).replace(/[\s-]/g, "").toUpperCase();
+// P6-004 fuzz fix: NFKC after uppercasing keeps the output idempotent (toUpperCase can
+// decompose exotic characters; the second pass would recompose and differ).
+const upperCompact: Normalizer = (s) => cleanText(asciiDigits(s).replace(/[\s-]/g, "").toUpperCase());
 const digitsOnly: Normalizer = (s, type) => {
   const d = asciiDigits(s).replace(/[\s-]/g, "");
   if (!/^\d+$/.test(d)) fail(type, s, "expected digits");
@@ -197,7 +199,7 @@ const EXACT: Record<string, Normalizer> = {
     const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(s.trim());
     return m ? `${Number(m[1]).toFixed(6)},${Number(m[2]).toFixed(6)}` : s.trim();
   },
-  mrz_line: (s) => s.toUpperCase(),
+  mrz_line: (s) => cleanText(s.toUpperCase()), // P6-004 fuzz fix: idempotent under hostile unicode
   serial_number: upperCompact,
   engine_number: upperCompact,
   visa_number: upperCompact,

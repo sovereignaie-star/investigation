@@ -203,10 +203,17 @@ export function stixImport(bundle: StixBundle): StixGraph {
  *  Returns the objects narrowed to carry a definite string x_ir_id. */
 function validateBundleShape(bundle: StixBundle): (StixObject & { x_ir_id: string })[] {
   const idFormat = /^[a-z-]+--[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  // P6-004 fuzz finding: hostile bundles (strings/null/missing objects) must be rejected
+  // fail-closed with a declared Error, never a TypeError crash.
+  if (bundle === null || typeof bundle !== "object" || !Array.isArray((bundle as { objects?: unknown }).objects)) {
+    throw new Error("stix: bundle is not an object with an objects list (fail-closed)");
+  }
   const checked: (StixObject & { x_ir_id: string })[] = [];
   for (const o of bundle.objects) {
-    if (!idFormat.test(o.id)) {
-      throw new Error(`stix: object id "${o.id}" is not a valid STIX identifier (fail-closed)`);
+    if (o === null || typeof o !== "object" || typeof o.id !== "string" || !idFormat.test(o.id)) {
+      throw new Error(
+        `stix: object id "${o === null || typeof o !== "object" ? String(o) : o.id}" is not a valid STIX identifier (fail-closed)`,
+      );
     }
     if (o.x_ir_id === undefined || typeof o.x_ir_id !== "string") {
       throw new Error(`stix: object "${o.id}" has no x_ir_id (fail-closed — no guessing source ids)`);

@@ -170,3 +170,18 @@ describe("P4-014 — الحتمية والتقارير الصادقة", () => {
     expect(bundle.objects).toEqual([]);
   });
 });
+
+describe("P6-004 — STIX import فاشل-مغلق على الحزم المعادية (fuzz findings)", () => {
+  it("rejects non-object bundles with a declared Error, not a TypeError crash", () => {
+    // found by the fuzz campaign: stixImport("") used to throw
+    // "TypeError: bundle.objects is not iterable"
+    expect(() => stixImport("" as unknown as StixBundle)).toThrowError(/^stix: bundle/);
+    expect(() => stixImport(null as unknown as StixBundle)).toThrowError(/^stix: bundle/);
+    expect(() => stixImport({ objects: "nope" } as unknown as StixBundle)).toThrowError(/^stix: bundle/);
+  });
+
+  it("rejects null/non-object bundle members fail-closed", () => {
+    const bundle = { type: "bundle", id: "bundle--" + "0".repeat(36), objects: [null] } as unknown as StixBundle;
+    expect(() => stixImport(bundle)).toThrowError(/^stix: object/);
+  });
+});

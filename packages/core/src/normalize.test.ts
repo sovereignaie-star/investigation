@@ -93,3 +93,18 @@ describe("normalize rejects values that cannot be the type", () => {
     it(`${type}: ${JSON.stringify(raw)}`, () => expect(() => normalize(type, raw)).toThrow(NormalizeError));
   }
 });
+
+describe("P6-004 — idempotence under hostile unicode (fuzz finding)", () => {
+  // found by the fuzz campaign: normalize("iban", "ῒ") returned a decomposed
+  // sequence whose second pass recomposed — normalize(normalize(x)) !== normalize(x).
+  it("upperCompact types are idempotent on non-ASCII input (IBAN counterexample)", () => {
+    const once = normalize("iban", "\u1FD2"); // Greek iota with dialytika and tonos
+    const twice = normalize("iban", once);
+    expect(twice).toBe(once);
+  });
+
+  it("mrz_line is idempotent on non-ASCII input", () => {
+    const once = normalize("mrz_line", "\u1FD2");
+    expect(normalize("mrz_line", once)).toBe(once);
+  });
+});

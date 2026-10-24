@@ -212,6 +212,11 @@ export function ftmImport(entities: readonly FtmEntity[]): FtmGraph {
   const edges: FtmGraph["edges"] = [];
 
   for (const e of entities) {
+    // P6-004 fuzz finding: hostile input (null / non-object / missing schema) must be
+    // rejected fail-closed with a declared Error, never a TypeError crash.
+    if (e === null || typeof e !== "object" || typeof e.schema !== "string" || e.properties === null || typeof e.properties !== "object") {
+      throw new Error(`ftm: entity ${JSON.stringify(e)} is not a valid entity (fail-closed)`);
+    }
     const spec = ref.schemas[e.schema];
     if (spec === undefined) {
       throw new Error(`ftm: schema "${e.schema}" is not in the frozen real model (fail-closed)`);
