@@ -356,12 +356,7 @@ function runBackupCommand(dir: string, outPath: string, v: Values, out: (s: stri
   }
   try {
     const key = installationKeyFromPem(readFileSync(v.key, "utf8"));
-    const pack = packCase(dir, {
-      actor: "ir backup",
-      key,
-      appVersion: "0.0.0",
-      ...passphraseFrom(v["passphrase-file"]),
-    });
+    const pack = packCase(dir, { actor: "ir backup", key, appVersion: "0.0.0" }, passphraseFrom(v["passphrase-file"]).passphrase);
     const file = backupFile(pack, readFileSync(v["backup-passphrase-file"], "utf8").replace(/\r?\n$/, ""));
     writeFileSync(outPath, file);
     out(`wrote ${outPath}: ${file.length} bytes (encrypted ${IRBACKUP_FORMAT}, pack sha256 ${sha256Hex(pack).slice(0, 16)}…)`);
@@ -383,16 +378,15 @@ function runRestoreCommand(backupPath: string, dir: string, v: Values, out: (s: 
       new Uint8Array(readFileSync(backupPath)),
       readFileSync(v["backup-passphrase-file"], "utf8").replace(/\r?\n$/, ""),
     );
-    const result = unpackCase(opened, dir, {
-      ...(v.key ? { expectedPublicKeyPem: readFileSync(v.key, "utf8") } : {}),
-      ...passphraseFrom(v["passphrase-file"]),
-    });
+    const result = unpackCase(
+      opened,
+      dir,
+      v.key ? { expectedPublicKeyPem: readFileSync(v.key, "utf8") } : {},
+      passphraseFrom(v["passphrase-file"]).passphrase,
+    );
     out(`restored ${backupPath} into ${dir}: case ${result.caseId}, chain length ${result.length}, head ${result.head}`);
     const report = v.key
-      ? verifyCase(dir, {
-          publicKeyPem: readFileSync(v.key, "utf8"),
-          ...passphraseFrom(v["passphrase-file"]),
-        })
+      ? verifyCase(dir, { publicKeyPem: readFileSync(v.key, "utf8") }, passphraseFrom(v["passphrase-file"]).passphrase)
       : result.report;
     out(formatReport(report));
     return report.ok ? 0 : 1;
