@@ -298,7 +298,7 @@ Exit status 1
 | المعرّف | المهمة | الحالة | الدليل / الإيداع |
 |---|---|---|---|
 | P7-001 | خط الإصدار: semver، changesets، ملاحظات إصدار (M) | done | ناجح: https://github.com/sovereignaie-star/investigation/releases/tag/v0.1.0 — وسم v0.1.0 على main@41e2a6b أنتج إصدار GitHub بملاحظات من CHANGELOG (تشغيل 40108453156، 25 ثانية). فشلت محاولتان قبل الإصلاح (pnpm غير مثبت، ثم تعارض نسخة pnpm) — موثقتان في WORKLOG. |
-| P7-002 | صور Docker متعددة المعماريات وموقعة (cosign) (M) | todo | — |
+| P7-002 | صور Docker متعددة المعماريات وموقعة (cosign) (M) | in_progress | بدأت: حارس أحمر T-IMG-001..003 فاشل (fail 3). النهج (من المراجعة): cosign بدون مفاتيح عبر OIDC، توقيع digest الفهرس متعدد المعماريات، تحقق صارم بالهوية (مسار الworkflow والمرجع)، وسم تجربة مرتبط بالSHA لا يلامس v0.1.0/latest |
 | P7-003 | SBOM (CycloneDX) وإثبات المصدر (SLSA) (M) | todo | — |
 | P7-004 | تطبيق سطح المكتب (Tauri) (C) | todo | — |
 | P7-005 | موقع التوثيق (عربي/إنجليزي) (M) | todo | — |
