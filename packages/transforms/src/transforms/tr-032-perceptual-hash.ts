@@ -37,78 +37,10 @@
 import { defineTransform } from "../manifest.ts";
 import type { TransformFinding } from "../output.ts";
 import { Jimp } from "jimp";
+import { imageHashes } from "../img/phash.ts";
 
 /** Decoded-input ceiling: 10 MB (a photo), enforced before parsing. */
 const MAX_DECODED_BYTES = 10_000_000;
-
-/** Reciprocal-DCT cos((2x+1)u*pi/64) table shared by u in 0..7, x in 0..31. */
-const DCT_COS = (() => {
-  const table = new Float64Array(32 * 8);
-  for (let x = 0; x < 32; x++) {
-    for (let u = 0; u < 8; u++) table[x * 8 + u] = Math.cos(((2 * x + 1) * u * Math.PI) / 64);
-  }
-  return table;
-})();
-
-/** Luminance (Rec. 601) of an RGBA bitmap as a Float64Array of w*h samples. */
-function luminance(rgba: Uint8Array): Float64Array {
-  const n = rgba.length >> 2;
-  const gray = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    gray[i] = 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
-  }
-  return gray;
-}
-
-/**
- * The 8x8 lowest-frequency DCT-II coefficients of a 32x32 grayscale grid
- * (u,v in 0..7). 64 * 1024 multiply-accumulate operations — no latency
- * requirement (L-18), computed once per image.
- */
-function dct8x8(gray: Float64Array): Float64Array {
-  const out = new Float64Array(64);
-  for (let v = 0; v < 8; v++) {
-    for (let u = 0; u < 8; u++) {
-      let sum = 0;
-      for (let y = 0; y < 32; y++) {
-        const cosY = DCT_COS[y * 8 + v];
-        const row = y * 32;
-        for (let x = 0; x < 32; x++) {
-          sum += gray[row + x] * DCT_COS[x * 8 + u] * cosY;
-        }
-      }
-      out[v * 8 + u] = sum;
-    }
-  }
-  return out;
-}
-
-/** pHash: each of the 64 DCT coefficients as a bit against the mean of the
- * 63 AC coefficients (DC excluded). Measured 2026-10-16: median-thresholding
- * is fragile on smooth synthetic images (a light perturbation flipped 30/64
- * bits — the coefficient mass clusters near the median), while the AC-mean
- * rule keeps the same perturbation at distance 0 — the large low-frequency
- * coefficients dominate the mean, so the near-zero coefficients stay
- * stably below it. */
-function phashBits(dct: Float64Array): string {
-  let sum = 0;
-  for (let i = 1; i < 64; i++) sum += dct[i];
-  const meanAc = sum / 63;
-  let bits = "";
-  for (let i = 0; i < 64; i++) bits += dct[i] > meanAc ? "1" : "0";
-  return bits;
-}
-
-/** dHash from a 9-column grayscale grid: 8 rows x 8 adjacent pairs. */
-function dhashBits(gray: Float64Array, width: number): string {
-  let bits = "";
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      bits += gray[y * width + x] > gray[y * width + x + 1] ? "1" : "0";
-    }
-  }
-  return bits;
-}
 
 export const perceptualHash = defineTransform<{ content: string }>(
   {
@@ -148,13 +80,9 @@ export const perceptualHash = defineTransform<{ content: string }>(
       throw new Error("TR-032: the input is not a valid image (jimp could not parse it)");
     }
 
-    // pHash: 32x32 grayscale grid -> 8x8 lowest-frequency DCT -> median bits.
-    const small32 = image.clone().resize({ w: 32, h: 32 });
-    const phash = phashBits(dct8x8(luminance(small32.bitmap.data)));
-
-    // dHash: 9x8 grayscale grid -> 8 adjacent pairs per row.
-    const small98 = image.clone().resize({ w: 9, h: 8 });
-    const dhash = dhashBits(luminance(small98.bitmap.data), 9);
+    // pHash + dHash via the shared module (TR-095 matches case images on the
+    // same hash space — one algorithm, not two).
+    const { phash, dhash } = imageHashes(image);
 
     const findings: TransformFinding[] = [
       {

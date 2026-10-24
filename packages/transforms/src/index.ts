@@ -52,6 +52,7 @@ export * from "./transforms/tr-039-username-presence.ts";
 export * from "./transforms/tr-089-eml-msg.ts";
 export * from "./transforms/tr-092-yara-scan.ts";
 export * from "./transforms/tr-094-ocr.ts";
+export * from "./transforms/tr-095-image-forensics.ts";
 export * from "./transforms/tr-093-sigma-match.ts";
 export * from "./transforms/tr-090-adsb-aircraft.ts";
 export * from "./transforms/tr-091-ais-vessel.ts";
