@@ -28,6 +28,8 @@ jobs:
       - name: Build static site (P7-005)
         run: node scripts/docs-site/build.mjs _site
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
