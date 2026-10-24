@@ -15,13 +15,22 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const DOCS = {
   "privacy-policy": {
-    sections: ["ما نعالجه", "أين تبقى البيانات", "من يصل إلى البيانات", "حقوقك", "الاتصال"],
+    sections: {
+      ar: ["ما نعالجه", "أين تبقى البيانات", "من يصل إلى البيانات", "حقوقك", "الاتصال"],
+      en: ["What we process", "Where your data stays", "Who can reach your data", "Your rights", "Contact"],
+    },
   },
   "terms-of-use": {
-    sections: ["الاستخدام المسموح", "مسؤوليتك", "المصادر الخارجية", "عدم الضمان", "المراجعة القانونية"],
+    sections: {
+      ar: ["الاستخدام المسموح", "مسؤوليتك", "المصادر الخارجية", "عدم الضمان", "المراجعة القانونية"],
+      en: ["Permitted use", "Your responsibility", "External sources", "No warranty", "Legal review"],
+    },
   },
   "abuse-report": {
-    sections: ["قناة الإبلاغ", "ما يجب أن يتضمنه البلاغ", "الاستجابة"],
+    sections: {
+      ar: ["قناة الإبلاغ", "ما يجب أن يتضمنه البلاغ", "الاستجابة"],
+      en: ["Reporting channel", "What a report should include", "Response"],
+    },
   },
 };
 
@@ -37,7 +46,7 @@ test("T-LEGAL-001: الوثائق القانونية الثلاث موجودة �
       assert.ok(md !== null, `docs/legal/${name}.${lang}.md غير موجودة`);
       assert.ok(md.includes("P6-015"), `${name}.${lang}: يحمل معرف المهمة P6-015`);
       assert.ok(md.includes("2026-10-24"), `${name}.${lang}: يحمل تاريخ التوقيع`);
-      for (const section of req.sections) {
+      for (const section of req.sections[lang]) {
         assert.ok(md.includes(section), `${name}.${lang}: القسم «${section}» مفقود`);
       }
     }

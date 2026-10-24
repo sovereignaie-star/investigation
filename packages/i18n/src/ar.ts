@@ -27,6 +27,17 @@ export const ar = {
   "nav.evidence": "سجل الأدلة",
   "nav.settings": "الإعدادات",
   "nav.reports": "التقارير",
+  "nav.legal": "القانوني",
+  "legal.privacy.title": "سياسة الخصوصية",
+  "legal.privacy.body":
+    "بياناتك تبقى على جهازك: كل قضية مجلد مشفر محلياً، والذكاء الاصطناعي محلي بلا شبكة، ولا تتبع ولا حسابات خارجية. النص الكامل في docs/legal/privacy-policy.ar.md بالمستودع.",
+  "legal.terms.title": "شروط الاستخدام",
+  "legal.terms.body":
+    "الأداة للتحقيقات المشروعة بمصلحة مشروعة، وأنت المسؤول عن امتثال معالجتك لقوانينك، والترخيص AGPL-3.0-or-later. النص الكامل في docs/legal/terms-of-use.ar.md بالمستودع.",
+  "legal.abuse.title": "الإبلاغ عن إساءة الاستخدام",
+  "legal.abuse.body": "للإبلاغ عن استخدام غير قانوني أو انتحال أو ثغرة أمنية، استخدم التوصية الأمنية الخاصة بالمستودع أدناه.",
+  "legal.abuse.link": "قناة الإبلاغ الخاصة (GitHub Security Advisories)",
+  "legal.reviewNote": "هذه الصفحات موقعة هندسياً وتخضع للمراجعة القانونية المستقلة (P7-008) قبل اعتمادها النهائي.",
   "nav.main": "التنقل الرئيسي",
   "shell.theme.dark": "الوضع الليلي",
   "shell.theme.light": "الوضع النهاري",

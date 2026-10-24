@@ -28,6 +28,18 @@ export const en = {
   "nav.evidence": "Evidence log",
   "nav.settings": "Settings",
   "nav.reports": "Reports",
+  "nav.legal": "Legal",
+  "legal.privacy.title": "Privacy Policy",
+  "legal.privacy.body":
+    "Your data stays on your machine: every case is a locally encrypted directory, the AI is local with no network, and there is no tracking or external account. Full text in docs/legal/privacy-policy.en.md in the repository.",
+  "legal.terms.title": "Terms of Use",
+  "legal.terms.body":
+    "The tool is for lawful investigations with a legitimate interest; you are responsible for your processing under your laws, and the license is AGPL-3.0-or-later. Full text in docs/legal/terms-of-use.en.md in the repository.",
+  "legal.abuse.title": "Report Abuse",
+  "legal.abuse.body":
+    "To report unlawful use, impersonation or a security vulnerability, use the repository's private security advisory below.",
+  "legal.abuse.link": "Private reporting channel (GitHub Security Advisories)",
+  "legal.reviewNote": "These pages are signed engineering-wise and are subject to independent legal review (P7-008) before final approval.",
   "nav.main": "Main navigation",
   "shell.theme.dark": "Dark mode",
   "shell.theme.light": "Light mode",

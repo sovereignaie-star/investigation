@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 const CasesPage = lazy(() => import("./pages/CasesPage").then((m) => ({ default: m.CasesPage })));
 const EvidencePage = lazy(() => import("./pages/EvidencePage").then((m) => ({ default: m.EvidencePage })));
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
 const WorkbenchPage = lazy(() => import("./pages/WorkbenchPage").then((m) => ({ default: m.WorkbenchPage })));
 const InfiniteCanvas = lazy(() => import("./pages/workbench/InfiniteCanvas").then((m) => ({ default: m.InfiniteCanvas })));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -38,6 +39,7 @@ const NAV = [
   { id: "cases", label: t("nav.cases"), href: "#/cases" },
   { id: "evidence", label: t("nav.evidence"), href: "#/evidence" },
   { id: "settings", label: t("nav.settings"), href: "#/settings" },
+  { id: "legal", label: t("nav.legal"), href: "#/legal" },
   { id: "reports", label: t("nav.reports"), disabled: true },
 ];
 
@@ -73,6 +75,8 @@ export default function App() {
           <Suspense fallback={<PageSkeleton />}>
             {path === "/cases" ? (
               <CasesPage />
+            ) : path === "/legal" ? (
+              <LegalPage />
             ) : path === "/evidence" ? (
               <EvidencePage />
             ) : path === "/settings" ? (
