@@ -116,7 +116,7 @@ describe("P5-027 — محرك PDF المختار: Chromium عبر Playwright ع�
     const pdf = await renderReportPdf(validDoc());
     expect(pdf.length).toBeGreaterThan(1000);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
-  });
+  }, 30000);
 
   it("T-REP-010: الإحالات قابلة للنقر — روابط داخلية إلى EV-1 وEV-2 في توضيحات PDF", async () => {
     const pdf = await renderReportPdf(validDoc());
@@ -124,13 +124,13 @@ describe("P5-027 — محرك PDF المختار: Chromium عبر Playwright ع�
     const dests = annotations.map((a) => String(a.dest ?? ""));
     expect(dests.some((d) => d.includes("EV-1"))).toBe(true);
     expect(dests.some((d) => d.includes("EV-2"))).toBe(true);
-  });
+  }, 30000);
 
   it("T-REP-011: حتمية PDF — طوابع الإنشاء مثبتة لا عشوائية (مرآة T-REP-008 للـ DOCX)", async () => {
     const a = await renderReportPdf(validDoc());
     const b = await renderReportPdf(validDoc());
     expect(a.equals(b)).toBe(true);
-  });
+  }, 30000);
 
   it("T-REP-012: النص العربي قابل للاستخراج من PDF (طبقة ToUnicode سليمة)", async () => {
     const pdf = await renderReportPdf(validDoc());
@@ -142,7 +142,7 @@ describe("P5-027 — محرك PDF المختار: Chromium عبر Playwright ع�
     // البصمات اللاتينية موجودة نصاً
     expect(text).toContain("example.test");
     expect(text).toContain("case-001");
-  });
+  }, 30000);
 });
 
 /** توضيحات الروابط من صفحة PDF الأولى (pdfjs-dist — نفس مكتبة TR-034). */

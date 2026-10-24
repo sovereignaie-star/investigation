@@ -5688,3 +5688,8 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **التنفيذ:** `renderReportPdf` في `@ir/reports` (import كسول لـ playwright، fallback إلى Chrome النظامي بسابقة G-11، فشل-مغلق برسالة صريحة) + `normalizePdfDates` (مرآة pinDocxTimestamps للـ DOCX). `pdfjs-dist` devDep للاختبارات، `playwright` dep تشغيلي.
 - **الجودة:** T-REP-009..012 خضراء (ملف التقارير 12/12)؛ حد معلن L-P5-027 (Chromium في بيئة النشر — الحاوية الحالية بلا PDF صامت).
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-027، ADR-35 في 5.20)؛ docs/adr/ADR-35-pdf-engine.md؛ docs/evidence/2026-10-24-P5-027-pdf-comparison.md؛ tools/pdf-comparison/.
+
+### 2026-10-24 — P5-027 (إصلاح CI): متصفح Chromium مشترك + مهلة صريحة لاختبارات PDF
+- **المشكلة:** T-REP-009 فشل في CI بمهلة 5003ms — إقلاع Chrome النظامي البارد يتجاوز المهلة الافتراضية 5 ثوانٍ.
+- **الإصلاح:** `launchChromium` يشارك متصفحاً واحداً بين النداءات (`browserPromise`، إعادة إطلاق تلقائية عند موته، الصفحات تُغلق منفردة)؛ اختبارات PDF الأربعة بمهلة 30 ثانية. G-11 محلياً عبر CHROME_PATH (Chromium Playwright).
+- **الجودة:** ملف التقارير 35/35؛ lint/typecheck/governance/gates:phase1 (G-01..G-13) خضراء محلياً.

@@ -299,14 +299,37 @@ export async function renderReportDocx(doc: ReportDocument, identity?: ReportIde
  */
 export async function renderReportPdf(doc: ReportDocument): Promise<Buffer> {
   const html = renderReportHtml(doc);
-  const browser = await launchChromium();
+  let browser = await launchChromium();
+  let page = await newPage(browser);
+  if (!page) {
+    // مات المتصفح المشترك بين النداءات — يُصفَّر ويُطلق واحد جديد (لا PDF صامت)
+    browserPromise = null;
+    browser = await launchChromium();
+    page = await newPage(browser);
+    if (!page) throw new Error("لا يمكن فتح صفحة Chromium لتوليد PDF — فشل-مغلق");
+  }
   try {
-    const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load" });
     const pdf = await page.pdf({ format: "A4" });
     return normalizePdfDates(Buffer.from(pdf));
   } finally {
-    await browser.close();
+    await page.close();
+  }
+  // المتصفح مشترك (launchChromium) فلا يُغلق هنا — إغلاقه يُبطل المشاركة؛
+  // فشل newPage بعد موته يُصفّر browserPromise ويُعاد الإطلاق تلقائياً في النداء التالي.
+}
+
+/** فتح صفحة جديدة — undefined إذا مات المتصفح المشترك (يُعاد الإطلاق فوق). */
+async function newPage(browser: Awaited<ReturnType<typeof launchChromium>>): Promise<{
+  setContent: (html: string, opts?: { waitUntil?: string }) => Promise<void>;
+  pdf: (opts?: { format?: string }) => Promise<Uint8Array>;
+  close: () => Promise<void>;
+}> {
+  try {
+    return await browser.newPage();
+  } catch (pageOpenFailed) {
+    lastLaunchError = pageOpenFailed; // يُضمَّن في رسالة الفشل النهائية (لا التقاط صامت — D-017)
+    return undefined;
   }
 }
 
@@ -328,6 +351,9 @@ function normalizePdfDates(pdf: Buffer): Buffer {
   return Buffer.from(normalized, "latin1");
 }
 
+/** متصفح Chromium مشترك بين الاستدعاءات — الإطلاق مكلف فيُعاد استخدامه. */
+let browserPromise: Promise<import("playwright").Browser> | null = null;
+
 /** مسارات أسماء Chrome/Chromium المعتادة على الأنظمة (سابقة G-11). */
 const CHROME_NAMES = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"] as const;
 
@@ -341,8 +367,20 @@ async function launchChromium(): Promise<{
   close: () => Promise<void>;
 }> {
   const { chromium } = await import("playwright");
+  if (browserPromise) {
+    // متصفح واحد مشترك — إطلاق Chromium هو المكلف؛ إعادة الاستخدام تُبقي
+    // الاستدعاءات التالية سريعة (وإلا انفجر مهلة الاختبار/الإنتاج).
+    try {
+      return await browserPromise;
+    } catch (browserDead) {
+      browserPromise = null; // مات المتصفح — إعادة إطلاق في المحاولة التالية
+      lastLaunchError = browserDead;
+    }
+  }
   try {
-    return await chromium.launch();
+    const browser = await chromium.launch();
+    browserPromise = Promise.resolve(browser);
+    return browser;
   } catch (bundledUnavailable) {
     // لا متصفح مضمن في هذا التثبيت — Chrome النظامي (سابقة G-11 في gates)؛
     // سبب غياب المضمن يُضمَّن إلى رسالة الفشل النهائية (لا التقاط صامت — D-017)
@@ -350,7 +388,9 @@ async function launchChromium(): Promise<{
     const candidates = [fromEnv, ...CHROME_NAMES.map((n) => which(n))].filter((p): p is string => p !== undefined);
     for (const executablePath of candidates) {
       try {
-        return await chromium.launch({ executablePath });
+        const browser = await chromium.launch({ executablePath });
+        browserPromise = Promise.resolve(browser);
+        return browser;
       } catch (systemUnavailable) {
         lastLaunchError = systemUnavailable;
       }
