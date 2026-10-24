@@ -110,6 +110,7 @@ const NODE_TEST_CI = new Set([
   "scripts/governance/fuzz.test.mjs",
   "scripts/governance/deps.test.mjs",
   "scripts/governance/test-ports.test.mjs",
+  "scripts/governance/dpia.test.mjs",
   "scripts/governance/perf.test.mjs",
   "scripts/governance/backup.test.mjs",
   "scripts/governance/delete.test.mjs",
