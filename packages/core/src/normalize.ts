@@ -41,10 +41,12 @@ export function normalizeHost(s: string, type = "domain"): string {
   // WHATWG URL treats U+3002, U+FF0E and U+FF61 as domain separators equal to the ASCII
   // dot (a P6-004 fuzz finding: without this, "x。" normalized to "x." — not idempotent,
   // and "。" normalized to "." — not a hostname). Map them first, then strip the dot.
-  const h = s
-    .replace(/[.\u3002\uFF0E\uFF61]/g, ".")
-    .replace(/\.+$/, "") // all of them: "x.." and ".." are not hostnames either
-    .toLowerCase();
+  // map the lookalike separators, then strip ALL trailing dots with a linear scan —
+  // a regex /\.+$/ is polynomial on adversarial dot runs (CodeQL js/polynomial-regular-expression)
+  const mapped = s.replace(/[.\u3002\uFF0E\uFF61]/g, ".");
+  let end = mapped.length;
+  while (end > 0 && mapped[end - 1] === ".") end--;
+  const h = mapped.slice(0, end).toLowerCase();
   if (!h || /[\s/@:?#]/.test(h)) fail(type, s, "not a hostname");
   let ascii: string;
   try {
