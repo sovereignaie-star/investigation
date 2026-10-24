@@ -1,5 +1,5 @@
 /**
- * P6-016: dependency security guard (T-DEP-001..004).
+ * P6-021: dependency security guard (T-DEP-001..004).
  *
  * Dependabot opened five alerts on main (2026-10-24): maplibre-gl (2 critical),
  * zod (high), body-parser (high), ip-address (medium). This guard pins the
@@ -69,3 +69,35 @@ for (const [name, min] of GUARDED) {
     assert.deepEqual(offenders, [], `vulnerable ${name} versions resolved in the lockfile: ${offenders.join(", ")} — upgrade to >= ${min}`);
   });
 }
+
+test("T-DEP-005: الحارس يكشف النسخ المعرضة في بنية قفل قديم ولا يشير كذباً إلى حزم شقيقة", () => {
+  // مقتطف اصطناعي من بنية القفل قبل الترقية (main وقت الإنذارات): الحزم الأربع
+  // المعرضة موجودة، ومعها الحالات الحدية التي كسرت النسخة الأولى من الحارس —
+  // drizzle-zod@0.8.3 و@types/body-parser@1.19.6 ليستا zod/body-parser.
+  const preUpgradeLock = [
+    "overrides:",
+    "  zod@3: 4.6.7",
+    "",
+    "  drizzle-zod@0.8.3(zod@3.25.76):",
+    "    dependencies:",
+    "      zod: 3.25.76",
+    "",
+    "  '@types/body-parser@1.19.6':",
+    "",
+    "  body-parser@2.3.0:",
+    "",
+    "  ip-address@10.7.3:",
+    "",
+    "  maplibre-gl@5.24.0:",
+    "",
+    "  zod@3.25.76:",
+    "",
+    "  zod@4.6.7:",
+  ].join("\n");
+  assert.deepEqual(resolvedVersions("zod", preUpgradeLock).sort(), ["3.25.76", "4.6.7"]);
+  assert.deepEqual(resolvedVersions("body-parser", preUpgradeLock), ["2.3.0"]);
+  assert.deepEqual(resolvedVersions("ip-address", preUpgradeLock), ["10.7.3"]);
+  assert.deepEqual(resolvedVersions("maplibre-gl", preUpgradeLock), ["5.24.0"]);
+  // والدلالة: الأول يفشل لأن 3.25.76 < 4.6.6 — الحارس ما زال حارساً على القديم
+  assert.ok(!atLeast("3.25.76", "4.6.6"));
+});

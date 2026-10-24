@@ -47,8 +47,12 @@ overrides:
   # P6-021: patched minimums for transitive deps (Dependabot #79 body-parser, #77 ip-address).
   body-parser: 2.4.0
   ip-address: 10.7.4
-  # P6-021: @jimp/types pins zod ^3.23.8 (no zod-4 line exists); force the patched
-  # core into its scope — its schemas are plain z.object/z.string, v4-compatible.
+  # P6-021: the @jimp packages pin zod ^3.23.8 (no zod-4 line exists); force the
+  # patched core in. The selector is GLOBAL for zod@3 but its only consumers in the
+  # tree are the @jimp packages (verified: every zod@3 resolution in the lockfile
+  # belongs to @jimp/*; the workspace's own zod resolves 4.6.7 via the catalog).
+  # Their schemas are plain z.object/z.string, v4-compatible (verified by the
+  # jimp-dependent transform tests).
   zod@3: 4.6.7
   "@esbuild-kit/esm-loader": npm:tsx@^4.21.0
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64": "-"
