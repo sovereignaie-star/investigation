@@ -80,12 +80,15 @@ jobs:
         env:
           IMAGE: ghcr.io/${{ github.repository }}
         run: cosign attest --yes --predicate sbom.cdx.json --type cyclonedx "${IMAGE}@${{ steps.build.outputs.digest }}"
-      - name: Download the SBOM back (verifiable, P7-003)
+      - name: Download the SBOM attestation back (verifiable, P7-003)
         env:
           IMAGE: ghcr.io/${{ github.repository }}
         run: |
-          cosign download sbom "${IMAGE}@${{ steps.build.outputs.digest }}" > downloaded-sbom.cdx.json
-          diff <(jq -S . sbom.cdx.json) <(jq -S . downloaded-sbom.cdx.json)
+          # cosign download sbom is the deprecated platform-attachment path;
+          # attestation-based SBOMs are retrieved with download attestation
+          cosign download attestation "${IMAGE}@${{ steps.build.outputs.digest }}" > attestation.cdx.json
+          test -s attestation.cdx.json
+          jq -r .payload attestation.cdx.json | base64 -d | jq -e '.predicateType == "https://cyclonedx.org/bom"'
       - name: Verify the SBOM attestation signature (P7-003)
         env:
           IMAGE: ghcr.io/${{ github.repository }}

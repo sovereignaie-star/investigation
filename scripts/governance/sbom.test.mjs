@@ -28,7 +28,7 @@ test("T-SBOM-001: البناء يثبت SBOM وprovenance معاً", () => {
 
 test("T-SBOM-002: تحقق قابل للقياس وربط بالإصدار", () => {
   const y = wf();
-  assert.ok(y.includes("cosign download sbom"), "خطوة تنزيل SBOM مفقودة");
+  assert.ok(y.includes("cosign download attestation"), "خطوة تنزيل إثبات SBOM مفقودة");
   assert.ok(y.includes("cosign verify-attestation"), "خطوة التحقق من provenance مفقودة");
   assert.ok(y.includes("slsa.dev/provenance"), "نوع provenance غير مثبت");
   assert.ok(y.includes("cosign attest"), "إرفاق SBOM بcosign attest مفقود");
