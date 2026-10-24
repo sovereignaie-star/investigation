@@ -11594,3 +11594,20 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 ### ما تم
 - تصحيح خطأ مطبعي في ملاحظة STATUS (phrasphrase → عبارة المرور) — لا تغيير في الشيفرة أو الحارس
+- 2026-10-24: **[P6-008] الاختبارات الحمراء** — بوابة حوكمة T-DEL-001..003 وسيناريو الحذف الآلي `scripts/delete/roundtrip.mjs` واختبارات `deleteCase` وCLI؛ أحمر (الميزة غير مكتوبة): 0/3 و 6 اختبارات فاشلة بغياب deleteCase.
+- 2026-10-24: **[P6-008] الحذف الآمن والاحتفاظ (الأخضر)** — \`deleteCase\` في \`packages/store/src/delete.ts\` (تحقق أولاً fail-closed، سبب إلزامي، كتابة عشوائية فوق كل ملف ثم إزالة الشجرة كاملة) + شهادة \`irdeletion/1\` موقعة Ed25519 في \`@ir/ledger\` (معرف القضية، طول السجل/الرأس/جذر Merkle، عدد الـblobs، سياسة الاحتفاظ وحالتها early/expired/indefinite) + أمر \`ir delete\` مع \`--reason\` و\`--key\`؛ سيناريو الحذف الآلي \`scripts/delete/roundtrip.mjs\`؛ تسجيل بوابة T-DEL-001..003؛ 466 اختباراً أخضر في الحزم المتأثرة.
+
+### 2026-10-24 — إصلاح فشل بناء P6-008 (خطأان في النوع)
+
+أفشلت بوابةُ البناء على #398 بسبب خطأين في النوع عالجتهما في هذا الالتصاق:
+- `delete.ts`: تعليقُ `payload` بـ `DeletionCertificatePayload` صراحةً (حلّ اتساع `format` إلى string)، وتضييقُ `retention.days` بـ `typeof === "number"` قبل `Number.isFinite`.
+- `ir.ts`: إضافة `reason?: string` إلى `Values` (نفس صنف خطأ #397 — استخدامُ مفتاح مُعرَّف في usage دون إعلانه في النوع).
+
+الاختبارات: typecheck نظيف، `delete.test.ts` و`delete-cli.test.ts` و`governance/delete.test.mjs` خضراء.
+
+### 2026-10-24 — [P6-008] فصل عبارة المرور في deleteCase (إغلاق تلوث CodeQL)
+
+- **ما تم:** بعد دمج #400 ظل إنذار التلوث الضمني يظهر على هذا الفرع لأن `deleteCase` كان يقبل عبارة المرور داخل كائن الخيارات ويبثها شرطياً داخل كائنات `verifyCase`/`openCase` (نمط spread) — عولج بفصلها معاملاً مستقلاً أخيراً في `deleteCase` (كما في #400) وتحديث موقع الاستدعاء في `ir delete`.
+- **الأدلة:** typecheck نظيف؛ `delete.test.ts` و`delete-cli.test.ts` (9) و`governance/delete.test.mjs` (3) كلها خضراء.
+- **ما لم يتم:** لا شيء في نطاق المهمة.
+- **الخطوة التالية:** دفع وانتظار تحليل CodeQL الجديد.

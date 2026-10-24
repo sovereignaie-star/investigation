@@ -81,7 +81,7 @@ export function loadOrCreateInstallationKey(dir: string): InstallationKey {
   }
 }
 
-const bytesOf = (p: CheckpointPayload) => new TextEncoder().encode(canonicalize(p));
+const bytesOf = (p: object) => new TextEncoder().encode(canonicalize(p));
 
 /** Signs the current state of `entries` without changing the ledger. */
 export function signCheckpoint(entries: readonly Entry[], key: InstallationKey, clock: Clock = systemClock): SignedCheckpoint {
@@ -141,4 +141,54 @@ export function verifyEmbeddedCheckpoints(entries: readonly Entry[], publicKeyPe
     .filter(({ e }) => e.kind === "checkpoint")
     .map(({ e, index }) => ({ index, errors: verifyCheckpoint(entries.slice(0, index), e.payload as SignedCheckpoint, publicKeyPem) }))
     .filter((r) => r.errors.length > 0);
+}
+
+/**
+ * P6-008 (UC-24): the signed deletion certificate. After a case is securely deleted
+ * nothing remains inside its directory, so the certificate lives outside it and is
+ * the only durable proof of what was deleted: the case id, the chain it committed
+ * to (length/head/Merkle root), the blob count, the case's retention policy and
+ * whether deletion happened before (early) or at/after (expired) its deadline, the
+ * reason, the actor and the time — signed with the installation Ed25519 key over
+ * the JCS form of the payload (the same construction as checkpoints).
+ */
+export const IRDELETION_FORMAT = "irdeletion/1";
+
+export type DeletionCertificatePayload = {
+  format: typeof IRDELETION_FORMAT;
+  caseId: string;
+  chainLength: number;
+  head: string;
+  root: string;
+  blobs: number;
+  retention: { mode: string; [k: string]: unknown };
+  retentionState: "early" | "expired" | "indefinite";
+  reason: string;
+  actor: string;
+  at: string;
+  keyId: string;
+};
+export type SignedDeletionCertificate = { payload: DeletionCertificatePayload; signature: string };
+
+export type DeletionCode = "format" | "key" | "signature";
+export type DeletionCertificateError = { code: DeletionCode; message: string };
+
+/** Verifies a deletion certificate against an installation public key. Empty result means valid. */
+export function verifyDeletionCertificate(crt: SignedDeletionCertificate, publicKeyPem: string): DeletionCertificateError[] {
+  const errors: DeletionCertificateError[] = [];
+  const p = crt?.payload;
+  if (p?.format !== IRDELETION_FORMAT || typeof p?.caseId !== "string" || !Number.isInteger(p?.chainLength)) {
+    return [{ code: "format", message: "not an irdeletion/1 certificate payload" }];
+  }
+  if (keyIdOf(publicKeyPem) !== p.keyId) {
+    errors.push({ code: "key", message: `certificate signed by ${p.keyId}, not by this key` });
+  }
+  let sigOk = false;
+  try {
+    sigOk = verify(null, bytesOf(p), createPublicKey(publicKeyPem), Buffer.from(crt.signature, "base64url"));
+  } catch {
+    sigOk = false;
+  }
+  if (!sigOk) errors.push({ code: "signature", message: "Ed25519 signature does not verify" });
+  return errors;
 }
