@@ -60,3 +60,8 @@ scripts/test-results/
 .stryker-tmp/
 stryker-tmp/
 packages/core/reports/mutation/
+
+# Stryker in-place artifacts (P6-005)
+packages/core/stryker-tmp/
+packages/core/stryker-setup-*.js
+packages/core/stryker-instrumenter*.js
