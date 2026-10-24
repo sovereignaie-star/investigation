@@ -12324,3 +12324,13 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 **ما لم يتم:** تشغيل ناجح.
 
 **الخطوة التالية:** دمج ثم dispatch.
+
+### P7-003 — إعادة تصميم خطوات SBOM (2026-10-24)
+
+**ما تم:** التشغيل الرابع 40130817124 كشف أن cosign لا يكتشف إثباتات buildx المضمنة في الفهرس (آلية الرفع مختلفة عن referrers). أعدت التصميم: توليد SBOM CycloneDX من الصورة المدفوعة بsyft (مطابق لمطلوب الخارطة «CycloneDX»)، إرفاقه بالفهرس ب`cosign attest --type cyclonedx` (نمط cosign الأصلي القابل للتنزيل والتحقق)، تنزيله ومطابقته حرفياً، تحقق توقيعه بالهوية الصارمة، والتحقق من طبقة provenance (slsa.dev/provenance/v1) داخل الفهرس مباشرة عبر registry API. إثباتات buildx (sbom: true + provenance: true) باقية في البناء.
+
+**الأدلة:** سجل 40130817124 — "no sbom attached to reference"؛ فحص يدوي للفهرس والطبقات (spdx.dev/Document + slsa.dev/provenance/v1).
+
+**ما لم يتم:** تشغيل ناجح كامل.
+
+**الخطوة التالية:** دمج ثم dispatch.

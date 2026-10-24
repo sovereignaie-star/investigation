@@ -30,7 +30,9 @@ test("T-SBOM-002: تحقق قابل للقياس وربط بالإصدار", () 
   const y = wf();
   assert.ok(y.includes("cosign download sbom"), "خطوة تنزيل SBOM مفقودة");
   assert.ok(y.includes("cosign verify-attestation"), "خطوة التحقق من provenance مفقودة");
-  assert.ok(y.includes("slsaprovenance"), "نوع attestation غير مثبت");
+  assert.ok(y.includes("slsa.dev/provenance"), "نوع provenance غير مثبت");
+  assert.ok(y.includes("cosign attest"), "إرفاق SBOM بcosign attest مفقود");
+  assert.ok(y.includes("syft"), "توليد CycloneDX مفقود");
   assert.ok(y.includes("--certificate-identity"), "التحقق الصارم بالهوية مفقود");
   assert.ok(y.includes("--certificate-oidc-issuer https://token.actions.githubusercontent.com"), "issuer غير مثبت");
   // the SBOM file must be attached to the v* GitHub release
