@@ -12,7 +12,7 @@
     "lint": "eslint . --max-warnings=0",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "governance": "node scripts/governance/check.mjs --last && node scripts/governance/check.mjs --consistency",
-    "governance:test": "node --test scripts/governance/check.test.mjs scripts/governance/asvs.test.mjs scripts/governance/threat-model.test.mjs scripts/governance/fuzz.test.mjs scripts/governance/perf.test.mjs scripts/governance/deps.test.mjs scripts/governance/backup.test.mjs scripts/governance/delete.test.mjs scripts/governance/test-ports.test.mjs scripts/governance/dpia.test.mjs",
+    "governance:test": "node --test scripts/governance/check.test.mjs scripts/governance/asvs.test.mjs scripts/governance/threat-model.test.mjs scripts/governance/fuzz.test.mjs scripts/governance/perf.test.mjs scripts/governance/deps.test.mjs scripts/governance/backup.test.mjs scripts/governance/delete.test.mjs scripts/governance/test-ports.test.mjs scripts/governance/dpia.test.mjs scripts/governance/licenses.test.mjs",
     "reference:test": "node --test scripts/reference/iana-drift.test.mjs",
     "audit:measure": "node scripts/audit/measure.mjs --full",
     "gates:phase1": "scripts/node_modules/.bin/tsx scripts/gates/phase1.ts",
