@@ -27,7 +27,7 @@ jobs:
       - name: STRIDE threat model guard (P6-002)
         run: node --test scripts/governance/threat-model.test.mjs
       - name: Fuzz campaign guard (P6-004)
-        run: node --test scripts/governance/fuzz.test.mjs
+        run: node --test scripts/governance/fuzz.test.mjs scripts/governance/deps.test.mjs
       - name: Performance ceilings guard (P6-006)
         run: node --test scripts/governance/perf.test.mjs
       - name: PR title carries a task id (P6-017)
