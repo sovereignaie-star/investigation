@@ -38,3 +38,15 @@ test("T-SBOM-002: تحقق قابل للقياس وربط بالإصدار", () 
   // the SBOM file must be attached to the v* GitHub release
   assert.ok(/gh release upload/.test(y), "رفع ملف SBOM إلى الإصدار مفقود");
 });
+
+test("T-SBOM-003: مسح provenance يتبع تحويلات GHCR وملف الإصدار مطابق للمولد (2026-10-24)", () => {
+  const y = readFileSync(".github/workflows/images.yml", "utf8");
+  assert.ok(
+    /curl -sSL --retry 3 --retry-delay 5 -H "Authorization: Bearer \${TOKEN}" "https:\/\/ghcr\.io\/v2\/\$\{GITHUB_REPOSITORY\}\/blobs\/\$\{layer\}"/.test(
+      y,
+    ),
+    "جلب blob بلا -L (تحويل 307 إلى CDN يفسد المسح)",
+  );
+  assert.ok(!y.includes("sbom.spdx.json"), "الإصدار يرفع ملفاً غير مولد (sbom.spdx.json)");
+  assert.ok(y.includes('gh release upload "${GITHUB_REF_NAME}" sbom.cdx.json'), "رفع sbom.cdx.json للإصدار مفقود");
+});
