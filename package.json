@@ -1,6 +1,6 @@
 {
   "name": "workspace",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
@@ -26,6 +26,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@eslint/js": "^9.39.5",
     "@ir/test-utils": "workspace:*",
     "@vitest/coverage-v8": "5.0.5",
