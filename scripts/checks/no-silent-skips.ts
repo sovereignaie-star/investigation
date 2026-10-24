@@ -126,6 +126,7 @@ const NODE_TEST_CI = new Set([
   "scripts/governance/sbom.test.mjs",
   "scripts/governance/docs-site.test.mjs",
   "scripts/governance/gates.test.mjs",
+  "scripts/governance/desktop.test.mjs",
   "scripts/governance/mutation.test.mjs",
   "scripts/gates/security-review-gate.test.mjs",
 ]);

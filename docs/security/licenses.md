@@ -27,6 +27,7 @@
 | (MIT AND Zlib) | pako | متوافق | كلاهما متساهل |
 | MIT AND ISC | victory-vendor | متوافق | كلاهما متساهل |
 | (MIT OR Apache-2.0) | @maplibre/mlt | متوافق | خيار متساهل |
+| Apache-2.0 OR MIT | @tauri-apps/cli (P7-004) | متوافق | خيار متساهل — كلاهما متوافق مع AGPL |
 | (MIT OR GPL-3.0-or-later) | jszip | متوافق | نعتمد خيار MIT |
 | (MPL-2.0 OR Apache-2.0) | dompurify | متوافق | خيار متساهل |
 | MPL-2.0 | resvg، axe-core، exifreader، lightningcss | متوافق | متروكة للملف — متوافقة مع GPLv3/AGPL |
