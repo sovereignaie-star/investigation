@@ -294,6 +294,8 @@ type Values = {
   checkpoint?: string | undefined;
   json?: boolean | undefined;
   "passphrase-file"?: string | undefined;
+  /** P6-007: the backup envelope's own passphrase (not the case's). */
+  "backup-passphrase-file"?: string | undefined;
   /** P4-009: `ir monitor add` — the check interval, a positive integer number of minutes. */
   every?: string | undefined;
   /** P4-009: `ir monitor run --once` — run every due check once, then exit. */
