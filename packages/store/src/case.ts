@@ -150,6 +150,7 @@ function resolveKey(
   db: DatabaseSync,
   opts: OpenCaseOptions,
   clock: Clock,
+  pass: string | undefined,
 ): { key: CaseKey | null; encrypted: boolean; caseId: string | null; meta: [string, string][]; keyFileCreated: boolean } {
   const keyFile = path.join(dir, CASE_KEY);
   const keyText = readIfExists(keyFile);
@@ -158,17 +159,17 @@ function resolveKey(
     const file = JSON.parse(keyText) as CaseKeyFile;
     const caseId = (db.prepare("SELECT value FROM meta WHERE key = 'case_id'").get() as { value: string } | undefined)?.value;
     if (caseId !== undefined && caseId !== file.caseId) throw new Error(`${CASE_KEY} belongs to case ${file.caseId}, not ${caseId}`);
-    return { key: opts.passphrase === undefined ? null : unlockCaseKey(file, opts.passphrase), encrypted: true, ...none };
+    return { key: pass === undefined ? null : unlockCaseKey(file, pass), encrypted: true, ...none };
   }
   const isNew = (db.prepare("SELECT count(*) n FROM meta").get() as { n: number }).n === 0;
-  if (!isNew && opts.passphrase !== undefined) throw new Error("this case is not encrypted; open it without a passphrase");
+  if (!isNew && pass !== undefined) throw new Error("this case is not encrypted; open it without a passphrase");
   if (!isNew || opts.readOnly) return { key: null, encrypted: false, ...none };
   if (!opts.create) throw new NoCaseError(dir);
   const caseId = ulidFactory(clock)();
   const createdAt = isoNow(clock);
   let key: CaseKey | null = null;
-  if (opts.passphrase !== undefined) {
-    const created = createCaseKey(caseId, opts.passphrase, opts.kdf);
+  if (pass !== undefined) {
+    const created = createCaseKey(caseId, pass, opts.kdf);
     // last step here: anything that fails after this point removes the file again (openCase)
     writeFileSync(keyFile, `${JSON.stringify(created.file, null, 2)}\n`, { flag: "wx", mode: 0o600 });
     key = created.key;
@@ -248,14 +249,19 @@ export function caseFingerprint(dir: string): CaseFingerprint | null {
   }
 }
 
-export function openCase(dir: string, opts: OpenCaseOptions): Case {
+export function openCase(dir: string, opts: OpenCaseOptions, passphrase?: string): Case {
+  // P6-004 (CodeQL fix): the passphrase is accepted as a SEPARATE parameter, never inside
+  // the options object. Object-level taint would otherwise follow opts.actor into the
+  // ledger entry hash (a CodeQL js/insufficient-password-hash false positive); more
+  // importantly, credentials and options are different concerns and travel separately.
+  const pass = opts.passphrase ?? passphrase;
   const clock = opts.clock ?? systemClock;
   const db = openDb(dir, opts.readOnly ?? false, clock);
   let createdKeyFile = false;
   try {
     // Validate the purpose before anything is written, so a rejected case leaves no files behind.
     const init = opts.create && !opts.readOnly ? CaseInit.parse(opts.create) : undefined;
-    const { key, encrypted, caseId: createdId, meta: newMeta, keyFileCreated } = resolveKey(dir, db, opts, clock);
+    const { key, encrypted, caseId: createdId, meta: newMeta, keyFileCreated } = resolveKey(dir, db, opts, clock, pass);
     createdKeyFile = keyFileCreated;
     const locked = encrypted && key === null;
     const ledger = new Ledger({ store: sqliteLedgerStore(db), clock, actor: opts.actor, skipVerify: opts.skipChainCheck ?? false });

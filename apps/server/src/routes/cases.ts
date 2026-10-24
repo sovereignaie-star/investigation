@@ -190,7 +190,7 @@ export function casesRouter(getRoot: () => string, opts: { env?: NodeJS.ProcessE
     // The case id is minted inside the store, so create in a staging dir and rename to <root>/<caseId>.
     const staging = path.join(root, `.tmp-${randomUUID().slice(0, 8)}`);
     try {
-      const c = openCase(staging, { create: create as CaseInit, passphrase, actor: "web" });
+      const c = openCase(staging, { create: create as CaseInit, actor: "web" }, passphrase);
       let info: CaseRecordShape;
       try {
         info = c.info() as CaseRecordShape;
