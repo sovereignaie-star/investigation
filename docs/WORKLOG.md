@@ -11604,3 +11604,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - `ir.ts`: إضافة `reason?: string` إلى `Values` (نفس صنف خطأ #397 — استخدامُ مفتاح مُعرَّف في usage دون إعلانه في النوع).
 
 الاختبارات: typecheck نظيف، `delete.test.ts` و`delete-cli.test.ts` و`governance/delete.test.mjs` خضراء.
+
+### 2026-10-24 — [P6-008] فصل عبارة المرور في deleteCase (إغلاق تلوث CodeQL)
+
+- **ما تم:** بعد دمج #400 ظل إنذار التلوث الضمني يظهر على هذا الفرع لأن `deleteCase` كان يقبل عبارة المرور داخل كائن الخيارات ويبثها شرطياً داخل كائنات `verifyCase`/`openCase` (نمط spread) — عولج بفصلها معاملاً مستقلاً أخيراً في `deleteCase` (كما في #400) وتحديث موقع الاستدعاء في `ir delete`.
+- **الأدلة:** typecheck نظيف؛ `delete.test.ts` و`delete-cli.test.ts` (9) و`governance/delete.test.mjs` (3) كلها خضراء.
+- **ما لم يتم:** لا شيء في نطاق المهمة.
+- **الخطوة التالية:** دفع وانتظار تحليل CodeQL الجديد.

@@ -50,8 +50,6 @@ export interface DeleteCaseOptions {
   /** Signs the deletion certificate (installation Ed25519 key). */
   key: InstallationKey;
   clock?: Clock;
-  /** Unlocks an encrypted case to read its record for the certificate. */
-  passphrase?: string;
 }
 
 const bytesOf = (p: object) => new TextEncoder().encode(canonicalize(p));
@@ -86,7 +84,7 @@ function listFiles(dir: string): string[] {
     .map((d) => path.join(d.parentPath, d.name));
 }
 
-export function deleteCase(dir: string, opts: DeleteCaseOptions): SignedDeletionCertificate {
+export function deleteCase(dir: string, opts: DeleteCaseOptions, passphrase?: string): SignedDeletionCertificate {
   const clock = opts.clock ?? systemClock;
   const reason = opts.reason.trim();
   if (reason.length < 3) {
@@ -94,18 +92,14 @@ export function deleteCase(dir: string, opts: DeleteCaseOptions): SignedDeletion
   }
 
   // 1. verify — never delete what you cannot account for.
-  const report = verifyCase(dir, opts.passphrase ? { passphrase: opts.passphrase } : {});
+  const report = verifyCase(dir, {}, passphrase);
   if (!report.ok) {
     const why = report.chain.errors[0]?.message ?? report.evidence.problems[0] ?? "the case does not verify";
     throw new DeletionError(`refusing to delete a case that does not verify: ${why}`);
   }
 
   // 2. gather the certificate facts from the (verified) case.
-  const c = openCase(dir, {
-    actor: opts.actor,
-    readOnly: true,
-    ...(opts.passphrase ? { passphrase: opts.passphrase } : {}),
-  });
+  const c = openCase(dir, { actor: opts.actor, readOnly: true }, passphrase);
   let entries: readonly Entry[];
   let caseId: string;
   let createdAt: string;

@@ -414,12 +414,7 @@ function runDeleteCommand(dir: string, v: Values, out: (s: string) => void, err:
   }
   try {
     const key = installationKeyFromPem(readFileSync(v.key, "utf8"));
-    const crt = deleteCase(dir, {
-      actor: "ir delete",
-      reason: v.reason,
-      key,
-      ...passphraseFrom(v["passphrase-file"]),
-    });
+    const crt = deleteCase(dir, { actor: "ir delete", reason: v.reason, key }, passphraseFrom(v["passphrase-file"]).passphrase);
     const crtPath = `${dir}.deleted.crt.json`;
     writeFileSync(crtPath, `${JSON.stringify(crt, null, 2)}\n`);
     out(
