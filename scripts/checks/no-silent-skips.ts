@@ -119,6 +119,7 @@ const NODE_TEST_CI = new Set([
   "scripts/governance/wcag.test.mjs",
   "scripts/governance/runbooks.test.mjs",
   "scripts/governance/disclosure.test.mjs",
+  "scripts/governance/release-policy.test.mjs",
   "scripts/governance/release.test.mjs",
   "scripts/gates/security-review-gate.test.mjs",
 ]);
