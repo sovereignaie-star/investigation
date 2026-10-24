@@ -12244,3 +12244,13 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 **ما لم يتم:** إعادة الفحوص.
 
 **الخطوة التالية:** الدفع ثم الدمج.
+
+### P7-003 — بدء: حارس SBOM/SLSA أحمر (2026-10-24)
+
+**ما تم:** حارس `scripts/governance/sbom.test.mjs` (T-SBOM-001..002: إثبات SBOM+provenance في البناء، تحقق قابل للقياس وربط بالإصدار). أحمر: pass 0 / fail 2 — docs/evidence/2026-10-24-P7-003-red.md. النهج: توسيع images.yml بإثبات sbom+provenance، تحقق cosign (download sbom + verify-attestation slsaprovenance بالهوية الصارمة)، ورفع ملف SBOM إلى إصدار GitHub لكل وسم v*.
+
+**الأدلة:** `node --test scripts/governance/sbom.test.mjs` => fail 2.
+
+**ما لم يتم:** التنفيذ والدليل الحي (تشغيل تجريبي بSBOM موثق).
+
+**الخطوة التالية:** التنفيذ ثم الأخضر والتسجيل ثم dispatch التجربة.
