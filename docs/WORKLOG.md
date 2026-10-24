@@ -12214,3 +12214,13 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 **ما لم يتم:** إعادة التشغيل التجريبي بعد الدمج.
 
 **الخطوة التالية:** دمج ثم dispatch رابع للتجربة.
+
+### P7-002 — إنجاز: صورة موقعة متعددة المعماريات حية (2026-10-24)
+
+**ما تم:** التشغيل التجريبي الرابع `40122224762` (dispatch على main@a938900) نجح كاملاً: بناء `linux/amd64`+`linux/arm64`، دفع `ghcr.io/sovereignaie-star/investigation:trial-a938900`، توقيع digest الفهرس `sha256:cadefdca…` بcosign v2.5.2 بدون مفاتيح (tlog 3441619836)، وتحقق ناجح داخل الworkflow بهوية صارمة (مسار images.yml@refs/heads/main + issuer الرسمي). الحزمة عامة والتوقيع قابل للسحب بلا مصادقة (فُحص). وثقت الدليل الكامل في docs/security/signed-images.md (تشغيل/وسم/digest/معماريتان/هوية/نتيجة) وحارس الدليل الحي T-IMG-RUN-001 مسجل في النقاط الثلاث.
+
+**الأدلة:** run 40122224762 (success)؛ سجل «Verify the signature» — claims validated + transparency log verified offline؛ فحص السحب المجهول لGHCR.
+
+**ما لم يتم:** لا شيء في نطاق P7-002 — أول وسم v* قادم يمر بنفس الخط تلقائياً.
+
+**الخطوة التالية:** P7-003 (SBOM/SLSA) أو P7-004 (Tauri) بحسب الخارطة.
