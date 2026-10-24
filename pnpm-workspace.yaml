@@ -54,6 +54,12 @@ overrides:
   # Their schemas are plain z.object/z.string, v4-compatible (verified by the
   # jimp-dependent transform tests).
   zod@3: 4.6.7
+  # P6-025: patched minimums for transitive deps (Dependabot #84..#86 undici, #80..#83 fast-uri).
+  # undici@<8 — only @scalar/json-magic's 7.x line is in the vulnerable range; the tree's
+  # other undici (8.12.2, direct) stays untouched. fast-uri is global — its only consumer
+  # is ajv@8.20.0.
+  "undici@<8": 7.30.1
+  fast-uri: 3.1.9
   "@esbuild-kit/esm-loader": npm:tsx@^4.21.0
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64": "-"

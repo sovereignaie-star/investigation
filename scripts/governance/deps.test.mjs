@@ -30,6 +30,10 @@ const GUARDED = [
   ["zod", "4.6.6"],
   ["body-parser", "2.4.0"],
   ["ip-address", "10.7.4"],
+  // P6-025 (alerts #80..#86, 2026-10-24): transitive undici 7.29.1 via @scalar/json-magic
+  // (the 8.x line already in the tree is outside the vulnerable range) and fast-uri 3.1.8 via ajv.
+  ["undici", "7.30.1"],
+  ["fast-uri", "3.1.9"],
 ];
 
 /** Numeric-aware semver-ish comparison: returns true when a >= b (no prerelease handling — none of the guarded packages use one). */
