@@ -11566,3 +11566,4 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 ### الخطوة التالية
 - لا شيء (مغلقة)
 - 2026-10-24: **[P6-007] الاختبارات الحمراء** — بوابة حوكمة T-BK-001..003 وسيناريو الاستعادة الآلي `scripts/backup/roundtrip.mjs` واختبارات CLI في `packages/cli/src/backup.test.ts`؛ الكل أحمر (الميزة غير مكتوبة): 0/3 و 0/3 و backupFile is not a function.
+- 2026-10-24: **[P6-007] النسخ الاحتياطي والاستعادة (الأخضر)** — مغلف `irbackup/1` في `packages/store/src/backup.ts` (Argon2id + AES-256-GCM، لا نص صريح، fail-closed)؛ أوامر `ir backup` و`ir restore` في CLI مع `--backup-passphrase-file`؛ اختبار الاستعادة الآلي `scripts/backup/roundtrip.mjs` (قضية+blob → حزمة موقعة → ملف مشفر → حذف → استعادة → تحقق ومطابقة الـblob)؛ تسجيل بوابة T-BK-001..003 في CI و`no-silent-skips`؛ كل الاختبارات خضراء (3/3 حوكمة، 3/3 CLI، roundtrip ناجح، 66 اختباراً في الحزم المتأثرة).

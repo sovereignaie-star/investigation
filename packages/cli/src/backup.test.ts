@@ -81,7 +81,7 @@ describe("ir backup / ir restore — the encrypted backup envelope (P6-007, T-BK
 
     const restored = await run(["restore", backupPath, restoreDir, "--backup-passphrase-file", passFile]);
     expect(restored.code).toBe(0);
-    expect(restored.text).toMatch(/restored .*: chain length \d+/);
+    expect(restored.text).toMatch(/restored .*: case .*, chain length \d+, head [0-9a-f]{64}/);
 
     const report = verifyCase(restoreDir, { publicKeyPem: readFileSync(pub, "utf8") });
     expect(report.ok).toBe(true);

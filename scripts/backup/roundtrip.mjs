@@ -70,7 +70,7 @@ try {
   // 2+3. pack, then seal into an encrypted backup file
   const pack = packCase(caseDir, { actor: "ir backup", key, clock });
   const backupPassphrase = "roundtrip-passphrase-1";
-  const file = backupFile(pack, backupPassphrase, { clock });
+  const file = backupFile(pack, backupPassphrase);
   const backupPath = `${caseDir}.irbak`;
   writeFileSync(backupPath, file);
   dirs.push(backupPath);
