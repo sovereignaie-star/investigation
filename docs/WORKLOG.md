@@ -11922,3 +11922,20 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 ### الخطوة التالية
 - PR ثم الدمج
+
+## 2026-10-24 — [P7-001] release line
+
+### ما تم
+- changesets على جذر مساحة العمل (`.changeset/config.json` بمجال `["."]`)
+- النسخة 0.1.0 + CHANGELOG.md بقسم الإصدار (بما قبل خط الإصدار موثقاً)
+- مسار الإصدار: `.github/workflows/release.yml` (وسم v* ← إصدار GitHub بملاحظات مستخرجة من CHANGELOG عبر `scripts/release/notes.mjs`) + `scripts/release/tag.mjs`
+- الحارس T-REL-001..003: أحمر على main (pass 0/fail 3 — worktree) وأخضر هنا (pass 3/fail 0)
+
+### الأدلة
+- docs/evidence/2026-10-24-P7-001-red.md
+
+### ما لم يتم
+- الإصدار التجريبي نفسه (وسم v0.1.0 + تشغيل المسار) — بعد دمج هذا الـ PR
+
+### الخطوة التالية
+- الدمج ثم وسم v0.1.0 وتشغيل الإصدار التجريبي وإغلاق المهمة بدليل
