@@ -108,13 +108,15 @@ const allGood = (r: Omit<CaseReport, "ok">): boolean =>
   (r.external === null || (r.external.checked && r.external.errors.length === 0)) &&
   r.schemaVersion <= r.latestSchemaVersion;
 
-export function verifyCase(dir: string, opts: VerifyCaseOptions = {}): CaseReport {
+export function verifyCase(dir: string, opts: VerifyCaseOptions = {}, passphrase?: string): CaseReport {
+  // P6-004 (CodeQL fix): credentials travel as a separate parameter, never inside opts.
+  const pass = opts.passphrase ?? passphrase;
   if (!existsSync(path.join(dir, CASE_DB))) throw new Error(`not a case directory (no ${CASE_DB}): ${dir}`);
   const c = openCase(dir, {
     actor: "verifier",
     readOnly: true,
     skipChainCheck: true,
-    ...(opts.passphrase !== undefined ? { passphrase: opts.passphrase } : {}),
+    ...(pass !== undefined ? { passphrase: pass } : {}),
   });
   try {
     const entries = c.ledger.entries();

@@ -263,12 +263,7 @@ function runPackCommand(dir: string, outPath: string, v: Values, out: (s: string
   }
   try {
     const key = installationKeyFromPem(readFileSync(v.key, "utf8"));
-    const bytes = packCase(dir, {
-      actor: "ir pack",
-      key,
-      appVersion: "0.0.0",
-      ...passphraseFrom(v["passphrase-file"]),
-    });
+    const bytes = packCase(dir, { actor: "ir pack", key, appVersion: "0.0.0" }, passphraseFrom(v["passphrase-file"]).passphrase);
     writeFileSync(outPath, bytes);
     out(`wrote ${outPath}: ${bytes.length} bytes, signed by ${key.keyId}`);
     return 0;
@@ -281,19 +276,18 @@ function runPackCommand(dir: string, outPath: string, v: Values, out: (s: string
 /** P4-016: `ir unpack <pack.irpack> <case-dir>` — verify, rebuild, re-verify. */
 function runUnpackCommand(packPath: string, dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
   try {
-    const result = unpackCase(new Uint8Array(readFileSync(packPath)), dir, {
-      ...(v.key ? { expectedPublicKeyPem: readFileSync(v.key, "utf8") } : {}),
-      ...passphraseFrom(v["passphrase-file"]),
-    });
+    const result = unpackCase(
+      new Uint8Array(readFileSync(packPath)),
+      dir,
+      ...(v.key ? [{ expectedPublicKeyPem: readFileSync(v.key, "utf8") }] : []),
+      passphraseFrom(v["passphrase-file"]).passphrase,
+    );
     out(`unpacked ${packPath} into ${dir}`);
     out(`case ${result.caseId}: chain length ${result.length}, head ${result.head}`);
     // with --key the case's own checkpoints are judged too (verify semantics); without it
     // they are reported as skipped, never as passed.
     const report = v.key
-      ? verifyCase(dir, {
-          publicKeyPem: readFileSync(v.key, "utf8"),
-          ...passphraseFrom(v["passphrase-file"]),
-        })
+      ? verifyCase(dir, { publicKeyPem: readFileSync(v.key, "utf8") }, passphraseFrom(v["passphrase-file"]).passphrase)
       : result.report;
     out(formatReport(report));
     return report.ok ? 0 : 1;
@@ -305,11 +299,14 @@ function runUnpackCommand(packPath: string, dir: string, v: Values, out: (s: str
 
 function runVerify(dir: string, v: Values, out: (s: string) => void, err: (s: string) => void): number {
   try {
-    const report = verifyCase(dir, {
-      ...(v.key ? { publicKeyPem: readFileSync(v.key, "utf8") } : {}),
-      ...(v.checkpoint ? { checkpoint: readCheckpointFile(v.checkpoint) } : {}),
-      ...passphraseFrom(v["passphrase-file"]),
-    });
+    const report = verifyCase(
+      dir,
+      {
+        ...(v.key ? { publicKeyPem: readFileSync(v.key, "utf8") } : {}),
+        ...(v.checkpoint ? { checkpoint: readCheckpointFile(v.checkpoint) } : {}),
+      },
+      passphraseFrom(v["passphrase-file"]).passphrase,
+    );
     out(v.json ? JSON.stringify(report, null, 2) : formatReport(report));
     return report.ok ? 0 : 1;
   } catch (x) {
@@ -359,7 +356,7 @@ function runProject(
     const c =
       passphrase === undefined
         ? openCase(dir, { actor: "ir-cli", readOnly: true })
-        : openCase(dir, { actor: "ir-cli", readOnly: true, passphrase });
+        : openCase(dir, { actor: "ir-cli", readOnly: true }, passphrase);
     try {
       const p = project(c.entries(), at === undefined ? {} : { upTo: at });
       const hash = projectionHash(p);
@@ -403,7 +400,7 @@ function diffCommandFor(
       const c =
         passphrase === undefined
           ? openCase(dir, { actor: "ir-cli", readOnly: true })
-          : openCase(dir, { actor: "ir-cli", readOnly: true, passphrase });
+          : openCase(dir, { actor: "ir-cli", readOnly: true }, passphrase);
       try {
         const entries = c.entries();
         if (from > to) {
@@ -579,7 +576,7 @@ async function runImportCommand(
     const c =
       passphrase === undefined
         ? openCase(dir, { actor: "ir-cli", clock, ...createOpt })
-        : openCase(dir, { actor: "ir-cli", clock, passphrase, ...createOpt });
+        : openCase(dir, { actor: "ir-cli", clock, ...createOpt }, passphrase);
     try {
       const res = kind === "adsb" ? await importAdsbAircraftDump(c, content, clock) : await importAisVesselDump(c, content, clock);
       const records = "aircraftCount" in res ? res.aircraftCount : res.vesselCount;
@@ -627,7 +624,7 @@ function openRunCase(dir: string, v: RunValues, clock: Clock): Case | string {
   const createOpt: { create?: CaseInit } = create ? { create } : {};
   return passphrase === undefined
     ? openCase(dir, { actor: "ir-cli", clock, ...createOpt })
-    : openCase(dir, { actor: "ir-cli", clock, passphrase, ...createOpt });
+    : openCase(dir, { actor: "ir-cli", clock, ...createOpt }, passphrase);
 }
 
 /** Simulation (default) or the real network through @ir/egress with the transform isolated (`--network`). */
@@ -907,7 +904,7 @@ async function runSourceCommand(
     // The passphrase is passed as an explicit property (never spread): spreading a password-bearing
     // object taints the whole options object in static analysis (CodeQL js/insufficient-password-hash).
     const { passphrase } = passphraseFrom(v["passphrase-file"]);
-    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli", passphrase });
+    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli" }, passphrase);
     try {
       if (verb === "list") {
         printSourceList(c, v.json === true, out);
@@ -963,7 +960,7 @@ function runProxyCommand(
   const fail = (msg: string) => (err(`ir proxy: ${msg}`), 2);
   try {
     const { passphrase } = passphraseFrom(v["passphrase-file"]);
-    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli", passphrase });
+    const c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli" }, passphrase);
     try {
       if (verb === "show") {
         const config = caseProxyConfig(c);
@@ -1279,7 +1276,7 @@ function runMonitorList(dir: string, v: Values & RunValues, out: (s: string) => 
   const { passphrase } = passphraseFrom(v["passphrase-file"]);
   let c: Case;
   try {
-    c = passphrase === undefined ? openCase(dir, { actor: "ir-cli", clock }) : openCase(dir, { actor: "ir-cli", clock, passphrase });
+    c = passphrase === undefined ? openCase(dir, { actor: "ir-cli", clock }) : openCase(dir, { actor: "ir-cli", clock }, passphrase);
   } catch (x) {
     return fail((x as Error).message);
   }
@@ -1347,7 +1344,7 @@ function runMonitorRemove(
   const { passphrase } = passphraseFrom(v["passphrase-file"]);
   let c: Case;
   try {
-    c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli", passphrase });
+    c = passphrase === undefined ? openCase(dir, { actor: "ir-cli" }) : openCase(dir, { actor: "ir-cli" }, passphrase);
   } catch (x) {
     return fail((x as Error).message);
   }

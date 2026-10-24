@@ -211,11 +211,13 @@ const listBlobFiles = (dir: string): string[] =>
     .filter((n) => n.startsWith(`blobs${path.sep}`))
     .map((n) => n.split(path.sep).join("/"));
 
-export function packCase(dir: string, opts: PackOptions): Uint8Array {
+export function packCase(dir: string, opts: PackOptions, passphrase?: string): Uint8Array {
+  // P6-004 (CodeQL fix): credentials travel as a separate parameter, never inside opts.
+  const pass = opts.passphrase ?? passphrase;
   const clock = opts.clock ?? systemClock;
   let c;
   try {
-    c = openCase(dir, { actor: opts.actor, readOnly: true, ...(opts.passphrase ? { passphrase: opts.passphrase } : {}) });
+    c = openCase(dir, { actor: opts.actor, readOnly: true }, pass);
   } catch (x) {
     throw new PackError(`cannot open ${dir}: ${(x as Error).message}`);
   }
@@ -327,7 +329,13 @@ function payloadOpener(keyFile: CaseKeyFile | null, passphrase: string | undefin
 }
 
 /** Rebuilds the database (the chain's projection) and the evidence/audit mirrors. */
-function restoreDb(dir: string, entries: readonly Entry[], keyFile: CaseKeyFile | null, opts: UnpackOptions): void {
+function restoreDb(
+  dir: string,
+  entries: readonly Entry[],
+  keyFile: CaseKeyFile | null,
+  opts: UnpackOptions,
+  pass: string | undefined,
+): void {
   const db = openDb(dir, false, opts.clock ?? systemClock);
   try {
     const store = sqliteLedgerStore(db);
@@ -340,7 +348,7 @@ function restoreDb(dir: string, entries: readonly Entry[], keyFile: CaseKeyFile 
     insertMeta.run("case_id", record.id);
     insertMeta.run("created_at", record.createdAt);
     insertMeta.run("encryption", keyFile ? "aes-256-gcm+argon2id" : "none");
-    rebuildMirrors(db, entries, keyFile, opts);
+    rebuildMirrors(db, entries, keyFile, opts, pass);
   } finally {
     db.close();
   }
@@ -351,8 +359,9 @@ function rebuildMirrors(
   entries: readonly Entry[],
   keyFile: CaseKeyFile | null,
   opts: UnpackOptions,
+  pass: string | undefined,
 ): void {
-  const open = payloadOpener(keyFile, opts.passphrase);
+  const open = payloadOpener(keyFile, pass);
   const insertEvidence = db.prepare(
     "INSERT INTO evidence (id, sha256, mime, size, fetched_at, transform_id, ledger_seq) VALUES (?, ?, ?, ?, ?, ?, ?)",
   );
@@ -411,7 +420,9 @@ function validatedPack(
   return { manifest, files, entries, caseJson, keyFile };
 }
 
-export function unpackCase(bytes: Uint8Array, dir: string, opts: UnpackOptions = {}): UnpackResult {
+export function unpackCase(bytes: Uint8Array, dir: string, opts: UnpackOptions = {}, passphrase?: string): UnpackResult {
+  // P6-004 (CodeQL fix): credentials travel as a separate parameter, never inside opts.
+  const pass = opts.passphrase ?? passphrase;
   const { manifest, files, entries, caseJson, keyFile } = validatedPack(bytes, opts);
   const keyData = files.get(KEY);
   const created = !existsDir(dir);
@@ -426,11 +437,11 @@ export function unpackCase(bytes: Uint8Array, dir: string, opts: UnpackOptions =
       mkdirSync(path.dirname(target), { recursive: true });
       writeFileSync(target, data);
     }
-    restoreDb(dir, entries, keyFile, opts);
+    restoreDb(dir, entries, keyFile, opts, pass);
     // checkpoint signatures are NOT checked against the pack signer here: a transferred case
     // keeps its own checkpoints (possibly signed by another installation); `ir verify --key`
     // judges them, and the pack's own signature was already verified above.
-    const report = verifyCase(dir, { ...(opts.passphrase ? { passphrase: opts.passphrase } : {}) });
+    const report = verifyCase(dir, {}, pass);
     if (!report.ok) {
       const problems = [
         ...report.chain.errors.map((e) => e.message),
