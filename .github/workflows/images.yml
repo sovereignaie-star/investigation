@@ -75,14 +75,14 @@ jobs:
         run: |
           # attestations attach to the per-platform manifests, not the index:
           # target the amd64 manifest digest explicitly
-          AMD64="$(docker buildx imagetools inspect "${IMAGE}@${{ steps.build.outputs.digest }}" --format "{{json .}}" | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')"
+          AMD64="$(docker buildx imagetools inspect --raw "${IMAGE}@${{ steps.build.outputs.digest }}" | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')"
           cosign download sbom "${IMAGE}@${AMD64}" > sbom.spdx.json
           head -c 400 sbom.spdx.json
       - name: Verify the SLSA provenance attestation (P7-003)
         env:
           IMAGE: ghcr.io/${{ github.repository }}
         run: |
-          AMD64="$(docker buildx imagetools inspect "${IMAGE}@${{ steps.build.outputs.digest }}" --format "{{json .}}" | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')"
+          AMD64="$(docker buildx imagetools inspect --raw "${IMAGE}@${{ steps.build.outputs.digest }}" | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')"
           cosign verify-attestation \
             --type slsaprovenance \
             --certificate-identity "${{ steps.meta.outputs.identity }}" \
