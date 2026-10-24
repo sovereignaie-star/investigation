@@ -320,11 +320,14 @@ export async function renderReportPdf(doc: ReportDocument): Promise<Buffer> {
 }
 
 /** فتح صفحة جديدة — undefined إذا مات المتصفح المشترك (يُعاد الإطلاق فوق). */
-async function newPage(browser: Awaited<ReturnType<typeof launchChromium>>): Promise<{
-  setContent: (html: string, opts?: { waitUntil?: string }) => Promise<void>;
-  pdf: (opts?: { format?: string }) => Promise<Uint8Array>;
-  close: () => Promise<void>;
-}> {
+async function newPage(browser: Awaited<ReturnType<typeof launchChromium>>): Promise<
+  | {
+      setContent: (html: string, opts?: { waitUntil?: string }) => Promise<void>;
+      pdf: (opts?: { format?: string }) => Promise<Uint8Array>;
+      close: () => Promise<void>;
+    }
+  | undefined
+> {
   try {
     return await browser.newPage();
   } catch (pageOpenFailed) {
