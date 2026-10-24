@@ -12164,3 +12164,13 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 **ما لم يتم:** images.yml والدليل الحي (تشغيل حقيقي موقّع ومتحقق).
 
 **الخطوة التالية:** بناء الworkflow ثم PR بالحالة in_progress (الإنجاز مشروط بتشغيل حقيقي موثق).
+
+### P7-002 — المرحلة الأولى: workflow الصور الموقعة (2026-10-24)
+
+**ما تم:** بنيت `.github/workflows/images.yml`: بناء متعدد المعماريات (linux/amd64,linux/arm64 عبر QEMU+buildx)، دفع إلى GHCR بGITHUB_TOKEN، توقيع digest الفهرس بcosign بدون مفاتيح (OIDC عبر id-token: write)، تحقق صارم بالهوية (`--certificate-identity` بمسار الworkflow والمرجع الفعلي + issuer مثبت) داخل الworkflow نفسه، وفحص الفهرس بimagetools inspect. حارس T-IMG-001..002 أخضر (بنية الworkflow) ومسجل في النقاط الثلاث. فصلت فحص الدليل الحي (T-IMG-RUN) لمرحلة ثانية بعد تشغيل حقيقي — نمط المرحلتين نفسه الذي أنجز به P7-001.
+
+**الأدلة:** `node --test scripts/governance/images.test.mjs` => pass 2 / fail 0 (كان fail 2 قبل البناء).
+
+**ما لم يتم:** التشغيل التجريبي الفعلي (dispatch من main بعد الدمج) وتوثيقه ثم حارس الدليل الحي.
+
+**الخطوة التالية:** دمج هذا PR ثم dispatch التجربة ووثق الدليل (run id + digest + المعماريتان + هوية الموقّع + نتيجة التحقق) ثم PR المرحلة الثانية.
