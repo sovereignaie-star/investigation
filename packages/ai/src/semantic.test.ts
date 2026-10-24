@@ -36,26 +36,30 @@ const vectorFor = (text: string): number[] => {
   return [tls, person, domain];
 };
 
-let server: Server | undefined;
+const servers: Server[] = [];
 let lastRequestBody: { model?: string; input?: string[] } | undefined;
-const startFakeEmbed = (port: number): void => {
-  server = createServer((req, res) => {
-    let body = "";
-    req.on("data", (chunk: Buffer) => {
-      body += chunk.toString();
+const startFakeEmbed = (port: number): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const server = createServer((req, res) => {
+      let body = "";
+      req.on("data", (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on("end", () => {
+        lastRequestBody = JSON.parse(body);
+        const inputs = (JSON.parse(body).input as string[]) ?? [];
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ model: "nomic-embed-text", embeddings: inputs.map(vectorFor) }));
+      });
     });
-    req.on("end", () => {
-      lastRequestBody = JSON.parse(body);
-      const inputs = (JSON.parse(body).input as string[]) ?? [];
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ model: "nomic-embed-text", embeddings: inputs.map(vectorFor) }));
-    });
-  }).listen(port, "127.0.0.1");
-};
+    servers.push(server);
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  });
 
-afterEach(() => {
-  server?.close();
-  server = undefined;
+afterEach(async () => {
+  await Promise.all(servers.map((s) => new Promise<void>((resolve) => s.close(() => resolve()))));
+  servers.length = 0;
   lastRequestBody = undefined;
 });
 
@@ -83,43 +87,43 @@ const provider = (port: number) => createLocalEmbedProvider({ baseUrl: `http://1
 
 describe("P5-020 — بحث دلالي محلي", () => {
   it("T-SEM-001: يبني فهرساً من عناصر القضية عبر مزوّد التضمين المحلي ويبحث فيه", async () => {
-    startFakeEmbed(54434);
-    const index = await buildSearchIndex(ITEMS, { provider: provider(54434) });
-    const results = await searchCase("شهادة TLS", index, { provider: provider(54434) });
+    await startFakeEmbed(42534);
+    const index = await buildSearchIndex(ITEMS, { provider: provider(42534) });
+    const results = await searchCase("شهادة TLS", index, { provider: provider(42534) });
     expect(results.length).toBe(3);
     expect(results[0].id).toBe("EV-2");
     expect(results[0].score).toBeGreaterThan(results[1].score);
   });
 
   it("T-SEM-002: التضمين يطلب النموذج المحلي بعناصر محددة — لا شبكة مباشرة في الحزمة", async () => {
-    startFakeEmbed(55434);
-    await buildSearchIndex(ITEMS, { provider: provider(55434) });
+    await startFakeEmbed(43534);
+    await buildSearchIndex(ITEMS, { provider: provider(43534) });
     expect(lastRequestBody?.input).toEqual(ITEMS.map((i) => i.text));
     expect(lastRequestBody?.model).toBe("nomic-embed-text");
   });
 
   it("T-SEM-003: البحث حتمي — نفس الاستعلام يعطي نفس الترتيب بالضبط", async () => {
-    startFakeEmbed(56434);
-    const index = await buildSearchIndex(ITEMS, { provider: provider(56434) });
-    const first = await searchCase("مراسل النطاق", index, { provider: provider(56434) });
-    const second = await searchCase("مراسل النطاق", index, { provider: provider(56434) });
+    await startFakeEmbed(44534);
+    const index = await buildSearchIndex(ITEMS, { provider: provider(44534) });
+    const first = await searchCase("مراسل النطاق", index, { provider: provider(44534) });
+    const second = await searchCase("مراسل النطاق", index, { provider: provider(44534) });
     expect(first).toEqual(second);
   });
 
   it("T-SEM-004: الفهرس قابل للتسلسل — JSON ذهاباً وإياباً يعطي بحثاً مطابقاً", async () => {
-    startFakeEmbed(57434);
-    const index = await buildSearchIndex(ITEMS, { provider: provider(57434) });
+    await startFakeEmbed(45534);
+    const index = await buildSearchIndex(ITEMS, { provider: provider(45534) });
     const serialized = serializeSearchIndex(index);
     const restored = deserializeSearchIndex(serialized);
-    const a = await searchCase("شهادة", index, { provider: provider(57434) });
-    const b = await searchCase("شهادة", restored, { provider: provider(57434) });
+    const a = await searchCase("شهادة", index, { provider: provider(45534) });
+    const b = await searchCase("شهادة", restored, { provider: provider(45534) });
     expect(b).toEqual(a);
     expect(JSON.parse(serialized).ids).toEqual(["EV-1", "EV-2", "EV-3"]);
   });
 
   it("T-SEM-005: الفهرس مشفّر مع القضية — لا نص خام على القرص ويُبحث بعد الفتح", async () => {
-    startFakeEmbed(58434);
-    const index = await buildSearchIndex(ITEMS, { provider: provider(58434) });
+    await startFakeEmbed(46534);
+    const index = await buildSearchIndex(ITEMS, { provider: provider(46534) });
     const serialized = serializeSearchIndex(index);
     // مخزن الحمولات المشفرة تحت مفتاح القضية (AES-256-GCM)
     const dir = mkdtempSync(join(tmpdir(), "ir-sem-"));
@@ -148,15 +152,15 @@ describe("P5-020 — بحث دلالي محلي", () => {
     const unlockedStore = encryptedBlobStore(dir, unlockedKey);
     const recovered = unlockedStore.get(ref.sha256);
     const restored = deserializeSearchIndex(new TextDecoder().decode(recovered ?? new Uint8Array()));
-    const results = await searchCase("شهادة TLS", restored, { provider: provider(58434) });
+    const results = await searchCase("شهادة TLS", restored, { provider: provider(46534) });
     expect(results[0].id).toBe("EV-2");
   });
 
   it("T-SEM-006: الملاءمة الدلالية — الأقرب مفهوماً يتصدر مهما اختلف اللفظ", async () => {
-    startFakeEmbed(59434);
-    const index = await buildSearchIndex(ITEMS, { provider: provider(59434) });
+    await startFakeEmbed(47534);
+    const index = await buildSearchIndex(ITEMS, { provider: provider(47534) });
     // «تشفين» لفظ مختلف عن «شهادة TLS» لكن المتجه يفصل المفاهيم دلالياً
-    const results = await searchCase("تشفين", index, { provider: provider(59434) });
+    const results = await searchCase("تشفين", index, { provider: provider(47534) });
     expect(results[0].id).toBe("EV-2");
   });
 });

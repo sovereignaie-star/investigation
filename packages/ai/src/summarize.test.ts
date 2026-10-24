@@ -33,17 +33,21 @@ const GOOD_SUMMARY =
   "الصفحة الرئيسية موثقة بلقطة أرشيفية بتاريخ 2026-10-01 [2]. " +
   "شهادة TLS صادرة من Let's Encrypt وتنتهي في ديسمبر 2026 [3].";
 
-let server: Server | undefined;
-const startFakeOllama = (port: number, reply: string): void => {
-  server = createServer((_req, res) => {
-    res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ model: "qwen2.5:7b", message: { role: "assistant", content: reply }, done: true }));
-  }).listen(port, "127.0.0.1");
-};
+const servers: Server[] = [];
+const startFakeOllama = (port: number, reply: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ model: "qwen2.5:7b", message: { role: "assistant", content: reply }, done: true }));
+    });
+    servers.push(server);
+    server.once("error", reject);
+    server.listen(port, "127.0.0.1", () => resolve());
+  });
 
-afterEach(() => {
-  server?.close();
-  server = undefined;
+afterEach(async () => {
+  await Promise.all(servers.map((s) => new Promise<void>((resolve) => s.close(() => resolve()))));
+  servers.length = 0;
 });
 
 /** نقل عقدة محلي للحقن — في الاختبار فقط. */
@@ -71,16 +75,16 @@ const provider = (port: number) => createLocalProvider({ baseUrl: `http://127.0.
 
 describe("P5-013 — التلخيص المقيد بالأدلة", () => {
   it("T-SUM-001: يُنتج خلاصة مقيدة بالأدلة عبر المزوّد المحلي — بتعليم صريح لكل جملة بإحالة", async () => {
-    startFakeOllama(41434, GOOD_SUMMARY);
-    const result = await summarizeEvidence(EVIDENCE, { provider: provider(41434) });
+    await startFakeOllama(21534, GOOD_SUMMARY);
+    const result = await summarizeEvidence(EVIDENCE, { provider: provider(21534) });
     expect(result.claims.length).toBe(3);
     expect(result.unsupported).toHaveLength(0);
     expect(result.unsupportedRatio).toBeLessThanOrEqual(0.02);
   });
 
   it("T-SUM-002: خلاصة سليمة — ≤ 2% غير مدعوم (المعيار)", async () => {
-    startFakeOllama(42434, GOOD_SUMMARY);
-    const result = await summarizeEvidence(EVIDENCE, { provider: provider(42434) });
+    await startFakeOllama(22534, GOOD_SUMMARY);
+    const result = await summarizeEvidence(EVIDENCE, { provider: provider(22534) });
     expect(result.unsupportedRatio).toBeLessThanOrEqual(0.02);
     expect(result.ok).toBe(true);
   });
@@ -90,8 +94,8 @@ describe("P5-013 — التلخيص المقيد بالأدلة", () => {
       "النطاق example.test يسجّل سجل A عند العنوان 93.184.216.34 [1]. " +
       "المالك الحقيقي للنطاق شركة وهمية مملوكة لجهة أجنبية مجهولة. " +
       "شهادة TLS صادرة من Let's Encrypt وتنتهي في ديسمبر 2026 [3].";
-    startFakeOllama(43434, hallucinated);
-    const result = await summarizeEvidence(EVIDENCE, { provider: provider(43434) });
+    await startFakeOllama(23534, hallucinated);
+    const result = await summarizeEvidence(EVIDENCE, { provider: provider(23534) });
     expect(result.ok).toBe(false);
     expect(result.unsupported.length).toBeGreaterThanOrEqual(1);
     expect(result.unsupportedRatio).toBeGreaterThan(0.02);
@@ -99,24 +103,24 @@ describe("P5-013 — التلخيص المقيد بالأدلة", () => {
 
   it("T-SUM-004: إحالة إلى دليل غير موجود ([9]) — غير مدعوم", async () => {
     const broken = "النطاق example.test يسجّل سجل A عند العنوان 93.184.216.34 [9].";
-    startFakeOllama(44434, broken);
-    const result = await summarizeEvidence(EVIDENCE, { provider: provider(44434) });
+    await startFakeOllama(24534, broken);
+    const result = await summarizeEvidence(EVIDENCE, { provider: provider(24534) });
     expect(result.ok).toBe(false);
     expect(result.unsupported.length).toBe(1);
   });
 
   it("T-SUM-005: جملة تحمل إحالة صحيحة لكن مضمونها مختلق (لا سند في الدليل) — تُكشف", async () => {
     const forged = "النطاق example.test مرتبط بشبكة بوتات عالمية لأغراض تجارة مخدرات [1].";
-    startFakeOllama(45434, forged);
-    const result = await summarizeEvidence(EVIDENCE, { provider: provider(45434) });
+    await startFakeOllama(25534, forged);
+    const result = await summarizeEvidence(EVIDENCE, { provider: provider(25534) });
     expect(result.ok).toBe(false);
     expect(result.unsupported.length).toBe(1);
   });
 
   it("T-SUM-006: جملة خلاصة بعبارات الدليل نفسها بلا إحالة مقبولة النحو تُعد مدعومة — التحقق يقيس السند لا الصياغة", async () => {
     const paraphrase = "سجل A للنطاق عند 93.184.216.34 منذ يناير 2020 [1]. " + "لقطة أرشيفية كاملة للصفحة الرئيسية بتاريخ 2026-10-01 [2].";
-    startFakeOllama(46434, paraphrase);
-    const result = await summarizeEvidence(EVIDENCE, { provider: provider(46434) });
+    await startFakeOllama(26534, paraphrase);
+    const result = await summarizeEvidence(EVIDENCE, { provider: provider(26534) });
     expect(result.ok).toBe(true);
     expect(result.unsupportedRatio).toBeLessThanOrEqual(0.02);
   });
