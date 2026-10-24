@@ -143,7 +143,12 @@ test("UC-07: removing a node (and its branch) from the view is reversible — «
   await expect(table).not.toContainText(COUNTERPARTY);
   // …the branch closure is the wallet plus every node reachable from it (the
   // counterparty AND the transaction hashes of the run) — the toast names the count
-  await expect(page.getByText(/أُزيلت \d+ عقدة من العرض/)).toBeVisible();
+  // P6-024: the exact count, not a regex — the first removal's toast («أُزيلت 1 عقدة»)
+  // can still be on screen at this point (its auto-hide hadn't elapsed on a loaded
+  // runner — run 40084357303) and the regex matched BOTH toasts → strict-mode violation.
+  // The branch closure is deterministic: the wallet + the counterparty + this run's two
+  // transaction hashes — the toast names exactly that count.
+  await expect(page.getByText("أُزيلت 4 عقدة من العرض")).toBeVisible();
 
   // …and the branch removal is equally reversible (the filter is cleared first so the
   // table's content is the VIEW, not the filter's intersection; focus leaves the
