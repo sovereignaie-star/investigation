@@ -44,13 +44,18 @@ function atLeast(a, b) {
   return true;
 }
 
-/** All resolved versions of `name` present in the lockfile (importers + packages + snapshots sections all use `name@version` keys). */
+/**
+ * All resolved versions of `name` present in the lockfile. Keys appear as `name@version:`
+ * (packages/snapshots) or `name: version` (dependency maps). The left boundary must not be a
+ * package-name character, so `drizzle-zod@0.8.3` does not match `zod` and
+ * `@types/body-parser@1.19.6` does not match `body-parser`.
+ */
 function resolvedVersions(name, lock) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const versions = new Set();
-  // keys like `  maplibre-gl@6.4.1:` (packages) or `      maplibre-gl: 6.4.1` (deps maps)
-  const re = new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}@(\\d[^:\\s]*)`, "g");
+  const re = new RegExp(`(?<![a-zA-Z0-9@/._-])${escaped}@(\\d+\\.\\d[^:\\s)]*)`, "g");
   for (const m of lock.matchAll(re)) versions.add(m[1]);
-  const re2 = new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: (\\d[^\\s]*)`, "g");
+  const re2 = new RegExp(`(?<![a-zA-Z0-9@/._-])${escaped}: (\\d+\\.\\d[^\\s)]*)`, "g");
   for (const m of lock.matchAll(re2)) versions.add(m[1]);
   return [...versions];
 }

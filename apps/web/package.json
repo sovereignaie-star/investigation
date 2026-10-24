@@ -90,7 +90,7 @@
     "graphology": "0.26.0",
     "graphology-layout-forceatlas2": "0.10.1",
     "libphonenumber-js": "^1.13.14",
-    "maplibre-gl": "^5.24.0",
+    "maplibre-gl": "^6.4.1",
     "sigma": "3.0.3",
     "sonner": "2.0.8",
     "zustand": "^5.0.15"

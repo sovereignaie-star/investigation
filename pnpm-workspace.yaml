@@ -29,7 +29,7 @@ catalog:
   "@resvg/resvg-js": ^2.6.2
   tesseract.js: ^7.0.0
   uuid: ^11.1.0
-  zod: ^3.25.76
+  zod: ^4.6.7
 
 minimumReleaseAge: 1440
 
@@ -44,6 +44,12 @@ overrides:
   yaml: ^2.9.1
   # P2-033: js-yaml < 4.3.2 has three CPU-exhaustion advisories (merge keys, !!omap); orval 8.22 pins 4.2.0.
   "js-yaml@<4.3.2": ^4.3.2
+  # P6-021: patched minimums for transitive deps (Dependabot #79 body-parser, #77 ip-address).
+  body-parser: 2.4.0
+  ip-address: 10.7.4
+  # P6-021: @jimp/types pins zod ^3.23.8 (no zod-4 line exists); force the patched
+  # core into its scope — its schemas are plain z.object/z.string, v4-compatible.
+  zod@3: 4.6.7
   "@esbuild-kit/esm-loader": npm:tsx@^4.21.0
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64": "-"
   "@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64": "-"

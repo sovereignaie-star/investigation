@@ -11509,3 +11509,10 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **الأدلة:** `node --test scripts/governance/deps.test.mjs` => فشل 4/4 (أحمر) على main الحالي؛ الدليل `docs/evidence/2026-10-24-P6-021-red.md`؛ الإنذارات من `gh api .../dependabot/alerts`.
 - **ما لم يتم:** الترقيات (المرحلة الخضراء) وإغلاق التنبيهات.
 - **الخطوة التالية:** ترقية maplibre-gl إلى 6.4.1 وzod إلى 4.6.7 مع ترحيل الاستيرادات وbody-parser/ip-address عبر overrides، ثم التحقق الكامل.
+
+### 2026-10-24 — [P6-021] الترقيات الأمنية الخضراء (Dependabot #75..#79)
+
+- **ما تم:** ترقية maplibre-gl إلى 6.15.0 (الحد المرقّع 6.4.1) في apps/web؛ zod إلى 4.6.7 عبر الكتالوج (كل الاستيرادات المحلية كانت متوافقة — typecheck نظيف) مع إعادة توليد مخططات JSON (12 ملفاً) وحقن zod@4.6.7 داخل نطاق @jimp (override `zod@3`) لأن @jimp/types يثبت ^3.23.8 ولا يوجد خط v4 له؛ body-parser 2.4.0 وip-address 10.7.4 عبر overrides للتبعيات العابرة؛ تسجيل حارس `deps.test.mjs` في نقاط التسجيل الثلاث.
+- **الأدلة:** `node --test scripts/governance/deps.test.mjs` => 4/4 أخضر (كان 0/4)؛ `pnpm run governance:test` => 52/52؛ اختبارات التحويلات المعتمدة على @jimp (tr-032/tr-095) وplaybooks وai وsim وreports => 103+ أخضر؛ `pnpm run typecheck` نظيف؛ `pnpm --filter @ir/schema run gen:jsonschema` أعاد التوليد بعد تغير خرج zod v4.
+- **ما لم يتم:** إغلاق إنذارات Dependabot على جانب GitHub (يحدث تلقائياً عند إعادة فحص main بعد الدمج)؛ NFR-21 (Lighthouse) خارج النطاق كما في البقعة 25.
+- **الخطوة التالية:** PR ودمج ثم التحقق من إغلاق التنبيهات الخمسة على main.
