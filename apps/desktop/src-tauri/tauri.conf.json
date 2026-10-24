@@ -6,7 +6,7 @@
   "build": {
     "beforeBuildCommand": "pnpm --filter @ir/web build",
     "devUrl": "http://localhost:5173",
-    "frontendDist": "../web/dist"
+    "frontendDist": "../../web/dist"
   },
   "app": {
     "windows": [
@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

@@ -17,14 +17,16 @@ test("T-DESK-001: هيكل تطبيق سطح المكتب Tauri موجود وم�
 
 test("T-DESK-002: إعدادات Tauri تشير إلى تطبيق الويب وتعرّف هوية المنتج", () => {
   const conf = JSON.parse(readFileSync("apps/desktop/src-tauri/tauri.conf.json", "utf8"));
-  assert.equal(conf.build.frontendDist, "../web/dist", "frontendDist لا يشير إلى بناء الويب");
+  assert.equal(conf.build.frontendDist, "../../web/dist", "frontendDist لا يشير إلى بناء الويب (المسار من src-tauri/)");
   assert.ok(conf.build.devUrl.includes("5173"), "devUrl لا يشير إلى خادم التطوير");
   assert.ok(conf.productName && conf.productName.trim(), "productName فارغ");
   assert.ok(conf.identifier && conf.identifier.includes("investigation"), "identifier غير معرف");
   assert.deepEqual(Object.keys(conf.build), ["beforeBuildCommand", "devUrl", "frontendDist"], "مفاتيح build غير متوقعة");
+  assert.ok(conf.app.security.csp && conf.app.security.csp.includes("default-src 'self'"), "CSP غير مقيد — ممنوع في مشروع أمني");
 });
 
 test("T-DESK-003: كود Rust يتبع نمط Tauri 2 الرسمي بنافذة واحدة", () => {
+  assert.ok(existsSync("apps/desktop/src-tauri/icons/icon.png"), "أيقونة الحزمة مفقودة");
   const main = readFileSync("apps/desktop/src-tauri/src/main.rs", "utf8");
   assert.ok(main.includes("fn main()"), "main.rs بلا دالة رئيسية");
   const lib = readFileSync("apps/desktop/src-tauri/src/lib.rs", "utf8");
