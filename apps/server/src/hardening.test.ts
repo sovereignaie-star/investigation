@@ -17,6 +17,10 @@ function stateRouter() {
   const r = Router();
   r.post("/flip", (_req, res) => res.json({ ok: true }));
   r.get("/peek", (_req, res) => res.json({ ok: true }));
+  // مسار يرمي استثناءً — لإثبات أن المعالج الأخير لا يسرّب تفاصيل الخطأ (P6-001، 7.4.1/7.4.3)
+  r.get("/boom", () => {
+    throw new Error("boom-secret-detail");
+  });
   return r;
 }
 
@@ -183,5 +187,22 @@ describe("P2-020 server hardening", () => {
     const c = csrfTokenFor(secret, "sess-2");
     expect(a).toBe(b);
     expect(a).not.toBe(c);
+  });
+});
+
+// P6-001 (ASVS L2) — إغلاق فجوات قيستها القائمة: 8.1.1/8.2.1 (no-store) و7.4.1/7.4.3 (معالج أخطاء أخير عام)
+describe("P6-001 ASVS hardening", () => {
+  it("T-ASVS-006: استجابات API تحمل Cache-Control: no-store — لا تخزين مؤقت للبيانات الحساسة", async () => {
+    const { call } = await start();
+    const res = await call("/peek");
+    expect(res.headers.get("cache-control")).toContain("no-store");
+  });
+
+  it("T-ASVS-007: خطأ غير متوقع يعيد رسالة عامة بلا كشف تفاصيل (boom-secret لا يظهر)", async () => {
+    const { call } = await start();
+    const res = await call("/boom");
+    expect(res.status).toBe(500);
+    expect(res.text).not.toContain("boom-secret-detail");
+    expect(res.text).not.toContain("at "); // لا أثر مكدس
   });
 });

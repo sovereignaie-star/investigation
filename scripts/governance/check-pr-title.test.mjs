@@ -27,3 +27,22 @@ test("a title referencing an unknown task id fails", () => {
   assert.equal(errors.length, 1);
   assert.match(errors[0], /does not exist/);
 });
+
+// P6-001 (defect discovered in the #391 merge): the squash merge subject inherits
+// the PR title, and GR-03 (check.mjs) requires a Conventional Commits type after
+// the task prefix — a bare "[P5-027] وصف عربي" title passed PR-01/PR-02 but broke
+// the governance workflow on main after the merge. PR-03 closes that gap.
+
+test("a title with a task id but no conventional type is rejected (PR-03)", () => {
+  const errors = evaluateTitle("[P5-027] محرك PDF للتقارير العربية", new Set(["P5-027", "P6-001"]));
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /PR-03/);
+});
+
+test("a conventional title after the task prefix passes", () => {
+  assert.deepEqual(evaluateTitle("[P5-027] feat(reports): Arabic PDF engine", new Set(["P5-027"])), []);
+});
+
+test("multiple task prefixes then a conventional type pass", () => {
+  assert.deepEqual(evaluateTitle("[P6-001] [P6-002] docs(security): threat model", new Set(["P6-001", "P6-002"])), []);
+});

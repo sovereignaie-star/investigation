@@ -105,6 +105,7 @@ const FIXTURE_SPECS = new Set(["packages/transforms/src/transforms/tr-iso-test-t
 const NODE_TEST_CI = new Set([
   "scripts/governance/check.test.mjs",
   "scripts/governance/check-pr-title.test.mjs",
+  "scripts/governance/asvs.test.mjs",
   "scripts/gates/security-review-gate.test.mjs",
 ]);
 /** .test.mjs files run by an explicit pnpm script (documented, not CI) — allowlisted. */

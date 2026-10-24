@@ -11392,3 +11392,11 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 ### 2026-10-24 — P5-027 (إصلاح CI 2): نوع `newPage` يقبل undefined
 - **المشكلة:** `pnpm run build` (التحقق النوعي لكل الحزم) رفض `return undefined` في `newPage` — النوع لم يكن يشمل undefined (كان `pnpm run typecheck` الجذري لا يفحص @ir/reports).
 - **الإصلاح:** النوع `... | undefined`؛ build محلياً exit 0.
+
+### 2026-10-24 — [P6-001] مطابقة OWASP ASVS L2 — قائمة تحقق موقعة محروسة + إصلاح عيب حوكمة عنوان PR
+- **الأحمر أولاً:** `scripts/governance/asvs.test.mjs` (T-ASVS-001..005) فشل قبل وجود القائمة — docs/evidence/2026-10-24-P6-001-red.md. بنود L2 الرسمية الـ 253 مستخرجة من OWASP ASVS 4.0.3 (إيداع 4963e2b، CC BY-SA 4.0) إلى docs/security/asvs/asvs-4.0.3-l2.csv (الأداة tools/asvs/extract-l2.mjs).
+- **الفجوات الثلاث المكتشفة بالقياس أُغلقت أحمر-أولاً:** T-ASVS-006 (Cache-Control: no-store على API — 8.1.1/8.2.1)، T-ASVS-007 (معالج أخطاء أخير برسالة عامة بلا كشف تفاصيل/مكدس مع الحفاظ على رمز الحالة 413 — 7.4.1/7.4.3)، T-ASVS-005 (قاعدتا no-eval/no-new-func في eslint.config.mjs — 5.2.4).
+- **القائمة:** docs/security/asvs-l2-checklist.md — 253 صفاً: 147 منجزاً بدليل قابل للتحقق و106 مبررات صريحة؛ الحارس يرفض أي بند ناقص/مكرر/بلا دليل/مبرراً هزيلاً — يعمل في CI (workflow governance) وgovernance:test.
+- **عيب حوكمة مكتشف وإصلاحه (PR-03):** عنوان PR #391 بلا نوع Conventional بعد البادئة مرّ عبر فحص عنوان PR لكن إيداع الدمج ورّث العنوان ففشل تشغيل governance على main بعد الدمج (فحوص PR نفسها كانت خضراء لأنها تفحص إيداعات الفرع). الإصلاح: PR-03 في check-pr-title.mjs (اختبارات حمراء أولاً) يفرض النوع Conventional في عنوان PR نفسه — المنع قبل الدمج لا بعده. إعادة كتابة تاريخ main (تعديل رسالة إيداع الدمج) رُفضت بالسياسة — الإصلاح للأمام: كل عناوين PR القادمة تحمل النوع، وفشل التشغيل التاريخي على main يبقى أثراً موثقاً هنا.
+- **الحد:** L-P6-001 في docs/DECLARED_LIMITS.md — تقييم ذاتي لا اعتماد خارجي؛ التحقق الخارجي هو P6-003.
+- **الجودة:** asvs.test.mjs 5/5؛ check-pr-title.test.mjs 7/7؛ check.test.mjs 28/28؛ hardening.test.ts 15/15؛ lint/build خضراء.

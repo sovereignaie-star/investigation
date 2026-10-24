@@ -19,6 +19,8 @@ jobs:
           node-version: 24
       - name: Guard unit tests
         run: node --test scripts/governance/check.test.mjs
+      - name: ASVS L2 checklist guard (P6-001)
+        run: node --test scripts/governance/asvs.test.mjs
       - name: PR title carries a task id (P6-017)
         if: github.event_name == 'pull_request'
         env:

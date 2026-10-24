@@ -28,6 +28,9 @@ export default tseslint.config(
     rules: {
       complexity: ["error", 15],
       "no-console": "error",
+      // P6-001 (ASVS 5.2.4): لا تنفيذ كود ديناميكي — eval وnew Function ممنوعان في كل الكود
+      "no-eval": "error",
+      "no-new-func": "error",
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" }],
     },
