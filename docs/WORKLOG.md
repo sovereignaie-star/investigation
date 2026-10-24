@@ -11728,3 +11728,19 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 ### الخطوة التالية
 - نقل المنافذ تحت 32768 وتحديث الحارس إلى الأخضر
+
+## 2026-10-24 — [P6-027] green fix
+
+### ما تم
+- إعادة ترقيم 21 منفذاً في qa/next-action/semantic/usage-log إلى نطاق 27634..29634 (فريد عبر الملفات، كله تحت 32768)
+- تسجيل الحارس في نقاط التسجيل الثلاث: package.json (governance:test)، governance.yml، no-silent-skips.ts
+
+### الأدلة
+- `node --test scripts/governance/test-ports.test.mjs` → pass 1 / fail 0
+- `cd packages/ai && npx vitest run` → 8 ملفات / 51 اختباراً كلها خضراء
+
+### ما لم يتم
+- لا شيء — الحارس والمشغّل جاهزان
+
+### الخطوة التالية
+- PR ثم الدمج، ثم متابعة سلسلة الدمج #406 → #407
