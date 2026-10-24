@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createServer, request as httpRequest, type Server } from "node:http";
+import { connect as tcpConnect } from "node:net";
 import {
   createLocalProvider,
   detectInjection,
@@ -154,5 +155,31 @@ describe("P5-014 — صدى الحقن في الناتج", () => {
       server = undefined;
       lastRequestBody = undefined;
     }
+  });
+});
+
+describe("P6-022 — استقرار خوادم ollama الوهمية", () => {
+  it("T-FLAKE-001: startFakeOllama يعيد وعداً يُحلّ بعد الاستماع وتنظيف afterEach يغلق كل الخوادم", async () => {
+    // عقد الاستماع: القيمة المعادة promise يتحقق فقط بعد listen — يقطع سباق
+    // ECONNREFUSED الذي ظهر في CI (run 40082187391: local-ollama connect ECONNREFUSED 49402).
+    const p = startFakeOllama(49490, "خلاصة [1].");
+    expect(p, "must return a promise that resolves once listening").toBeInstanceOf(Promise);
+    await p;
+    // عقد التنظيف: كل خادم بدأ في الاختبار يُغلق — لا تسريب عبر حلقة T-INJ-006.
+    const q = startFakeOllama(49491, "خلاصة [1].");
+    expect(q).toBeInstanceOf(Promise);
+    await q;
+    await cleanupFakeOllama();
+    const refused = (port: number) =>
+      new Promise<void>((resolve, reject) => {
+        const sock = tcpConnect(port, "127.0.0.1");
+        sock.once("connect", () => {
+          sock.destroy();
+          reject(new Error(`port ${port} still accepting`));
+        });
+        sock.once("error", () => resolve());
+      });
+    await expect(refused(49490)).resolves.toBeUndefined();
+    await expect(refused(49491)).resolves.toBeUndefined();
   });
 });
