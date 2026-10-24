@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 // P6-017 (owner directive 2026-10-18): every pull request title must start with
 // a task id like "[P3-001] description" — the squash merge commit inherits the
 // title, so the merge commit carries the task id too (GR-03 for merge commits).
+// P6-001 (defect from the #391 merge): the merge subject also inherits the title,
+// and GR-03 requires a Conventional Commits type — PR-03 enforces it here so a
+// bad title is rejected on the PR, not after the merge on main.
+import { CONVENTIONAL_RE, subjectWithoutTaskPrefix } from "./check.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const BRACKET_RE = /\[(P[0-9]-\d{3})\]/;
@@ -31,6 +35,11 @@ export function evaluateTitle(title, ids) {
   const referenced = [...new Set([...text.matchAll(/\[(P[0-9]-\d{3})\]/g)].map((m) => m[1]))];
   for (const id of referenced) {
     if (!ids.has(id)) errors.push(`PR-02: task id ${id} does not exist in docs/ROADMAP.md.`);
+  }
+  if (!CONVENTIONAL_RE.test(subjectWithoutTaskPrefix(text))) {
+    errors.push(
+      'PR-03: after the task id prefix, the title must follow Conventional Commits "type(scope): summary" (ADR-22) — the squash merge subject inherits it and GR-03 applies on main.',
+    );
   }
   return errors;
 }

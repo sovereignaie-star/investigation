@@ -117,6 +117,12 @@ export function createApp(router: IRouter = apiRouter, opts: AppOptions = {}): E
 
   app.use(express.json({ limit: "8kb" }));
 
+  // P6-001 (ASVS 8.1.1/8.2.1): استجابات API بيانات تحقيق حساسة — لا تخزين مؤقت أبداً.
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
+
   app.use("/api", router);
 
   /**
@@ -133,6 +139,29 @@ export function createApp(router: IRouter = apiRouter, opts: AppOptions = {}): E
       res.sendFile(path.join(webDist, "index.html"));
     });
   }
+
+  /**
+   * P6-001 (ASVS 7.4.1/7.4.3): المعالج الأخير — كل استثناء غير معالج يعود برسالة عامة
+   * بلا تفاصيل ولا مكدس (التفاصيل إلى السجل المنظم فقط، redact عبر logger.ts).
+   */
+  app.use(
+    (
+      err: unknown,
+      req: { method?: string; url?: string },
+      res: { headersSent?: boolean; status: (c: number) => { json: (b: unknown) => void } },
+      next: () => void,
+    ) => {
+      logger.error({ err, method: req.method, url: redactRequestUrl(req.url) }, "unhandled error");
+      if (res.headersSent) {
+        next();
+        return;
+      }
+      // رمز الحالة يُؤخذ من الخطأ نفسه (413/429 مثلاً) — الرسالة وحدها تبقى عامة
+      const status = (err as { status?: unknown }).status;
+      const code = typeof status === "number" && status >= 400 && status < 600 ? status : 500;
+      res.status(code).json({ error: "خطأ داخلي — فشل-مغلق، لا تفاصيل في الاستجابة" });
+    },
+  );
 
   return app;
 }
