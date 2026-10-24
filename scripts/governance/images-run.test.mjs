@@ -20,7 +20,9 @@ test("T-IMG-RUN-001: دليل تشغيل حقيقي موقّع ومتحقق من
   assert.ok(/run `?\d{8,}`?/.test(md), "معرف تشغيل حقيقي مفقود");
   assert.ok(/sha256:[0-9a-f]{12,}/.test(md), "digest الفهرس مفقود");
   assert.ok(md.includes("amd64") && md.includes("arm64"), "المعماريتان غير موثقتين");
-  assert.ok(md.includes("token.actions.githubusercontent.com"), "issuer هوية الموقّع غير موثق");
+  // anchored issuer check (CodeQL js/incomplete-hostname-regexp): the issuer
+  // must appear in its full verification-command form, not as a bare host
+  assert.ok(/--certificate-oidc-issuer https:\/\/token\.actions\.githubusercontent\.com/.test(md), "issuer هوية الموقّع غير موثق");
   assert.ok(md.includes("--certificate-identity"), "التحقق الصارم بالهوية غير موثق");
   assert.ok(/نجح التحقق|claims were validated/.test(md), "نتيجة التحقق غير موثقة");
 });
