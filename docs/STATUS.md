@@ -297,7 +297,7 @@ Exit status 1
 
 | المعرّف | المهمة | الحالة | الدليل / الإيداع |
 |---|---|---|---|
-| P7-001 | خط الإصدار: semver، changesets، ملاحظات إصدار (M) | in_progress | خط الإصدار مبني ودمج؛ تجربة v0.1.0 فشلت (pnpm غير مثبت في workflow الإصدار) — إصلاح جارٍ وسيُعاد الوسم |
+| P7-001 | خط الإصدار: semver، changesets، ملاحظات إصدار (M) | in_progress | إصلاح ثانٍ لworkflow الإصدار: حذف إدخال version الصريح من pnpm/action-setup لأنه يتعارض مع حقل packageManager |
 | P7-002 | صور Docker متعددة المعماريات وموقعة (cosign) (M) | todo | — |
 | P7-003 | SBOM (CycloneDX) وإثبات المصدر (SLSA) (M) | todo | — |
 | P7-004 | تطبيق سطح المكتب (Tauri) (C) | todo | — |
