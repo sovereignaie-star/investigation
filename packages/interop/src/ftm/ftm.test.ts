@@ -179,3 +179,21 @@ describe("P4-013 — التحقق البنيوي ضد النموذج الرسم�
     expect(result.skipped).toEqual({ nodes: [], attributes: [], edges: [] });
   });
 });
+
+describe("P6-004 — FtM import فاشل-مغلق على المدخلات المعادية (fuzz finding)", () => {
+  it("rejects null entries with a declared Error, not a TypeError crash", () => {
+    // found by the fuzz campaign: ftmImport([null]) used to throw
+    // "TypeError: Cannot read properties of null (reading 'schema')"
+    expect(() => ftmImport([null as unknown as FtmEntity])).toThrowError(/^ftm: entity/);
+  });
+
+  it("rejects non-object entries and entities without a string schema", () => {
+    expect(() => ftmImport([42 as unknown as FtmEntity])).toThrowError(/^ftm: entity/);
+    expect(() => ftmImport([{ properties: {} } as unknown as FtmEntity])).toThrowError(/^ftm: entity/);
+    expect(() => ftmImport([{ schema: {}, properties: {} } as unknown as FtmEntity])).toThrowError(/^ftm: entity/);
+  });
+
+  it("rejects entities whose properties are not a plain object", () => {
+    expect(() => ftmImport([{ schema: "LegalEntity", properties: "nope" } as unknown as FtmEntity])).toThrowError(/^ftm: entity/);
+  });
+});

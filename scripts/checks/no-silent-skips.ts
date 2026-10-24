@@ -107,6 +107,7 @@ const NODE_TEST_CI = new Set([
   "scripts/governance/check-pr-title.test.mjs",
   "scripts/governance/asvs.test.mjs",
   "scripts/governance/threat-model.test.mjs",
+  "scripts/governance/fuzz.test.mjs",
   "scripts/gates/security-review-gate.test.mjs",
 ]);
 /** .test.mjs files run by an explicit pnpm script (documented, not CI) — allowlisted. */
