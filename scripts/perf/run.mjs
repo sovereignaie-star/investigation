@@ -63,9 +63,7 @@ const { buildEntityRows, filterEntityRows } = await import("../../apps/web/src/p
 const { openCase } = await import("../../packages/store/src/case.ts");
 const { projectionHash } = await import("../../packages/ledger/src/projections/index.ts");
 const { createApp } = await import("../../apps/server/src/app.ts");
-const { casesRouter } = await import("../../apps/server/src/routes/cases.ts");
-const { default: healthRouter } = await import("../../apps/server/src/routes/health.ts");
-const { Router } = await import("express");
+const { commonRouter } = await import("../../apps/server/src/routes/index.ts");
 
 // ---- args ----
 const args = process.argv.slice(2);
@@ -236,10 +234,8 @@ async function benchApi() {
     c.close();
 
     const env = { IR_ADMIN_TOKEN: "perf-bench-token", IR_API_RATE_LIMIT: "1000000", IR_CASES_RATE_LIMIT: "1000000", LOG_LEVEL: "silent" };
-    // Same composition as routes/index.ts — the common operations the UI performs.
-    const router = Router();
-    router.use(healthRouter);
-    router.use(casesRouter(() => casesDir, { env }));
+    // The common read-path composition from the server itself — the operations the UI performs.
+    const router = commonRouter({ env, casesRoot: () => casesDir });
     const app = createApp(router, { env });
     server = app.listen(0);
     await new Promise((res) => server.once("listening", res));
