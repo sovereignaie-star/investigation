@@ -5679,3 +5679,12 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 - **حدود معلنة:** مزوّد التزييف العميق الاختياري غير منفذ (نموذج بعيد — خارج المحلي أولاً)؛ لا كشف ضغط مزدوج بمجال DCT؛ تقدير الجودة تقريبي (79 لملف q85)؛ المرجع اصطناعي — كلها في DECLARED_LIMITS (L-P5-026).
 - **الجودة:** T-095-001..005 (5) خضراء؛ الحزمة الكاملة 2991/0/6 (+5)؛ lint/typecheck/build/governance exit 0.
 - **المصدر/المرجع:** docs/ROADMAP.md (P5-026)؛ docs/STATUS.md (P5-026 → done)؛ docs/evidence/2026-10-24-P5-026-red.md.
+
+## 2026-10-24 — P5-027 محرك PDF للتقارير العربية [P5-027]
+
+- **الأحمر أولاً:** T-REP-009..012 كُتبت قبل التنفيذ وفشلت (renderReportPdf كان يرفض صريحاً حتى القرار) — الدليل: docs/evidence/2026-10-24-P5-027-pdf-comparison.md.
+- **المقارنة الثلاثية [مُقاس] (حصن قابل لإعادة التشغيل `tools/pdf-comparison/`):** نفس التقرير المرجعي طُبع بـ Typst 0.10 وChromium (Playwright) وReact-PDF 4.9. النتائج: Typst وChromium سليما التشكيل العربي وBiDi (فحص مرئي لصور الصفحات)؛ React-PDF مكسور التشكيل (حركات مشوهة + ترتيب معكوس + طبقة ToUnicode بمحارف تحكم). الإحالات قابلة للنقر في الجميع (Chromium: روابط مسماة EV-1/EV-2). الاستخراج: Chromium أفضل (عربي منطقي مباشر). الحتمية: لا أحد حتمي أصلاً (طوابع «الآن») — عولجت بتثبيت متساوي الطول.
+- **القرار (ADR-35):** Chromium عبر Playwright على قالب HTML نفسه — مصدر حقيقة واحد (HTML=PDF)، أفضل استخراج، Playwright موجود أصلاً (e2e)؛ React-PDF مرفوض بقياس؛ Typst بديل معلن (قالب ثانٍ = ازدواج منطق العرض). سُجل ADR-35 في جدول ROADMAP 5.20 وفهرس docs/adr/README.md (وسُجل معه غياب تسجيل ADR-33/34 السابق — أُصلح).
+- **التنفيذ:** `renderReportPdf` في `@ir/reports` (import كسول لـ playwright، fallback إلى Chrome النظامي بسابقة G-11، فشل-مغلق برسالة صريحة) + `normalizePdfDates` (مرآة pinDocxTimestamps للـ DOCX). `pdfjs-dist` devDep للاختبارات، `playwright` dep تشغيلي.
+- **الجودة:** T-REP-009..012 خضراء (ملف التقارير 12/12)؛ حد معلن L-P5-027 (Chromium في بيئة النشر — الحاوية الحالية بلا PDF صامت).
+- **المصدر/المرجع:** docs/ROADMAP.md (P5-027، ADR-35 في 5.20)؛ docs/adr/ADR-35-pdf-engine.md؛ docs/evidence/2026-10-24-P5-027-pdf-comparison.md؛ tools/pdf-comparison/.
