@@ -83,9 +83,9 @@ const embedProvider = (port: number) => createLocalEmbedProvider({ baseUrl: `htt
 
 describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   it("T-LOG-001: كل استدعاء محادثة مسجّل بالنموذج والحجم والتكلفة التقديرية", async () => {
-    await startFakeAi(48534, "جواب النموذج [1].");
+    await startFakeAi(28234, "جواب النموذج [1].");
     const records: UsageAuditRecord[] = [];
-    const audited = withUsageAudit(provider(48534), (record) => records.push(record));
+    const audited = withUsageAudit(provider(28234), (record) => records.push(record));
     await audited.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: "سؤال طويل عن القضية" }] });
     expect(records.length).toBe(1);
     expect(records[0].kind).toBe("chat");
@@ -96,9 +96,9 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   });
 
   it("T-LOG-002: استدعاء التضمين مسجّل كذلك", async () => {
-    await startFakeAi(49534, "—");
+    await startFakeAi(28334, "—");
     const records: UsageAuditRecord[] = [];
-    const audited = withEmbedUsageAudit(embedProvider(49534), (record) => records.push(record));
+    const audited = withEmbedUsageAudit(embedProvider(28334), (record) => records.push(record));
     await audited.embed(["نص أول", "نص ثانٍ"]);
     expect(records.length).toBe(1);
     expect(records[0].kind).toBe("embed");
@@ -117,9 +117,9 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   });
 
   it("T-LOG-004: التعطيل يمنع أي استدعاء — لا يصل الطلب أصلاً (فشل-مغلق)", async () => {
-    await startFakeAi(50534, "جواب [1].");
+    await startFakeAi(29434, "جواب [1].");
     const guard = createAiGuard();
-    const guarded = guard.wrap(provider(50534));
+    const guarded = guard.wrap(provider(29434));
     guard.disable();
     await expect(guarded.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: "سؤال" }] })).rejects.toThrow(AiDisabledError);
     expect(requestCount).toBe(0);
@@ -137,8 +137,8 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
         actor: "محقق",
         create: { title: "قضية اختبار", purpose: "اختبار سجل استخدام الذكاء الاصطناعي", legalBasis: "training_simulation" },
       });
-      await startFakeAi(51534, "جواب [1].");
-      const audited = withUsageAudit(provider(51534), (record) => {
+      await startFakeAi(29534, "جواب [1].");
+      const audited = withUsageAudit(provider(29534), (record) => {
         case_.audit("ai.usage", record.kind, {
           model: record.model,
           inputChars: record.inputChars,
@@ -159,9 +159,9 @@ describe("P5-021 — سجل الاستخدام والتكلفة", () => {
   });
 
   it("T-LOG-006: كل استدعاء مسجّل — ثلاثة استدعاءات ثلاثة قيود", async () => {
-    await startFakeAi(52534, "جواب [1].");
+    await startFakeAi(29634, "جواب [1].");
     const records: UsageAuditRecord[] = [];
-    const audited = withUsageAudit(provider(52534), (record) => records.push(record));
+    const audited = withUsageAudit(provider(29634), (record) => records.push(record));
     for (let i = 0; i < 3; i += 1) {
       await audited.chat({ model: "qwen2.5:7b", messages: [{ role: "user", content: `سؤال ${i}` }] });
     }
