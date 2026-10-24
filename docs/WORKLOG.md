@@ -11425,3 +11425,7 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 
 ### 2026-10-25 — [P6-004] مصالحة الفرع مع main قبل إطلاق حملة القبول
 - الفرع نشأ من فرع P6-003 قبل دمجه فحمل نسخة مكررة من إيداع P6-003 — أدى ذلك لرفض GitHub الدمج النظيف. دُمج main في الفرع وحُلت تعارضات STATUS/WORKLOG (المحتوى متطابق). لا تغيير في الشيفرة — حملة القبول تُطلق فور الدمج.
+
+## 2026-10-24 — P6-004 CI fix
+- `ci(governance): install pnpm toolchain before fuzz guard [P6-004]`
+- عيّن `pnpm/action-setup@v6` + `pnpm install --frozen-lockfile` في `governance.yml` قبل خطوة حارس الحملة (T-FUZZ-001..006 تحتاج fast-check/tsx من node_modules، وكانت مهمة CI تفشل لغيابهما).
