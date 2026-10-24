@@ -298,7 +298,7 @@ Exit status 1
 | المعرّف | المهمة | الحالة | الدليل / الإيداع |
 |---|---|---|---|
 | P7-001 | خط الإصدار: semver، changesets، ملاحظات إصدار (M) | done | ناجح: https://github.com/sovereignaie-star/investigation/releases/tag/v0.1.0 — وسم v0.1.0 على main@41e2a6b أنتج إصدار GitHub بملاحظات من CHANGELOG (تشغيل 40108453156، 25 ثانية). فشلت محاولتان قبل الإصلاح (pnpm غير مثبت، ثم تعارض نسخة pnpm) — موثقتان في WORKLOG. |
-| P7-002 | صور Docker متعددة المعماريات وموقعة (cosign) (M) | in_progress | إعادة تفعيل lightningcss-linux-arm64-gnu (كان معطلاً في overrides) — مطلوب لصور arm64 متعددة المعماريات؛ التشغيل 40119189792 فشل بغيابه |
+| P7-002 | صور Docker متعددة المعماريات وموقعة (cosign) (M) | in_progress | التشغيل الثالث 40120676547 كشف نقص رابط tailwindcss/oxide لarm64 — أزلت تعطيل كل روابط linux-arm64 (oxide/esbuild/rollup؛ lightningcss سابقاً)؛ إعادة التجربة بعد الدمج |
 | P7-003 | SBOM (CycloneDX) وإثبات المصدر (SLSA) (M) | todo | — |
 | P7-004 | تطبيق سطح المكتب (Tauri) (C) | todo | — |
 | P7-005 | موقع التوثيق (عربي/إنجليزي) (M) | todo | — |

@@ -12204,3 +12204,13 @@ jitter اختياري: `limits.jitterMs` افتراضي 0 = معطل؛ تأخي�
 **ما لم يتم:** إعادة التشغيل التجريبي بعد الدمج.
 
 **الخطوة التالية:** دمج ثم dispatch ثالث للتجربة.
+
+### P7-002 — روابط arm64 كاملة (2026-10-24)
+
+**ما تم:** التشغيل الثالث 40120676547 تقدم (lightningcss عبر البناء) ثم فشل بغياب `@tailwindcss/oxide-linux-arm64-gnu` — تجاوزات pnpm-workspace.yaml كانت تعطل روابط arm64 لثلاث عائلات (oxide/esbuild/rollup). أزلت التعطيل عن روابط linux-arm64 كلها (oxide-gnu/musl، esbuild، rollup؛ وlightningcss سابقاً) مع إبقاء تعطيل المنصات غير المستخدمة (win32/darwin/android/…). ملف القفل محدث وfrozen-install ناجح محلياً على x64.
+
+**الأدلة:** سجل 40120676547؛ فرق pnpm-workspace.yaml وpnpm-lock.yaml؛ `pnpm install --frozen-lockfile` => Done.
+
+**ما لم يتم:** إعادة التشغيل التجريبي بعد الدمج.
+
+**الخطوة التالية:** دمج ثم dispatch رابع للتجربة.
