@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import { buildReport, renderReportHtml, renderReportDocx, renderReportPdf, validateReport, type ReportDocument } from "./index.ts";
 
 /**
@@ -105,8 +106,57 @@ describe("P5-010 — قالب DOCX", () => {
   });
 });
 
-describe("P5-010 — PDF", () => {
-  it("T-REP-009: PDF يُرفض صريحاً حتى قرار المحرك (P5-027) — لا صمت ولا غش", async () => {
-    await expect(renderReportPdf(validDoc())).rejects.toThrow(/P5-027|PDF/i);
-  });
+describe("P5-027 — محرك PDF المختار: Chromium عبر Playwright على قالب HTML نفسه (ADR-35)", () => {
+  /**
+   * الأحمر أولاً: كُتب هذا القسم قبل التنفيذ وشُغّل — كان renderReportPdf يرفض
+   * صريحاً (T-REP-009 القديم) ففشلت هذه الاختبارات للسبب الصحيح (قرار المحرك
+   * لم يكن نُفّذ). الدليل: docs/evidence/2026-10-24-P5-027-pdf-comparison.md.
+   */
+  it("T-REP-009: يولّد PDF من التقرير العربي المرجعي — ترويسة %PDF صحيحة", async () => {
+    const pdf = await renderReportPdf(validDoc());
+    expect(pdf.length).toBeGreaterThan(1000);
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  }, 30000);
+
+  it("T-REP-010: الإحالات قابلة للنقر — روابط داخلية إلى EV-1 وEV-2 في توضيحات PDF", async () => {
+    const pdf = await renderReportPdf(validDoc());
+    const annotations = await linkAnnotations(pdf);
+    const dests = annotations.map((a) => String(a.dest ?? ""));
+    expect(dests.some((d) => d.includes("EV-1"))).toBe(true);
+    expect(dests.some((d) => d.includes("EV-2"))).toBe(true);
+  }, 30000);
+
+  it("T-REP-011: حتمية PDF — طوابع الإنشاء مثبتة لا عشوائية (مرآة T-REP-008 للـ DOCX)", async () => {
+    const a = await renderReportPdf(validDoc());
+    const b = await renderReportPdf(validDoc());
+    expect(a.equals(b)).toBe(true);
+  }, 30000);
+
+  it("T-REP-012: النص العربي قابل للاستخراج من PDF (طبقة ToUnicode سليمة)", async () => {
+    const pdf = await renderReportPdf(validDoc());
+    const text = (await extractedText(pdf)).normalize("NFKC");
+    // Chromium يكتب العربي بأشكال العرض (U+FExx) — NFKC يعيدها إلى الحروف
+    // الأساسية؛ العبرة أن طبقة ToUnicode تحمل العربية فعلًا لا مربعات فارغة
+    const arabicCodepoints = [...text].filter((c) => /[؀-ۿ]/.test(c)).length;
+    expect(arabicCodepoints).toBeGreaterThan(20);
+    // البصمات اللاتينية موجودة نصاً
+    expect(text).toContain("example.test");
+    expect(text).toContain("case-001");
+  }, 30000);
 });
+
+/** توضيحات الروابط من صفحة PDF الأولى (pdfjs-dist — نفس مكتبة TR-034). */
+async function linkAnnotations(pdf: Buffer): Promise<Array<{ dest?: unknown }>> {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(pdf), useSystemFonts: false }).promise;
+  const page = await doc.getPage(1);
+  const annotations = await page.getAnnotations();
+  return annotations.filter((a: { subtype?: string }) => a.subtype === "Link");
+}
+
+/** النص المستخرج من صفحة PDF الأولى. */
+async function extractedText(pdf: Buffer): Promise<string> {
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(pdf), useSystemFonts: false }).promise;
+  const page = await doc.getPage(1);
+  const content = await page.getTextContent();
+  return content.items.map((i: { str?: string }) => i.str ?? "").join("");
+}

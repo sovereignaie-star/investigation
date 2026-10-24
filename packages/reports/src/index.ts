@@ -15,6 +15,7 @@
  */
 import { z } from "zod";
 import { Buffer } from "node:buffer";
+import { existsSync } from "node:fs";
 import { Document, Header, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import type { ReportIdentity } from "./export.ts";
 import JSZip from "jszip";
@@ -289,12 +290,132 @@ export async function renderReportDocx(doc: ReportDocument, identity?: ReportIde
 
 /* --------------------------------------------------------------- PDF */
 
-/** PDF مؤجل صراحة — P5-027 يقارن المحركات للعربية RTL ويقرر؛ لا غش ولا صمت. */
-export async function renderReportPdf(_doc: ReportDocument): Promise<Buffer> {
-  void _doc;
-  throw new Error(
-    "PDF غير متاح بعد: P5-027 يقارن Typst/Playwright/React-PDF للعربية RTL والخطوط وروابط الإحالات ويقرر المحرك — لا توليد PDF قبل القرار (فشل-مغلق، موثق في DECLARED_LIMITS)",
-  );
+/**
+ * P5-027 (ADR-35): Chromium عبر Playwright على قالب HTML نفسه — محرك PDF
+ * المختار للمقارنة الثلاثية (Typst/Playwright/React-PDF). نفس القالب يعني نفس
+ * التقرير في HTML وPDF (مصدر حقيقة واحد)، والإحالات `<a href="#EV-n">`
+ * تبقى توضيحات روابط داخلية قابلة للنقر في PDF. فشل-مغلق: لا Chromium
+ * (حزمة أو نظام) = خطأ صريح لا PDF صامت.
+ */
+export async function renderReportPdf(doc: ReportDocument): Promise<Buffer> {
+  const html = renderReportHtml(doc);
+  let browser = await launchChromium();
+  let page = await newPage(browser);
+  if (!page) {
+    // مات المتصفح المشترك بين النداءات — يُصفَّر ويُطلق واحد جديد (لا PDF صامت)
+    browserPromise = null;
+    browser = await launchChromium();
+    page = await newPage(browser);
+    if (!page) throw new Error("لا يمكن فتح صفحة Chromium لتوليد PDF — فشل-مغلق");
+  }
+  try {
+    await page.setContent(html, { waitUntil: "load" });
+    const pdf = await page.pdf({ format: "A4" });
+    return normalizePdfDates(Buffer.from(pdf));
+  } finally {
+    await page.close();
+  }
+  // المتصفح مشترك (launchChromium) فلا يُغلق هنا — إغلاقه يُبطل المشاركة؛
+  // فشل newPage بعد موته يُصفّر browserPromise ويُعاد الإطلاق تلقائياً في النداء التالي.
+}
+
+/** فتح صفحة جديدة — undefined إذا مات المتصفح المشترك (يُعاد الإطلاق فوق). */
+async function newPage(browser: Awaited<ReturnType<typeof launchChromium>>): Promise<
+  | {
+      setContent: (html: string, opts?: { waitUntil?: string }) => Promise<void>;
+      pdf: (opts?: { format?: string }) => Promise<Uint8Array>;
+      close: () => Promise<void>;
+    }
+  | undefined
+> {
+  try {
+    return await browser.newPage();
+  } catch (pageOpenFailed) {
+    lastLaunchError = pageOpenFailed; // يُضمَّن في رسالة الفشل النهائية (لا التقاط صامت — D-017)
+    return undefined;
+  }
+}
+
+/** تاريخ PDF مثبت — الحتمية (مرآة pinDocxTimestamps): نفس التقرير = نفس البايتات. */
+const FIXED_PDF_DATE = "D:20000101000000+00'00'";
+
+/**
+ * تثبيت طوابع إنشاء/تعديل PDF (Chromium يكتب «الآن» — قيس 2026-10-24).
+ * استبدال متساوي الطول حرفاً-بحرف يبقي إزاحات xref سليمة بلا إعادة كتابة.
+ * طابع Chromium ثابت البنية (23 محرفاً)؛ أي تطابق آخر بنيوياً يُترك كما هو
+ * (كشفه اختبار الحتمية T-REP-011 — لا صمت).
+ */
+function normalizePdfDates(pdf: Buffer): Buffer {
+  const latin1 = pdf.toString("latin1");
+  const normalized = latin1.replace(/\/(CreationDate|ModDate) \(D:[^)]*\)/g, (match, label: string) => {
+    const pinned = `/${label} (${FIXED_PDF_DATE})`;
+    return pinned.length === match.length ? pinned : match;
+  });
+  return Buffer.from(normalized, "latin1");
+}
+
+/** متصفح Chromium مشترك بين الاستدعاءات — الإطلاق مكلف فيُعاد استخدامه. */
+let browserPromise: Promise<import("playwright").Browser> | null = null;
+
+/** مسارات أسماء Chrome/Chromium المعتادة على الأنظمة (سابقة G-11). */
+const CHROME_NAMES = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"] as const;
+
+/** يطلق Chromium: المتصفح المضمّن مع Playwright، ثم Chrome النظامي (CHROME_PATH أو PATH). */
+async function launchChromium(): Promise<{
+  newPage: () => Promise<{
+    setContent: (html: string, opts?: { waitUntil?: string }) => Promise<void>;
+    pdf: (opts?: { format?: string }) => Promise<Uint8Array>;
+    close: () => Promise<void>;
+  }>;
+  close: () => Promise<void>;
+}> {
+  const { chromium } = await import("playwright");
+  if (browserPromise) {
+    // متصفح واحد مشترك — إطلاق Chromium هو المكلف؛ إعادة الاستخدام تُبقي
+    // الاستدعاءات التالية سريعة (وإلا انفجر مهلة الاختبار/الإنتاج).
+    try {
+      return await browserPromise;
+    } catch (browserDead) {
+      browserPromise = null; // مات المتصفح — إعادة إطلاق في المحاولة التالية
+      lastLaunchError = browserDead;
+    }
+  }
+  try {
+    const browser = await chromium.launch();
+    browserPromise = Promise.resolve(browser);
+    return browser;
+  } catch (bundledUnavailable) {
+    // لا متصفح مضمن في هذا التثبيت — Chrome النظامي (سابقة G-11 في gates)؛
+    // سبب غياب المضمن يُضمَّن إلى رسالة الفشل النهائية (لا التقاط صامت — D-017)
+    const fromEnv = process.env["CHROME_PATH"];
+    const candidates = [fromEnv, ...CHROME_NAMES.map((n) => which(n))].filter((p): p is string => p !== undefined);
+    for (const executablePath of candidates) {
+      try {
+        const browser = await chromium.launch({ executablePath });
+        browserPromise = Promise.resolve(browser);
+        return browser;
+      } catch (systemUnavailable) {
+        lastLaunchError = systemUnavailable;
+      }
+    }
+    throw new Error(
+      `لا Chromium متاح لتوليد PDF (ADR-35): المضمن — ${String(bundledUnavailable)}؛ النظامي — ${String(lastLaunchError)}؛ ثبّت متصفح Playwright (pnpm exec playwright install chromium) أو Chrome نظامي (CHROME_PATH) — فشل-مغلق، لا PDF صامت`,
+    );
+  }
+}
+
+/** آخر خطأ إطلاق نظامي — يضمَّن في رسالة الفشل (لا التقاط صامت — D-017). */
+let lastLaunchError: unknown = undefined;
+
+/** `which` متزامن بلا تبعية خارجية. */
+function which(name: string): string | undefined {
+  const pathDirs = (process.env["PATH"] ?? "").split(":");
+  for (const dir of pathDirs) {
+    if (dir.length === 0) continue;
+    const p = `${dir.replace(/\/$/, "")}/${name}`;
+    if (existsSync(p)) return p;
+  }
+  return undefined;
 }
 
 /* ---------------------------------------------------- P5-011: مدقق الإحالات */
